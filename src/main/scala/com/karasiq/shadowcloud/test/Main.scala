@@ -4,9 +4,10 @@ import java.nio.file.Paths
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{FileIO, Source}
+import akka.stream.scaladsl.FileIO
+import akka.util.ByteString
+import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.streams.FileSplitter
-import org.apache.commons.codec.binary.Hex
 
 import scala.language.{implicitConversions, postfixOps}
 
@@ -19,9 +20,14 @@ object Main extends App {
 
   FileIO.fromPath("LICENSE")
     .via(new FileSplitter(3333, "SHA1"))
-    .zipWithIndex
-    .runForeach { case (chunk, index) ⇒
-      Source.single(chunk.data)
-        .runWith(FileIO.toPath(s"chunk-$index-${Hex.encodeHexString(chunk.hash.toArray)}"))
+    .fold(Seq.empty[Chunk])(_ :+ _)
+    .runForeach { chunks ⇒
+      val file = File(Path.root, "LICENSE", chunks.map(_.size).sum, System.currentTimeMillis(), System.currentTimeMillis(), ByteString.empty, chunks.map(_.hash))
+      val chunkIndex = ChunkIndex.empty ++ chunks
+      val folderIndex = FolderIndex.empty + file
+      println(chunkIndex)
+      println(folderIndex)
+      assert(folderIndex.folders.values.flatMap(_.files).flatMap(_.chunks).forall(chunkIndex.contains))
     }
+
 }

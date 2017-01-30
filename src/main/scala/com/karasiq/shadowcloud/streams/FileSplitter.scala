@@ -20,44 +20,47 @@ class FileSplitter(chunkSize: Int, hashAlg: String) extends GraphStage[FlowShape
   val shape = FlowShape(inBytes, outChunks)
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) {
-    val messageDigest = MessageDigest.getInstance(hashAlg)
+    val chunkHash = MessageDigest.getInstance(hashAlg)
     var buffer = ByteString.empty
 
     def hashAndWrite(bytes: ByteString): Unit = {
-      val size = chunkSize - buffer.length
-      if (size > 0) {
-        val array = bytes.take(size).toArray
-        messageDigest.update(array)
+      val sizeToHash = chunkSize - buffer.length
+      if (sizeToHash > 0) {
+        val bytesToHash = bytes.take(sizeToHash).toArray
+        chunkHash.update(bytesToHash)
       }
       buffer ++= bytes
     }
 
     def emitNextChunk(): Unit = {
       require(buffer.nonEmpty, "Buffer is empty")
-      val (drop, keep) = buffer.splitAt(chunkSize)
+      val (chunkBytes, nextChunkPart) = buffer.splitAt(chunkSize)
 
       // Create new chunk
-      val newChunk = Chunk(chunkSize, ByteString(messageDigest.digest()), ByteString.empty, drop)
+      val chunk = Chunk(chunkBytes.size, ByteString(chunkHash.digest()), ByteString.empty, chunkBytes)
 
       // Reset buffer
       buffer = ByteString.empty
-      messageDigest.reset()
-      if (keep.nonEmpty) hashAndWrite(keep)
+      chunkHash.reset()
+      if (nextChunkPart.nonEmpty) hashAndWrite(nextChunkPart)
 
       // Emit chunk
-      emit(outChunks, newChunk, processBuffer _)
+      emit(outChunks, chunk, processBuffer _)
     }
 
     def emitLastChunk(): Unit = {
-      if (buffer.nonEmpty) emitNextChunk() else complete(outChunks)
+      if (buffer.nonEmpty)
+        emitNextChunk()
+      else
+        complete(outChunks)
     }
 
     def processBuffer(): Unit = {
-      if (buffer.length >= chunkSize) {
+      if (buffer.length >= chunkSize) { // Emit finished chunk
         emitNextChunk()
-      } else if (isClosed(inBytes)) {
+      } else if (isClosed(inBytes)) { // Emit last part and close stream
         emitLastChunk()
-      } else {
+      } else { // Pull more bytes
         pull(inBytes)
       }
     }

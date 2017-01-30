@@ -13,7 +13,7 @@ case class FileVersions(files: Map[String, Seq[File]]) {
 
 object FileVersions {
   def apply(folder: Folder): FileVersions = {
-    val files = folder.files.groupBy(_.name).mapValues(_.toIndexedSeq.sortBy(_.time))
+    val files = folder.files.groupBy(_.name).mapValues(_.toIndexedSeq.sortBy(_.lastModified))
     FileVersions(files)
   }
 }

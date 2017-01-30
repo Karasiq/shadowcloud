@@ -23,7 +23,7 @@ class FileSplitter(chunkSize: Int, hashAlg: String) extends GraphStage[FlowShape
     val messageDigest = MessageDigest.getInstance(hashAlg)
     var buffer = ByteString.empty
 
-    def hashBytes(bytes: ByteString): Unit = {
+    def hashAndWrite(bytes: ByteString): Unit = {
       val size = chunkSize - buffer.length
       if (size > 0) {
         val array = bytes.take(size).toArray
@@ -32,45 +32,57 @@ class FileSplitter(chunkSize: Int, hashAlg: String) extends GraphStage[FlowShape
       buffer ++= bytes
     }
 
-    def emitBuffer(): Unit = {
+    def emitNextChunk(): Unit = {
       require(buffer.nonEmpty, "Buffer is empty")
       val (drop, keep) = buffer.splitAt(chunkSize)
-      val newChunk = Chunk(chunkSize, ByteString(messageDigest.digest()), ByteString.empty, drop)
-      emit(outChunks, newChunk, () ⇒ {
-        buffer = ByteString.empty
-        messageDigest.reset()
-        if (keep.nonEmpty) hashBytes(keep)
 
-        if (buffer.length >= chunkSize) emitBuffer()
-        else {
-          if (isClosed(inBytes)) {
-            if (buffer.nonEmpty) emitBuffer() else complete(outChunks)
-          } else {
-            pull(inBytes)
-          }
-        }
-      })
+      // Create new chunk
+      val newChunk = Chunk(chunkSize, ByteString(messageDigest.digest()), ByteString.empty, drop)
+
+      // Reset buffer
+      buffer = ByteString.empty
+      messageDigest.reset()
+      if (keep.nonEmpty) hashAndWrite(keep)
+
+      // Emit chunk
+      emit(outChunks, newChunk, processBuffer _)
+    }
+
+    def emitLastChunk(): Unit = {
+      if (buffer.nonEmpty) emitNextChunk() else complete(outChunks)
+    }
+
+    def processBuffer(): Unit = {
+      if (buffer.length >= chunkSize) {
+        emitNextChunk()
+      } else if (isClosed(inBytes)) {
+        emitLastChunk()
+      } else {
+        pull(inBytes)
+      }
     }
 
     setHandler(inBytes, new InHandler {
       def onPush() = {
         val bytes = grab(inBytes)
-        if (bytes.nonEmpty) hashBytes(bytes)
-        if (buffer.length >= chunkSize) emitBuffer()
-        else tryPull(inBytes)
+        if (bytes.nonEmpty) hashAndWrite(bytes)
+        processBuffer()
       }
 
       @scala.throws[Exception](classOf[Exception])
       override def onUpstreamFinish() = {
-        if (buffer.isEmpty) complete(outChunks)
-        else emitBuffer()
+        emitLastChunk()
       }
     })
 
     setHandler(outChunks, new OutHandler {
       def onPull() = {
-        tryPull(inBytes)
-        setHandler(outChunks, eagerTerminateOutput)
+        if (isClosed(inBytes)) {
+          complete(outChunks)
+        } else {
+          pull(inBytes)
+          setHandler(outChunks, eagerTerminateOutput)
+        }
       }
     })
   }

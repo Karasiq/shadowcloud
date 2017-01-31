@@ -37,7 +37,7 @@ class FileSplitter(chunkSize: Int, hashAlg: String) extends GraphStage[FlowShape
       val (chunkBytes, nextChunkPart) = buffer.splitAt(chunkSize)
 
       // Create new chunk
-      val chunk = Chunk(chunkBytes.size, ByteString(chunkHash.digest()), ByteString.empty, chunkBytes)
+      val chunk = Chunk(size = chunkBytes.size, hash = ByteString(chunkHash.digest()), data = chunkBytes)
 
       // Reset buffer
       buffer = ByteString.empty

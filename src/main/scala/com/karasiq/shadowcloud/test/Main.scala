@@ -23,11 +23,10 @@ object Main extends App {
     .fold(Seq.empty[Chunk])(_ :+ _)
     .runForeach { chunks ⇒
       val file = File(Path.root, "LICENSE", chunks.map(_.size).sum, System.currentTimeMillis(), System.currentTimeMillis(), ByteString.empty, chunks.map(_.hash))
-      val chunkIndex = ChunkIndex.empty ++ chunks
-      val folderIndex = FolderIndex.empty + file
+      val chunkIndex = ChunkIndex(chunks)
+      val folderIndex = FolderIndex.empty.addFiles(file)
       println(chunkIndex)
       println(folderIndex)
       assert(folderIndex.folders.values.flatMap(_.files).flatMap(_.chunks).forall(chunkIndex.contains))
     }
-
 }

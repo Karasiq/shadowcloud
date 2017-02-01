@@ -1,10 +1,11 @@
+import TestUtils._
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
+import com.karasiq.shadowcloud.crypto.HashingModule
 import com.karasiq.shadowcloud.streams.FileSplitter
-import org.apache.commons.codec.binary.Hex
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
 import scala.language.postfixOps
@@ -17,8 +18,8 @@ class FileSplitterTest extends FlatSpec with Matchers with BeforeAndAfterAll {
     val text = ByteString("""You may have noticed various code patterns that emerge when testing stream pipelines. Akka Stream has a separate akka-stream-testkit module that provides tools specifically for writing stream tests. This module comes with two main components that are TestSource and TestSink which provide sources and sinks that materialize to probes that allow fluent API.""")
 
     val (in, out) = TestSource.probe[ByteString]
-      .via(new FileSplitter(100, "SHA-1"))
-      .map(chunk ⇒ Hex.encodeHexString(chunk.hash.toArray))
+      .via(new FileSplitter(100, HashingModule("SHA1")))
+      .map(_.hash.toHexString)
       .toMat(TestSink.probe[String])(Keep.both)
       .run()
 

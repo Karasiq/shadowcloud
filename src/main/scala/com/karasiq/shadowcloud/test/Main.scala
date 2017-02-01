@@ -5,7 +5,7 @@ import java.nio.file.Paths
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.FileIO
-import akka.util.ByteString
+import com.karasiq.shadowcloud.crypto.HashingModule
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.streams.FileSplitter
 
@@ -19,10 +19,10 @@ object Main extends App {
   implicit def stringAsPath(str: String): java.nio.file.Path = Paths.get(str)
 
   FileIO.fromPath("LICENSE")
-    .via(new FileSplitter(3333, "SHA1"))
+    .via(new FileSplitter(3333, HashingModule("SHA-512")))
     .fold(Seq.empty[Chunk])(_ :+ _)
     .runForeach { chunks ⇒
-      val file = File(Path.root, "LICENSE", chunks.map(_.size).sum, System.currentTimeMillis(), System.currentTimeMillis(), ByteString.empty, chunks.map(_.hash))
+      val file = File(Path.root, "LICENSE", chunks.map(_.size).sum, System.currentTimeMillis(), System.currentTimeMillis(), chunks.map(_.hash))
       val chunkIndex = ChunkIndex(chunks)
       val folderIndex = FolderIndex.empty.addFiles(file)
       println(chunkIndex)

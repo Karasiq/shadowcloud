@@ -25,7 +25,8 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-http" % akkaHttpV,
     "com.lihaoyi" %% "upickle" % "0.4.4",
     "commons-codec" % "commons-codec" % "1.9",
-    "org.scalatest" %% "scalatest" % "3.0.1" % "test"
+    "org.scalatest" %% "scalatest" % "3.0.1" % "test",
+    "org.bouncycastle" % "bcprov-jdk15on" % "1.56"
   )                       
 }
 

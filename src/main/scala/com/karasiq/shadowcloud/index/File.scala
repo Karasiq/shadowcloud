@@ -5,7 +5,7 @@ import org.apache.commons.codec.binary.Hex
 
 import scala.language.postfixOps
 
-case class File(path: Path, name: String, size: Long, created: Long, lastModified: Long, key: ByteString = ByteString.empty, chunks: Seq[ByteString] = Nil) {
+case class File(path: Path, name: String, size: Long, created: Long, lastModified: Long, chunks: Seq[ByteString] = Nil) {
   require(size == 0 || chunks.nonEmpty)
 
   override def toString = {

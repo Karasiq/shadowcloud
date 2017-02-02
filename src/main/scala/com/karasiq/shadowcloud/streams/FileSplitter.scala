@@ -3,23 +3,23 @@ package com.karasiq.shadowcloud.streams
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.HashingModule
-import com.karasiq.shadowcloud.index.Chunk
+import com.karasiq.shadowcloud.crypto.{HashingMethod, HashingModule}
+import com.karasiq.shadowcloud.index.{Checksum, Chunk, Data}
 
 import scala.language.postfixOps
 
 /**
   * Splits input data to fixed size chunks with hash
   * @param chunkSize Output chunk size
-  * @param hashingModule Hashing module
+  * @param hashingMethod Hashing method
   */
-class FileSplitter(chunkSize: Int, hashingModule: HashingModule) extends GraphStage[FlowShape[ByteString, Chunk]] {
+class FileSplitter(chunkSize: Int, hashingMethod: HashingMethod) extends GraphStage[FlowShape[ByteString, Chunk]] {
   val inBytes = Inlet[ByteString]("FileSplitter.inBytes")
   val outChunks = Outlet[Chunk]("FileSplitter.outChunks")
   val shape = FlowShape(inBytes, outChunks)
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) {
-    hashingModule.reset()
+    val hashingModule = HashingModule(hashingMethod)
     var buffer = ByteString.empty
 
     def hashAndWrite(bytes: ByteString): Unit = {
@@ -31,12 +31,12 @@ class FileSplitter(chunkSize: Int, hashingModule: HashingModule) extends GraphSt
       buffer ++= bytes
     }
 
-    def emitNextChunk(): Unit = {
+    def emitNextChunk(after: () ⇒ Unit = () ⇒ ()): Unit = {
       require(buffer.nonEmpty, "Buffer is empty")
       val (chunkBytes, nextChunkPart) = buffer.splitAt(chunkSize)
 
       // Create new chunk
-      val chunk = Chunk(size = chunkBytes.size, hash = hashingModule.createHash(), data = chunkBytes)
+      val chunk = Chunk(checksum = Checksum(hashingModule.method, chunkBytes.size, hashingModule.createHash()), data = Data(plain = chunkBytes))
 
       // Reset buffer
       buffer = ByteString.empty
@@ -44,12 +44,12 @@ class FileSplitter(chunkSize: Int, hashingModule: HashingModule) extends GraphSt
       if (nextChunkPart.nonEmpty) hashAndWrite(nextChunkPart)
 
       // Emit chunk
-      emit(outChunks, chunk, processBuffer _)
+      emit(outChunks, chunk, after)
     }
 
     def emitLastChunk(): Unit = {
       if (buffer.nonEmpty)
-        emitNextChunk()
+        emitNextChunk(emitLastChunk)
       else
         complete(outChunks)
     }
@@ -79,12 +79,7 @@ class FileSplitter(chunkSize: Int, hashingModule: HashingModule) extends GraphSt
 
     setHandler(outChunks, new OutHandler {
       def onPull() = {
-        if (isClosed(inBytes)) {
-          complete(outChunks)
-        } else {
-          pull(inBytes)
-          setHandler(outChunks, eagerTerminateOutput)
-        }
+        processBuffer()
       }
     })
   }

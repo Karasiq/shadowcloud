@@ -9,6 +9,10 @@ object TestUtils {
     def toHexString: String = Hex.encodeHexString(bs.toArray)
   }
 
+  def toByteString(hexString: String): ByteString = {
+    ByteString(Hex.decodeHex(hexString.toCharArray))
+  }
+
   def randomBytes(length: Int): ByteString = {
     val array = Array.ofDim[Byte](length)
     Random.nextBytes(array)

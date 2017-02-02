@@ -1,10 +1,15 @@
 package com.karasiq.shadowcloud.crypto
 
 import akka.util.ByteString
+import com.karasiq.shadowcloud.utils.Utils
 
 import scala.language.postfixOps
 
-case class EncryptionParameters(method: EncryptionMethod, key: ByteString, iv: ByteString)
+case class EncryptionParameters(method: EncryptionMethod, key: ByteString, iv: ByteString) {
+  override def toString = {
+    s"EncryptionParameters($method, key = ${Utils.toHexString(key)}, iv = ${Utils.toHexString(iv)})"
+  }
+}
 
 object EncryptionParameters {
   // No encryption

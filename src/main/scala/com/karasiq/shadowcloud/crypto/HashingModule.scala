@@ -7,14 +7,25 @@ import akka.util.ByteString
 import scala.language.postfixOps
 
 trait HashingModule {
+  def method: HashingMethod
   def update(data: ByteString): Unit
   def createHash(): ByteString
   def reset(): Unit
+
+  // One pass function
+  def createHash(data: ByteString): ByteString = {
+    update(data)
+    val hash = createHash()
+    reset()
+    hash
+  }
 }
 
 object HashingModule {
   final class MessageDigestHashingModule(messageDigest: MessageDigest) extends HashingModule {
     messageDigest.reset()
+
+    val method = HashingMethod.Digest(messageDigest.getAlgorithm)
 
     def update(data: ByteString) = {
       messageDigest.update(data.toArray)
@@ -34,9 +45,14 @@ object HashingModule {
     }
   }
 
+  def apply(method: HashingMethod): HashingModule = method match {
+    case HashingMethod.Digest(alg) ⇒
+      apply(alg)
+  }
+
   def apply(alg: String): HashingModule = {
     new MessageDigestHashingModule(MessageDigest.getInstance(alg))
   }
 
-  val default = apply("SHA1")
+  val default = apply(HashingMethod.default)
 }

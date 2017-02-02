@@ -13,9 +13,9 @@ case class ChunkIndex(chunks: Map[ByteString, Chunk] = Map.empty) {
 
   def addChunks(chunks: GenTraversableOnce[Chunk]): ChunkIndex = {
     val newChunks = chunks.toIterator.map { chunk ⇒
-      val existing = this.chunks.get(chunk.hash)
+      val existing = this.chunks.get(chunk.checksum.hash)
       require(existing.isEmpty || existing.contains(chunk), s"Conflict: ${existing.mkString} / $chunk")
-      (chunk.hash, existing.getOrElse(chunk))
+      (chunk.checksum.hash, existing.getOrElse(chunk))
     }
     ChunkIndex(this.chunks ++ newChunks)
   }

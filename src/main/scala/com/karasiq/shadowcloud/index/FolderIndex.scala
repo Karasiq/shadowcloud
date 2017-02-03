@@ -11,7 +11,7 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
   }
 
   def addFiles(files: GenTraversableOnce[File]): FolderIndex = {
-    val modified = files.toSeq.groupBy(_.path).map { case (path, files) ⇒
+    val modified = files.toVector.groupBy(_.path).map { case (path, files) ⇒
       path → folders.getOrElse(path, Folder(path)).addFiles(files)
     }
     copy(folders ++ modified)
@@ -42,7 +42,7 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
   }
 
   def deleteFolders(folders: GenTraversableOnce[Path]): FolderIndex = {
-    val deleted = folders.toSeq
+    val deleted = folders.toVector
     val newFolders = this.folders.filterKeys(path ⇒ !deleted.exists(df ⇒ path.nodes.startsWith(df.nodes)))
     copy(newFolders)
   }
@@ -65,7 +65,7 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
       secondary ← second.folders.get(path)
       diff = folder.diff(secondary) if diff.nonEmpty
     } yield diff
-    diffs.toSeq
+    diffs.toVector
   }
 
   def patch(diffs: GenTraversableOnce[FolderDiff]): FolderIndex = {

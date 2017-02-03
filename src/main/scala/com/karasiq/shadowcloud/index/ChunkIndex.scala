@@ -1,47 +1,45 @@
 package com.karasiq.shadowcloud.index
 
-import akka.util.ByteString
-import org.apache.commons.codec.binary.Hex
+import com.karasiq.shadowcloud.utils.Utils
 
 import scala.collection.GenTraversableOnce
 import scala.language.postfixOps
 
-case class ChunkIndex(chunks: Map[ByteString, Chunk] = Map.empty) {
-  def contains(hash: ByteString) = {
-    chunks.contains(hash)
+case class ChunkIndex(chunks: Set[Chunk] = Set.empty) {
+  def contains(chunk: Chunk) = {
+    chunks.contains(chunk)
   }
 
   def addChunks(chunks: GenTraversableOnce[Chunk]): ChunkIndex = {
-    val newChunks = chunks.toIterator.map { chunk ⇒
-      val existing = this.chunks.get(chunk.checksum.hash)
-      require(existing.isEmpty || existing.contains(chunk), s"Conflict: ${existing.mkString} / $chunk")
-      (chunk.checksum.hash, existing.getOrElse(chunk))
-    }
-    ChunkIndex(this.chunks ++ newChunks)
+    ChunkIndex(this.chunks ++ chunks)
   }
 
   def addChunks(chunks: Chunk*): ChunkIndex = {
     addChunks(chunks)
   }
 
-  def deleteChunks(hashes: GenTraversableOnce[ByteString]): ChunkIndex = {
-    copy(this.chunks -- hashes)
+  def deleteChunks(chunks: GenTraversableOnce[Chunk]): ChunkIndex = {
+    copy(this.chunks -- chunks)
   }
 
-  def deleteChunks(hashes: ByteString*): ChunkIndex = {
-    deleteChunks(hashes)
+  def deleteChunks(chunks: Chunk*): ChunkIndex = {
+    deleteChunks(chunks)
   }
 
   def merge(second: ChunkIndex) = {
-    addChunks(second.chunks.values)
+    addChunks(second.chunks)
   }
 
   def diff(second: ChunkIndex) = {
-    deleteChunks(second.chunks.keys)
+    ChunkIndexDiff(this, second)
+  }
+
+  def patch(diff: ChunkIndexDiff) = {
+    deleteChunks(diff.deletedChunks).addChunks(diff.newChunks)
   }
 
   override def toString = {
-    val hashesStr = chunks.keys.take(20).map(hash ⇒ Hex.encodeHexString(hash.toArray)).mkString(", ")
+    val hashesStr = chunks.take(20).map(chunk ⇒ Utils.toHexString(chunk.checksum.hash)).mkString(", ")
     val cutHashesStr = if (chunks.size > 20) hashesStr + ", ..." else hashesStr
     s"ChunkIndex($cutHashesStr)"
   }

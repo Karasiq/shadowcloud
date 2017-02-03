@@ -26,7 +26,9 @@ libraryDependencies ++= {
     "com.lihaoyi" %% "upickle" % "0.4.4",
     "commons-codec" % "commons-codec" % "1.9",
     "org.scalatest" %% "scalatest" % "3.0.1" % "test",
-    "org.bouncycastle" % "bcprov-jdk15on" % "1.56"
+    "org.bouncycastle" % "bcprov-jdk15on" % "1.56",
+    "com.esotericsoftware" % "kryo" % "4.0.0",
+    "com.twitter" %% "chill" % "0.9.1"
   )                       
 }
 

@@ -6,6 +6,11 @@ case class FolderDiff(path: Path, newFiles: Set[File], deletedFiles: Set[File], 
   def nonEmpty: Boolean = {
     newFiles.nonEmpty || deletedFiles.nonEmpty || newFolders.nonEmpty || deletedFolders.nonEmpty
   }
+
+  def merge(diff: FolderDiff): FolderDiff = {
+    require(diff.path == path, "Invalid path")
+    copy(path, newFiles -- diff.deletedFiles ++ diff.newFiles, deletedFiles -- diff.newFiles ++ diff.deletedFiles, newFolders -- diff.deletedFolders ++ diff.newFolders, deletedFolders -- diff.newFolders ++ diff.deletedFolders)
+  }
 }
 
 object FolderDiff {

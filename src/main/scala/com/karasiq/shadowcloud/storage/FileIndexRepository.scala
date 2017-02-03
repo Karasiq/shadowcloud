@@ -10,7 +10,7 @@ import akka.stream.scaladsl.{FileIO, Source}
 import scala.collection.mutable.ArrayBuffer
 import scala.language.postfixOps
 
-class FileSystemStorage(folder: FsPath)(implicit as: ActorSystem, am: ActorMaterializer) extends TimeIndexRepository {
+class FileIndexRepository(folder: FsPath)(implicit as: ActorSystem, am: ActorMaterializer) extends TimeIndexRepository {
   private def listFiles() = {
     val files = ArrayBuffer[FsPath]()
     Files.walkFileTree(folder, new SimpleFileVisitor[FsPath] {

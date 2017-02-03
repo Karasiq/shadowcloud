@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.index
 
 import scala.language.postfixOps
 
-case class FolderDiff(path: Path, newFiles: Set[File], deletedFiles: Set[File], newFolders: Set[String], deletedFolders: Set[String]) {
+case class FolderDiff(path: Path, newFiles: Set[File] = Set.empty, deletedFiles: Set[File] = Set.empty, newFolders: Set[String] = Set.empty, deletedFolders: Set[String] = Set.empty) {
   def nonEmpty: Boolean = {
     newFiles.nonEmpty || deletedFiles.nonEmpty || newFolders.nonEmpty || deletedFolders.nonEmpty
   }

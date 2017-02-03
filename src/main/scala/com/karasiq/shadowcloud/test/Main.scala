@@ -8,7 +8,7 @@ import akka.stream.scaladsl.{Compression, FileIO, Sink, Source}
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.serialization.Serialization
-import com.karasiq.shadowcloud.storage.{FileSystemStorage, IndexDiff}
+import com.karasiq.shadowcloud.storage.{FileIndexRepository, IndexDiff}
 import com.karasiq.shadowcloud.streams.{ChunkEncryptor, ChunkVerifier, FileSplitter}
 
 import scala.language.{implicitConversions, postfixOps}
@@ -36,7 +36,7 @@ object Main extends App {
       println(folderIndex)
       assert(folderIndex.folders.values.flatMap(_.files).flatMap(_.chunks).forall(chunkIndex.contains))
 
-      val storage = new FileSystemStorage(Paths.get(sys.props("shadowcloud.test.storage")))
+      val storage = new FileIndexRepository(Paths.get(sys.props("shadowcloud.test.storage")))
       val diff = IndexDiff(System.currentTimeMillis(), FolderIndex.empty.diff(folderIndex), ChunkIndex.empty.diff(chunkIndex))
 
       Source.single(diff)

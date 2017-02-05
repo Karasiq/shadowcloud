@@ -4,6 +4,7 @@ import akka.Done
 import akka.actor.{Actor, ActorLogging, ActorRef, Terminated}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
+import com.karasiq.shadowcloud.actors.StorageDispatcher.WriteChunk
 import com.karasiq.shadowcloud.crypto.EncryptionModule
 import com.karasiq.shadowcloud.index.{Chunk, ChunkIndex, ChunkIndexDiff}
 import com.karasiq.shadowcloud.streams.ChunkVerifier
@@ -18,12 +19,6 @@ object ChunkDispatcher {
 
   case class Register(index: ChunkIndex)
   case class Update(chunks: ChunkIndexDiff)
-  case class WriteChunk(chunk: Chunk)
-  object WriteChunk {
-    sealed trait Status
-    case class Success(chunk: Chunk) extends Status
-    case class Failure(chunk: Chunk, error: Throwable) extends Status
-  }
 }
 
 class ChunkDispatcher extends Actor with ActorLogging {
@@ -42,7 +37,7 @@ class ChunkDispatcher extends Actor with ActorLogging {
           val chunkWithData = existing.copy(data = chunk.data.copy(encrypted = encryptor.encrypt(chunk.data.plain, existing.encryption)))
           Source.single(chunkWithData)
             .via(new ChunkVerifier)
-            .map[WriteChunk.Status](WriteChunk.Success)
+            .map(WriteChunk.Success)
             .recover { case NonFatal(exc) ⇒ WriteChunk.Failure(chunkWithData, exc) }
             .runWith(Sink.actorRef(sender(), Done))
 

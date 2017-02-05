@@ -9,4 +9,8 @@ private[shadowcloud] object Utils {
   def toHexString(bs: ByteString): String = {
     Hex.encodeHexString(bs.toArray)
   }
+
+  def parseHexString(hexString: String): ByteString = {
+    ByteString(Hex.decodeHex(hexString.toCharArray))
+  }
 }

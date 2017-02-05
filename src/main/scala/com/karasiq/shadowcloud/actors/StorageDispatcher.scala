@@ -44,14 +44,15 @@ class StorageDispatcher(chunkRepository: ChunkRepository, chunkDispatcher: Actor
       chunkDispatcher ! ChunkDispatcher.Update(diff)
 
     case ReadChunk(chunk) ⇒
+      val sender = context.sender()
       if (index.contains(chunk.withoutData)) {
         chunkRepository.read(chunk.checksum.hash)
           .fold(ByteString.empty)(_ ++ _)
           .map(bytes ⇒ ReadChunk.Success(chunk.copy(data = chunk.data.copy(encrypted = bytes))))
           .recover { case NonFatal(exc) ⇒ ReadChunk.Failure(chunk, exc) }
-          .runWith(Sink.actorRef(sender(), Done))
+          .runForeach(sender ! _)
       } else {
-        sender() ! ReadChunk.Failure(chunk, new IllegalArgumentException(s"Chunk not found: $chunk"))
+        sender ! ReadChunk.Failure(chunk, new IllegalArgumentException(s"Chunk not found: $chunk"))
       }
 
     case WriteChunk(chunk) ⇒

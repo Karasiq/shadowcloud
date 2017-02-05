@@ -15,7 +15,11 @@ class AESGCMEncryptionModule(bits: Int = 256) extends EncryptionModule {
   private val secureRandom = SecureRandom.getInstanceStrong
   private val keyGenerator = KeyGenerator.getInstance("AES")
   keyGenerator.init(bits, secureRandom)
-  private val aes = new GCMBlockCipher(new AESEngine)
+  private var aes: GCMBlockCipher = _
+
+  private def createAesInstance() = {
+    new GCMBlockCipher(new AESEngine)
+  }
 
   private def generateIV(): ByteString = {
     val iv = Array.ofDim[Byte](12)
@@ -32,17 +36,19 @@ class AESGCMEncryptionModule(bits: Int = 256) extends EncryptionModule {
   }
 
   def init(encrypt: Boolean, parameters: EncryptionParameters) = {
-    aes.reset()
+    aes = createAesInstance()
     aes.init(encrypt, new ParametersWithIV(new KeyParameter(parameters.key.toArray), parameters.iv.toArray))
   }
 
   def process(data: ByteString) = {
+    require(aes ne null, "Not initialized")
     val output = Array.ofDim[Byte](aes.getUpdateOutputSize(data.length))
     val length = aes.processBytes(data.toArray, 0, data.length, output, 0)
     ByteString(ByteBuffer.wrap(output, 0, length))
   }
 
   def finish() = {
+    require(aes ne null, "Not initialized")
     val output = Array.ofDim[Byte](aes.getOutputSize(0))
     val length = aes.doFinal(output, 0)
     ByteString(ByteBuffer.wrap(output, 0, length))

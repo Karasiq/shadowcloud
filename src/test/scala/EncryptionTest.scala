@@ -36,5 +36,6 @@ class EncryptionTest extends FlatSpec with Matchers {
     aesModule.init(encrypt = false, aesParameters)
     val decrypted = aesModule.process(encrypted) ++ aesModule.finish()
     decrypted shouldBe data
+    aesModule.encrypt(decrypted, aesParameters) shouldBe encrypted // Restore
   }
 }

@@ -4,6 +4,7 @@ import TestUtils._
 import akka.actor.{ActorSystem, Props}
 import akka.pattern.ask
 import akka.stream.ActorMaterializer
+import akka.stream.testkit.scaladsl.TestSink
 import akka.testkit.TestActorRef
 import akka.util.{ByteString, Timeout}
 import com.karasiq.shadowcloud.actors.StorageDispatcher.{ReadChunk, WriteChunk}
@@ -37,7 +38,14 @@ class ChunkDispatcherTest extends FlatSpec with Matchers with ScalaFutures with 
 
   it should "read chunk" in {
     val future = chunkDispatcher ? ReadChunk(chunk.withoutData)
-    future.futureValue shouldBe ReadChunk.Success(chunk.copy(data = chunk.data.copy(plain = ByteString.empty)))
+    whenReady(future) {
+      case ReadChunk.Success(_, source) ⇒
+        val probe = source
+          .fold(ByteString.empty)(_ ++ _)
+          .runWith(TestSink.probe)
+        probe.requestNext(chunk.data.encrypted)
+        probe.expectComplete()
+    }
   }
 
   it should "deduplicate chunk" in {

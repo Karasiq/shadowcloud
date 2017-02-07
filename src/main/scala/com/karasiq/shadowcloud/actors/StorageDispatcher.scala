@@ -10,7 +10,6 @@ import com.karasiq.shadowcloud.storage.ChunkRepository
 
 import scala.collection.mutable
 import scala.language.postfixOps
-import scala.util.control.NonFatal
 import scala.util.{Failure, Success}
 
 object StorageDispatcher {
@@ -26,7 +25,7 @@ object StorageDispatcher {
   case class ReadChunk(chunk: Chunk)
   object ReadChunk {
     sealed trait Status
-    case class Success(chunk: Chunk) extends Status
+    case class Success(chunk: Chunk, source: Source[ByteString, _]) extends Status
     case class Failure(chunk: Chunk, error: Throwable) extends Status
   }
 }
@@ -46,11 +45,7 @@ class StorageDispatcher(chunkRepository: ChunkRepository, chunkDispatcher: Actor
     case ReadChunk(chunk) ⇒
       val sender = context.sender()
       if (index.contains(chunk.withoutData)) {
-        chunkRepository.read(chunk.checksum.hash)
-          .fold(ByteString.empty)(_ ++ _)
-          .map(bytes ⇒ ReadChunk.Success(chunk.copy(data = chunk.data.copy(encrypted = bytes))))
-          .recover { case NonFatal(exc) ⇒ ReadChunk.Failure(chunk, exc) }
-          .runForeach(sender ! _)
+        sender ! ReadChunk.Success(chunk, chunkRepository.read(chunk.checksum.hash))
       } else {
         sender ! ReadChunk.Failure(chunk, new IllegalArgumentException(s"Chunk not found: $chunk"))
       }
@@ -86,8 +81,7 @@ class StorageDispatcher(chunkRepository: ChunkRepository, chunkDispatcher: Actor
         case Failure(exc) ⇒
           self ! WriteChunk.Failure(chunk, exc)
       })
-      .to(chunkRepository.write(chunk.checksum.hash))
-      .run()
+      .runWith(chunkRepository.write(chunk.checksum.hash))
   }
 
   override def preStart() = {

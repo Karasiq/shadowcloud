@@ -9,8 +9,7 @@ import akka.testkit.TestActorRef
 import akka.util.{ByteString, Timeout}
 import com.karasiq.shadowcloud.actors.StorageDispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors.{ChunkDispatcher, StorageDispatcher}
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod}
-import com.karasiq.shadowcloud.index.{Checksum, Chunk, Data}
+import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.storage.FileChunkRepository
 import org.scalatest.concurrent.ScalaFutures
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
@@ -22,12 +21,7 @@ class ChunkDispatcherTest extends FlatSpec with Matchers with ScalaFutures with 
   implicit val actorSystem = ActorSystem()
   implicit val actorMaterializer = ActorMaterializer()
   implicit val timeout = Timeout(10 seconds)
-  val text = ByteString("When the dispatcher invokes the processing behavior of an actor on a message, it actually calls apply on the current behavior registered for the actor.")
-  val chunk = Chunk(
-    Checksum(HashingMethod("SHA1"), text.length, toByteString("ca55a227aa7b739b6edb1ebde26cd6e4f0b98c6a"), text.length, toByteString("ca55a227aa7b739b6edb1ebde26cd6e4f0b98c6a")),
-    EncryptionParameters.empty,
-    Data(text, text)
-  )
+  val chunk = TestUtils.testChunk
   val chunkDispatcher = TestActorRef(Props[ChunkDispatcher], "chunkDispatcher")
   val storage = TestActorRef(Props(classOf[StorageDispatcher], new FileChunkRepository(Files.createTempDirectory("cdt-storage")), chunkDispatcher), "tempDirStorage")
 
@@ -49,7 +43,7 @@ class ChunkDispatcherTest extends FlatSpec with Matchers with ScalaFutures with 
   }
 
   it should "deduplicate chunk" in {
-    val future = chunkDispatcher ? WriteChunk(chunk.copy(encryption = chunk.encryption.copy(EncryptionMethod.AES()), data = chunk.data.copy(encrypted = randomBytes(text.length))))
+    val future = chunkDispatcher ? WriteChunk(chunk.copy(encryption = chunk.encryption.copy(EncryptionMethod.AES()), data = chunk.data.copy(encrypted = randomBytes(chunk.data.plain.length))))
     future.futureValue shouldBe WriteChunk.Success(chunk)
   }
 

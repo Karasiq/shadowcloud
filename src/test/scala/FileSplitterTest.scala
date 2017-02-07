@@ -1,11 +1,10 @@
-import TestUtils._
 import akka.Done
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule, HashingMethod, HashingModule}
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule, HashingModule}
 import com.karasiq.shadowcloud.index.{Checksum, Chunk, Data}
 import com.karasiq.shadowcloud.streams._
 import org.scalatest.concurrent.ScalaFutures
@@ -13,38 +12,38 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
 import scala.language.postfixOps
 
+//noinspection ZeroIndexToHead
 class FileSplitterTest extends FlatSpec with Matchers with BeforeAndAfterAll with ScalaFutures {
   implicit val actorSystem = ActorSystem()
   implicit val actorMaterializer = ActorMaterializer()
 
-  val text = ByteString("""You may have noticed various code patterns that emerge when testing stream pipelines. Akka Stream has a separate akka-stream-testkit module that provides tools specifically for writing stream tests. This module comes with two main components that are TestSource and TestSink which provide sources and sinks that materialize to probes that allow fluent API.""")
-  val textHash = "2f5a0c419cfeb92f05888ae3468e54fee3ee1726"
-  val preCalcHashes = Vector("f660847d03634f41c45f7be337b02973a083721a", "dfa6cbe4eb725d390e3339075fe420791a5a394f", "e63bf72054623e911ce6a995dc520527d7fe2e2d", "802f6e7f54ca13c650741e65f188b0bdb023cb15")
-  val hashingMethod = HashingMethod("SHA1")
+  val (sourceBytes, sourceFile) = TestUtils.indexedBytes
+  val hashingMethod = sourceFile.checksum.method
+  val sourceHashes = sourceFile.chunks.map(_.checksum.hash)
 
   "File splitter" should "split text" in {
-    val fullOut = Source.single(text)
+    val fullOut = Source.single(sourceBytes)
       .via(new FileSplitter(100, hashingMethod))
-      .map(_.checksum.hash.toHexString)
+      .map(_.checksum.hash)
       .runWith(Sink.seq)
 
-    fullOut.futureValue shouldBe preCalcHashes
+    fullOut.futureValue shouldBe sourceFile.chunks.map(_.checksum.hash)
   }
 
   it should "join text" in {
     val (in, out) = TestSource.probe[ByteString]
-      .via(new FileSplitter(100, hashingMethod))
-      .map(_.checksum.hash.toHexString)
+      .via(new FileSplitter(100, sourceFile.checksum.method))
+      .map(_.checksum.hash)
       .toMat(TestSink.probe)(Keep.both)
       .run()
 
-    in.sendNext(text.take(10)).sendNext(text.slice(10, 110))
-    out.requestNext(preCalcHashes(0))
-    in.sendNext(text.slice(110, 300))
-    out.request(2).expectNext(preCalcHashes(1), preCalcHashes(2))
-    in.sendNext(text.drop(300))
+    in.sendNext(sourceBytes.take(10)).sendNext(sourceBytes.slice(10, 110))
+    out.requestNext(sourceHashes(0))
+    in.sendNext(sourceBytes.slice(110, 300))
+    out.request(2).expectNext(sourceHashes(1), sourceHashes(2))
+    in.sendNext(sourceBytes.drop(300))
     in.sendComplete()
-    out.requestNext(preCalcHashes(3))
+    out.requestNext(sourceHashes(3))
     out.expectComplete()
   }
 
@@ -61,7 +60,7 @@ class FileSplitterTest extends FlatSpec with Matchers with BeforeAndAfterAll wit
       chunk
     }
 
-    val (file, chunks) = Source.single(text)
+    val (file, chunks) = Source.single(sourceBytes)
       .via(new FileSplitter(100, hashingMethod))
       .via(new ChunkEncryptor(EncryptionMethod.AES(), hashingMethod))
       .via(new ChunkVerifier)
@@ -71,7 +70,7 @@ class FileSplitterTest extends FlatSpec with Matchers with BeforeAndAfterAll wit
       .run()
 
     whenReady(chunks) { chunks ⇒
-      chunks.map(_.checksum.hash.toHexString) shouldBe preCalcHashes
+      chunks.map(_.checksum.hash) shouldBe sourceHashes
       val future = Source(chunks)
         .via(new ChunkDecryptor)
         .via(new ChunkVerifier)
@@ -82,8 +81,8 @@ class FileSplitterTest extends FlatSpec with Matchers with BeforeAndAfterAll wit
     }
 
     whenReady(file) { file ⇒
-      file.checksum.hash.toHexString shouldBe textHash
-      file.chunks.map(_.checksum.hash.toHexString) shouldBe preCalcHashes
+      file.checksum.hash shouldBe sourceFile.checksum.hash
+      file.chunks.map(_.checksum.hash) shouldBe sourceHashes
     }
   }
 

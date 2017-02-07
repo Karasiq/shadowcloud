@@ -32,6 +32,7 @@ class EncryptionTest extends FlatSpec with Matchers {
     val data = randomBytes(100)
     aesModule.init(encrypt = true, aesParameters)
     val encrypted = aesModule.process(data) ++ aesModule.finish()
+    encrypted should not be data
     encrypted.length should be >= data.length
     aesModule.init(encrypt = false, aesParameters)
     val decrypted = aesModule.process(encrypted) ++ aesModule.finish()

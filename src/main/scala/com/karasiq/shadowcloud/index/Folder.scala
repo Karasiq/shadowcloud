@@ -4,7 +4,7 @@ import scala.collection.GenTraversableOnce
 import scala.language.postfixOps
 
 case class Folder(path: Path, folders: Set[String] = Set.empty, files: Set[File] = Set.empty) {
-  require(files.forall(_.path == this.path))
+  require(files.forall(_.parent == this.path))
 
   def addFiles(files: GenTraversableOnce[File]): Folder = {
     copy(files = this.files ++ files)
@@ -38,17 +38,17 @@ case class Folder(path: Path, folders: Set[String] = Set.empty, files: Set[File]
     deleteFiles(files)
   }
 
-  def merge(folder: Folder) = {
+  def merge(folder: Folder): Folder = {
     require(path == folder.path, "Invalid path")
     addFolders(folder.folders).addFiles(folder.files)
   }
 
-  def diff(folder: Folder) = {
+  def diff(folder: Folder): FolderDiff = {
     require(path == folder.path, "Invalid path")
     FolderDiff(this, folder)
   }
 
-  def patch(diff: FolderDiff) = {
+  def patch(diff: FolderDiff): Folder = {
     this
       .deleteFiles(diff.deletedFiles)
       .addFiles(diff.newFiles)
@@ -56,7 +56,7 @@ case class Folder(path: Path, folders: Set[String] = Set.empty, files: Set[File]
       .addFolders(diff.newFolders)
   }
 
-  override def toString = {
+  override def toString: String = {
     s"Folder($path, folders: [${folders.mkString(", ")}], files: [${files.mkString(", ")}])"
   }
 }

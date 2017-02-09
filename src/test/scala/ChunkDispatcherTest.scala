@@ -9,7 +9,7 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.StorageDispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors.{ChunkDispatcher, StorageDispatcher}
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
-import com.karasiq.shadowcloud.storage.FileChunkRepository
+import com.karasiq.shadowcloud.storage.files.FileChunkRepository
 import org.scalatest.FlatSpecLike
 
 import scala.language.postfixOps

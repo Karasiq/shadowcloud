@@ -6,9 +6,9 @@ import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Compression, FileIO, Sink, Source}
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
-import com.karasiq.shadowcloud.index._
+import com.karasiq.shadowcloud.index.{IndexDiff, _}
 import com.karasiq.shadowcloud.serialization.Serialization
-import com.karasiq.shadowcloud.storage.{FileIndexRepository, IndexDiff}
+import com.karasiq.shadowcloud.storage.files.FileIndexRepository
 import com.karasiq.shadowcloud.streams.{ChunkEncryptor, ChunkVerifier, FileSplitter}
 
 import scala.language.{implicitConversions, postfixOps}

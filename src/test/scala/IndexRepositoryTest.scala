@@ -1,8 +1,9 @@
 import java.nio.file.Files
 
 import akka.stream.scaladsl.{Compression, Keep, Sink, Source}
+import com.karasiq.shadowcloud.index.IndexDiff
 import com.karasiq.shadowcloud.serialization.Serialization
-import com.karasiq.shadowcloud.storage.{FileIndexRepository, IndexDiff}
+import com.karasiq.shadowcloud.storage.files.FileIndexRepository
 import org.scalatest.FlatSpecLike
 
 import scala.concurrent.duration._

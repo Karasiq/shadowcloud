@@ -6,7 +6,7 @@ import scala.collection.GenTraversableOnce
 import scala.language.postfixOps
 
 case class ChunkIndex(chunks: Set[Chunk] = Set.empty) {
-  def contains(chunk: Chunk) = {
+  def contains(chunk: Chunk): Boolean = {
     chunks.contains(chunk)
   }
 
@@ -26,19 +26,19 @@ case class ChunkIndex(chunks: Set[Chunk] = Set.empty) {
     deleteChunks(chunks)
   }
 
-  def merge(second: ChunkIndex) = {
+  def merge(second: ChunkIndex): ChunkIndex = {
     addChunks(second.chunks)
   }
 
-  def diff(second: ChunkIndex) = {
+  def diff(second: ChunkIndex): ChunkIndexDiff = {
     ChunkIndexDiff(this, second)
   }
 
-  def patch(diff: ChunkIndexDiff) = {
+  def patch(diff: ChunkIndexDiff): ChunkIndex = {
     deleteChunks(diff.deletedChunks).addChunks(diff.newChunks)
   }
 
-  override def toString = {
+  override def toString: String = {
     val hashesStr = chunks.take(20).map(chunk ⇒ Utils.toHexString(chunk.checksum.hash)).mkString(", ")
     val cutHashesStr = if (chunks.size > 20) hashesStr + ", ..." else hashesStr
     s"ChunkIndex($cutHashesStr)"

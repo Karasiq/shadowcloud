@@ -1,7 +1,6 @@
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.{EncryptionParameters, HashingMethod}
-import com.karasiq.shadowcloud.index._
-import com.karasiq.shadowcloud.storage.IndexDiff
+import com.karasiq.shadowcloud.index.{IndexDiff, _}
 import org.apache.commons.codec.binary.Hex
 
 import scala.language.postfixOps

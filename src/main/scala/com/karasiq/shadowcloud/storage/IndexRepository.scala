@@ -5,17 +5,14 @@ import akka.util.ByteString
 
 import scala.language.postfixOps
 
-trait IndexRepository {
-  type IndexKey
-  def keys: Source[IndexKey, _]
-  def read(key: IndexKey): Source[ByteString, _]
-  def write(key: IndexKey): Sink[ByteString, _]
+trait IndexRepository[Key] {
+  def keys: Source[Key, _]
+  def read(key: Key): Source[ByteString, _]
+  def write(key: Key): Sink[ByteString, _]
 }
 
-trait TimeIndexRepository extends IndexRepository {
-  final type IndexKey = Long
-
-  def keysAfter(time: IndexKey): Source[IndexKey, _] = {
+trait IncrementalIndexRepository extends IndexRepository[Long] {
+  def keysAfter(time: Long): Source[Long, _] = {
     keys.filter(_ > time)
   }
 }

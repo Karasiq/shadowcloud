@@ -1,26 +1,20 @@
 import java.nio.file.Files
 
 import TestUtils._
-import akka.actor.{ActorSystem, Props}
+import akka.actor.Props
 import akka.pattern.ask
-import akka.stream.ActorMaterializer
 import akka.stream.testkit.scaladsl.TestSink
 import akka.testkit.TestActorRef
-import akka.util.{ByteString, Timeout}
+import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.StorageDispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors.{ChunkDispatcher, StorageDispatcher}
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.storage.FileChunkRepository
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatest.FlatSpecLike
 
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class ChunkDispatcherTest extends FlatSpec with Matchers with ScalaFutures with BeforeAndAfterAll {
-  implicit val actorSystem = ActorSystem()
-  implicit val actorMaterializer = ActorMaterializer()
-  implicit val timeout = Timeout(10 seconds)
+class ChunkDispatcherTest extends ActorSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
   val chunkDispatcher = TestActorRef(Props[ChunkDispatcher], "chunkDispatcher")
   val storage = TestActorRef(Props(classOf[StorageDispatcher], new FileChunkRepository(Files.createTempDirectory("cdt-storage")), chunkDispatcher), "tempDirStorage")
@@ -45,10 +39,5 @@ class ChunkDispatcherTest extends FlatSpec with Matchers with ScalaFutures with 
   it should "deduplicate chunk" in {
     val future = chunkDispatcher ? WriteChunk(chunk.copy(encryption = chunk.encryption.copy(EncryptionMethod.AES()), data = chunk.data.copy(encrypted = randomBytes(chunk.data.plain.length))))
     future.futureValue shouldBe WriteChunk.Success(chunk)
-  }
-
-  override protected def afterAll() = {
-    actorSystem.terminate()
-    super.afterAll()
   }
 }

@@ -1,20 +1,14 @@
 import java.nio.file.Files
 
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Compression, Keep, Sink, Source}
 import com.karasiq.shadowcloud.serialization.Serialization
 import com.karasiq.shadowcloud.storage.{FileIndexRepository, IndexDiff}
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatest.FlatSpecLike
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-class IndexRepositoryTest extends FlatSpec with Matchers with BeforeAndAfterAll with ScalaFutures {
-  implicit val actorSystem = ActorSystem()
-  implicit val actorMaterializer = ActorMaterializer()
-
+class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
   "File repository" should "store diff" in {
     val diff = TestUtils.testDiff
     val testRepository = new FileIndexRepository(Files.createTempDirectory("irp-test"))
@@ -35,10 +29,5 @@ class IndexRepositoryTest extends FlatSpec with Matchers with BeforeAndAfterAll 
         .runWith(Sink.head)
       result.futureValue(timeout(10 seconds)) shouldBe diff
     }
-  }
-
-  override protected def afterAll() = {
-    actorSystem.terminate()
-    super.afterAll()
   }
 }

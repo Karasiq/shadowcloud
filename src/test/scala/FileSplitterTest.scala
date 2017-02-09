@@ -1,22 +1,16 @@
 import akka.Done
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule, HashingModule}
 import com.karasiq.shadowcloud.index.{Checksum, Chunk, Data}
 import com.karasiq.shadowcloud.streams._
-import org.scalatest.concurrent.ScalaFutures
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatest.FlatSpecLike
 
 import scala.language.postfixOps
 
 //noinspection ZeroIndexToHead
-class FileSplitterTest extends FlatSpec with Matchers with BeforeAndAfterAll with ScalaFutures {
-  implicit val actorSystem = ActorSystem()
-  implicit val actorMaterializer = ActorMaterializer()
-
+class FileSplitterTest extends ActorSpec with FlatSpecLike {
   val (sourceBytes, sourceFile) = TestUtils.indexedBytes
   val hashingMethod = sourceFile.checksum.method
   val sourceHashes = sourceFile.chunks.map(_.checksum.hash)
@@ -84,10 +78,5 @@ class FileSplitterTest extends FlatSpec with Matchers with BeforeAndAfterAll wit
       file.checksum.hash shouldBe sourceFile.checksum.hash
       file.chunks.map(_.checksum.hash) shouldBe sourceHashes
     }
-  }
-
-  override protected def afterAll() = {
-    actorSystem.terminate()
-    super.afterAll()
   }
 }

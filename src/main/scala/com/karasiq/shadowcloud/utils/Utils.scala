@@ -18,4 +18,8 @@ private[shadowcloud] object Utils {
   def isSameChunk(chunk: Chunk, chunk1: Chunk): Boolean = {
     chunk.withoutData == chunk1.withoutData
   }
+
+  def timestamp: Long = {
+    System.currentTimeMillis()
+  }
 }

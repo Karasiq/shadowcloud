@@ -11,7 +11,7 @@ case class ChunkIndexDiff(newChunks: Set[Chunk] = Set.empty, deletedChunks: Set[
   }
 
   // Delete wins by default
-  def merge(diff: ChunkIndexDiff, decider: SplitDecider[Chunk] = SplitDecider.keepRight): ChunkIndexDiff = {
+  def merge(diff: ChunkIndexDiff, decider: SplitDecider[Chunk] = SplitDecider.dropDuplicates): ChunkIndexDiff = {
     val (newChunks, deletedChunks) = MergeUtil.splitSets(this.newChunks ++ diff.newChunks,
       this.deletedChunks ++ diff.deletedChunks, decider)
     ChunkIndexDiff.instanceOrEmpty(copy(newChunks, deletedChunks))
@@ -23,6 +23,10 @@ case class ChunkIndexDiff(newChunks: Set[Chunk] = Set.empty, deletedChunks: Set[
       MergeUtil.mergeSets(this.deletedChunks, diff.deletedChunks, decider)
     )
     ChunkIndexDiff.instanceOrEmpty(newDiff)
+  }
+
+  def reverse: ChunkIndexDiff = {
+    ChunkIndexDiff.instanceOrEmpty(copy(deletedChunks, newChunks))
   }
 }
 

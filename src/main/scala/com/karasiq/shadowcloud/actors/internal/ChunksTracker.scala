@@ -79,7 +79,7 @@ private[actors] class ChunksTracker(self: Actor with ActorLogging, storages: Sto
 
       case None ⇒
         context.watch(receiver)
-        val status = ChunkStatus(Status.PENDING, System.currentTimeMillis(), chunk, Set.empty, Set(receiver))
+        val status = ChunkStatus(Status.PENDING, Utils.timestamp, chunk, Set.empty, Set(receiver))
         val written = storageWriteChunk(status)
         log.debug("Writing chunk to {}: {}", written, chunk)
         val newStatus = status.copy(dispatchers = written)
@@ -123,7 +123,7 @@ private[actors] class ChunksTracker(self: Actor with ActorLogging, storages: Sto
         }
 
       case None ⇒
-        chunks += hash → ChunkStatus(Status.STORED, System.currentTimeMillis(), chunk.withoutData, Set(dispatcher))
+        chunks += hash → ChunkStatus(Status.STORED, Utils.timestamp, chunk.withoutData, Set(dispatcher))
     }
   }
 

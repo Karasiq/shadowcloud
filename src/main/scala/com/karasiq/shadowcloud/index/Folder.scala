@@ -1,17 +1,20 @@
 package com.karasiq.shadowcloud.index
 
+import com.karasiq.shadowcloud.utils.Utils
+
 import scala.collection.GenTraversableOnce
 import scala.language.postfixOps
 
-case class Folder(path: Path, folders: Set[String] = Set.empty, files: Set[File] = Set.empty) {
+case class Folder(path: Path, created: Long = 0, lastModified: Long = 0, folders: Set[String] = Set.empty, files: Set[File] = Set.empty) {
   require(files.forall(_.parent == this.path))
 
   def addFiles(files: GenTraversableOnce[File]): Folder = {
-    copy(files = this.files ++ files)
+    val newFiles = this.files ++ files
+    copy(lastModified = Utils.timestamp, files = newFiles)
   }
 
   def addFolders(folders: GenTraversableOnce[String]): Folder = {
-    copy(folders = this.folders ++ folders)
+    copy(lastModified = Utils.timestamp, folders = this.folders ++ folders)
   }
 
   def addFiles(files: File*): Folder = {
@@ -23,11 +26,11 @@ case class Folder(path: Path, folders: Set[String] = Set.empty, files: Set[File]
   }
 
   def deleteFolders(folders: GenTraversableOnce[String]): Folder = {
-    copy(folders = this.folders -- folders)
+    copy(lastModified = Utils.timestamp, folders = this.folders -- folders)
   }
 
   def deleteFiles(files: GenTraversableOnce[File]): Folder = {
-    copy(files = this.files -- files)
+    copy(lastModified = Utils.timestamp, files = this.files -- files)
   }
 
   def deleteFolders(folders: String*): Folder = {
@@ -54,6 +57,7 @@ case class Folder(path: Path, folders: Set[String] = Set.empty, files: Set[File]
       .addFiles(diff.newFiles)
       .deleteFolders(diff.deletedFolders)
       .addFolders(diff.newFolders)
+      .copy(lastModified = math.max(lastModified, diff.time))
   }
 
   override def toString: String = {

@@ -1,5 +1,5 @@
 import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.{EncryptionParameters, HashingMethod}
+import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index.{IndexDiff, _}
 import org.apache.commons.codec.binary.Hex
 
@@ -45,5 +45,42 @@ object TestUtils {
   def testDiff: IndexDiff = {
     val (_, file) = indexedBytes
     IndexDiff(System.currentTimeMillis(), Seq(FolderDiff(Path.root, newFiles = Set(file))), ChunkIndexDiff(file.chunks.toSet))
+  }
+
+  def randomChunk: Chunk = {
+    val data = randomBytes(100)
+    val hashing = HashingModule.default
+    val encryption = EncryptionModule(EncryptionMethod.AES())
+    val encParameters = encryption.createParameters()
+    val encData = encryption.encrypt(data, encParameters)
+    Chunk(
+      Checksum(hashing.method, data.length, hashing.createHash(data), encData.length, hashing.createHash(encData)),
+      encParameters,
+      Data(data, encData)
+    )
+  }
+
+  def randomFile: File = {
+    val chunks = Seq.fill(1)(randomChunk)
+    val hashing = HashingModule.default
+    val size = chunks.map(_.checksum.size).sum
+    val encSize = chunks.map(_.checksum.encryptedSize).sum
+    val hash = hashing.createHash(chunks.map(_.data.plain).fold(ByteString.empty)(_ ++ _))
+    val encHash = hashing.createHash(chunks.map(_.data.encrypted).fold(ByteString.empty)(_ ++ _))
+    File(Path.root, s"${randomBytes(4).toHexString}.txt", System.currentTimeMillis(), System.currentTimeMillis(),
+      Checksum(hashing.method, size, hash, encSize, encHash), chunks)
+  }
+
+  def randomFolder: Folder = {
+    val path = Path.root / randomBytes(4).toHexString
+    val folders = Seq.fill(1)(randomBytes(4).toHexString)
+    val files = Seq.fill(1)(randomFile.copy(parent = path))
+    Folder(path, System.currentTimeMillis(), System.currentTimeMillis(), folders.toSet, files.toSet)
+  }
+
+  def randomDiff: IndexDiff = {
+    val folder = randomFolder
+    val chunks = folder.files.flatMap(_.chunks)
+    IndexDiff(folder.lastModified, Seq(FolderDiff.wrap(folder)), ChunkIndexDiff(chunks))
   }
 }

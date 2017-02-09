@@ -3,10 +3,10 @@ package com.karasiq.shadowcloud.index
 import com.karasiq.shadowcloud.utils.MergeUtil
 import com.karasiq.shadowcloud.utils.MergeUtil.State._
 
-import scala.collection.GenTraversableOnce
+import scala.collection.{GenTraversableOnce, mutable}
 import scala.language.postfixOps
 
-case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Path.root))) {
+case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Path.root, 0, 0))) {
   require(folders.contains(Path.root), "No root directory")
 
   def contains(folder: Path): Boolean = {
@@ -80,19 +80,21 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
   }
 
   def patch(diffs: GenTraversableOnce[FolderDiff]): FolderIndex = {
-    val newFolders = diffs.toIterator.flatMap { diff ⇒
+    val modified = mutable.AnyRefMap[Path, Folder]()
+    val deleted = mutable.Set[Path]()
+    diffs.foreach { diff ⇒
       val folder = folders.get(diff.path)
       if (folder.isEmpty) {
         if (diff.newFiles.nonEmpty || diff.newFolders.nonEmpty) {
-          Some(Folder(diff.path).patch(diff))
-        } else {
-          None
+          modified += diff.path → Folder(diff.path).patch(diff)
         }
       } else {
-        folder.map(_.patch(diff))
+        folder.map(_.patch(diff)).foreach(modified += diff.path → _)
       }
+
+      diff.deletedFolders.map(diff.path / _).foreach(deleted +=)
     }
-    copy(folders ++ newFolders.map(f ⇒ (f.path, f)))
+    copy(folders ++ modified -- deleted)
   }
 
   override def toString: String = {

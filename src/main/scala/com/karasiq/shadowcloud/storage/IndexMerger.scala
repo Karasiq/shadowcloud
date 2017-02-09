@@ -1,12 +1,15 @@
 package com.karasiq.shadowcloud.storage
 
-import com.karasiq.shadowcloud.index.IndexDiff
+import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex, IndexDiff}
 import com.karasiq.shadowcloud.utils.MergeUtil.Decider
 
 import scala.language.postfixOps
 
 trait IndexMerger {
-  def stored: IndexDiff
+  def chunks: ChunkIndex
+  def folders: FolderIndex
+  def diffs: Seq[IndexDiff]
+  def mergedDiff: IndexDiff
   def pending: IndexDiff
   def add(diff: IndexDiff): Unit
   def addPending(diff: IndexDiff): Unit
@@ -15,14 +18,26 @@ trait IndexMerger {
 
 object IndexMerger {
   private final class DefaultIndexMerger extends IndexMerger {
-    private[this] var _stored = IndexDiff.empty
+    private[this] var _diffs = Vector.empty[IndexDiff]
+    private[this] var _chunks = ChunkIndex.empty
+    private[this] var _folders = FolderIndex.empty
+    private[this] var _merged = IndexDiff.empty
     private[this] var _pending = IndexDiff.empty
 
-    def stored: IndexDiff = _stored
+    def chunks: ChunkIndex = _chunks
+    def folders: FolderIndex = _folders
+    def diffs: Seq[IndexDiff] = _diffs
+    def mergedDiff: IndexDiff = _merged
     def pending: IndexDiff = _pending
 
     def add(diff: IndexDiff): Unit = {
-      _stored = stored.merge(diff)
+      val lastDiff = _diffs.lastOption
+      _diffs :+= diff
+      if (lastDiff.isEmpty || lastDiff.exists(_.time < diff.time)) {
+        applyDiff(diff)
+      } else {
+        rebuildIndex()
+      }
       removePending(diff)
     }
     
@@ -32,6 +47,21 @@ object IndexMerger {
 
     def removePending(diff: IndexDiff): Unit = {
       _pending = pending.diff(diff, Decider.keepLeft, Decider.keepLeft, Decider.keepLeft, Decider.keepLeft)
+    }
+
+    private[this] def applyDiff(diff: IndexDiff): Unit = {
+      _chunks = _chunks.patch(diff.chunks)
+      _folders = _folders.patch(diff.folders)
+      _merged = _merged.merge(diff)
+    }
+
+    private[this] def rebuildIndex(): Unit = {
+      _chunks = ChunkIndex.empty
+      _folders = FolderIndex.empty
+      _merged = IndexDiff.empty
+      _pending = IndexDiff.empty
+      _diffs = _diffs.sortBy(_.time)
+      _diffs.foreach(applyDiff)
     }
   }
 

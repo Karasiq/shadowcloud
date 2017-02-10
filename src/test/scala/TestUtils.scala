@@ -15,12 +15,24 @@ object TestUtils {
     def fromHexString(hexString: String): ByteString = {
       ByteString(Hex.decodeHex(hexString.toCharArray))
     }
+
+    def fromChunks(chunks: Seq[Chunk]): ByteString = {
+      chunks.map(_.data.plain).fold(ByteString.empty)(_ ++ _)
+    }
+
+    def fromEncryptedChunks(chunks: Seq[Chunk]): ByteString = {
+      chunks.map(_.data.encrypted).fold(ByteString.empty)(_ ++ _)
+    }
   }
 
   def randomBytes(length: Int): ByteString = {
     val array = Array.ofDim[Byte](length)
     Random.nextBytes(array)
     ByteString(array)
+  }
+
+  def randomString: String = {
+    randomBytes(4).toHexString
   }
 
   def indexedBytes: (ByteString, File) = {
@@ -65,15 +77,15 @@ object TestUtils {
     val hashing = HashingModule.default
     val size = chunks.map(_.checksum.size).sum
     val encSize = chunks.map(_.checksum.encryptedSize).sum
-    val hash = hashing.createHash(chunks.map(_.data.plain).fold(ByteString.empty)(_ ++ _))
-    val encHash = hashing.createHash(chunks.map(_.data.encrypted).fold(ByteString.empty)(_ ++ _))
-    File(Path.root, s"${randomBytes(4).toHexString}.txt", System.currentTimeMillis(), System.currentTimeMillis(),
+    val hash = hashing.createHash(ByteString.fromChunks(chunks))
+    val encHash = hashing.createHash(ByteString.fromEncryptedChunks(chunks))
+    File(Path.root, s"$randomString.txt", System.currentTimeMillis(), System.currentTimeMillis(),
       Checksum(hashing.method, size, hash, encSize, encHash), chunks)
   }
 
   def randomFolder: Folder = {
-    val path = Path.root / randomBytes(4).toHexString
-    val folders = Seq.fill(1)(randomBytes(4).toHexString)
+    val path = Path.root / randomString
+    val folders = Seq.fill(1)(randomString)
     val files = Seq.fill(1)(randomFile.copy(parent = path))
     Folder(path, System.currentTimeMillis(), System.currentTimeMillis(), folders.toSet, files.toSet)
   }

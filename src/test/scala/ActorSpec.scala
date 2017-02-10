@@ -12,7 +12,7 @@ abstract class ActorSpec extends TestKit(ActorSystem("test")) with Suite with Ma
   implicit val actorMaterializer = ActorMaterializer()
   implicit val defaultTimeout = Timeout(10 seconds)
 
-  override protected def afterAll() = {
+  override protected def afterAll(): Unit = {
     system.terminate()
     super.afterAll()
   }

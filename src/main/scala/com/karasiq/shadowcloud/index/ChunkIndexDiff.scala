@@ -28,14 +28,22 @@ case class ChunkIndexDiff(newChunks: Set[Chunk] = Set.empty, deletedChunks: Set[
   def reverse: ChunkIndexDiff = {
     ChunkIndexDiff.instanceOrEmpty(copy(deletedChunks, newChunks))
   }
+
+  def deletes: ChunkIndexDiff = {
+    ChunkIndexDiff.instanceOrEmpty(copy(newChunks = Set.empty))
+  }
+  
+  def creates: ChunkIndexDiff = {
+    ChunkIndexDiff.instanceOrEmpty(copy(deletedChunks = Set.empty))
+  }
 }
 
 object ChunkIndexDiff {
   val empty = ChunkIndexDiff()
 
-  def apply(first: ChunkIndex, second: ChunkIndex): ChunkIndexDiff = {
-    val (firstOnly, secondOnly) = MergeUtil.splitSets(first.chunks, second.chunks, SplitDecider.dropDuplicates)
-    ChunkIndexDiff(secondOnly, firstOnly)
+  def apply(oldIndex: ChunkIndex, newIndex: ChunkIndex): ChunkIndexDiff = {
+    val (oldOnly, newOnly) = MergeUtil.splitSets(oldIndex.chunks, newIndex.chunks, SplitDecider.dropDuplicates)
+    ChunkIndexDiff(newChunks = newOnly, deletedChunks = oldOnly)
   }
 
   @inline

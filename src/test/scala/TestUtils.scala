@@ -72,26 +72,25 @@ object TestUtils {
     )
   }
 
-  def randomFile: File = {
+  def randomFile(parent: Path = Path.root): File = {
     val chunks = Seq.fill(1)(randomChunk)
     val hashing = HashingModule.default
     val size = chunks.map(_.checksum.size).sum
     val encSize = chunks.map(_.checksum.encryptedSize).sum
     val hash = hashing.createHash(ByteString.fromChunks(chunks))
     val encHash = hashing.createHash(ByteString.fromEncryptedChunks(chunks))
-    File(Path.root, s"$randomString.txt", System.currentTimeMillis(), System.currentTimeMillis(),
+    File(parent, s"$randomString.txt", System.currentTimeMillis(), System.currentTimeMillis(),
       Checksum(hashing.method, size, hash, encSize, encHash), chunks)
   }
 
-  def randomFolder: Folder = {
-    val path = Path.root / randomString
+  def randomFolder(path: Path = Path.root / randomString): Folder = {
     val folders = Seq.fill(1)(randomString)
-    val files = Seq.fill(1)(randomFile.copy(parent = path))
+    val files = Seq.fill(1)(randomFile(path))
     Folder(path, System.currentTimeMillis(), System.currentTimeMillis(), folders.toSet, files.toSet)
   }
 
   def randomDiff: IndexDiff = {
-    val folder = randomFolder
+    val folder = randomFolder()
     val chunks = folder.files.flatMap(_.chunks)
     IndexDiff(folder.lastModified, Seq(FolderDiff.wrap(folder)), ChunkIndexDiff(chunks))
   }

@@ -5,9 +5,23 @@ import com.karasiq.shadowcloud.crypto.EncryptionParameters
 import scala.language.postfixOps
 
 case class Chunk(checksum: Checksum = Checksum.empty, encryption: EncryptionParameters = EncryptionParameters.empty, data: Data = Data.empty) {
-  def withoutData = copy(data = Data.empty)
+  def withoutData: Chunk = {
+    copy(data = Data.empty)
+  }
+  
+  override def hashCode(): Int = {
+    (checksum, encryption).hashCode()
+  }
 
-  override def toString = {
+  override def equals(obj: scala.Any): Boolean = obj match {
+    case ch: Chunk ⇒
+      checksum == ch.checksum && encryption == ch.encryption
+
+    case _ ⇒
+      false
+  }
+
+  override def toString: String = {
     s"Chunk($checksum, $encryption, ${data.plain.length} / ${data.encrypted.length} bytes)"
   }
 }

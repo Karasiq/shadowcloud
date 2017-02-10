@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.storage
 
-import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex, IndexDiff}
+import com.karasiq.shadowcloud.index.{ChunkIndex, FolderDecider, FolderIndex, IndexDiff}
 import com.karasiq.shadowcloud.utils.MergeUtil.Decider
 
 import scala.language.postfixOps
@@ -46,7 +46,7 @@ object IndexMerger {
     }
 
     def removePending(diff: IndexDiff): Unit = {
-      _pending = pending.diff(diff, Decider.keepLeft, Decider.keepLeft, Decider.keepLeft, Decider.keepLeft)
+      _pending = pending.diff(diff, Decider.keepLeft, FolderDecider.mutualExclude, Decider.keepLeft)
     }
 
     private[this] def applyDiff(diff: IndexDiff): Unit = {

@@ -8,6 +8,15 @@ case class File(parent: Path, name: String, created: Long = 0, lastModified: Lon
   require(name.nonEmpty)
   def path: Path = parent / name
 
+  override def hashCode(): Int = {
+    (parent, name, chunks).hashCode()
+  }
+
+  override def equals(obj: scala.Any): Boolean = obj match {
+    case f: File ⇒
+      f.parent == parent && f.name == name && f.chunks == chunks
+  }
+
   override def toString: String = {
     val hashesStr = chunks.take(20).map(chunk ⇒ Hex.encodeHexString(chunk.checksum.hash.toArray)).mkString(", ")
     val cutHashesStr = if (chunks.size > 20) hashesStr + ", ..." else hashesStr

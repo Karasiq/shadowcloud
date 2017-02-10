@@ -46,9 +46,9 @@ case class Folder(path: Path, created: Long = 0, lastModified: Long = 0, folders
     addFolders(folder.folders).addFiles(folder.files)
   }
 
-  def diff(folder: Folder): FolderDiff = {
-    require(path == folder.path, "Invalid path")
-    FolderDiff(this, folder)
+  def diff(oldFolder: Folder): FolderDiff = {
+    require(path == oldFolder.path, "Invalid path")
+    FolderDiff(oldFolder, this)
   }
 
   def patch(diff: FolderDiff): Folder = {
@@ -58,6 +58,18 @@ case class Folder(path: Path, created: Long = 0, lastModified: Long = 0, folders
       .deleteFolders(diff.deletedFolders)
       .addFolders(diff.newFolders)
       .copy(lastModified = math.max(lastModified, diff.time))
+  }
+
+  override def hashCode(): Int = {
+    (path, folders, files).hashCode()
+  }
+
+  override def equals(obj: scala.Any): Boolean = obj match {
+    case f: Folder ⇒
+      f.path == path && f.folders == folders && f.files == files
+
+    case _ ⇒
+      false 
   }
 
   override def toString: String = {

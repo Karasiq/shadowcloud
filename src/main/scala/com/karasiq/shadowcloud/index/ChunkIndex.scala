@@ -30,8 +30,8 @@ case class ChunkIndex(chunks: Set[Chunk] = Set.empty) {
     addChunks(second.chunks)
   }
 
-  def diff(second: ChunkIndex): ChunkIndexDiff = {
-    ChunkIndexDiff(this, second)
+  def diff(oldIndex: ChunkIndex): ChunkIndexDiff = {
+    ChunkIndexDiff(this, oldIndex)
   }
 
   def patch(diff: ChunkIndexDiff): ChunkIndex = {

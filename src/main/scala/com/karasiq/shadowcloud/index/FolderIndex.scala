@@ -71,7 +71,7 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
         Some(FolderDiff.wrap(folder))
 
       case Conflict(left, right) ⇒
-        Some(left.diff(right))
+        Some(right.diff(left))
 
       case Equal(_) ⇒
         None

@@ -7,15 +7,20 @@ class FolderTest extends FlatSpec with Matchers {
   val folder = Folder(TestUtils.randomString, System.currentTimeMillis() - 1, System.currentTimeMillis() - 1)
 
   "Folder" should "add file" in {
-    val testFile = TestUtils.randomFile.copy(parent = folder.path)
+    val testFile = TestUtils.randomFile(folder.path)
     val folder1 = folder.addFiles(testFile)
     folder1.created shouldBe folder.created
     folder1.lastModified should be > folder.lastModified
     folder1.files shouldBe Set(testFile)
   }
 
+  it should "throw exception on invalid path" in {
+    val testFile = TestUtils.randomFile(folder.path / "test")
+    intercept[IllegalArgumentException](folder.addFiles(testFile))
+  }
+
   it should "remove file" in {
-    val testFile = TestUtils.randomFile.copy(parent = folder.path)
+    val testFile = TestUtils.randomFile(folder.path)
     val folder1 = folder.addFiles(testFile)
     val folder2 = folder.deleteFiles(folder1.files.head)
     folder2.lastModified should be > folder.lastModified

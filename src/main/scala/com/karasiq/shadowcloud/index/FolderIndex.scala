@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.index
 
-import com.karasiq.shadowcloud.utils.MergeUtil
 import com.karasiq.shadowcloud.utils.MergeUtil.State._
+import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 
 import scala.collection.{GenTraversableOnce, mutable}
 import scala.language.postfixOps
@@ -14,18 +14,24 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
   }
 
   def addFiles(files: GenTraversableOnce[File]): FolderIndex = {
-    val modified = files.toTraversable.groupBy(_.parent).map { case (path, files) ⇒
-      path → folders.getOrElse(path, Folder(path)).addFiles(files)
+    val diffs = files.toVector.groupBy(_.parent).map { case (path, files) ⇒
+      FolderDiff(path, files.map(_.lastModified).max, newFiles = files.toSet)
     }
-    copy(folders ++ modified)
+    patch(diffs)
   }
 
   def addFolders(folders: GenTraversableOnce[Folder]): FolderIndex = {
-    val newFolders = MergeUtil.mergeMaps[Path, Folder](this.folders, folders.toIterator.map(f ⇒ (f.path, f)).toMap, {
-      case Conflict(left, right) ⇒
-        Some(left.merge(right))
-    })
-    copy(newFolders)
+    val diffs = folders.toIterator.flatMap { folder ⇒
+      val existing = this.folders.get(folder.path)
+      val diff = if (existing.isEmpty) FolderDiff.wrap(folder) else folder.diff(existing.get)
+      val parent = this.folders.get(folder.path.parent)
+      if (folder.path.isRoot || parent.exists(_.folders.contains(folder.path.name))) {
+        Iterator.single(diff)
+      } else {
+        Iterator(FolderDiff(folder.path.parent, folder.lastModified, newFolders = Set(folder.path.name)), diff)
+      }
+    }
+    patch(diffs)
   }
 
   def addFolders(folders: Folder*): FolderIndex = {
@@ -37,17 +43,17 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
   }
 
   def deleteFiles(files: GenTraversableOnce[File]): FolderIndex = {
-    val newFolders = for {
-      (path, folderFiles) ← files.toList.groupBy(_.parent)
-      folder ← folders.get(path)
-    } yield (path, folder.deleteFiles(folderFiles))
-    FolderIndex(folders ++ newFolders)
+    val diffs = files.toVector.groupBy(_.parent).map { case (path, files) ⇒
+      FolderDiff(path, Utils.timestamp, deletedFiles = files.toSet)
+    }
+    patch(diffs)
   }
 
   def deleteFolders(folders: GenTraversableOnce[Path]): FolderIndex = {
-    val deleted = folders.toVector
-    val newFolders = this.folders.filterKeys(path ⇒ !deleted.exists(df ⇒ path.nodes.startsWith(df.nodes)))
-    copy(newFolders)
+    val deleted = folders.toVector.groupBy(_.parent).map { case (path, folders) ⇒
+      FolderDiff(path, Utils.timestamp, deletedFolders = folders.map(_.name).toSet)
+    }
+    patch(deleted)
   }
 
   def deleteFiles(files: File*): FolderIndex = {
@@ -65,16 +71,16 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
   def diff(second: FolderIndex): Seq[FolderDiff] = {
     val diffs = MergeUtil.compareMaps(this.folders, second.folders).values.flatMap {
       case Left(folder) ⇒
-        Some(FolderDiff.wrap(folder))
+        Iterator.single(FolderDiff.wrap(folder))
 
       case Right(folder) ⇒
-        Some(FolderDiff.wrap(folder))
+        Iterator.single(FolderDiff.wrap(folder))
 
       case Conflict(left, right) ⇒
-        Some(right.diff(left))
+        Iterator.single(right.diff(left))
 
       case Equal(_) ⇒
-        None
+        Iterator.empty
     }
     diffs.toVector
   }
@@ -86,12 +92,22 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
       val folder = folders.get(diff.path)
       if (folder.isEmpty) {
         if (diff.newFiles.nonEmpty || diff.newFolders.nonEmpty) {
+          if (!diff.path.isRoot) { // Add reference in parent folder
+            val parent = diff.path.parent
+            modified += parent → modified.get(parent)
+              .orElse(folders.get(parent))
+              .fold(Folder(parent, diff.time, diff.time, Set(diff.path.name)))(_.addFolders(diff.path.name))
+          }
           modified += diff.path → Folder(diff.path).patch(diff)
         }
       } else {
         folder.map(_.patch(diff)).foreach(modified += diff.path → _)
       }
 
+      diff.newFolders
+        .map(diff.path / _)
+        .filterNot(path ⇒ folders.contains(path) || modified.contains(path))
+        .foreach(path ⇒ modified += path → Folder(path, diff.time, diff.time))
       diff.deletedFolders.map(diff.path / _).foreach(deleted +=)
     }
     copy(folders ++ modified -- deleted)

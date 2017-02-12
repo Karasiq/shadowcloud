@@ -1,3 +1,4 @@
+import com.karasiq.shadowcloud.index.{Folder, FolderIndex, Path}
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.language.postfixOps
@@ -30,6 +31,17 @@ class FolderDiffTest extends FlatSpec with Matchers {
     val diff = folder2.diff(folder1)
     val folder3 = folder1.patch(diff)
     folder3 shouldBe folder2
+  }
+
+  it should "modify folder index" in {
+    val index = FolderIndex(Seq(folder1))
+    val diff = folder2.diff(folder1)
+    val index1 = index.patch(Seq(diff))
+    index1.folders shouldBe Map(
+      Path.root → Folder(Path.root, 0, folder1.created, Set(folder1.path.name)),
+      folder1.path → folder2
+    ).++(folder2.folders.map(name ⇒ (folder2.path / name) → Folder(folder2.path / name, folder2.created, folder2.lastModified)) ++
+      folder1.folders.map(name ⇒ (folder1.path / name) → Folder(folder1.path / name, folder1.created, folder1.lastModified)))
   }
 
   it should "reverse" in {

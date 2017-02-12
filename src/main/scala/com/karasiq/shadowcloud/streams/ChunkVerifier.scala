@@ -18,7 +18,7 @@ class ChunkVerifier extends GraphStage[FlowShape[Chunk, Chunk]] {
     val hashers = mutable.AnyRefMap[HashingMethod, HashingModule]()
 
     setHandler(inlet, new InHandler {
-      def onPush() = {
+      def onPush(): Unit = {
         val chunk = grab(inlet)
         val hasher = hashers.getOrElseUpdate(chunk.checksum.method, HashingModule(chunk.checksum.method))
         if (chunk.checksum.hash.nonEmpty && hasher.createHash(chunk.data.plain) != chunk.checksum.hash) {
@@ -35,7 +35,7 @@ class ChunkVerifier extends GraphStage[FlowShape[Chunk, Chunk]] {
     })
 
     setHandler(outlet, new OutHandler {
-      def onPull() = {
+      def onPull(): Unit = {
         tryPull(inlet)
       }
     })

@@ -22,7 +22,7 @@ class ChunkEncryptor(encryptionMethod: EncryptionMethod, hashingMethod: HashingM
     var changeKeyIn = Random.nextInt(256)
 
     setHandler(inlet, new InHandler {
-      def onPush() = {
+      def onPush(): Unit = {
         val chunk = grab(inlet)
         require(chunk.checksum.method == hashingModule.method)
         val encryptedData = encryptionModule.encrypt(chunk.data.plain, parameters)
@@ -48,7 +48,7 @@ class ChunkEncryptor(encryptionMethod: EncryptionMethod, hashingMethod: HashingM
     })
 
     setHandler(outlet, new OutHandler {
-      def onPull() = {
+      def onPull(): Unit = {
         tryPull(inlet)
       }
     })

@@ -65,20 +65,20 @@ class FileSplitter(chunkSize: Int, hashingMethod: HashingMethod) extends GraphSt
     }
 
     setHandler(inBytes, new InHandler {
-      def onPush() = {
+      def onPush(): Unit = {
         val bytes = grab(inBytes)
         if (bytes.nonEmpty) hashAndWrite(bytes)
         processBuffer()
       }
 
       @scala.throws[Exception](classOf[Exception])
-      override def onUpstreamFinish() = {
+      override def onUpstreamFinish(): Unit = {
         emitLastChunk()
       }
     })
 
     setHandler(outChunks, new OutHandler {
-      def onPull() = {
+      def onPull(): Unit = {
         processBuffer()
       }
     })

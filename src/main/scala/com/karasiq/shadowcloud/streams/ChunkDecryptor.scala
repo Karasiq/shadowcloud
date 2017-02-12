@@ -18,7 +18,7 @@ class ChunkDecryptor extends GraphStage[FlowShape[Chunk, Chunk]] {
     val decryptors = mutable.AnyRefMap[EncryptionMethod, EncryptionModule]()
 
     setHandler(inlet, new InHandler {
-      def onPush() = {
+      def onPush(): Unit = {
         val chunk = grab(inlet)
         val decryptor = decryptors.getOrElseUpdate(chunk.encryption.method, EncryptionModule(chunk.encryption.method))
         val plain = decryptor.decrypt(chunk.data.encrypted, chunk.encryption)
@@ -28,7 +28,7 @@ class ChunkDecryptor extends GraphStage[FlowShape[Chunk, Chunk]] {
     })
 
     setHandler(outlet, new OutHandler {
-      def onPull() = {
+      def onPull(): Unit = {
         tryPull(inlet)
       }
     })

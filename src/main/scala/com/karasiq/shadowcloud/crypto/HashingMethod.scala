@@ -6,7 +6,7 @@ sealed trait HashingMethod
 
 object HashingMethod {
   case class Digest(alg: String) extends HashingMethod {
-    override def toString = alg 
+    override def toString: String = alg
   }
 
   def apply(alg: String): HashingMethod = Digest(alg)

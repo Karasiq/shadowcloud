@@ -35,6 +35,10 @@ object TestUtils {
     randomBytes(4).toHexString
   }
 
+  def testTimestamp: Long = {
+    1486917426797L
+  }
+
   def indexedBytes: (ByteString, File) = {
     val text = ByteString("""You may have noticed various code patterns that emerge when testing stream pipelines. Akka Stream has a separate akka-stream-testkit module that provides tools specifically for writing stream tests. This module comes with two main components that are TestSource and TestSink which provide sources and sinks that materialize to probes that allow fluent API.""")
     val hashingMethod = HashingMethod("SHA1")
@@ -47,7 +51,7 @@ object TestUtils {
       Chunk(Checksum(hashingMethod, 100, preCalcHashes(2), 100, preCalcHashes(2)), EncryptionParameters.empty, Data(text.slice(200, 300), text.slice(200, 300))),
       Chunk(Checksum(hashingMethod, 56, preCalcHashes(3), 56, preCalcHashes(3)), EncryptionParameters.empty, Data(text.slice(300, 356), text.slice(300, 356)))
     )
-    (text, File(Path.root, "test.txt", System.currentTimeMillis(), System.currentTimeMillis(), Checksum(hashingMethod, 356, textHash, 356, textHash), chunks))
+    (text, File(Path.root, "test.txt", testTimestamp, testTimestamp, Checksum(hashingMethod, 356, textHash, 356, textHash), chunks))
   }
 
   def testChunk: Chunk = {
@@ -56,7 +60,7 @@ object TestUtils {
 
   def testDiff: IndexDiff = {
     val (_, file) = indexedBytes
-    IndexDiff(System.currentTimeMillis(), Seq(FolderDiff(Path.root, newFiles = Set(file))), ChunkIndexDiff(file.chunks.toSet))
+    IndexDiff(testTimestamp, Seq(FolderDiff(Path.root, testTimestamp, newFiles = Set(file))), ChunkIndexDiff(file.chunks.toSet))
   }
 
   def randomChunk: Chunk = {

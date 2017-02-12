@@ -7,7 +7,6 @@ import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import com.karasiq.shadowcloud.crypto.{HashingMethod, HashingModule}
 import com.karasiq.shadowcloud.index.{Checksum, Chunk}
 
-import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
 
@@ -20,16 +19,16 @@ class FileIndexer(hashingMethod: HashingMethod) extends GraphStageWithMaterializ
   val shape = FlowShape(inlet, outlet)
 
   @scala.throws[Exception](classOf[Exception])
-  def createLogicAndMaterializedValue(inheritedAttributes: Attributes) = {
+  def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, Future[IndexedFile]) = {
     val promise = Promise[IndexedFile]
     val plainHash = HashingModule(hashingMethod)
     val encryptedHash = HashingModule(hashingMethod)
     var plainSize = 0L
     var encryptedSize = 0L
-    val chunks = new ArrayBuffer[Chunk]()
+    val chunks = Vector.newBuilder[Chunk]
     val logic = new GraphStageLogic(shape) {
       setHandler(inlet, new InHandler {
-        def onPush() = {
+        def onPush(): Unit = {
           val chunk = grab(inlet)
           plainHash.update(chunk.data.plain)
           encryptedHash.update(chunk.data.encrypted)
@@ -39,19 +38,19 @@ class FileIndexer(hashingMethod: HashingMethod) extends GraphStageWithMaterializ
           emit(outlet, chunk)
         }
 
-        override def onUpstreamFinish() = {
-          val indexedFile = IndexedFile(Checksum(hashingMethod, plainSize, plainHash.createHash(), encryptedSize, encryptedHash.createHash()), chunks)
+        override def onUpstreamFinish(): Unit = {
+          val indexedFile = IndexedFile(Checksum(hashingMethod, plainSize, plainHash.createHash(), encryptedSize, encryptedHash.createHash()), chunks.result())
           promise.trySuccess(indexedFile)
           completeStage()
         }
       })
 
       setHandler(outlet, new OutHandler {
-        def onPull() = {
+        def onPull(): Unit = {
           tryPull(inlet)
         }
 
-        override def onDownstreamFinish() = {
+        override def onDownstreamFinish(): Unit = {
           val exception = new IOException("Downstream terminated")
           if (promise.tryFailure(exception))
             failStage(exception)
@@ -60,7 +59,7 @@ class FileIndexer(hashingMethod: HashingMethod) extends GraphStageWithMaterializ
         }
       })
 
-      override def postStop() = {
+      override def postStop(): Unit = {
         promise.tryFailure(new IOException("Stream terminated"))
         super.postStop()
       }

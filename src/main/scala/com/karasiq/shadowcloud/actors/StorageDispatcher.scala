@@ -1,12 +1,12 @@
 package com.karasiq.shadowcloud.actors
 
 import akka.Done
-import akka.actor.{Actor, ActorRef}
+import akka.actor.{Actor, ActorRef, Props}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.index.{Chunk, ChunkIndex, ChunkIndexDiff}
-import com.karasiq.shadowcloud.storage.ChunkRepository
+import com.karasiq.shadowcloud.storage.{BaseChunkRepository, ChunkRepository}
 
 import scala.collection.mutable
 import scala.language.postfixOps
@@ -28,16 +28,21 @@ object StorageDispatcher {
     case class Success(chunk: Chunk, source: Source[ByteString, _]) extends Status
     case class Failure(chunk: Chunk, error: Throwable) extends Status
   }
+
+  def props(baseChunkRepository: BaseChunkRepository, chunkDispatcher: ActorRef): Props = {
+    Props(classOf[StorageDispatcher], baseChunkRepository, chunkDispatcher)
+  }
 }
 
-class StorageDispatcher(chunkRepository: ChunkRepository[ByteString], chunkDispatcher: ActorRef) extends Actor {
+class StorageDispatcher(baseChunkRepository: BaseChunkRepository, chunkDispatcher: ActorRef) extends Actor {
   import StorageDispatcher._
 
   implicit val actorMaterializer = ActorMaterializer()
   var index = ChunkIndex.empty
   val pending = mutable.Set[Chunk]()
+  val chunkRepository = ChunkRepository.hashed(baseChunkRepository)
 
-  def receive = {
+  def receive: Receive = {
     case LoadChunks(diff) ⇒
       index = index.patch(diff)
       chunkDispatcher ! ChunkDispatcher.Update(diff)

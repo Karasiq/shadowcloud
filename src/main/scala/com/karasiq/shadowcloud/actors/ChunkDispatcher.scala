@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.actors
 
-import akka.actor.{Actor, ActorLogging, Terminated}
+import akka.actor.{Actor, ActorLogging, Props, Terminated}
 import com.karasiq.shadowcloud.actors.StorageDispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
 import com.karasiq.shadowcloud.index.{ChunkIndex, ChunkIndexDiff}
@@ -10,6 +10,10 @@ import scala.language.postfixOps
 object ChunkDispatcher {
   case class Register(index: ChunkIndex)
   case class Update(chunks: ChunkIndexDiff)
+
+  val props: Props = {
+    Props(classOf[ChunkDispatcher])
+  }
 }
 
 class ChunkDispatcher extends Actor with ActorLogging {
@@ -17,7 +21,7 @@ class ChunkDispatcher extends Actor with ActorLogging {
   val storages = new StorageTracker(this)
   val chunks = new ChunksTracker(this, storages)
 
-  def receive = {
+  def receive: Receive = {
     case ReadChunk(chunk) ⇒
       chunks.readChunk(chunk, sender())
 

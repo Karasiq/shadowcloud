@@ -3,22 +3,23 @@ package com.karasiq.shadowcloud.storage
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderDecider, FolderIndex, IndexDiff}
 import com.karasiq.shadowcloud.utils.MergeUtil.Decider
 
+import scala.collection.mutable
 import scala.language.postfixOps
 
 trait IndexMerger {
   def chunks: ChunkIndex
   def folders: FolderIndex
-  def diffs: Seq[IndexDiff]
+  def diffs: Map[Long, IndexDiff]
   def mergedDiff: IndexDiff
   def pending: IndexDiff
-  def add(diff: IndexDiff): Unit
+  def add(sequenceNr: Long, diff: IndexDiff): Unit
   def addPending(diff: IndexDiff): Unit
   def removePending(diff: IndexDiff): Unit
 }
 
 object IndexMerger {
   private final class DefaultIndexMerger extends IndexMerger {
-    private[this] var _diffs = Vector.empty[IndexDiff]
+    private[this] var _diffs = mutable.SortedMap.empty[Long, IndexDiff]
     private[this] var _chunks = ChunkIndex.empty
     private[this] var _folders = FolderIndex.empty
     private[this] var _merged = IndexDiff.empty
@@ -26,14 +27,15 @@ object IndexMerger {
 
     def chunks: ChunkIndex = _chunks
     def folders: FolderIndex = _folders
-    def diffs: Seq[IndexDiff] = _diffs
+    def diffs: Map[Long, IndexDiff] = _diffs.toMap
     def mergedDiff: IndexDiff = _merged
     def pending: IndexDiff = _pending
 
-    def add(diff: IndexDiff): Unit = {
+    def add(sequenceNr: Long, diff: IndexDiff): Unit = {
+      require(!_diffs.contains(sequenceNr), "Invalid sequence number")
       val lastDiff = _diffs.lastOption
-      _diffs :+= diff
-      if (lastDiff.isEmpty || lastDiff.exists(_.time < diff.time)) {
+      _diffs += sequenceNr → diff
+      if (lastDiff.isEmpty || lastDiff.forall(_._1 < sequenceNr)) {
         applyDiff(diff)
       } else {
         rebuildIndex()
@@ -60,8 +62,7 @@ object IndexMerger {
       _folders = FolderIndex.empty
       _merged = IndexDiff.empty
       _pending = IndexDiff.empty
-      _diffs = _diffs.sortBy(_.time)
-      _diffs.foreach(applyDiff)
+      _diffs.values.foreach(applyDiff)
     }
   }
 

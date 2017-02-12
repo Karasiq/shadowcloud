@@ -4,8 +4,8 @@ import akka.stream.scaladsl.{Compression, Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import com.karasiq.shadowcloud.index.IndexDiff
 import com.karasiq.shadowcloud.serialization.Serialization
-import com.karasiq.shadowcloud.storage.IndexRepositoryStreams
 import com.karasiq.shadowcloud.storage.files.FileIndexRepository
+import com.karasiq.shadowcloud.storage.{IndexRepository, IndexRepositoryStreams}
 import org.scalatest.FlatSpecLike
 
 import scala.concurrent.duration._
@@ -14,7 +14,7 @@ import scala.language.postfixOps
 class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
   "File repository" should "store diff" in {
     val diff = TestUtils.randomDiff
-    val testRepository = new FileIndexRepository(Files.createTempDirectory("irp-test"))
+    val testRepository = IndexRepository.incremental(new FileIndexRepository(Files.createTempDirectory("irp-test")))
     val future = Source.single(diff)
       .via(Serialization.toBytes())
       .via(Compression.gzip)
@@ -36,7 +36,7 @@ class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
 
   "Index repository streams" should "store diff" in {
     val diff = TestUtils.randomDiff
-    val testRepository = new FileIndexRepository(Files.createTempDirectory("irp-stream-test"))
+    val testRepository = IndexRepository.incremental(new FileIndexRepository(Files.createTempDirectory("irp-stream-test")))
     val streams = IndexRepositoryStreams()
     val (write, writeResult) = TestSource.probe[(Long, IndexDiff)]
       .via(streams.write(testRepository))

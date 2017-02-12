@@ -1,7 +1,6 @@
 import java.nio.file.Files
 
 import TestUtils._
-import akka.actor.Props
 import akka.pattern.ask
 import akka.stream.testkit.scaladsl.TestSink
 import akka.testkit.TestActorRef
@@ -16,8 +15,8 @@ import scala.language.postfixOps
 
 class ChunkDispatcherTest extends ActorSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
-  val chunkDispatcher = TestActorRef(Props[ChunkDispatcher], "chunkDispatcher")
-  val storage = TestActorRef(Props(classOf[StorageDispatcher], new FileChunkRepository(Files.createTempDirectory("cdt-storage")), chunkDispatcher), "tempDirStorage")
+  val chunkDispatcher = TestActorRef(ChunkDispatcher.props, "chunkDispatcher")
+  val storage = TestActorRef(StorageDispatcher.props(new FileChunkRepository(Files.createTempDirectory("cdt-storage")), chunkDispatcher), "tempDirStorage")
 
   "Chunk dispatcher" should "write chunk" in {
     val future = chunkDispatcher ? WriteChunk(chunk)

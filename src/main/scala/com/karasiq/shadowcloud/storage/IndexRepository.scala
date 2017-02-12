@@ -2,6 +2,7 @@ package com.karasiq.shadowcloud.storage
 
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
+import com.karasiq.shadowcloud.storage.wrappers.IncrementalIndexRepository
 
 import scala.language.postfixOps
 
@@ -11,8 +12,10 @@ trait IndexRepository[Key] {
   def write(key: Key): Sink[ByteString, _]
 }
 
-trait IncrementalIndexRepository extends IndexRepository[Long] {
-  def keysAfter(time: Long): Source[Long, _] = {
-    keys.filter(_ > time)
+trait BaseIndexRepository extends IndexRepository[String]
+
+object IndexRepository {
+  def incremental(underlying: BaseIndexRepository): IncrementalIndexRepository = {
+    new IncrementalIndexRepository(underlying)
   }
 }

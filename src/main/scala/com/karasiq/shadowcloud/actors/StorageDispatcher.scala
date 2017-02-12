@@ -30,7 +30,7 @@ object StorageDispatcher {
   }
 }
 
-class StorageDispatcher(chunkRepository: ChunkRepository, chunkDispatcher: ActorRef) extends Actor {
+class StorageDispatcher(chunkRepository: ChunkRepository[ByteString], chunkDispatcher: ActorRef) extends Actor {
   import StorageDispatcher._
 
   implicit val actorMaterializer = ActorMaterializer()
@@ -84,7 +84,7 @@ class StorageDispatcher(chunkRepository: ChunkRepository, chunkDispatcher: Actor
       .runWith(chunkRepository.write(chunk.checksum.hash))
   }
 
-  override def preStart() = {
+  override def preStart(): Unit = {
     super.preStart()
     context.watch(chunkDispatcher)
     loadIndex()

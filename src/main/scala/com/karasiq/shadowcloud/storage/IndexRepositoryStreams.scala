@@ -10,7 +10,7 @@ import scala.language.postfixOps
 
 trait IndexRepositoryStreams {
   def write[Key](repository: IndexRepository[Key]): Flow[(Key, IndexDiff), (Key, IndexDiff), _]
-  def read[Key](repository: IndexRepository[Key]): Flow[Key, IndexDiff, _]
+  def read[Key](repository: IndexRepository[Key]): Flow[Key, (Key, IndexDiff), _]
 }
 
 object IndexRepositoryStreams {
@@ -33,10 +33,9 @@ object IndexRepositoryStreams {
         })
     }
 
-    def read[Key](repository: IndexRepository[Key]): Flow[Key, IndexDiff, NotUsed] = {
+    def read[Key](repository: IndexRepository[Key]): Flow[Key, (Key, IndexDiff), NotUsed] = {
       Flow[Key]
-        .flatMapMerge(3, key ⇒ repository.read(key))
-        .via(readFlow)
+        .flatMapMerge(3, key ⇒ repository.read(key).via(readFlow).map((key, _)))
     }
   }
 

@@ -19,9 +19,10 @@ import scala.language.postfixOps
   */
 class FileIndexRepository(folder: FsPath)(implicit as: ActorSystem, am: ActorMaterializer) extends IncrementalIndexRepository {
   def keys: Source[Long, NotUsed] = {
-    Source(FileSystemUtils.listFiles(folder))
+    Source(FileSystemUtils.listFiles(folder)
       .filter(_.matches("\\d+"))
       .map(_.toLong)
+      .sorted)
   }
 
   def read(key: Long): Source[ByteString, Future[IOResult]] = {

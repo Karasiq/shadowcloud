@@ -3,9 +3,8 @@ package com.karasiq.shadowcloud.storage.files
 import java.nio.file.{StandardOpenOption, Path => FsPath}
 
 import akka.NotUsed
-import akka.actor.ActorSystem
+import akka.stream.IOResult
 import akka.stream.scaladsl.{FileIO, Sink, Source}
-import akka.stream.{ActorMaterializer, IOResult}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.storage.BaseIndexRepository
 import com.karasiq.shadowcloud.utils.FileSystemUtils
@@ -17,7 +16,7 @@ import scala.language.postfixOps
   * Uses local filesystem to store indexes
   * @param folder Root directory
   */
-class FileIndexRepository(folder: FsPath)(implicit as: ActorSystem, am: ActorMaterializer) extends BaseIndexRepository {
+class FileIndexRepository(folder: FsPath) extends BaseIndexRepository {
   def keys: Source[String, NotUsed] = {
     Source(FileSystemUtils.listFiles(folder))
   }

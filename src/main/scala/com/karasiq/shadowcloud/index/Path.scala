@@ -12,11 +12,11 @@ case class Path(nodes: Seq[String]) {
   }
 
   def parent: Path = {
-    if (nodes.nonEmpty) copy(nodes.dropRight(1)) else this
+    if (nodes.length <= 1) Path.root else copy(nodes.dropRight(1))
   }
 
   def name: String = {
-    if (nodes.nonEmpty) nodes.last else "/"
+    if (isRoot) "/" else nodes.last
   }
 
   override def toString: String = {
@@ -28,9 +28,11 @@ object Path {
   val root = Path(Nil)
 
   implicit def fromString(str: String): Path = {
-    val nodes: Seq[String] = str.split(Array('/', '\\')).filter(_.nonEmpty)
+    val nodes: Seq[String] = str.split(separators).filter(_.nonEmpty)
     if (nodes.nonEmpty) Path(nodes) else root
   }
+
+  private[this] val separators = Array('/', '\\')
 }
 
 trait HasPath {

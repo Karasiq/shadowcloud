@@ -39,4 +39,20 @@ class HashCodesTest extends FlatSpec with Matchers {
     file1.hashCode() shouldNot be (file5.hashCode())
     file1.hashCode() shouldNot be (file6.hashCode())
   }
+
+  "Folders" should "be compared" in {
+    val folder1 = TestUtils.randomFolder()
+    val folder2 = folder1.copy(created = folder1.created + 1, lastModified = folder1.lastModified + 1)
+    val folder3 = folder1.withPath(folder1.path / "test")
+    val folder4 = folder1.copy(folders = folder1.folders + TestUtils.randomString)
+    val folder5 = folder1.copy(files = folder1.files + TestUtils.randomFile(folder1.path))
+    folder2 shouldBe folder1
+    folder3 shouldNot be (folder1)
+    folder4 shouldNot be (folder1)
+    folder5 shouldNot be (folder1)
+    folder2.hashCode() shouldBe folder1.hashCode()
+    folder3.hashCode() shouldNot be (folder1.hashCode())
+    folder4.hashCode() shouldNot be (folder1.hashCode())
+    folder5.hashCode() shouldNot be (folder1.hashCode())
+  }
 }

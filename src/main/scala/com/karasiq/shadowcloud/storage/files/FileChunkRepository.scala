@@ -3,9 +3,8 @@ package com.karasiq.shadowcloud.storage.files
 import java.nio.file.{StandardOpenOption, Path => FsPath}
 
 import akka.NotUsed
-import akka.actor.ActorSystem
+import akka.stream.IOResult
 import akka.stream.scaladsl.{FileIO, Sink, Source}
-import akka.stream.{ActorMaterializer, IOResult}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.storage.BaseChunkRepository
 import com.karasiq.shadowcloud.utils.FileSystemUtils
@@ -17,7 +16,7 @@ import scala.language.postfixOps
   * Uses local filesystem to store data chunks
   * @param folder Root directory
   */
-class FileChunkRepository(folder: FsPath)(implicit as: ActorSystem, am: ActorMaterializer) extends BaseChunkRepository {
+class FileChunkRepository(folder: FsPath) extends BaseChunkRepository {
   def chunks: Source[String, NotUsed] = {
     Source(FileSystemUtils.listFiles(folder))
   }

@@ -43,4 +43,11 @@ class FolderTest extends FlatSpec with Matchers {
     folder2.lastModified should be >= folder1.lastModified
     folder2.folders shouldBe empty
   }
+
+  it should "change path" in {
+    val newPath = folder.path / TestUtils.randomString
+    val folder1 = folder.withPath(newPath)
+    folder1.path shouldBe newPath
+    folder1.files shouldBe folder.files.map(_.copy(parent = newPath))
+  }
 }

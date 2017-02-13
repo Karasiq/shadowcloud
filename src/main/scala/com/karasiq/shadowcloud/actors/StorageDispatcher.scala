@@ -7,6 +7,7 @@ import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.index.{Chunk, ChunkIndex, ChunkIndexDiff}
 import com.karasiq.shadowcloud.storage.{BaseChunkRepository, ChunkRepository}
+import com.karasiq.shadowcloud.utils.MessageStatus
 
 import scala.collection.mutable
 import scala.language.postfixOps
@@ -16,18 +17,10 @@ object StorageDispatcher {
   case class LoadChunks(diff: ChunkIndexDiff)
 
   case class WriteChunk(chunk: Chunk)
-  object WriteChunk {
-    sealed trait Status
-    case class Success(chunk: Chunk) extends Status
-    case class Failure(chunk: Chunk, error: Throwable) extends Status
-  }
+  object WriteChunk extends MessageStatus[Chunk, Chunk]
 
   case class ReadChunk(chunk: Chunk)
-  object ReadChunk {
-    sealed trait Status
-    case class Success(chunk: Chunk, source: Source[ByteString, _]) extends Status
-    case class Failure(chunk: Chunk, error: Throwable) extends Status
-  }
+  object ReadChunk extends MessageStatus[Chunk, Source[ByteString, _]]
 
   def props(baseChunkRepository: BaseChunkRepository, chunkDispatcher: ActorRef): Props = {
     Props(classOf[StorageDispatcher], baseChunkRepository, chunkDispatcher)
@@ -65,7 +58,7 @@ class StorageDispatcher(baseChunkRepository: BaseChunkRepository, chunkDispatche
       pending -= chunk
       chunkDispatcher ! failure
 
-    case success @ WriteChunk.Success(chunk) ⇒
+    case success @ WriteChunk.Success(_, chunk) ⇒
       pending -= chunk
       chunkDispatcher ! success
       // TODO: Persist
@@ -81,7 +74,7 @@ class StorageDispatcher(baseChunkRepository: BaseChunkRepository, chunkDispatche
     Source.single(chunk.data.encrypted)
       .alsoTo(Sink.onComplete {
         case Success(Done) ⇒
-          self ! WriteChunk.Success(chunk)
+          self ! WriteChunk.Success(chunk, chunk)
 
         case Failure(exc) ⇒
           self ! WriteChunk.Failure(chunk, exc)

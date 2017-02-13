@@ -15,13 +15,14 @@ resolvers += "softprops-maven" at "http://dl.bintray.com/content/softprops/maven
 resolvers += Resolver.sonatypeRepo("snapshots")
 
 libraryDependencies ++= {
-  val akkaV = "2.4.16"
+  val akkaV = "2.4.17"
   val akkaHttpV = "10.0.1"
   Seq(
     "com.typesafe.akka" %% "akka-actor" % akkaV,
     "com.typesafe.akka" %% "akka-stream" % akkaV,
     "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
     "com.typesafe.akka" %% "akka-stream-testkit" % akkaV % "test",
+    "com.typesafe.akka" %% "akka-persistence" % akkaV,
     "com.typesafe.akka" %% "akka-http" % akkaHttpV,
     "com.lihaoyi" %% "upickle" % "0.4.4",
     "commons-codec" % "commons-codec" % "1.9",

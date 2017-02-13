@@ -1,9 +1,12 @@
 package com.karasiq.shadowcloud.utils
 
+import akka.actor.ActorContext
 import akka.util.ByteString
 import com.karasiq.shadowcloud.index.Chunk
+import com.typesafe.config.Config
 import org.apache.commons.codec.binary.Hex
 
+import scala.concurrent.duration.FiniteDuration
 import scala.language.postfixOps
 
 private[shadowcloud] object Utils {
@@ -22,5 +25,13 @@ private[shadowcloud] object Utils {
 
   def timestamp: Long = {
     System.currentTimeMillis()
+  }
+
+  def config(implicit ac: ActorContext): Config = {
+    ac.system.settings.config
+  }
+
+  def scalaDuration(duration: java.time.Duration): FiniteDuration = {
+    FiniteDuration(duration.toNanos, scala.concurrent.duration.NANOSECONDS)
   }
 }

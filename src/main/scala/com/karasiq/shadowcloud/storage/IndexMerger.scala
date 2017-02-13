@@ -3,18 +3,20 @@ package com.karasiq.shadowcloud.storage
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderDecider, FolderIndex, IndexDiff}
 import com.karasiq.shadowcloud.utils.MergeUtil.Decider
 
-import scala.collection.mutable
+import scala.collection.{SortedMap, mutable}
 import scala.language.postfixOps
 
 trait IndexMerger {
+  def lastSequenceNr: Long
   def chunks: ChunkIndex
   def folders: FolderIndex
-  def diffs: Map[Long, IndexDiff]
+  def diffs: SortedMap[Long, IndexDiff]
   def mergedDiff: IndexDiff
   def pending: IndexDiff
   def add(sequenceNr: Long, diff: IndexDiff): Unit
   def addPending(diff: IndexDiff): Unit
   def removePending(diff: IndexDiff): Unit
+  def clear(): Unit
 }
 
 object IndexMerger {
@@ -25,9 +27,10 @@ object IndexMerger {
     private[this] var _merged = IndexDiff.empty
     private[this] var _pending = IndexDiff.empty
 
+    def lastSequenceNr: Long = if (_diffs.isEmpty) 0 else _diffs.lastKey
     def chunks: ChunkIndex = _chunks
     def folders: FolderIndex = _folders
-    def diffs: Map[Long, IndexDiff] = _diffs.toMap
+    def diffs: SortedMap[Long, IndexDiff] = _diffs
     def mergedDiff: IndexDiff = _merged
     def pending: IndexDiff = _pending
 
@@ -40,7 +43,7 @@ object IndexMerger {
       } else {
         rebuildIndex()
       }
-      removePending(diff)
+      removePending(_merged)
     }
     
     def addPending(diff: IndexDiff): Unit = {
@@ -49,6 +52,14 @@ object IndexMerger {
 
     def removePending(diff: IndexDiff): Unit = {
       _pending = pending.diff(diff, Decider.keepLeft, FolderDecider.mutualExclude, Decider.keepLeft)
+    }
+
+    def clear(): Unit = {
+      _chunks = ChunkIndex.empty
+      _folders = FolderIndex.empty
+      _merged = IndexDiff.empty
+      _pending = IndexDiff.empty
+      _diffs.clear()
     }
 
     private[this] def applyDiff(diff: IndexDiff): Unit = {
@@ -66,5 +77,7 @@ object IndexMerger {
     }
   }
 
-  def apply(): IndexMerger = new DefaultIndexMerger
+  def apply(): IndexMerger = {
+    new DefaultIndexMerger
+  }
 }

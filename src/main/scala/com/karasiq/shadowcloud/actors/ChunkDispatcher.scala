@@ -28,7 +28,7 @@ class ChunkDispatcher extends Actor with ActorLogging {
     case WriteChunk(chunk) ⇒
       chunks.writeChunk(chunk, sender())
 
-    case WriteChunk.Success(chunk) ⇒
+    case WriteChunk.Success(_, chunk) ⇒
       require(chunk.data.nonEmpty && chunk.checksum.hash.nonEmpty)
       log.debug("Chunk write success: {}", chunk)
       chunks.registerChunk(sender(), chunk)

@@ -66,7 +66,7 @@ private[actors] class ChunksTracker(self: Actor with ActorLogging, storages: Sto
           val encryptor = EncryptionModule(stored.chunk.encryption.method)
           stored.chunk.copy(data = chunk.data.copy(encrypted = encryptor.encrypt(chunk.data.plain, stored.chunk.encryption)))
         }
-        receiver ! WriteChunk.Success(chunkWithData)
+        receiver ! WriteChunk.Success(chunkWithData, chunkWithData)
         log.debug("Chunk restored from index, write skipped: {}", chunkWithData)
         stored.copy(chunk = chunkWithData)
 
@@ -115,7 +115,7 @@ private[actors] class ChunksTracker(self: Actor with ActorLogging, storages: Sto
         if (status.status == Status.PENDING) {
           log.debug("Resolved pending chunk: {}", chunk)
           require(status.chunk.data.nonEmpty)
-          status.waiters.foreach(_ ! WriteChunk.Success(status.chunk))
+          status.waiters.foreach(_ ! WriteChunk.Success(status.chunk, status.chunk))
           chunks += chunk.checksum.hash → status.copy(status = Status.STORED, chunk = status.chunk.withoutData, dispatchers = Set(dispatcher), waiters = Set.empty)
         } else {
           log.debug("Chunk duplicate found on {}: {}", dispatcher, chunk)

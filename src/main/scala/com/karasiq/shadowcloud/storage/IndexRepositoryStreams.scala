@@ -39,5 +39,5 @@ object IndexRepositoryStreams {
     }
   }
 
-  def apply(): IndexRepositoryStreams = new DefaultIndexRepositoryStreams
+  val default: IndexRepositoryStreams = new DefaultIndexRepositoryStreams
 }

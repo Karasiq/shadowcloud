@@ -20,7 +20,7 @@ class ChunkDispatcherTest extends ActorSpec with FlatSpecLike {
 
   "Chunk dispatcher" should "write chunk" in {
     val future = chunkDispatcher ? WriteChunk(chunk)
-    future.futureValue shouldBe WriteChunk.Success(chunk)
+    future.futureValue shouldBe WriteChunk.Success(chunk, chunk)
   }
 
   it should "read chunk" in {
@@ -37,6 +37,6 @@ class ChunkDispatcherTest extends ActorSpec with FlatSpecLike {
 
   it should "deduplicate chunk" in {
     val future = chunkDispatcher ? WriteChunk(chunk.copy(encryption = chunk.encryption.copy(EncryptionMethod.AES()), data = chunk.data.copy(encrypted = randomBytes(chunk.data.plain.length))))
-    future.futureValue shouldBe WriteChunk.Success(chunk)
+    future.futureValue shouldBe WriteChunk.Success(chunk, chunk)
   }
 }

@@ -37,7 +37,7 @@ class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
   "Index repository streams" should "store diff" in {
     val diff = TestUtils.randomDiff
     val testRepository = IndexRepository.incremental(new FileIndexRepository(Files.createTempDirectory("irp-stream-test")))
-    val streams = IndexRepositoryStreams()
+    val streams = IndexRepositoryStreams.default
     val (write, writeResult) = TestSource.probe[(Long, IndexDiff)]
       .via(streams.write(testRepository))
       .toMat(TestSink.probe)(Keep.both)

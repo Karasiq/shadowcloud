@@ -20,11 +20,15 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
     dispatchers.contains(storageId)
   }
 
-  def getForRead(status: ChunkStatus): Seq[ActorRef] = {
+  def all: Iterable[ActorRef] = {
+    storageIds.keys
+  }
+
+  def forRead(status: ChunkStatus): Seq[ActorRef] = {
     Random.shuffle(storageIds.keySet.intersect(status.dispatchers).toVector)
   }
 
-  def getForWrite(chunk: ChunkStatus): Seq[ActorRef] = {
+  def forWrite(chunk: ChunkStatus): Seq[ActorRef] = {
     Random.shuffle(storageIds.keys.toVector)
   }
 

@@ -36,6 +36,10 @@ case class IndexDiff(time: Long = 0, folders: Seq[FolderDiff] = Vector.empty, ch
   def reverse: IndexDiff = {
     IndexDiff.instanceOrEmpty(copy(time, folders.map(_.reverse), chunks.reverse))
   }
+
+  override def toString: String = {
+    s"IndexDiff($time, [${folders.mkString(", ")}], $chunks)"
+  }
 }
 
 object IndexDiff {

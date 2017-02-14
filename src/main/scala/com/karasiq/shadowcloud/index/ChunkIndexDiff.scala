@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.index
 
-import com.karasiq.shadowcloud.utils.MergeUtil
 import com.karasiq.shadowcloud.utils.MergeUtil.{Decider, SplitDecider}
+import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 
 import scala.language.postfixOps
 
@@ -35,6 +35,14 @@ case class ChunkIndexDiff(newChunks: Set[Chunk] = Set.empty, deletedChunks: Set[
   
   def creates: ChunkIndexDiff = {
     ChunkIndexDiff.instanceOrEmpty(copy(deletedChunks = Set.empty))
+  }
+
+  override def toString: String = {
+    if (nonEmpty) {
+      s"ChunkIndexDiff(new = [${Utils.printHashes(newChunks)}], deleted = [${Utils.printHashes(deletedChunks)}])"
+    } else {
+      "ChunkIndexDiff.empty"
+    }
   }
 }
 

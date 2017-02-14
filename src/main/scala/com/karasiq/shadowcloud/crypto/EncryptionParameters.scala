@@ -6,8 +6,12 @@ import com.karasiq.shadowcloud.utils.Utils
 import scala.language.postfixOps
 
 case class EncryptionParameters(method: EncryptionMethod, key: ByteString, iv: ByteString) {
-  override def toString = {
-    s"EncryptionParameters($method, key = ${Utils.toHexString(key)}, iv = ${Utils.toHexString(iv)})"
+  override def toString: String = {
+    if (this.eq(EncryptionParameters.empty)) {
+      "EncryptionParameters.empty"
+    } else {
+      s"EncryptionParameters($method, key = ${Utils.toHexString(key)}, iv = ${Utils.toHexString(iv)})"
+    }
   }
 }
 

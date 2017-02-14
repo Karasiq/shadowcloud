@@ -34,7 +34,7 @@ private[actors] final class ChunksTracker(storages: StorageTracker, log: Logging
           log.info("Chunk extracted from cache: {}", status.chunk)
           receiver ! ReadChunk.Success(status.chunk, Source.single(status.chunk.data.encrypted))
         } else {
-          storages.getForRead(status).headOption match {
+          storages.forRead(status).headOption match {
             case Some(dispatcher) ⇒
               log.info("Reading chunk from {}: {}", dispatcher, chunk)
               dispatcher.tell(ReadChunk(chunk), receiver)
@@ -52,7 +52,7 @@ private[actors] final class ChunksTracker(storages: StorageTracker, log: Logging
 
   private def storageWriteChunk(status: ChunkStatus): Set[ActorRef] = {
     require(status.chunk.data.nonEmpty)
-    val selected = storages.getForWrite(status) // TODO: Replication
+    val selected = storages.forWrite(status) // TODO: Replication
     selected.foreach(_ ! WriteChunk(status.chunk))
     selected.toSet
   }
@@ -113,8 +113,8 @@ private[actors] final class ChunksTracker(storages: StorageTracker, log: Logging
           require(status.chunk.data.nonEmpty)
           status.waiters.foreach(_ ! WriteChunk.Success(status.chunk, status.chunk))
           chunks += chunk.checksum.hash → status.copy(status = Status.STORED, chunk = status.chunk.withoutData, dispatchers = Set(dispatcher), waiters = Set.empty)
-        } else {
-          log.debug("Chunk duplicate found on {}: {}", dispatcher, chunk)
+        } else if (!status.dispatchers.contains(dispatcher)) {
+          log.info("Chunk duplicate found on {}: {}", dispatcher, chunk)
           chunks += hash → status.copy(dispatchers = status.dispatchers + dispatcher)
         }
 

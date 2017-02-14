@@ -37,6 +37,14 @@ case class FolderDiff(path: Path, time: Long = 0, newFiles: Set[File] = Set.empt
   def creates: FolderDiff = {
     copy(deletedFiles = Set.empty, deletedFolders = Set.empty)
   }
+
+  override def toString: String = {
+    if (nonEmpty) {
+      s"FolderDiff($path, $time, new files = [${newFiles.mkString(", ")}], deleted files = [${deletedFiles.mkString(", ")}], new folders = [${newFolders.mkString(", ")}], deleted folders = [${deletedFolders.mkString(", ")}])"
+    } else {
+      s"FolderDiff.empty($path)"
+    }
+  }
 }
 
 object FolderDiff {

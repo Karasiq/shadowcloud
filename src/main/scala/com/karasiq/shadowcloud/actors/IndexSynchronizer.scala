@@ -17,9 +17,11 @@ import scala.language.postfixOps
 object IndexSynchronizer {
   // Messages
   sealed trait Message
-  case object Get extends Message
-  case class Append(diff: IndexDiff) extends Message
-  object Append extends MessageStatus[IndexDiff, IndexDiff]
+  case object GetIndex extends Message {
+    case class Success(diffs: Seq[(Long, IndexDiff)])
+  }
+  case class AddPending(diff: IndexDiff) extends Message
+  object AddPending extends MessageStatus[IndexDiff, IndexDiff]
   case object Synchronize extends Message
 
   // Internal messages
@@ -69,25 +71,26 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
   }
 
   def scheduleSync(): Unit = {
-    log.debug("Scheduling synchronize in {}", syncInterval)
+    log.debug("Scheduling synchronize in {}", syncInterval.toCoarsest)
     context.system.scheduler.scheduleOnce(syncInterval, self, Synchronize)
-    context.become(receiveWait)
+    context.become(receiveWait.orElse(receiveDefault))
   }
 
   def write(sequenceNr: Long, diff: IndexDiff): Unit = {
-    log.debug("Writing diff #{}: {}", sequenceNr, diff)
+    log.info("Writing diff #{}: {}", sequenceNr, diff)
     Source.single((sequenceNr, diff))
       .via(streams.write(indexRepository))
       .map(WriteSuccess.tupled)
       .runWith(Sink.actorRef(self, CompleteWrite))
-    context.become(receiveWrite)
+    context.become(receiveWrite.orElse(receiveDefault))
   }
 
   def receiveDefault: Receive = {
-    case Get ⇒
-      sender() ! IndexLoaded(merger.diffs.toVector)
+    case GetIndex ⇒
+      sender() ! GetIndex.Success(merger.diffs.toVector)
 
-    case Append(diff) ⇒
+    case AddPending(diff) ⇒
+      log.debug("Pending diff added: {}", diff)
       persistAsync(PendingIndexUpdated(diff))(updateState)
   }
 
@@ -98,7 +101,7 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
         .via(streams.read(indexRepository))
         .map(ReadSuccess.tupled)
         .runWith(Sink.actorRef(self, CompleteRead))
-      context.become(receiveRead)
+      context.become(receiveRead.orElse(receiveDefault))
 
     case ReceiveTimeout ⇒
       throw new IllegalArgumentException("Receive timeout")
@@ -113,6 +116,7 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
       throw error
 
     case CompleteRead ⇒
+      log.debug("Synchronization read completed")
       if (merger.pending.nonEmpty) {
         write(merger.lastSequenceNr + 1, merger.pending)
       } else {
@@ -130,6 +134,7 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
       scheduleSync()
 
     case CompleteWrite ⇒
+      log.debug("Synchronization write completed")
       scheduleSync()
   }
 
@@ -143,10 +148,8 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
 
     case RecoveryCompleted ⇒
       context.system.scheduler.scheduleOnce(syncInterval, self, Synchronize)
-      context.become(receiveDefault)
-      context.become(receiveWait, discardOld = false)
       context.setReceiveTimeout(2 minutes)
   }
 
-  def receiveCommand: Receive = receiveDefault
+  def receiveCommand: Receive = receiveWait.orElse(receiveDefault)
 }

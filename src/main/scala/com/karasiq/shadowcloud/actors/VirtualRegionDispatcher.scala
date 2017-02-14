@@ -1,20 +1,29 @@
 package com.karasiq.shadowcloud.actors
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated}
+import akka.pattern.ask
+import akka.util.Timeout
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors.events.RegionEvent.RegionEnvelope
 import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
 import com.karasiq.shadowcloud.actors.events.{RegionEvent, StorageEvent}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
+import com.karasiq.shadowcloud.index.IndexDiff
 import com.karasiq.shadowcloud.storage.IndexMerger
 import com.karasiq.shadowcloud.storage.IndexMerger.RegionKey
 
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.{Failure, Success}
 
 object VirtualRegionDispatcher {
   // Messages
   sealed trait Message
   case class Register(storageId: String, dispatcher: ActorRef) extends Message
+
+  // Internal messages
+  private case class PushDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)]) extends Message
 
   // Props 
   def props(regionId: String): Props = {
@@ -26,6 +35,8 @@ object VirtualRegionDispatcher {
 class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging {
   import VirtualRegionDispatcher._
   require(regionId.nonEmpty)
+  implicit val executionContext: ExecutionContext = context.dispatcher
+  implicit val timeout = Timeout(10 seconds)
   val storages = new StorageTracker
   val chunks = new ChunksTracker(storages, log)
   val merger = IndexMerger.region
@@ -48,23 +59,29 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
     case Register(storageId, dispatcher) if !storages.contains(storageId) ⇒
       log.info("Registered storage: {}", dispatcher)
       storages.register(storageId, dispatcher)
+      val indexFuture = (dispatcher ? IndexSynchronizer.GetIndex).mapTo[IndexSynchronizer.GetIndex.Success]
+      indexFuture.onComplete {
+        case Success(IndexSynchronizer.GetIndex.Success(diffs)) ⇒
+          self ! PushDiffs(storageId, diffs)
+
+        case Failure(error) ⇒
+          log.error(error, "Error fetching index: {}", dispatcher)
+      }
+
+    case PushDiffs(storageId, diffs) if storages.contains(storageId) ⇒
+      addStorageDiffs(storageId, diffs)
       chunks.retryPendingChunks()
 
     // Storage events
     case StorageEnvelope(storageId, event) if storages.contains(storageId) ⇒ event match {
       case StorageEvent.IndexLoaded(diffs) ⇒
-        val dispatcher = storages.getDispatcher(storageId)
-        log.info("Storage index loaded {}: {} diffs", dispatcher, diffs.length)
-        merger.remove(merger.diffs.keySet.toSet.filter(_.indexId == storageId))
-        diffs.foreach { case (sequenceNr, diff) ⇒
-          merger.add(RegionKey(diff.time, storageId, sequenceNr), diff)
-        }
+        log.info("Storage [{}] index loaded: {} diffs", storageId, diffs.length)
+        dropStorageDiffs(storageId)
+        addStorageDiffs(storageId, diffs)
 
       case StorageEvent.IndexUpdated(sequenceNr, diff, _) ⇒
-        val dispatcher = storages.getDispatcher(storageId)
-        log.info("Storage index updated {}: {}", storageId, diff)
-        merger.add(RegionKey(diff.time, storages.getStorageId(dispatcher), sequenceNr), diff)
-        chunks.update(dispatcher, diff.chunks)
+        log.info("Storage [{}] index updated: {}", storageId, diff)
+        addStorageDiff(storageId, sequenceNr, diff)
 
       case StorageEvent.PendingIndexUpdated(_) ⇒
         // Ignore
@@ -79,10 +96,26 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
       log.debug("Watched actor terminated: {}", dispatcher)
       if (storages.contains(dispatcher)) {
         val storageId = storages.getStorageId(dispatcher)
-        merger.remove(merger.diffs.keySet.toSet.filter(_.indexId == storageId))
+        dropStorageDiffs(storageId)
         storages.unregister(dispatcher)
       }
       chunks.unregister(dispatcher)
+  }
+
+  private[this] def addStorageDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)]): Unit = {
+    val dispatcher = storages.getDispatcher(storageId)
+    diffs.foreach { case (sequenceNr, diff) ⇒
+      chunks.update(dispatcher, diff.chunks)
+      merger.add(RegionKey(diff.time, storageId, sequenceNr), diff)
+    }
+  }
+
+  @inline private[this] def addStorageDiff(storageId: String, sequenceNr: Long, diff: IndexDiff) = {
+    addStorageDiffs(storageId, Array((sequenceNr, diff)))
+  }
+
+  private[this] def dropStorageDiffs(storageId: String): Unit = {
+    merger.remove(merger.diffs.keySet.toSet.filter(_.indexId == storageId))
   }
 
   override def postStop(): Unit = {

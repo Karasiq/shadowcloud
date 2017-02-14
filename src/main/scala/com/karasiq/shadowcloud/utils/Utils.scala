@@ -34,4 +34,17 @@ private[shadowcloud] object Utils {
   def scalaDuration(duration: java.time.Duration): FiniteDuration = {
     FiniteDuration(duration.toNanos, scala.concurrent.duration.NANOSECONDS)
   }
+
+  def printHashes(chunks: Traversable[Chunk], limit: Int = 20): String = {
+    val size = chunks.size
+    val sb = new StringBuilder(math.min(limit, size) * 22 + 10)
+    chunks.take(limit).foreach { chunk ⇒
+      if (chunk.checksum.hash.nonEmpty) {
+        if (sb.nonEmpty) sb.append(", ")
+        sb.append(toHexString(chunk.checksum.hash))
+      }
+    }
+    if (size > limit) sb.append(", (").append(size - limit).append(" more)")
+    sb.result()
+  }
 }

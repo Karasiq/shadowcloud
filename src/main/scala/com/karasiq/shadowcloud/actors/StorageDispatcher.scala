@@ -31,7 +31,7 @@ class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef) e
       log.debug("Chunk written, appending to index: {}", chunk)
       pending.finish(chunk, msg)
       StorageEvent.stream.publish(StorageEnvelope(storageId, StorageEvent.ChunkWritten(chunk)))
-      index ! IndexSynchronizer.Append(IndexDiff(Utils.timestamp, chunks = ChunkIndexDiff(Set(chunk.withoutData))))
+      index ! IndexSynchronizer.AddPending(IndexDiff(Utils.timestamp, chunks = ChunkIndexDiff(Set(chunk.withoutData))))
 
     case msg @ ChunkIODispatcher.WriteChunk.Failure(chunk, error) ⇒
       log.error(error, "Chunk write failure: {}", chunk)

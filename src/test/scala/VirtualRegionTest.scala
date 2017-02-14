@@ -7,6 +7,8 @@ import akka.testkit.TestActorRef
 import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors._
+import com.karasiq.shadowcloud.actors.events.StorageEvent
+import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.storage.files.{FileChunkRepository, FileIndexRepository}
 import org.scalatest.FlatSpecLike
@@ -49,5 +51,18 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
     wrongChunk shouldNot be (chunk)
     val result = testRegion ? WriteChunk(wrongChunk)
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
+  }
+
+  it should "synchronize index" in {
+    StorageEvent.stream.subscribe(testActor, "testStorage")
+    index ! IndexSynchronizer.Synchronize
+    val StorageEnvelope("testStorage", StorageEvent.IndexUpdated(sequenceNr, diff, remote)) = receiveOne(5 seconds)
+    sequenceNr shouldBe 1
+    diff.time shouldBe > (TestUtils.testTimestamp)
+    diff.folders shouldBe empty
+    diff.chunks.newChunks shouldBe Set(chunk)
+    diff.chunks.deletedChunks shouldBe empty
+    remote shouldBe false
+    StorageEvent.stream.unsubscribe(testActor)
   }
 }

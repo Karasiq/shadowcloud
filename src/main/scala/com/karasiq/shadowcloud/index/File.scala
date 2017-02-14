@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.index
 
-import org.apache.commons.codec.binary.Hex
+import com.karasiq.shadowcloud.utils.Utils
 
 import scala.language.postfixOps
 
@@ -18,8 +18,6 @@ case class File(parent: Path, name: String, created: Long = 0, lastModified: Lon
   }
 
   override def toString: String = {
-    val hashesStr = chunks.take(20).map(chunk ⇒ Hex.encodeHexString(chunk.checksum.hash.toArray)).mkString(", ")
-    val cutHashesStr = if (chunks.size > 20) hashesStr + ", ..." else hashesStr
-    s"File(${parent / name}, $checksum, chunks: [$cutHashesStr])"
+    s"File(${parent / name}, $checksum, chunks: [${Utils.printHashes(chunks)}])"
   }
 }

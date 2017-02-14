@@ -6,7 +6,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import com.karasiq.shadowcloud.index.IndexDiff
 import com.karasiq.shadowcloud.storage.{BaseIndexRepository, IndexMerger, IndexRepository, IndexRepositoryStreams}
-import com.karasiq.shadowcloud.utils.{MessageStatus, Utils}
+import com.karasiq.shadowcloud.utils.Utils
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -14,12 +14,13 @@ import scala.language.postfixOps
 object IndexSynchronizer {
   // Messages
   sealed trait Message
+  case object Get extends Message
   case class Append(diff: IndexDiff) extends Message
-  object Append extends MessageStatus[IndexDiff, IndexDiff]
   case object Synchronize extends Message
 
   // Events
   sealed trait Event
+  case class Loaded(diffs: Seq[(Long, IndexDiff)]) extends Event
   case class PendingUpdate(diff: IndexDiff) extends Event
   case class Update(sequenceNr: Long, diff: IndexDiff, remote: Boolean) extends Event
 
@@ -44,7 +45,7 @@ class IndexSynchronizer(indexId: String, indexDispatcher: ActorRef, baseIndexRep
   implicit val actorMaterializer = ActorMaterializer()
   val indexRepository = IndexRepository.incremental(baseIndexRepository)
   val merger = IndexMerger()
-  val syncInterval = Utils.scalaDuration(Utils.config.getDuration("shadowcloud.sync-interval"))
+  val syncInterval = Utils.scalaDuration(Utils.config.getDuration("shadowcloud.index.sync-interval"))
 
   def persistenceId: String = s"index-$indexId"
 
@@ -55,14 +56,23 @@ class IndexSynchronizer(indexId: String, indexDispatcher: ActorRef, baseIndexRep
 
     case PendingUpdate(diff) ⇒
       merger.addPending(diff)
+
+    case Loaded(diffs) ⇒
+      merger.clear()
+      for ((sequenceNr, diff) ← diffs) {
+        merger.add(sequenceNr, diff)
+      }
+      indexDispatcher ! Loaded(diffs)
   }
 
   def scheduleSync(): Unit = {
+    log.debug("Scheduling synchronize in {}", syncInterval)
     context.system.scheduler.scheduleOnce(syncInterval, self, Synchronize)
     context.become(receiveWait)
   }
 
   def write(sequenceNr: Long, diff: IndexDiff): Unit = {
+    log.debug("Writing diff #{}: {}", sequenceNr, diff)
     Source.single((sequenceNr, diff))
       .via(streams.write(indexRepository))
       .map(WriteSuccess.tupled)
@@ -71,16 +81,16 @@ class IndexSynchronizer(indexId: String, indexDispatcher: ActorRef, baseIndexRep
   }
 
   def receiveDefault: Receive = {
+    case Get ⇒
+      sender() ! Loaded(merger.diffs.toVector)
+
     case Append(diff) ⇒
-      val currentSender = sender()
-      persistAsync(PendingUpdate(diff)) { event ⇒
-        updateState(event)
-        currentSender ! Append.Success(diff, merger.pending)
-      }
+      persistAsync(PendingUpdate(diff))(updateState)
   }
 
   def receiveWait: Receive = {
     case Synchronize ⇒
+      log.debug("Starting synchronization, last sequence number: {}", merger.lastSequenceNr)
       indexRepository.keysAfter(merger.lastSequenceNr)
         .via(streams.read(indexRepository))
         .map(ReadSuccess.tupled)
@@ -122,16 +132,15 @@ class IndexSynchronizer(indexId: String, indexDispatcher: ActorRef, baseIndexRep
 
   def receiveRecover: Receive = {
     case SnapshotOffer(_, Snapshot(diffs)) ⇒
-      merger.clear()
-      for ((sequenceNr, diff) ← diffs) {
-        merger.add(sequenceNr, diff)
-      }
+      log.debug("Loading snapshot with sequence number: {}", diffs.lastOption.fold(0L)(_._1))
+      updateState(Loaded(diffs))
 
     case event: Event ⇒
       updateState(event)
 
     case RecoveryCompleted ⇒
       context.system.scheduler.scheduleOnce(syncInterval, self, Synchronize)
+      context.become(receiveDefault)
       context.become(receiveWait, discardOld = false)
       context.setReceiveTimeout(2 minutes)
   }

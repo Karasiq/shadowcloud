@@ -67,7 +67,7 @@ class IndexMergerTest extends ActorSpec with WordSpecLike {
       
       "throw exception on diff rewrite" in {
         intercept[IllegalArgumentException] {
-          index.add(diff1.time, diff1)
+          index.add(diff1.time, diff1.merge(TestUtils.randomDiff))
         }
       }
     }

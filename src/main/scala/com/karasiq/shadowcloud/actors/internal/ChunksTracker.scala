@@ -1,11 +1,12 @@
 package com.karasiq.shadowcloud.actors.internal
 
-import akka.actor.{Actor, ActorLogging, ActorRef}
+import akka.actor.{ActorContext, ActorRef}
+import akka.event.LoggingAdapter
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import com.karasiq.shadowcloud.actors.StorageDispatcher.{ReadChunk, WriteChunk}
+import com.karasiq.shadowcloud.actors.ChunkStorageDispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.crypto.EncryptionModule
-import com.karasiq.shadowcloud.index.{Chunk, ChunkIndex, ChunkIndexDiff}
+import com.karasiq.shadowcloud.index.{Chunk, ChunkIndexDiff}
 import com.karasiq.shadowcloud.utils.Utils
 
 import scala.collection.mutable
@@ -18,9 +19,9 @@ private[actors] object ChunksTracker {
   case class ChunkStatus(status: Status.Value, time: Long, chunk: Chunk, dispatchers: Set[ActorRef] = Set.empty, waiters: Set[ActorRef] = Set.empty)
 }
 
-private[actors] class ChunksTracker(self: Actor with ActorLogging, storages: StorageTracker) {
+private[actors] final class ChunksTracker(storages: StorageTracker, log: LoggingAdapter)(implicit context: ActorContext) {
   import ChunksTracker._
-  import self.{context, log}
+  private[this] implicit val sender: ActorRef = context.self
   private[this] val chunks = mutable.AnyRefMap[ByteString, ChunkStatus]()
 
   def readChunk(chunk: Chunk, receiver: ActorRef): Option[ChunkStatus] = {
@@ -30,12 +31,12 @@ private[actors] class ChunksTracker(self: Actor with ActorLogging, storages: Sto
         if (!Utils.isSameChunk(status.chunk, chunk)) {
           receiver ! ReadChunk.Failure(chunk, new IllegalArgumentException(s"Chunks conflict: ${status.chunk} / $chunk"))
         } else if (status.chunk.data.encrypted.nonEmpty) {
-          log.debug("Chunk extracted from cache: {}", status.chunk)
+          log.info("Chunk extracted from cache: {}", status.chunk)
           receiver ! ReadChunk.Success(status.chunk, Source.single(status.chunk.data.encrypted))
         } else {
           storages.getForRead(status).headOption match {
             case Some(dispatcher) ⇒
-              log.debug("Reading chunk from {}: {}", dispatcher, chunk)
+              log.info("Reading chunk from {}: {}", dispatcher, chunk)
               dispatcher.tell(ReadChunk(chunk), receiver)
 
             case None ⇒
@@ -67,12 +68,12 @@ private[actors] class ChunksTracker(self: Actor with ActorLogging, storages: Sto
           stored.chunk.copy(data = chunk.data.copy(encrypted = encryptor.encrypt(chunk.data.plain, stored.chunk.encryption)))
         }
         receiver ! WriteChunk.Success(chunkWithData, chunkWithData)
-        log.debug("Chunk restored from index, write skipped: {}", chunkWithData)
+        log.info("Chunk restored from index, write skipped: {}", chunkWithData)
         stored.copy(chunk = chunkWithData)
 
       case Some(pending) if pending.status == Status.PENDING ⇒
         context.watch(receiver)
-        log.debug("Already writing chunk, added to queue: {}", chunk)
+        log.info("Already writing chunk, added to queue: {}", chunk)
         val newStatus = pending.copy(waiters = pending.waiters + receiver)
         chunks += chunk.checksum.hash → newStatus
         newStatus
@@ -81,7 +82,7 @@ private[actors] class ChunksTracker(self: Actor with ActorLogging, storages: Sto
         context.watch(receiver)
         val status = ChunkStatus(Status.PENDING, Utils.timestamp, chunk, Set.empty, Set(receiver))
         val written = storageWriteChunk(status)
-        log.debug("Writing chunk to {}: {}", written, chunk)
+        log.info("Writing chunk to {}: {}", written, chunk)
         val newStatus = status.copy(dispatchers = written)
         chunks += chunk.checksum.hash → newStatus
         newStatus
@@ -98,11 +99,6 @@ private[actors] class ChunksTracker(self: Actor with ActorLogging, storages: Sto
         }
       }
     }
-  }
-
-  def register(dispatcher: ActorRef, index: ChunkIndex): Unit = {
-    unregister(dispatcher)
-    index.chunks.foreach(registerChunk(dispatcher, _))
   }
 
   def registerChunk(dispatcher: ActorRef, chunk: Chunk): Unit = {

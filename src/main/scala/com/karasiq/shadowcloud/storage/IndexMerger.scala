@@ -21,11 +21,23 @@ trait IndexMerger[T] {
 }
 
 object IndexMerger {
+  final case class RegionKey(timestamp: Long = 0L, indexId: String = "", sequenceNr: Long = 0L)
+  object RegionKey {
+    implicit val ordering: Ordering[RegionKey] = Ordering.by(key ⇒ (key.timestamp, key.indexId, key.sequenceNr))
+    val zero: RegionKey = RegionKey()
+  }
+
+  /**
+    * Sequential index merger
+    */
   def apply(): IndexMerger[Long] = {
     new DefaultIndexMerger(0L)
   }
 
-  def multiSeq: IndexMerger[(String, Long)] = {
-    new DefaultIndexMerger[(String, Long)](("", 0L))
+  /**
+    * Multi-sequence index merger
+    */
+  def region: IndexMerger[RegionKey] = {
+    new DefaultIndexMerger[RegionKey](RegionKey.zero)(RegionKey.ordering)
   }
 }

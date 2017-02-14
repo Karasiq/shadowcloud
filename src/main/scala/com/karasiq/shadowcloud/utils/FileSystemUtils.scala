@@ -9,12 +9,12 @@ private[shadowcloud] object FileSystemUtils {
   def listFiles(folder: Path): Vector[String] = {
     val files = Vector.newBuilder[String]
     Files.walkFileTree(folder, new SimpleFileVisitor[Path] {
-      override def visitFile(file: Path, attrs: BasicFileAttributes) = {
+      override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
         files += file.getFileName.toString
         FileVisitResult.CONTINUE
       }
 
-      override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes) = {
+      override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult = {
         if (dir == folder) FileVisitResult.CONTINUE else FileVisitResult.SKIP_SUBTREE
       }
     })

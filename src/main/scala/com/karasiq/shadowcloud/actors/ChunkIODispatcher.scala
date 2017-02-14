@@ -1,19 +1,18 @@
 package com.karasiq.shadowcloud.actors
 
 import akka.Done
-import akka.actor.{Actor, ActorRef, Props}
+import akka.actor.{Actor, Props}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
+import com.karasiq.shadowcloud.actors.internal.{MessageStatus, PendingOperation}
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.storage.{BaseChunkRepository, ChunkRepository}
-import com.karasiq.shadowcloud.utils.MessageStatus
 
-import scala.collection.mutable
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-object ChunkStorageDispatcher {
+object ChunkIODispatcher {
   // Messages
   sealed trait Message
   case class WriteChunk(chunk: Chunk) extends Message
@@ -23,16 +22,16 @@ object ChunkStorageDispatcher {
   object ReadChunk extends MessageStatus[Chunk, Source[ByteString, _]]
 
   // Props
-  def props(chunkDispatcher: ActorRef, baseChunkRepository: BaseChunkRepository): Props = {
-    Props(classOf[ChunkStorageDispatcher], chunkDispatcher, baseChunkRepository)
+  def props(baseChunkRepository: BaseChunkRepository): Props = {
+    Props(classOf[ChunkIODispatcher], baseChunkRepository)
   }
 }
 
-class ChunkStorageDispatcher(chunkDispatcher: ActorRef, baseChunkRepository: BaseChunkRepository) extends Actor {
-  import ChunkStorageDispatcher._
+class ChunkIODispatcher(baseChunkRepository: BaseChunkRepository) extends Actor {
+  import ChunkIODispatcher._
 
   implicit val actorMaterializer = ActorMaterializer()
-  val pending = mutable.AnyRefMap[Chunk, Set[ActorRef]]()
+  val pending = PendingOperation.chunk
   val chunkRepository = ChunkRepository.hashed(baseChunkRepository)
 
   def receive: Receive = {
@@ -40,22 +39,10 @@ class ChunkStorageDispatcher(chunkDispatcher: ActorRef, baseChunkRepository: Bas
       sender() ! ReadChunk.Success(chunk, chunkRepository.read(chunk.checksum.hash))
 
     case WriteChunk(chunk) ⇒
-      if (!pending.contains(chunk)) {
-        pending += chunk → Set(sender())
-        writeChunk(chunk)
-      } else {
-        pending += chunk → (pending(chunk) + sender())
-      }
+      pending.addWaiter(chunk, sender(), () ⇒ writeChunk(chunk))
 
-    case msg @ WriteChunk.Failure(chunk, _) ⇒
-      for (actors ← pending.remove(chunk); actor ← actors) {
-        actor ! msg
-      }
-
-    case msg @ WriteChunk.Success(_, chunk) ⇒
-      for (actors ← pending.remove(chunk); actor ← actors) {
-        actor ! msg
-      }
+    case msg: WriteChunk.Status ⇒
+      pending.finish(msg.key, msg)
   }
 
   def writeChunk(chunk: Chunk): Unit = {
@@ -68,10 +55,5 @@ class ChunkStorageDispatcher(chunkDispatcher: ActorRef, baseChunkRepository: Bas
           self ! WriteChunk.Failure(chunk, error)
       })
       .runWith(chunkRepository.write(chunk.checksum.hash))
-  }
-
-  override def preStart(): Unit = {
-    super.preStart()
-    context.watch(chunkDispatcher)
   }
 }

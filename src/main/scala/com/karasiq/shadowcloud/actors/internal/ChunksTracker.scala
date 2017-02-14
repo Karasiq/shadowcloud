@@ -4,7 +4,7 @@ import akka.actor.{ActorContext, ActorRef}
 import akka.event.LoggingAdapter
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
-import com.karasiq.shadowcloud.actors.ChunkStorageDispatcher.{ReadChunk, WriteChunk}
+import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.crypto.EncryptionModule
 import com.karasiq.shadowcloud.index.{Chunk, ChunkIndexDiff}
 import com.karasiq.shadowcloud.utils.Utils

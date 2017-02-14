@@ -5,21 +5,26 @@ import akka.pattern.ask
 import akka.stream.testkit.scaladsl.TestSink
 import akka.testkit.TestActorRef
 import akka.util.ByteString
-import com.karasiq.shadowcloud.actors.ChunkStorageDispatcher.{ReadChunk, WriteChunk}
-import com.karasiq.shadowcloud.actors.{IndexedStorageDispatcher, VirtualRegionDispatcher}
+import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
+import com.karasiq.shadowcloud.actors._
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.storage.files.{FileChunkRepository, FileIndexRepository}
 import org.scalatest.FlatSpecLike
 
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
+// Uses local filesystem
 class VirtualRegionTest extends ActorSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
-  val indexedStorage = TestActorRef(IndexedStorageDispatcher.props("testStorage", new FileChunkRepository(Files.createTempDirectory("vrt-storage")), new FileIndexRepository(Files.createTempDirectory("vrt-index"))), "testStorage")
-  val testRegion = TestActorRef(VirtualRegionDispatcher.props, "testRegion")
+  val index = TestActorRef(IndexSynchronizer.props("testStorage", new FileIndexRepository(Files.createTempDirectory("vrt-index"))), "index")
+  val chunkIO = TestActorRef(ChunkIODispatcher.props(new FileChunkRepository(Files.createTempDirectory("vrt-chunks"))), "chunkIO")
+  val storage = TestActorRef(StorageDispatcher.props("testStorage", index, chunkIO), "storage")
+  val testRegion = TestActorRef(VirtualRegionDispatcher.props("testRegion"), "testRegion")
 
   "Virtual region" should "register storage" in {
-    testRegion ! VirtualRegionDispatcher.Register("testStorage", indexedStorage)
+    testRegion ! VirtualRegionDispatcher.Register("testStorage", storage)
+    expectNoMsg(100 millis)
   }
 
   it should "write chunk" in {
@@ -40,7 +45,9 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
   }
 
   it should "deduplicate chunk" in {
-    val result = testRegion ? WriteChunk(chunk.copy(encryption = chunk.encryption.copy(EncryptionMethod.AES()), data = chunk.data.copy(encrypted = randomBytes(chunk.data.plain.length))))
+    val wrongChunk = chunk.copy(encryption = chunk.encryption.copy(EncryptionMethod.AES()), data = chunk.data.copy(encrypted = randomBytes(chunk.data.plain.length)))
+    wrongChunk shouldNot be (chunk)
+    val result = testRegion ? WriteChunk(wrongChunk)
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
   }
 }

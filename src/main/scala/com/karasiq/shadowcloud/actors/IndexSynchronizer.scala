@@ -7,6 +7,7 @@ import akka.stream.scaladsl.{Sink, Source}
 import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.events.StorageEvent._
 import com.karasiq.shadowcloud.actors.internal.MessageStatus
+import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.{ChunkIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.{BaseIndexRepository, IndexMerger, IndexRepository, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.utils.Utils
@@ -46,9 +47,81 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
   implicit val actorMaterializer = ActorMaterializer()
   val indexRepository = IndexRepository.incremental(baseIndexRepository)
   val merger = IndexMerger()
-  val syncInterval = Utils.scalaDuration(Utils.config.getDuration("shadowcloud.index.sync-interval"))
+  val config = AppConfig().index
 
-  def persistenceId: String = s"index_$indexId"
+  override val persistenceId: String = s"index_$indexId"
+
+  // Local operations
+  def receiveDefault: Receive = {
+    case GetIndex ⇒
+      sender() ! GetIndex.Success(merger.diffs.toVector)
+
+    case AddPending(diff) ⇒
+      log.debug("Pending diff added: {}", diff)
+      persistAsync(PendingIndexUpdated(diff))(updateState)
+  }
+
+  // Wait for synchronize command
+  def receiveWait: Receive = {
+    case Synchronize ⇒
+      log.debug("Starting synchronization, last sequence number: {}", merger.lastSequenceNr)
+      indexRepository.keysAfter(merger.lastSequenceNr)
+        .via(streams.read(indexRepository))
+        .map(ReadSuccess.tupled)
+        .runWith(Sink.actorRef(self, CompleteRead))
+      context.become(receiveRead.orElse(receiveDefault))
+
+    case ReceiveTimeout ⇒
+      throw new IllegalArgumentException("Receive timeout")
+  }
+
+  // Reading remote diffs
+  def receiveRead: Receive = {
+    case ReadSuccess(sequenceNr, diff) ⇒
+      log.info("Remote diff received: {}", diff)
+      persistAsync(IndexUpdated(sequenceNr, diff, remote = true))(updateState)
+
+    case Status.Failure(error) ⇒
+      throw error
+
+    case CompleteRead ⇒
+      log.debug("Synchronization read completed")
+      if (merger.pending.nonEmpty) {
+        write(merger.lastSequenceNr + 1, merger.pending)
+      } else {
+        scheduleSync()
+      }
+  }
+
+  // Writing local diffs
+  def receiveWrite: Receive = {
+    case WriteSuccess(sequenceNr, diff) ⇒
+      log.info("Diff written: {}", diff)
+      persistAsync(IndexUpdated(sequenceNr, diff, remote = false))(updateState)
+
+    case Status.Failure(error) ⇒
+      log.error(error, "Write error")
+      scheduleSync()
+
+    case CompleteWrite ⇒
+      log.debug("Synchronization write completed")
+      scheduleSync()
+  }
+
+  override def receiveRecover: Receive = {
+    case SnapshotOffer(_, Snapshot(diffs)) ⇒
+      log.debug("Loading snapshot with sequence number: {}", diffs.lastOption.fold(0L)(_._1))
+      updateState(IndexLoaded(diffs))
+
+    case event: Event ⇒
+      updateState(event)
+
+    case RecoveryCompleted ⇒
+      context.system.scheduler.scheduleOnce(config.syncInterval, self, Synchronize)
+      context.setReceiveTimeout(2 minutes)
+  }
+
+  override def receiveCommand: Receive = receiveWait.orElse(receiveDefault)
 
   def updateState(event: Event): Unit = {
     StorageEvent.stream.publish(StorageEvent.StorageEnvelope(indexId, event))
@@ -71,8 +144,8 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
   }
 
   def scheduleSync(): Unit = {
-    log.debug("Scheduling synchronize in {}", syncInterval.toCoarsest)
-    context.system.scheduler.scheduleOnce(syncInterval, self, Synchronize)
+    log.debug("Scheduling synchronize in {}", config.syncInterval.toCoarsest)
+    context.system.scheduler.scheduleOnce(config.syncInterval, self, Synchronize)
     context.become(receiveWait.orElse(receiveDefault))
   }
 
@@ -84,72 +157,4 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
       .runWith(Sink.actorRef(self, CompleteWrite))
     context.become(receiveWrite.orElse(receiveDefault))
   }
-
-  def receiveDefault: Receive = {
-    case GetIndex ⇒
-      sender() ! GetIndex.Success(merger.diffs.toVector)
-
-    case AddPending(diff) ⇒
-      log.debug("Pending diff added: {}", diff)
-      persistAsync(PendingIndexUpdated(diff))(updateState)
-  }
-
-  def receiveWait: Receive = {
-    case Synchronize ⇒
-      log.debug("Starting synchronization, last sequence number: {}", merger.lastSequenceNr)
-      indexRepository.keysAfter(merger.lastSequenceNr)
-        .via(streams.read(indexRepository))
-        .map(ReadSuccess.tupled)
-        .runWith(Sink.actorRef(self, CompleteRead))
-      context.become(receiveRead.orElse(receiveDefault))
-
-    case ReceiveTimeout ⇒
-      throw new IllegalArgumentException("Receive timeout")
-  }
-
-  def receiveRead: Receive = {
-    case ReadSuccess(sequenceNr, diff) ⇒
-      log.info("Remote diff received: {}", diff)
-      persistAsync(IndexUpdated(sequenceNr, diff, remote = true))(updateState)
-
-    case Status.Failure(error) ⇒
-      throw error
-
-    case CompleteRead ⇒
-      log.debug("Synchronization read completed")
-      if (merger.pending.nonEmpty) {
-        write(merger.lastSequenceNr + 1, merger.pending)
-      } else {
-        scheduleSync()
-      }
-  }
-
-  def receiveWrite: Receive = {
-    case WriteSuccess(sequenceNr, diff) ⇒
-      log.info("Diff written: {}", diff)
-      persistAsync(IndexUpdated(sequenceNr, diff, remote = false))(updateState)
-
-    case Status.Failure(error) ⇒
-      log.error(error, "Write error")
-      scheduleSync()
-
-    case CompleteWrite ⇒
-      log.debug("Synchronization write completed")
-      scheduleSync()
-  }
-
-  def receiveRecover: Receive = {
-    case SnapshotOffer(_, Snapshot(diffs)) ⇒
-      log.debug("Loading snapshot with sequence number: {}", diffs.lastOption.fold(0L)(_._1))
-      updateState(IndexLoaded(diffs))
-
-    case event: Event ⇒
-      updateState(event)
-
-    case RecoveryCompleted ⇒
-      context.system.scheduler.scheduleOnce(syncInterval, self, Synchronize)
-      context.setReceiveTimeout(2 minutes)
-  }
-
-  def receiveCommand: Receive = receiveWait.orElse(receiveDefault)
 }

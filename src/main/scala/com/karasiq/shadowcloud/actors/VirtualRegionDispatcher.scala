@@ -31,7 +31,6 @@ object VirtualRegionDispatcher {
   }
 }
 
-// TODO: Folder dispatcher
 class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging {
   import VirtualRegionDispatcher._
   require(regionId.nonEmpty)
@@ -42,6 +41,14 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
   val merger = IndexMerger.region
 
   def receive: Receive = {
+    // -----------------------------------------------------------------------
+    // TODO: Folder commands
+    // -----------------------------------------------------------------------
+    // ???
+
+    // -----------------------------------------------------------------------
+    // Read/write commands
+    // -----------------------------------------------------------------------
     case ReadChunk(chunk) ⇒
       chunks.readChunk(chunk, sender())
 
@@ -56,6 +63,9 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
       chunks.unregisterChunk(sender(), chunk)
       chunks.retryPendingChunks()
 
+    // -----------------------------------------------------------------------
+    // Storage events
+    // -----------------------------------------------------------------------
     case Register(storageId, dispatcher) if !storages.contains(storageId) ⇒
       log.info("Registered storage: {}", dispatcher)
       storages.register(storageId, dispatcher)
@@ -72,7 +82,6 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
       addStorageDiffs(storageId, diffs)
       chunks.retryPendingChunks()
 
-    // Storage events
     case StorageEnvelope(storageId, event) if storages.contains(storageId) ⇒ event match {
       case StorageEvent.IndexLoaded(diffs) ⇒
         log.info("Storage [{}] index loaded: {} diffs", storageId, diffs.length)
@@ -106,7 +115,9 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
     val dispatcher = storages.getDispatcher(storageId)
     diffs.foreach { case (sequenceNr, diff) ⇒
       chunks.update(dispatcher, diff.chunks)
-      merger.add(RegionKey(diff.time, storageId, sequenceNr), diff)
+      val regionKey = RegionKey(diff.time, storageId, sequenceNr)
+      merger.add(regionKey, diff)
+      RegionEvent.stream.publish(RegionEnvelope(regionId, RegionEvent.IndexUpdated(regionKey, diff)))
     }
   }
 

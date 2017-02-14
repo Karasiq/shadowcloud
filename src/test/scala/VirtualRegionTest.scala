@@ -30,8 +30,17 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
   }
 
   it should "write chunk" in {
+    StorageEvent.stream.subscribe(testActor, "testStorage")
     val result = testRegion ? WriteChunk(chunk)
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
+    expectMsg(StorageEnvelope("testStorage", StorageEvent.ChunkWritten(chunk)))
+    val StorageEnvelope("testStorage", StorageEvent.PendingIndexUpdated(diff)) = receiveOne(1 second)
+    diff.folders shouldBe empty
+    diff.time should be > TestUtils.testTimestamp
+    diff.chunks.newChunks shouldBe Set(chunk)
+    diff.chunks.deletedChunks shouldBe empty
+    expectNoMsg(1 second)
+    StorageEvent.stream.unsubscribe(testActor, "testStorage")
   }
 
   it should "read chunk" in {
@@ -63,6 +72,7 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
     diff.chunks.newChunks shouldBe Set(chunk)
     diff.chunks.deletedChunks shouldBe empty
     remote shouldBe false
+    expectNoMsg(1 seconds)
     StorageEvent.stream.unsubscribe(testActor)
   }
 }

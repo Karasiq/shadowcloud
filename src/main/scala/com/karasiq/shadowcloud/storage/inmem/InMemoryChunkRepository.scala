@@ -1,34 +1,32 @@
 package com.karasiq.shadowcloud.storage.inmem
 
-import akka.stream.scaladsl.{Sink, Source}
+import akka.NotUsed
+import akka.stream.IOResult
+import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.storage.BaseChunkRepository
+import com.karasiq.shadowcloud.storage.ChunkRepository
 import com.karasiq.shadowcloud.streams.ByteStringConcat
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
 import scala.language.postfixOps
-import scala.util.Try
 
 /**
   * Stores chunks in [[scala.collection.concurrent.TrieMap TrieMap]]
   */
-private[storage] final class InMemoryChunkRepository extends BaseChunkRepository {
-  private[this] val _chunks = TrieMap.empty[String, ByteString]
+private[storage] class InMemoryChunkRepository[Key] extends ChunkRepository[Key] {
+  private[this] val underlying = new TrieMapStreams[Key, ByteString](TrieMap.empty, _.length)
 
-  def chunks: Source[String, _] = {
-    Source.fromIterator(() ⇒ _chunks.keysIterator)
+  def chunks: Source[Key, NotUsed] = {
+    underlying.keys
   }
 
-  def read(key: String): Source[ByteString, _] = {
-    Source.fromFuture(Future.fromTry(Try(_chunks(key))))
+  def read(key: Key): Source[ByteString, Future[IOResult]] = {
+    underlying.read(key)
   }
 
-  def write(key: String): Sink[ByteString, _] = {
-    ByteStringConcat().to(Sink.foreach { data ⇒
-      if (_chunks.putIfAbsent(key, data).nonEmpty) {
-        throw new IllegalArgumentException(s"Chunk already exists: $key")
-      }
-    })
+  def write(key: Key): Sink[ByteString, Future[IOResult]] = {
+    ByteStringConcat()
+      .toMat(underlying.write(key))(Keep.right)
   }
 }

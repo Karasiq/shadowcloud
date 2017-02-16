@@ -2,10 +2,11 @@ package com.karasiq.shadowcloud.test.storage
 
 import java.nio.file.Files
 
-import akka.stream.scaladsl.Keep
+import akka.stream.scaladsl.{Keep, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.storage.{BaseIndexRepository, IndexRepository, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.storage.IndexRepository.BaseIndexRepository
+import com.karasiq.shadowcloud.storage.{IndexRepository, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 
@@ -38,6 +39,14 @@ class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
     readResult.requestNext((diff.time, diff))
     read.sendComplete()
     readResult.expectComplete()
+
+    val rewriteResult = Source.single(TestUtils.randomBytes(200))
+      .runWith(testRepository.write(diff.time))
+
+    whenReady(rewriteResult) { result ⇒
+      result.count shouldBe 0L
+      result.status.isFailure shouldBe true
+    }
   }
 
   "In-memory repository" should "store diff" in {

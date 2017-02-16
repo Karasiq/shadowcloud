@@ -2,10 +2,11 @@ package com.karasiq.shadowcloud.test.storage
 
 import java.nio.file.Files
 
-import akka.stream.scaladsl.Keep
+import akka.stream.scaladsl.{Keep, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.storage.{BaseChunkRepository, ChunkRepository}
+import com.karasiq.shadowcloud.storage.ChunkRepository
+import com.karasiq.shadowcloud.storage.ChunkRepository.BaseChunkRepository
 import com.karasiq.shadowcloud.streams.ByteStringConcat
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
@@ -32,6 +33,15 @@ class ChunkRepositoryTest extends ActorSpec with FlatSpecLike {
     val read = testRepository.read(chunk.checksum.hash).via(ByteStringConcat()).runWith(TestSink.probe)
     read.requestNext(chunk.data.plain)
     read.expectComplete()
+
+    val rewriteBytes = TestUtils.randomBytes(chunk.data.plain.length)
+    val rewriteResult = Source.single(rewriteBytes)
+      .runWith(testRepository.write(chunk.checksum.hash))
+
+    whenReady(rewriteResult) { result ⇒
+      result.count shouldBe 0L
+      result.status.isFailure shouldBe true
+    }
   }
 
   "In-memory repository" should "store chunk" in {

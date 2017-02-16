@@ -8,7 +8,8 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.internal.PendingOperation
 import com.karasiq.shadowcloud.actors.utils.{ChunkKeyExtractor, MessageStatus}
 import com.karasiq.shadowcloud.index.Chunk
-import com.karasiq.shadowcloud.storage.{BaseChunkRepository, ChunkRepository}
+import com.karasiq.shadowcloud.storage.ChunkRepository
+import com.karasiq.shadowcloud.storage.ChunkRepository.BaseChunkRepository
 
 import scala.language.postfixOps
 import scala.util.{Failure, Success}

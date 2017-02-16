@@ -6,7 +6,7 @@ import akka.NotUsed
 import akka.stream.IOResult
 import akka.stream.scaladsl.{FileIO, Sink, Source}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.storage.BaseChunkRepository
+import com.karasiq.shadowcloud.storage.ChunkRepository.BaseChunkRepository
 import com.karasiq.shadowcloud.utils.FileSystemUtils
 
 import scala.concurrent.{ExecutionContext, Future}

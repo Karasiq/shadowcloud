@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.actors.events
+package com.karasiq.shadowcloud.actors.internal
 
 import akka.actor.ActorRef
 import akka.event.{ActorEventBus, LookupClassification}

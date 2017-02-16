@@ -1,6 +1,7 @@
 package com.karasiq.shadowcloud.crypto
 
 import akka.util.ByteString
+import com.karasiq.shadowcloud.crypto.internal.{AESGCMEncryptionModule, PlainEncryptionModule}
 
 import scala.language.postfixOps
 
@@ -25,10 +26,11 @@ trait EncryptionModule {
 
 object EncryptionModule {
   import EncryptionMethod._
+  val plain: EncryptionModule = new PlainEncryptionModule
 
   def apply(method: EncryptionMethod): EncryptionModule = method match {
     case Plain ⇒
-      PlainEncryptionModule
+      plain
       
     case AES("GCM", bits @ (128 | 256)) ⇒
       new AESGCMEncryptionModule(bits)

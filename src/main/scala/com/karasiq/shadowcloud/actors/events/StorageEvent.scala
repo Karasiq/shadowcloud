@@ -1,5 +1,6 @@
 package com.karasiq.shadowcloud.actors.events
 
+import com.karasiq.shadowcloud.actors.internal.StringEventBus
 import com.karasiq.shadowcloud.index.{Chunk, IndexDiff}
 
 import scala.language.postfixOps

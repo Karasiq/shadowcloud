@@ -3,6 +3,7 @@ package com.karasiq.shadowcloud.crypto
 import java.security.MessageDigest
 
 import akka.util.ByteString
+import com.karasiq.shadowcloud.crypto.internal.MessageDigestHashingModule
 
 import scala.language.postfixOps
 
@@ -22,29 +23,6 @@ trait HashingModule {
 }
 
 object HashingModule {
-  final class MessageDigestHashingModule(messageDigest: MessageDigest) extends HashingModule {
-    messageDigest.reset()
-
-    val method = HashingMethod.Digest(messageDigest.getAlgorithm)
-
-    def update(data: ByteString) = {
-      messageDigest.update(data.toArray)
-    }
-
-    def createHash() = {
-      ByteString(messageDigest.digest())
-    }
-
-    def reset() = {
-      messageDigest.reset()
-    }
-
-    def hash(data: ByteString) = {
-      messageDigest.reset()
-      ByteString(messageDigest.digest(data.toArray))
-    }
-  }
-
   def apply(method: HashingMethod): HashingModule = method match {
     case HashingMethod.Digest(alg) ⇒
       apply(alg)

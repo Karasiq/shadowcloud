@@ -29,7 +29,7 @@ class ChunkVerifier extends GraphStage[FlowShape[Chunk, Chunk]] {
           (chunk.data.encrypted.nonEmpty && chunk.checksum.encryptedSize != chunk.data.encrypted.length)) {
           failStage(new IllegalArgumentException(s"Chunk sizes not match: $chunk"))
         } else {
-          emit(outlet, chunk)
+          push(outlet, chunk)
         }
       }
     })

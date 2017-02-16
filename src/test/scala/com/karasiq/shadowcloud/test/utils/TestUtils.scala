@@ -1,20 +1,24 @@
+package com.karasiq.shadowcloud.test.utils
+
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, IndexDiff}
-import org.apache.commons.codec.binary.Hex
+import com.karasiq.shadowcloud.utils.Utils
 
 import scala.language.postfixOps
 import scala.util.Random
 
 object TestUtils {
   implicit class ByteStringOps(private val bs: ByteString) {
-    def toHexString: String = Hex.encodeHexString(bs.toArray)
+    def toHexString: String = {
+      Utils.toHexString(bs)
+    }
   }
 
   implicit class ByteStringObjOps(private val bs: ByteString.type) {
     def fromHexString(hexString: String): ByteString = {
-      ByteString(Hex.decodeHex(hexString.toCharArray))
+      Utils.parseHexString(hexString)
     }
 
     def fromChunks(chunks: Seq[Chunk]): ByteString = {
@@ -27,7 +31,7 @@ object TestUtils {
   }
 
   def randomBytes(length: Int): ByteString = {
-    val array = Array.ofDim[Byte](length)
+    val array = new Array[Byte](length)
     Random.nextBytes(array)
     ByteString(array)
   }

@@ -1,3 +1,5 @@
+package com.karasiq.shadowcloud.test.streams
+
 import java.nio.file.Files
 
 import akka.stream.scaladsl.{Compression, Keep, Sink, Source}
@@ -6,6 +8,7 @@ import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.serialization.Serialization
 import com.karasiq.shadowcloud.storage.files.FileIndexRepository
 import com.karasiq.shadowcloud.storage.{IndexRepository, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 
 import scala.concurrent.duration._

@@ -1,3 +1,5 @@
+package com.karasiq.shadowcloud.test.streams
+
 import akka.Done
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
@@ -5,6 +7,7 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule, HashingModule}
 import com.karasiq.shadowcloud.index.{Checksum, Chunk, Data}
 import com.karasiq.shadowcloud.streams._
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 
 import scala.language.postfixOps

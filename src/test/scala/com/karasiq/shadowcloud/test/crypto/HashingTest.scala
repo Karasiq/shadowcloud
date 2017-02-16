@@ -1,6 +1,8 @@
-import TestUtils.ByteStringObjOps
+package com.karasiq.shadowcloud.test.crypto
+
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.HashingModule
+import com.karasiq.shadowcloud.test.utils.TestUtils.ByteStringObjOps
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.language.postfixOps

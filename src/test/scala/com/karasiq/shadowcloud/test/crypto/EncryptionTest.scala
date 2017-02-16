@@ -1,5 +1,7 @@
-import TestUtils._
+package com.karasiq.shadowcloud.test.crypto
+
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule}
+import com.karasiq.shadowcloud.test.utils.TestUtils._
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.language.postfixOps

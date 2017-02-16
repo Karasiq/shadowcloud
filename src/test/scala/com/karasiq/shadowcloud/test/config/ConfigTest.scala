@@ -1,3 +1,5 @@
+package com.karasiq.shadowcloud.test.config
+
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.crypto.HashingMethod
 import com.typesafe.config.ConfigFactory

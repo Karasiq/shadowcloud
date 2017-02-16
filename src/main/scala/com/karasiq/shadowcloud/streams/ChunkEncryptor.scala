@@ -43,7 +43,7 @@ class ChunkEncryptor(encryptionMethod: EncryptionMethod, hashingMethod: HashingM
           parameters = encryptionModule.updateParameters(parameters)
         }
 
-        emit(outlet, encryptedChunk)
+        push(outlet, encryptedChunk)
       }
     })
 

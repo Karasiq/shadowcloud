@@ -23,7 +23,7 @@ class ChunkDecryptor extends GraphStage[FlowShape[Chunk, Chunk]] {
         val decryptor = decryptors.getOrElseUpdate(chunk.encryption.method, EncryptionModule(chunk.encryption.method))
         val plain = decryptor.decrypt(chunk.data.encrypted, chunk.encryption)
         val decryptedChunk = chunk.copy(data = chunk.data.copy(plain = plain))
-        emit(outlet, decryptedChunk)
+        push(outlet, decryptedChunk)
       }
     })
 

@@ -1,3 +1,5 @@
+package com.karasiq.shadowcloud.test.utils
+
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}

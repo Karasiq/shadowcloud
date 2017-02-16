@@ -1,4 +1,7 @@
+package com.karasiq.shadowcloud.test.index
+
 import com.karasiq.shadowcloud.index.Folder
+import com.karasiq.shadowcloud.test.utils.TestUtils
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.language.postfixOps

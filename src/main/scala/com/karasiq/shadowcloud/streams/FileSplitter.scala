@@ -48,10 +48,11 @@ class FileSplitter(chunkSize: Int, hashingMethod: HashingMethod) extends GraphSt
     }
 
     def emitLastChunk(): Unit = {
-      if (buffer.nonEmpty)
+      if (buffer.nonEmpty) {
         emitNextChunk(emitLastChunk)
-      else
+      } else {
         complete(outChunks)
+      }
     }
 
     def processBuffer(): Unit = {

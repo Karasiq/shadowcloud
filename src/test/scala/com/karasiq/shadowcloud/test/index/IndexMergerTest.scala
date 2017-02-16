@@ -1,6 +1,9 @@
+package com.karasiq.shadowcloud.test.index
+
 import com.karasiq.shadowcloud.index.FolderIndex
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.IndexMerger
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.WordSpecLike
 
 import scala.language.postfixOps
@@ -70,6 +73,16 @@ class IndexMergerTest extends ActorSpec with WordSpecLike {
         intercept[IllegalArgumentException] {
           index.add(diff1.time, diff1.merge(TestUtils.randomDiff))
         }
+      }
+
+      "clear" in {
+        index.clear()
+        index.diffs shouldBe empty
+        index.pending shouldBe IndexDiff.empty
+        index.mergedDiff shouldBe IndexDiff.empty
+        index.lastSequenceNr shouldBe 0L
+        index.chunks.chunks shouldBe empty
+        index.folders shouldBe FolderIndex.empty
       }
     }
   }

@@ -1,19 +1,22 @@
+package com.karasiq.shadowcloud.test.streams
+
 import java.nio.file.Files
 
-import TestUtils._
 import akka.pattern.ask
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestActorRef
 import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
-import com.karasiq.shadowcloud.actors._
 import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
+import com.karasiq.shadowcloud.actors.{IndexSynchronizer, _}
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.IndexRepositoryStreams
 import com.karasiq.shadowcloud.storage.files.{FileChunkRepository, FileIndexRepository}
+import com.karasiq.shadowcloud.test.utils.TestUtils.ByteStringOps
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 
 import scala.concurrent.duration._
@@ -23,8 +26,9 @@ import scala.language.postfixOps
 class VirtualRegionTest extends ActorSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
   val indexRepository = new FileIndexRepository(Files.createTempDirectory("vrt-index"))
+  val fileRepository = new FileChunkRepository(Files.createTempDirectory("vrt-chunks"))
   val index = TestActorRef(IndexSynchronizer.props("testStorage", indexRepository), "index")
-  val chunkIO = TestActorRef(ChunkIODispatcher.props(new FileChunkRepository(Files.createTempDirectory("vrt-chunks"))), "chunkIO")
+  val chunkIO = TestActorRef(ChunkIODispatcher.props(fileRepository), "chunkIO")
   val storage = TestActorRef(StorageDispatcher.props("testStorage", index, chunkIO), "storage")
   val testRegion = TestActorRef(VirtualRegionDispatcher.props("testRegion"), "testRegion")
 
@@ -44,6 +48,9 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
     diff.chunks.newChunks shouldBe Set(chunk)
     diff.chunks.deletedChunks shouldBe empty
     expectNoMsg(1 second)
+    val storedChunks = fileRepository.chunks.runWith(TestSink.probe)
+    storedChunks.requestNext(chunk.checksum.hash.toHexString)
+    storedChunks.expectComplete()
     StorageEvent.stream.unsubscribe(testActor, "testStorage")
   }
 
@@ -60,7 +67,7 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
   }
 
   it should "deduplicate chunk" in {
-    val wrongChunk = chunk.copy(encryption = chunk.encryption.copy(EncryptionMethod.AES()), data = chunk.data.copy(encrypted = randomBytes(chunk.data.plain.length)))
+    val wrongChunk = chunk.copy(encryption = chunk.encryption.copy(EncryptionMethod.AES()), data = chunk.data.copy(encrypted = TestUtils.randomBytes(chunk.data.plain.length)))
     wrongChunk shouldNot be (chunk)
     val result = testRegion ? WriteChunk(wrongChunk)
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
@@ -98,6 +105,12 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
     diff shouldBe diff1
     remote shouldBe true
     expectNoMsg(1 second)
+    storage ! IndexSynchronizer.GetIndex
+    val IndexSynchronizer.GetIndex.Success(Seq((1, firstDiff), (2, secondDiff))) = receiveOne(1 second)
+    firstDiff.folders shouldBe empty
+    firstDiff.chunks.newChunks shouldBe Set(chunk)
+    firstDiff.chunks.deletedChunks shouldBe empty
+    secondDiff shouldBe diff1
     StorageEvent.stream.unsubscribe(testActor)
   }
 }

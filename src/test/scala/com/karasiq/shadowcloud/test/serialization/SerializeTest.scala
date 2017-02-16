@@ -1,7 +1,10 @@
+package com.karasiq.shadowcloud.test.serialization
+
 import akka.util.ByteString
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.index.{Chunk, File, Folder}
 import com.karasiq.shadowcloud.serialization.SerializationModule
+import com.karasiq.shadowcloud.test.utils.TestUtils
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.language.postfixOps

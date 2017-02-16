@@ -35,7 +35,7 @@ class FileIndexer(hashingMethod: HashingMethod) extends GraphStageWithMaterializ
           plainSize += chunk.data.plain.length
           encryptedSize += chunk.data.encrypted.length
           chunks += chunk.withoutData
-          emit(outlet, chunk)
+          push(outlet, chunk)
         }
 
         override def onUpstreamFinish(): Unit = {
@@ -52,10 +52,11 @@ class FileIndexer(hashingMethod: HashingMethod) extends GraphStageWithMaterializ
 
         override def onDownstreamFinish(): Unit = {
           val exception = new IOException("Downstream terminated")
-          if (promise.tryFailure(exception))
+          if (promise.tryFailure(exception)) {
             failStage(exception)
-          else
+          } else {
             completeStage()
+          }
         }
       })
 

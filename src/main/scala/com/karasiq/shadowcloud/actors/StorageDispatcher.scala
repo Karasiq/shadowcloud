@@ -4,7 +4,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, Props}
 import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
 import com.karasiq.shadowcloud.actors.internal.PendingOperation
-import com.karasiq.shadowcloud.index.{ChunkIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.{BaseChunkRepository, BaseIndexRepository}
 import com.karasiq.shadowcloud.utils.Utils
 

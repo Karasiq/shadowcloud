@@ -1,4 +1,5 @@
-import com.karasiq.shadowcloud.index.{FolderIndex, IndexDiff}
+import com.karasiq.shadowcloud.index.FolderIndex
+import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.IndexMerger
 import org.scalatest.WordSpecLike
 

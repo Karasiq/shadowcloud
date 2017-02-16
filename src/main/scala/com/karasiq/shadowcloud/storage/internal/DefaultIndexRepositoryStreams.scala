@@ -4,7 +4,7 @@ import akka.NotUsed
 import akka.stream.FlowShape
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Source}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.index.IndexDiff
+import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.{IndexRepository, IndexRepositoryStreams}
 
 import scala.language.postfixOps

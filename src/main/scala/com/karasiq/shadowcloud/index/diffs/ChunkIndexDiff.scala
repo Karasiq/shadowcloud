@@ -1,5 +1,6 @@
-package com.karasiq.shadowcloud.index
+package com.karasiq.shadowcloud.index.diffs
 
+import com.karasiq.shadowcloud.index.{Chunk, ChunkIndex}
 import com.karasiq.shadowcloud.utils.MergeUtil.{Decider, SplitDecider}
 import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 

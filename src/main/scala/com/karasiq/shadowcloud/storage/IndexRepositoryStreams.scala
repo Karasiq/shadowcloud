@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.storage
 
 import akka.stream.scaladsl.{Compression, Flow}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.index.IndexDiff
+import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.serialization.Serialization
 import com.karasiq.shadowcloud.storage.internal.DefaultIndexRepositoryStreams
 import com.karasiq.shadowcloud.streams.ByteStringConcat

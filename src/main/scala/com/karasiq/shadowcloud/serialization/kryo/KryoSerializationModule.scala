@@ -3,6 +3,7 @@ package com.karasiq.shadowcloud.serialization.kryo
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod}
 import com.karasiq.shadowcloud.index._
+import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, IndexDiff}
 import com.karasiq.shadowcloud.serialization.SerializationModule
 import com.twitter.chill.{KryoBase, KryoPool, ScalaKryoInstantiator}
 
@@ -14,7 +15,7 @@ import scala.reflect.ClassTag
   * @see [[https://github.com/EsotericSoftware/kryo]]
   * @see [[https://github.com/twitter/chill]]
   */
-class KryoSerializationModule extends SerializationModule {
+private[serialization] final class KryoSerializationModule extends SerializationModule {
   private[this] val instantiator = new ScalaKryoInstantiator() {
     override def newKryo(): KryoBase = {
       val kryo = super.newKryo()
@@ -37,5 +38,3 @@ class KryoSerializationModule extends SerializationModule {
     kryoPool.fromBytes(value.toArray, implicitly[ClassTag[T]].runtimeClass).asInstanceOf[T]
   }
 }
-
-object KryoSerializationModule extends KryoSerializationModule

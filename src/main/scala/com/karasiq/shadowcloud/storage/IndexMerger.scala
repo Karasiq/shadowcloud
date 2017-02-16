@@ -1,6 +1,7 @@
 package com.karasiq.shadowcloud.storage
 
-import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex, IndexDiff}
+import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.storage.internal.DefaultIndexMerger
 
 import scala.collection.SortedMap

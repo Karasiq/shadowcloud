@@ -11,7 +11,7 @@ import com.karasiq.shadowcloud.actors._
 import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
-import com.karasiq.shadowcloud.index.IndexDiff
+import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.IndexRepositoryStreams
 import com.karasiq.shadowcloud.storage.files.{FileChunkRepository, FileIndexRepository}
 import org.scalatest.FlatSpecLike

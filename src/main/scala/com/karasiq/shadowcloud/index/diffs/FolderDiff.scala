@@ -1,5 +1,7 @@
-package com.karasiq.shadowcloud.index
+package com.karasiq.shadowcloud.index.diffs
 
+import com.karasiq.shadowcloud.index._
+import com.karasiq.shadowcloud.index.utils.FolderDecider
 import com.karasiq.shadowcloud.utils.MergeUtil
 import com.karasiq.shadowcloud.utils.MergeUtil.SplitDecider
 

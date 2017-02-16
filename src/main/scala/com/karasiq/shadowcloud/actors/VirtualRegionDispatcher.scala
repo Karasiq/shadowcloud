@@ -8,7 +8,7 @@ import com.karasiq.shadowcloud.actors.events.RegionEvent.RegionEnvelope
 import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
 import com.karasiq.shadowcloud.actors.events.{RegionEvent, StorageEvent}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
-import com.karasiq.shadowcloud.index.IndexDiff
+import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.IndexMerger
 import com.karasiq.shadowcloud.storage.IndexMerger.RegionKey
 

@@ -12,5 +12,6 @@ trait SerializationModule {
 }
 
 object SerializationModule {
-  val default: SerializationModule = KryoSerializationModule
+  val kryo: SerializationModule = new KryoSerializationModule
+  val default = kryo
 }

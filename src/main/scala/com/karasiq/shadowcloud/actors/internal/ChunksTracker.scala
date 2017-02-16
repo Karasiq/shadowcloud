@@ -6,7 +6,8 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.crypto.EncryptionModule
-import com.karasiq.shadowcloud.index.{Chunk, ChunkIndexDiff}
+import com.karasiq.shadowcloud.index.Chunk
+import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
 import com.karasiq.shadowcloud.utils.Utils
 
 import scala.collection.mutable

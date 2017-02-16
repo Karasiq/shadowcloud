@@ -1,5 +1,6 @@
 package com.karasiq.shadowcloud.index
 
+import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
 import com.karasiq.shadowcloud.utils.Utils
 
 import scala.collection.GenTraversableOnce

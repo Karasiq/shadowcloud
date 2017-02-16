@@ -1,5 +1,6 @@
 package com.karasiq.shadowcloud.index
 
+import com.karasiq.shadowcloud.index.diffs.FolderDiff
 import com.karasiq.shadowcloud.utils.MergeUtil.State._
 import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 

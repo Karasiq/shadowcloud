@@ -8,7 +8,7 @@ import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.events.StorageEvent._
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
-import com.karasiq.shadowcloud.index.{ChunkIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.{BaseIndexRepository, IndexMerger, IndexRepository, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.utils.Utils
 

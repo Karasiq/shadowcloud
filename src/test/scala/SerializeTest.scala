@@ -1,12 +1,13 @@
 import akka.util.ByteString
-import com.karasiq.shadowcloud.index.{Chunk, File, Folder, IndexDiff}
-import com.karasiq.shadowcloud.serialization.kryo.KryoSerializationModule
+import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.index.{Chunk, File, Folder}
+import com.karasiq.shadowcloud.serialization.SerializationModule
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.language.postfixOps
 
 class SerializeTest extends FlatSpec with Matchers {
-  val kryo = new KryoSerializationModule
+  val kryo = SerializationModule.kryo
 
   "Kryo serializer" should "serialize chunk" in {
     val chunk = TestUtils.randomChunk

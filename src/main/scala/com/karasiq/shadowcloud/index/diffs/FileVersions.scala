@@ -1,4 +1,6 @@
-package com.karasiq.shadowcloud.index
+package com.karasiq.shadowcloud.index.diffs
+
+import com.karasiq.shadowcloud.index.{File, Folder}
 
 import scala.language.postfixOps
 

@@ -55,8 +55,8 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
     case WriteChunk(chunk) ⇒
       chunks.writeChunk(chunk, sender())
 
-    case _: WriteChunk.Success ⇒
-      // Ignore
+    case WriteChunk.Success(_, chunk) ⇒
+      log.debug("Chunk write success: {}", chunk)
 
     case WriteChunk.Failure(chunk, error) ⇒
       log.error(error, "Chunk write failed: {}", chunk)
@@ -92,8 +92,8 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
         log.info("Storage [{}] index updated: {}", storageId, diff)
         addStorageDiff(storageId, sequenceNr, diff)
 
-      case StorageEvent.PendingIndexUpdated(_) ⇒
-        // Ignore
+      case StorageEvent.PendingIndexUpdated(diff) ⇒
+        log.debug("Storage [{}] pending index updated: {}", storageId, diff)
 
       case StorageEvent.ChunkWritten(chunk) ⇒
         log.info("Chunk written: {}", chunk)
@@ -117,6 +117,7 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
       chunks.update(dispatcher, diff.chunks)
       val regionKey = RegionKey(diff.time, storageId, sequenceNr)
       merger.add(regionKey, diff)
+      log.info("Virtual region [{}] index updated: {} -> {}", regionId, regionKey, diff)
       RegionEvent.stream.publish(RegionEnvelope(regionId, RegionEvent.IndexUpdated(regionKey, diff)))
     }
   }

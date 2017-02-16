@@ -2,7 +2,8 @@ import java.nio.file.Files
 
 import TestUtils._
 import akka.pattern.ask
-import akka.stream.testkit.scaladsl.TestSink
+import akka.stream.scaladsl.Keep
+import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestActorRef
 import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
@@ -10,6 +11,8 @@ import com.karasiq.shadowcloud.actors._
 import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
+import com.karasiq.shadowcloud.index.IndexDiff
+import com.karasiq.shadowcloud.storage.IndexRepositoryStreams
 import com.karasiq.shadowcloud.storage.files.{FileChunkRepository, FileIndexRepository}
 import org.scalatest.FlatSpecLike
 
@@ -19,7 +22,8 @@ import scala.language.postfixOps
 // Uses local filesystem
 class VirtualRegionTest extends ActorSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
-  val index = TestActorRef(IndexSynchronizer.props("testStorage", new FileIndexRepository(Files.createTempDirectory("vrt-index"))), "index")
+  val indexRepository = new FileIndexRepository(Files.createTempDirectory("vrt-index"))
+  val index = TestActorRef(IndexSynchronizer.props("testStorage", indexRepository), "index")
   val chunkIO = TestActorRef(ChunkIODispatcher.props(new FileChunkRepository(Files.createTempDirectory("vrt-chunks"))), "chunkIO")
   val storage = TestActorRef(StorageDispatcher.props("testStorage", index, chunkIO), "storage")
   val testRegion = TestActorRef(VirtualRegionDispatcher.props("testRegion"), "testRegion")
@@ -62,7 +66,7 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
   }
 
-  it should "synchronize index" in {
+  it should "write index" in {
     StorageEvent.stream.subscribe(testActor, "testStorage")
     index ! IndexSynchronizer.Synchronize
     val StorageEnvelope("testStorage", StorageEvent.IndexUpdated(sequenceNr, diff, remote)) = receiveOne(5 seconds)
@@ -72,7 +76,28 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
     diff.chunks.newChunks shouldBe Set(chunk)
     diff.chunks.deletedChunks shouldBe empty
     remote shouldBe false
-    expectNoMsg(1 seconds)
+    expectNoMsg(1 second)
+    StorageEvent.stream.unsubscribe(testActor)
+  }
+
+  it should "read index" in {
+    val streams = IndexRepositoryStreams.gzipped
+    val (sideWrite, sideWriteResult) = TestSource.probe[(String, IndexDiff)]
+      .via(streams.write(indexRepository))
+      .toMat(TestSink.probe)(Keep.both)
+      .run()
+    val diff1 = TestUtils.randomDiff
+    sideWrite.sendNext((2.toString, diff1))
+    sideWrite.sendComplete()
+    sideWriteResult.requestNext((2.toString, diff1))
+    sideWriteResult.expectComplete()
+    StorageEvent.stream.subscribe(testActor, "testStorage")
+    index ! IndexSynchronizer.Synchronize
+    val StorageEnvelope("testStorage", StorageEvent.IndexUpdated(sequenceNr, diff, remote)) = receiveOne(5 seconds)
+    sequenceNr shouldBe 2
+    diff shouldBe diff1
+    remote shouldBe true
+    expectNoMsg(1 second)
     StorageEvent.stream.unsubscribe(testActor)
   }
 }

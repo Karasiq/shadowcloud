@@ -6,7 +6,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.events.StorageEvent._
-import com.karasiq.shadowcloud.actors.internal.MessageStatus
+import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.{ChunkIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.{BaseIndexRepository, IndexMerger, IndexRepository, IndexRepositoryStreams}
@@ -35,7 +35,7 @@ object IndexSynchronizer {
   case class Snapshot(diffs: Seq[(Long, IndexDiff)])
 
   // Props
-  def props(indexId: String, baseIndexRepository: BaseIndexRepository, streams: IndexRepositoryStreams = IndexRepositoryStreams.default): Props = {
+  def props(indexId: String, baseIndexRepository: BaseIndexRepository, streams: IndexRepositoryStreams = IndexRepositoryStreams.gzipped): Props = {
     Props(classOf[IndexSynchronizer], indexId, baseIndexRepository, streams)
   }
 }
@@ -45,7 +45,7 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
   import context.dispatcher
   require(indexId.nonEmpty)
   implicit val actorMaterializer = ActorMaterializer()
-  val indexRepository = IndexRepository.incremental(baseIndexRepository)
+  val indexRepository = IndexRepository.numeric(baseIndexRepository)
   val merger = IndexMerger()
   val config = AppConfig().index
 

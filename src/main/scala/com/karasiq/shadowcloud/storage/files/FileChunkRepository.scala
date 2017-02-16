@@ -9,16 +9,18 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.storage.BaseChunkRepository
 import com.karasiq.shadowcloud.utils.FileSystemUtils
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
 /**
   * Uses local filesystem to store data chunks
   * @param folder Root directory
   */
-class FileChunkRepository(folder: FsPath) extends BaseChunkRepository {
+class FileChunkRepository(folder: FsPath)(implicit ec: ExecutionContext) extends BaseChunkRepository {
   def chunks: Source[String, NotUsed] = {
-    Source(FileSystemUtils.listFiles(folder))
+    Source
+      .fromFuture(Future(FileSystemUtils.listFiles(folder)))
+      .mapConcat(identity)
   }
 
   def read(key: String): Source[ByteString, Future[IOResult]] = {

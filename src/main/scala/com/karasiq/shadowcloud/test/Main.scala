@@ -12,12 +12,14 @@ import com.karasiq.shadowcloud.storage.IndexRepository
 import com.karasiq.shadowcloud.storage.files.FileIndexRepository
 import com.karasiq.shadowcloud.streams.{ChunkEncryptor, ChunkVerifier, FileSplitter}
 
+import scala.concurrent.ExecutionContext
 import scala.language.{implicitConversions, postfixOps}
 
 // Test application
 object Main extends App {
   implicit val actorSystem = ActorSystem("shadowcloud-test")
   implicit val actorMaterializer = ActorMaterializer()
+  implicit val executionContext: ExecutionContext = actorSystem.dispatcher
 
   implicit def stringAsPath(str: String): java.nio.file.Path = Paths.get(str)
 
@@ -37,7 +39,7 @@ object Main extends App {
       println(folderIndex)
       assert(folderIndex.folders.values.flatMap(_.files).flatMap(_.chunks).forall(chunkIndex.contains))
 
-      val storage = IndexRepository.incremental(new FileIndexRepository(Paths.get(sys.props("shadowcloud.test.storage"))))
+      val storage = IndexRepository.numeric(new FileIndexRepository(Paths.get(sys.props("shadowcloud.test.storage"))))
       val diff = IndexDiff(System.currentTimeMillis(), FolderIndex.empty.diff(folderIndex), ChunkIndex.empty.diff(chunkIndex))
 
       Source.single(diff)

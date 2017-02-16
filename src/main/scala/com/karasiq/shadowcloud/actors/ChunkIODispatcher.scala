@@ -5,7 +5,8 @@ import akka.actor.{Actor, Props}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.actors.internal.{MessageStatus, PendingOperation}
+import com.karasiq.shadowcloud.actors.internal.PendingOperation
+import com.karasiq.shadowcloud.actors.utils.{ChunkKeyExtractor, MessageStatus}
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.storage.{BaseChunkRepository, ChunkRepository}
 
@@ -22,21 +23,21 @@ object ChunkIODispatcher {
   object ReadChunk extends MessageStatus[Chunk, Source[ByteString, _]]
 
   // Props
-  def props(baseChunkRepository: BaseChunkRepository): Props = {
-    Props(classOf[ChunkIODispatcher], baseChunkRepository)
+  def props(baseChunkRepository: BaseChunkRepository, keyExtractor: ChunkKeyExtractor = ChunkKeyExtractor.hash): Props = {
+    Props(classOf[ChunkIODispatcher], baseChunkRepository, keyExtractor)
   }
 }
 
-class ChunkIODispatcher(baseChunkRepository: BaseChunkRepository) extends Actor {
+class ChunkIODispatcher(baseChunkRepository: BaseChunkRepository, keyExtractor: ChunkKeyExtractor) extends Actor {
   import ChunkIODispatcher._
 
   implicit val actorMaterializer = ActorMaterializer()
   val pending = PendingOperation.chunk
-  val chunkRepository = ChunkRepository.hashed(baseChunkRepository)
+  val chunkRepository = ChunkRepository.hexString(baseChunkRepository)
 
   def receive: Receive = {
     case ReadChunk(chunk) ⇒
-      sender() ! ReadChunk.Success(chunk, chunkRepository.read(chunk.checksum.hash))
+      sender() ! ReadChunk.Success(chunk, chunkRepository.read(keyExtractor.key(chunk)))
 
     case WriteChunk(chunk) ⇒
       pending.addWaiter(chunk, sender(), () ⇒ writeChunk(chunk))
@@ -54,6 +55,6 @@ class ChunkIODispatcher(baseChunkRepository: BaseChunkRepository) extends Actor 
         case Failure(error) ⇒
           self ! WriteChunk.Failure(chunk, error)
       })
-      .runWith(chunkRepository.write(chunk.checksum.hash))
+      .runWith(chunkRepository.write(keyExtractor.key(chunk)))
   }
 }

@@ -51,7 +51,7 @@ object ChunkIndexDiff {
 
   def apply(oldIndex: ChunkIndex, newIndex: ChunkIndex): ChunkIndexDiff = {
     val (oldOnly, newOnly) = MergeUtil.splitSets(oldIndex.chunks, newIndex.chunks, SplitDecider.dropDuplicates)
-    ChunkIndexDiff(newChunks = newOnly, deletedChunks = oldOnly)
+    instanceOrEmpty(ChunkIndexDiff(newChunks = newOnly, deletedChunks = oldOnly))
   }
 
   @inline

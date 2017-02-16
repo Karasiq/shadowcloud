@@ -1,10 +1,11 @@
 package com.karasiq.shadowcloud.storage
 
-import akka.NotUsed
-import akka.stream.scaladsl.{Compression, Flow, Source}
+import akka.stream.scaladsl.{Compression, Flow}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.index.IndexDiff
 import com.karasiq.shadowcloud.serialization.Serialization
+import com.karasiq.shadowcloud.storage.internal.DefaultIndexRepositoryStreams
+import com.karasiq.shadowcloud.streams.ByteStringConcat
 
 import scala.language.postfixOps
 
@@ -13,31 +14,20 @@ trait IndexRepositoryStreams {
   def read[Key](repository: IndexRepository[Key]): Flow[Key, (Key, IndexDiff), _]
 }
 
+// TODO: Encryption, signatures
 object IndexRepositoryStreams {
-  // TODO: Encryption, signatures
-  private final class DefaultIndexRepositoryStreams extends IndexRepositoryStreams {
-    private[this] val writeFlow = Flow[IndexDiff]
-      .via(Serialization.toBytes())
-      .via(Compression.gzip)
-
-    private[this] val readFlow = Flow[ByteString]
-      .via(Compression.gunzip())
-      .via(Serialization.fromBytes[IndexDiff]())
-
-    def write[Key](repository: IndexRepository[Key]): Flow[(Key, IndexDiff), (Key, IndexDiff), NotUsed] = {
-      Flow[(Key, IndexDiff)]
-        .flatMapMerge(3, { case (key, value) ⇒
-          Source.single(value)
-            .alsoTo(writeFlow.to(repository.write(key)))
-            .map((key, _))
-        })
-    }
-
-    def read[Key](repository: IndexRepository[Key]): Flow[Key, (Key, IndexDiff), NotUsed] = {
-      Flow[Key]
-        .flatMapMerge(3, key ⇒ repository.read(key).via(readFlow).map((key, _)))
-    }
+  private object Flows {
+    val write = Flow[IndexDiff].via(Serialization.toBytes())
+    val read = Flow[ByteString].via(ByteStringConcat()).via(Serialization.fromBytes[IndexDiff]())
+    val gzipWrite = write.via(Compression.gzip)
+    val gzipRead = Flow[ByteString].via(Compression.gunzip()).via(read)
   }
 
-  val default: IndexRepositoryStreams = new DefaultIndexRepositoryStreams
+  def create(breadth: Int, writeFlow: Flow[IndexDiff, ByteString, _],
+             readFlow: Flow[ByteString, IndexDiff, _]): IndexRepositoryStreams = {
+    new DefaultIndexRepositoryStreams(breadth, writeFlow, readFlow)
+  }
+
+  val default = create(3, Flows.write, Flows.read)
+  val gzipped = create(3, Flows.gzipWrite, Flows.gzipRead)
 }

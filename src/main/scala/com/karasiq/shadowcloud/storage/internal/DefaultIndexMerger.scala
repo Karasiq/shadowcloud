@@ -7,7 +7,7 @@ import com.karasiq.shadowcloud.utils.MergeUtil.Decider
 import scala.collection.{SortedMap, mutable}
 import scala.language.postfixOps
 
-final class DefaultIndexMerger[@specialized(Long) T](firstKey: T)(implicit ord: Ordering[T]) extends IndexMerger[T] {
+private[storage] final class DefaultIndexMerger[@specialized(Long) T](firstKey: T)(implicit ord: Ordering[T]) extends IndexMerger[T] {
   private[this] var _diffs = mutable.SortedMap.empty[T, IndexDiff]
   private[this] var _chunks = ChunkIndex.empty
   private[this] var _folders = FolderIndex.empty

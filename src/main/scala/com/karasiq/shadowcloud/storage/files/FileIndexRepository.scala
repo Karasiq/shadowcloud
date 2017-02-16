@@ -9,16 +9,18 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.storage.BaseIndexRepository
 import com.karasiq.shadowcloud.utils.FileSystemUtils
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
 /**
   * Uses local filesystem to store indexes
   * @param folder Root directory
   */
-class FileIndexRepository(folder: FsPath) extends BaseIndexRepository {
+class FileIndexRepository(folder: FsPath)(implicit ec: ExecutionContext) extends BaseIndexRepository {
   def keys: Source[String, NotUsed] = {
-    Source(FileSystemUtils.listFiles(folder))
+    Source
+      .fromFuture(Future(FileSystemUtils.listFiles(folder)))
+      .mapConcat(identity)
   }
 
   def read(key: String): Source[ByteString, Future[IOResult]] = {

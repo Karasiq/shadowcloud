@@ -14,7 +14,7 @@ import scala.language.postfixOps
 class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
   "File repository" should "store diff" in {
     val diff = TestUtils.randomDiff
-    val testRepository = IndexRepository.incremental(new FileIndexRepository(Files.createTempDirectory("irp-test")))
+    val testRepository = IndexRepository.numeric(new FileIndexRepository(Files.createTempDirectory("irp-test")))
     val future = Source.single(diff)
       .via(Serialization.toBytes())
       .via(Compression.gzip)
@@ -36,8 +36,8 @@ class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
 
   "Index repository streams" should "store diff" in {
     val diff = TestUtils.randomDiff
-    val testRepository = IndexRepository.incremental(new FileIndexRepository(Files.createTempDirectory("irp-stream-test")))
-    val streams = IndexRepositoryStreams.default
+    val testRepository = IndexRepository.numeric(new FileIndexRepository(Files.createTempDirectory("irp-stream-test")))
+    val streams = IndexRepositoryStreams.gzipped
     val (write, writeResult) = TestSource.probe[(Long, IndexDiff)]
       .via(streams.write(testRepository))
       .toMat(TestSink.probe)(Keep.both)
@@ -46,6 +46,11 @@ class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
     writeResult.requestNext((diff.time, diff))
     write.sendComplete()
     writeResult.expectComplete()
+
+    val keys = testRepository.keys
+      .runWith(TestSink.probe)
+    keys.requestNext(diff.time)
+    keys.expectComplete()
 
     val (read, readResult) = TestSource.probe[Long]
       .via(streams.read(testRepository))

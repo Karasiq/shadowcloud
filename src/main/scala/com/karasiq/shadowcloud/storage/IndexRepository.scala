@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.storage
 
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.storage.wrappers.IncrementalIndexRepository
+import com.karasiq.shadowcloud.storage.wrappers.{NumericIndexRepository, NumericIndexRepositoryWrapper}
 
 import scala.language.postfixOps
 
@@ -15,7 +15,7 @@ trait IndexRepository[Key] {
 trait BaseIndexRepository extends IndexRepository[String]
 
 object IndexRepository {
-  def incremental(underlying: BaseIndexRepository): IncrementalIndexRepository = {
-    new IncrementalIndexRepository(underlying)
+  def numeric(underlying: BaseIndexRepository): NumericIndexRepository = {
+    new NumericIndexRepositoryWrapper(underlying)
   }
 }

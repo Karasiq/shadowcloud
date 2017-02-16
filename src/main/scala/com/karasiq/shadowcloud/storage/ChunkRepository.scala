@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.storage
 
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.storage.wrappers.HashedChunkRepository
+import com.karasiq.shadowcloud.storage.wrappers.{ByteStringChunkRepository, HexStringChunkRepositoryWrapper}
 
 import scala.language.postfixOps
 
@@ -15,7 +15,7 @@ trait ChunkRepository[ChunkKey] {
 trait BaseChunkRepository extends ChunkRepository[String]
 
 object ChunkRepository {
-  def hashed(underlying: BaseChunkRepository): HashedChunkRepository = {
-    new HashedChunkRepository(underlying)
+  def hexString(underlying: BaseChunkRepository): ByteStringChunkRepository = {
+    new HexStringChunkRepositoryWrapper(underlying)
   }
 }

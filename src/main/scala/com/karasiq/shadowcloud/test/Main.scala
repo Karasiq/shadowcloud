@@ -10,7 +10,6 @@ import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.serialization.Serialization
 import com.karasiq.shadowcloud.storage.IndexRepository
-import com.karasiq.shadowcloud.storage.files.FileIndexRepository
 import com.karasiq.shadowcloud.streams.{ChunkEncryptor, ChunkVerifier, FileSplitter}
 
 import scala.concurrent.ExecutionContext
@@ -40,7 +39,7 @@ object Main extends App {
       println(folderIndex)
       assert(folderIndex.folders.values.flatMap(_.files).flatMap(_.chunks).forall(chunkIndex.contains))
 
-      val storage = IndexRepository.numeric(new FileIndexRepository(Paths.get(sys.props("shadowcloud.test.storage"))))
+      val storage = IndexRepository.numeric(IndexRepository.fromDirectory(Paths.get(sys.props("shadowcloud.test.storage"))))
       val diff = IndexDiff(System.currentTimeMillis(), FolderIndex.empty.diff(folderIndex), ChunkIndex.empty.diff(chunkIndex))
 
       Source.single(diff)

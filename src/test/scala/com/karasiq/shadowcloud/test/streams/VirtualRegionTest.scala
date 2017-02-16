@@ -13,8 +13,7 @@ import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
 import com.karasiq.shadowcloud.actors.{IndexSynchronizer, _}
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.storage.IndexRepositoryStreams
-import com.karasiq.shadowcloud.storage.files.{FileChunkRepository, FileIndexRepository}
+import com.karasiq.shadowcloud.storage.{ChunkRepository, IndexRepository, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.test.utils.TestUtils.ByteStringOps
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
@@ -25,8 +24,8 @@ import scala.language.postfixOps
 // Uses local filesystem
 class VirtualRegionTest extends ActorSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
-  val indexRepository = new FileIndexRepository(Files.createTempDirectory("vrt-index"))
-  val fileRepository = new FileChunkRepository(Files.createTempDirectory("vrt-chunks"))
+  val indexRepository = IndexRepository.fromDirectory(Files.createTempDirectory("vrt-index"))
+  val fileRepository = ChunkRepository.fromDirectory(Files.createTempDirectory("vrt-chunks"))
   val index = TestActorRef(IndexSynchronizer.props("testStorage", indexRepository), "index")
   val chunkIO = TestActorRef(ChunkIODispatcher.props(fileRepository), "chunkIO")
   val storage = TestActorRef(StorageDispatcher.props("testStorage", index, chunkIO), "storage")

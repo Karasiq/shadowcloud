@@ -16,7 +16,7 @@ import scala.language.postfixOps
   * Uses local filesystem to store indexes
   * @param folder Root directory
   */
-class FileIndexRepository(folder: FsPath)(implicit ec: ExecutionContext) extends BaseIndexRepository {
+private[storage] final class FileIndexRepository(folder: FsPath)(implicit ec: ExecutionContext) extends BaseIndexRepository {
   def keys: Source[String, NotUsed] = {
     Source
       .fromFuture(Future(FileSystemUtils.listFiles(folder)))

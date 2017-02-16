@@ -16,7 +16,7 @@ import scala.language.postfixOps
   * Uses local filesystem to store data chunks
   * @param folder Root directory
   */
-class FileChunkRepository(folder: FsPath)(implicit ec: ExecutionContext) extends BaseChunkRepository {
+private[storage] final class FileChunkRepository(folder: FsPath)(implicit ec: ExecutionContext) extends BaseChunkRepository {
   def chunks: Source[String, NotUsed] = {
     Source
       .fromFuture(Future(FileSystemUtils.listFiles(folder)))

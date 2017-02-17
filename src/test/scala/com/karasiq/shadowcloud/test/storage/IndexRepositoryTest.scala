@@ -16,6 +16,8 @@ class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
   def testRepository(repository: BaseIndexRepository): Unit = {
     val diff = TestUtils.randomDiff
     val testRepository = IndexRepository.numeric(repository)
+
+    // Write diff
     val streams = IndexRepositoryStreams.gzipped
     val (write, writeResult) = TestSource.probe[(Long, IndexDiff)]
       .via(streams.write(testRepository))
@@ -26,11 +28,12 @@ class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
     write.sendComplete()
     writeResult.expectComplete()
 
-    val keys = testRepository.keys
-      .runWith(TestSink.probe)
+    // Enumerate diffs
+    val keys = testRepository.keys.runWith(TestSink.probe)
     keys.requestNext(diff.time)
     keys.expectComplete()
 
+    // Read diff
     val (read, readResult) = TestSource.probe[Long]
       .via(streams.read(testRepository))
       .toMat(TestSink.probe)(Keep.both)
@@ -40,6 +43,7 @@ class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
     read.sendComplete()
     readResult.expectComplete()
 
+    // Rewrite error
     val rewriteResult = Source.single(TestUtils.randomBytes(200))
       .runWith(testRepository.write(diff.time))
 

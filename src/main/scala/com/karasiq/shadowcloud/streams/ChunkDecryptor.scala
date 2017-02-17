@@ -11,26 +11,27 @@ import scala.language.postfixOps
 class ChunkDecryptor extends GraphStage[FlowShape[Chunk, Chunk]] {
   val inlet = Inlet[Chunk]("ChunkDecryptor.in")
   val outlet = Outlet[Chunk]("ChunkDecryptor.out")
-
   val shape = FlowShape(inlet, outlet)
 
-  def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) {
+  def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
     val decryptors = mutable.AnyRefMap[EncryptionMethod, EncryptionModule]()
 
-    setHandler(inlet, new InHandler {
-      def onPush(): Unit = {
-        val chunk = grab(inlet)
-        val decryptor = decryptors.getOrElseUpdate(chunk.encryption.method, EncryptionModule(chunk.encryption.method))
-        val plain = decryptor.decrypt(chunk.data.encrypted, chunk.encryption)
-        val decryptedChunk = chunk.copy(data = chunk.data.copy(plain = plain))
-        push(outlet, decryptedChunk)
-      }
-    })
+    private[this] def decryptChunk(chunk: Chunk): Chunk = {
+      val decryptor = decryptors.getOrElseUpdate(chunk.encryption.method, EncryptionModule(chunk.encryption.method))
+      val decryptedData = decryptor.decrypt(chunk.data.encrypted, chunk.encryption)
+      chunk.copy(data = chunk.data.copy(plain = decryptedData))
+    }
 
-    setHandler(outlet, new OutHandler {
-      def onPull(): Unit = {
-        tryPull(inlet)
-      }
-    })
+    def onPull(): Unit = {
+      tryPull(inlet)
+    }
+
+    def onPush(): Unit = {
+      val chunk = grab(inlet)
+      val decryptedChunk = decryptChunk(chunk)
+      push(outlet, decryptedChunk)
+    }
+
+    setHandlers(inlet, outlet, this)
   }
 }

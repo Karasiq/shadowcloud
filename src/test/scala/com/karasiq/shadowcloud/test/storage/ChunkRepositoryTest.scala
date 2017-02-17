@@ -17,6 +17,8 @@ class ChunkRepositoryTest extends ActorSpec with FlatSpecLike {
   def testRepository(repository: BaseChunkRepository): Unit = {
     val chunk = TestUtils.randomChunk
     val testRepository = ChunkRepository.hexString(repository)
+
+    // Write chunk
     val (write, writeResult) = TestSource.probe[ByteString]
       .alsoTo(testRepository.write(chunk.checksum.hash))
       .toMat(TestSink.probe)(Keep.both)
@@ -26,14 +28,17 @@ class ChunkRepositoryTest extends ActorSpec with FlatSpecLike {
     writeResult.requestNext(chunk.data.plain)
     writeResult.expectComplete()
 
+    // Enumerate chunks
     val keys = testRepository.chunks.runWith(TestSink.probe)
     keys.requestNext(chunk.checksum.hash)
     keys.expectComplete()
 
+    // Read chunk
     val read = testRepository.read(chunk.checksum.hash).via(ByteStringConcat()).runWith(TestSink.probe)
     read.requestNext(chunk.data.plain)
     read.expectComplete()
 
+    // Rewrite error
     val rewriteBytes = TestUtils.randomBytes(chunk.data.plain.length)
     val rewriteResult = Source.single(rewriteBytes)
       .runWith(testRepository.write(chunk.checksum.hash))

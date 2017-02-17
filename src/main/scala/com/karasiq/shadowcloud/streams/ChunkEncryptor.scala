@@ -11,46 +11,51 @@ import scala.util.Random
 class ChunkEncryptor(encryptionMethod: EncryptionMethod, hashingMethod: HashingMethod) extends GraphStage[FlowShape[Chunk, Chunk]] {
   val inlet = Inlet[Chunk]("ChunkEncryptor.in")
   val outlet = Outlet[Chunk]("ChunkEncryptor.out")
-
   val shape = FlowShape(inlet, outlet)
 
-  def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) {
-    val encryptionModule = EncryptionModule(encryptionMethod)
-    val hashingModule = HashingModule(hashingMethod)
-    var parameters = encryptionModule.createParameters()
-    var encryptedChunks = 0
-    var changeKeyIn = Random.nextInt(256)
+  def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
+    private[this] val encryptionModule = EncryptionModule(encryptionMethod)
+    private[this] val hashingModule = HashingModule(hashingMethod)
+    private[this] var keyParameters = encryptionModule.createParameters()
+    private[this] var encryptedCount = 0
+    private[this] var changeKeyIn = Random.nextInt(256)
 
-    setHandler(inlet, new InHandler {
-      def onPush(): Unit = {
-        val chunk = grab(inlet)
-        require(chunk.checksum.method == hashingModule.method)
-        val encryptedData = encryptionModule.encrypt(chunk.data.plain, parameters)
-        val encryptedHash = hashingModule.createHash(encryptedData)
-        val encryptedChunk = chunk.copy(
-          checksum = chunk.checksum.copy(encryptedSize = encryptedData.length, encryptedHash = encryptedHash),
-          encryption = parameters,
-          data = chunk.data.copy(encrypted = encryptedData)
-        )
+    // Encrypt chunk
+    private[this] def encryptChunk(chunk: Chunk): Chunk = {
+      require(chunk.checksum.method == hashingModule.method)
+      val encryptedData = encryptionModule.encrypt(chunk.data.plain, keyParameters)
+      val encryptedHash = hashingModule.createHash(encryptedData)
+      chunk.copy(
+        checksum = chunk.checksum.copy(encryptedSize = encryptedData.length, encryptedHash = encryptedHash),
+        encryption = keyParameters,
+        data = chunk.data.copy(encrypted = encryptedData)
+      )
+    }
 
-        // Update IV/key
-        encryptedChunks += 1
-        if (encryptedChunks > changeKeyIn) {
-          parameters = encryptionModule.createParameters()
-          changeKeyIn = Random.nextInt(256)
-          encryptedChunks = 0
-        } else {
-          parameters = encryptionModule.updateParameters(parameters)
-        }
-
-        push(outlet, encryptedChunk)
+    // Update IV/key
+    private[this] def updateKey(): Unit = {
+      encryptedCount += 1
+      if (encryptedCount > changeKeyIn) {
+        // TODO: Log key changes
+        keyParameters = encryptionModule.createParameters()
+        changeKeyIn = Random.nextInt(256)
+        encryptedCount = 0
+      } else {
+        keyParameters = encryptionModule.updateParameters(keyParameters)
       }
-    })
+    }
 
-    setHandler(outlet, new OutHandler {
-      def onPull(): Unit = {
-        tryPull(inlet)
-      }
-    })
+    def onPull(): Unit = {
+      tryPull(inlet)
+    }
+
+    def onPush(): Unit = {
+      val chunk = grab(inlet)
+      val encryptedChunk = encryptChunk(chunk)
+      updateKey()
+      push(outlet, encryptedChunk)
+    }
+
+    setHandlers(inlet, outlet, this)
   }
 }

@@ -1,22 +1,22 @@
 package com.karasiq.shadowcloud.storage.internal
 
 import akka.NotUsed
-import akka.stream.FlowShape
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Source}
+import akka.stream.{FlowShape, IOResult}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.{IndexRepository, IndexRepositoryStreams}
 
+import scala.concurrent.Future
 import scala.language.postfixOps
 
 private[storage] final class DefaultIndexRepositoryStreams(breadth: Int, writeFlow: Flow[IndexDiff, ByteString, _], readFlow: Flow[ByteString, IndexDiff, _]) extends IndexRepositoryStreams {
-  private[this] def writeAndReturn[Key](repository: IndexRepository[Key], key: Key): Flow[IndexDiff, (Key, IndexDiff), NotUsed] = {
-    Flow.fromGraph(GraphDSL.create() { implicit builder ⇒
+  private[this] def writeAndReturn[Key](repository: IndexRepository[Key], key: Key): Flow[IndexDiff, (Key, IndexDiff), Future[IOResult]] = {
+    Flow.fromGraph(GraphDSL.create(repository.write(key)) { implicit builder ⇒ repository ⇒
       import GraphDSL.Implicits._
       val broadcast = builder.add(Broadcast[IndexDiff](2, eagerCancel = true))
-      val storage = builder.add(writeFlow.to(repository.write(key)))
       val result = builder.add(Flow[IndexDiff].map((key, _)))
-      broadcast.out(0) ~> storage
+      broadcast.out(0) ~> writeFlow ~> repository
       broadcast.out(1) ~> result
       FlowShape(broadcast.in, result.out)
     })

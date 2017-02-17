@@ -15,37 +15,35 @@ object ByteStringConcat {
 }
 
 private final class ByteStringConcat extends GraphStage[FlowShape[ByteString, ByteString]] {
-  val in = Inlet[ByteString]("ByteStringConcat.in")
-  val out = Outlet[ByteString]("ByteStringConcat.out")
-  val shape = FlowShape(in, out)
+  val inlet = Inlet[ByteString]("ByteStringConcat.in")
+  val outlet = Outlet[ByteString]("ByteStringConcat.out")
+  val shape = FlowShape(inlet, outlet)
 
-  def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) {
-    val builder = ByteString.newBuilder
+  def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) with InHandler with OutHandler {
+    private[this] val builder = ByteString.newBuilder
     builder.sizeHint(256)
 
-    setHandler(in, new InHandler {
-      def onPush(): Unit = {
-        builder.append(grab(in))
-        pull(in)
+    def onPull(): Unit = {
+      if (isClosed(inlet)) {
+        push(outlet, builder.result())
+        completeStage()
+      } else {
+        pull(inlet)
       }
+    }
 
-      override def onUpstreamFinish(): Unit = {
-        if (isAvailable(out)) {
-          push(out, builder.result())
-          completeStage()
-        }
-      }
-    })
+    def onPush(): Unit = {
+      builder.append(grab(inlet))
+      pull(inlet)
+    }
 
-    setHandler(out, new OutHandler {
-      def onPull(): Unit = {
-        if (isClosed(in)) {
-          push(out, builder.result())
-          completeStage()
-        } else {
-          pull(in)
-        }
+    override def onUpstreamFinish(): Unit = {
+      if (isAvailable(outlet)) {
+        push(outlet, builder.result())
+        completeStage()
       }
-    })
+    }
+
+    setHandlers(inlet, outlet, this)
   }
 }

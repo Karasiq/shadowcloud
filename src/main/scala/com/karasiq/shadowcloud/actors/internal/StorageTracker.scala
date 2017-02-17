@@ -3,6 +3,7 @@ package com.karasiq.shadowcloud.actors.internal
 import akka.actor.{ActorContext, ActorRef}
 import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.internal.ChunksTracker.ChunkStatus
+import com.karasiq.shadowcloud.index.diffs.IndexDiff
 
 import scala.collection.mutable
 import scala.language.postfixOps
@@ -22,6 +23,10 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
 
   def all: Iterable[ActorRef] = {
     storageIds.keys
+  }
+
+  def forIndexWrite(diff: IndexDiff): Seq[ActorRef] = { // TODO: Selective write
+    all.toSeq
   }
 
   def forRead(status: ChunkStatus): Seq[ActorRef] = {

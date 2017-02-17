@@ -39,7 +39,7 @@ private[storage] final class DefaultIndexMerger[@specialized(Long) T](firstKey: 
         } else {
           rebuildIndex()
         }
-        removePending(_merged)
+        removePending(diff)
     }
   }
   

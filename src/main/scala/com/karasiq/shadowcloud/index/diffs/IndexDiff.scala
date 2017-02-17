@@ -2,9 +2,9 @@ package com.karasiq.shadowcloud.index.diffs
 
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.utils.FolderDecider
-import com.karasiq.shadowcloud.utils.MergeUtil
 import com.karasiq.shadowcloud.utils.MergeUtil.State._
 import com.karasiq.shadowcloud.utils.MergeUtil.{Decider, SplitDecider}
+import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 
 import scala.language.postfixOps
 
@@ -39,6 +39,10 @@ case class IndexDiff(time: Long = 0, folders: Seq[FolderDiff] = Vector.empty, ch
     IndexDiff.instanceOrEmpty(copy(time, folders.map(_.reverse), chunks.reverse))
   }
 
+  def withoutData: IndexDiff = {
+    IndexDiff.instanceOrEmpty(copy(time, folders.map(_.withoutData), chunks.withoutData))
+  }
+
   override def toString: String = {
     s"IndexDiff($time, [${folders.mkString(", ")}], $chunks)"
   }
@@ -46,6 +50,32 @@ case class IndexDiff(time: Long = 0, folders: Seq[FolderDiff] = Vector.empty, ch
 
 object IndexDiff {
   val empty = IndexDiff()
+
+  def newChunks(chunks: Chunk*): IndexDiff = {
+    if (chunks.isEmpty) empty else IndexDiff(Utils.timestamp, chunks = ChunkIndexDiff(newChunks = chunks.toSet))
+  }
+
+  def deleteChunks(chunks: Chunk*): IndexDiff = {
+    if (chunks.isEmpty) empty else IndexDiff(Utils.timestamp, chunks = ChunkIndexDiff(deletedChunks = chunks.toSet))
+  }
+
+  def newFolders(folders: Folder*): IndexDiff = {
+    if (folders.isEmpty) empty else IndexDiff(folders.map(_.lastModified).max, folders.map(FolderDiff.wrap))
+  }
+
+  def deleteFolders(folders: Path*): IndexDiff = {
+    if (folders.isEmpty) {
+      empty
+    } else {
+      val diffs = folders
+        .filterNot(_.isRoot)
+        .groupBy(_.parent)
+        .map { case (parent, folders) ⇒
+          FolderDiff(parent, Utils.timestamp, deletedFolders = folders.map(_.name).toSet)
+        }
+      IndexDiff(Utils.timestamp, diffs.toVector)
+    }
+  }
 
   @inline
   private def instanceOrEmpty(diff: IndexDiff): IndexDiff = {

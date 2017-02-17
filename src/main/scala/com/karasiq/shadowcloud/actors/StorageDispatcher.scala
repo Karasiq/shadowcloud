@@ -4,10 +4,9 @@ import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, Props}
 import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
 import com.karasiq.shadowcloud.actors.internal.PendingOperation
-import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.ChunkRepository.BaseChunkRepository
 import com.karasiq.shadowcloud.storage.IndexRepository.BaseIndexRepository
-import com.karasiq.shadowcloud.utils.Utils
 
 import scala.language.postfixOps
 
@@ -32,7 +31,7 @@ class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef) e
       log.debug("Chunk written, appending to index: {}", chunk)
       pending.finish(chunk, msg)
       StorageEvent.stream.publish(StorageEnvelope(storageId, StorageEvent.ChunkWritten(chunk)))
-      index ! IndexSynchronizer.AddPending(IndexDiff(Utils.timestamp, chunks = ChunkIndexDiff(Set(chunk.withoutData))))
+      index ! IndexSynchronizer.AddPending(IndexDiff.newChunks(chunk.withoutData))
 
     case msg @ ChunkIODispatcher.WriteChunk.Failure(chunk, error) ⇒
       log.error(error, "Chunk write failure: {}", chunk)

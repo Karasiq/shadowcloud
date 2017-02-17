@@ -38,6 +38,10 @@ case class ChunkIndexDiff(newChunks: Set[Chunk] = Set.empty, deletedChunks: Set[
     ChunkIndexDiff.instanceOrEmpty(copy(deletedChunks = Set.empty))
   }
 
+  def withoutData: ChunkIndexDiff = {
+    ChunkIndexDiff.instanceOrEmpty(copy(newChunks.map(_.withoutData), deletedChunks.map(_.withoutData)))
+  }
+
   override def toString: String = {
     if (nonEmpty) {
       s"ChunkIndexDiff(new = [${Utils.printHashes(newChunks)}], deleted = [${Utils.printHashes(deletedChunks)}])"

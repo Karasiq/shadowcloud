@@ -8,6 +8,7 @@ import com.karasiq.shadowcloud.actors.events.RegionEvent.RegionEnvelope
 import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
 import com.karasiq.shadowcloud.actors.events.{RegionEvent, StorageEvent}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
+import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.IndexMerger
 import com.karasiq.shadowcloud.storage.IndexMerger.RegionKey
@@ -21,6 +22,12 @@ object VirtualRegionDispatcher {
   // Messages
   sealed trait Message
   case class Register(storageId: String, dispatcher: ActorRef) extends Message
+  case class WriteIndex(diff: IndexDiff) extends Message
+  object WriteIndex extends MessageStatus[IndexDiff, IndexDiff]
+  case object GetIndex extends Message {
+    case class Success(diffs: Seq[(RegionKey, IndexDiff)])
+  }
+  case object Synchronize extends Message
 
   // Internal messages
   private case class PushDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)]) extends Message
@@ -42,9 +49,31 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
 
   def receive: Receive = {
     // -----------------------------------------------------------------------
-    // TODO: Folder commands
+    // Global index commands
     // -----------------------------------------------------------------------
-    // ???
+    case WriteIndex(diff) ⇒
+      if (diff.chunks.nonEmpty) {
+        log.error("Illegal index write: {}", diff)
+        sender() ! WriteIndex.Failure(diff, new IllegalArgumentException("Illegal index write"))
+      } else {
+        val actors = storages.forIndexWrite(diff)
+        if (actors.isEmpty) {
+          log.warning("No index storages available on {}", regionId)
+          sender() ! WriteIndex.Failure(diff, new IllegalStateException("No storages available"))
+        } else {
+          merger.addPending(diff)
+          log.info("Writing to virtual region [{}] index: {}", regionId, diff)
+          actors.foreach(_ ! IndexSynchronizer.AddPending(diff))
+          sender() ! WriteIndex.Success(diff, merger.pending)
+        }
+      }
+
+    case GetIndex ⇒
+      sender() ! GetIndex.Success(merger.diffs.toVector)
+
+    case Synchronize ⇒
+      log.info("Force synchronizing indexes of virtual region: {}", regionId)
+      storages.all.foreach(_ ! IndexSynchronizer.Synchronize)
 
     // -----------------------------------------------------------------------
     // Read/write commands
@@ -94,6 +123,7 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
 
       case StorageEvent.PendingIndexUpdated(diff) ⇒
         log.debug("Storage [{}] pending index updated: {}", storageId, diff)
+        merger.addPending(diff)
 
       case StorageEvent.ChunkWritten(chunk) ⇒
         log.info("Chunk written: {}", chunk)
@@ -122,7 +152,8 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
     }
   }
 
-  @inline private[this] def addStorageDiff(storageId: String, sequenceNr: Long, diff: IndexDiff) = {
+  @inline
+  private[this] def addStorageDiff(storageId: String, sequenceNr: Long, diff: IndexDiff) = {
     addStorageDiffs(storageId, Array((sequenceNr, diff)))
   }
 

@@ -7,6 +7,7 @@ import scala.collection.GenTraversableOnce
 import scala.language.postfixOps
 
 case class Folder(path: Path, created: Long = 0, lastModified: Long = 0, folders: Set[String] = Set.empty, files: Set[File] = Set.empty) {
+  require(lastModified >= created, "Invalid folder time")
   require(files.forall(_.parent == this.path), "Invalid file paths")
 
   def addFiles(files: GenTraversableOnce[File]): Folder = {
@@ -63,6 +64,10 @@ case class Folder(path: Path, created: Long = 0, lastModified: Long = 0, folders
 
   def withPath(newPath: Path): Folder = {
     copy(path = newPath, files = files.map(_.copy(parent = newPath)))
+  }
+
+  def withoutData: Folder = {
+    copy(files = files.map(_.withoutData))
   }
 
   override def hashCode(): Int = {

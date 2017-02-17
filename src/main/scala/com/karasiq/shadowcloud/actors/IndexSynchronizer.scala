@@ -8,10 +8,9 @@ import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.events.StorageEvent._
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
-import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.IndexRepository.BaseIndexRepository
 import com.karasiq.shadowcloud.storage.{IndexMerger, IndexRepository, IndexRepositoryStreams}
-import com.karasiq.shadowcloud.utils.Utils
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -140,7 +139,7 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
         }
 
       case ChunkWritten(chunk) ⇒
-        merger.addPending(IndexDiff(Utils.timestamp, chunks = ChunkIndexDiff(newChunks = Set(chunk.withoutData))))
+        merger.addPending(IndexDiff.newChunks(chunk.withoutData))
     }
   }
 

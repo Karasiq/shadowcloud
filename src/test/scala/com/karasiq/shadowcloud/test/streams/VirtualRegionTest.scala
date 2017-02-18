@@ -14,7 +14,6 @@ import com.karasiq.shadowcloud.actors.{IndexSynchronizer, _}
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.{ChunkRepository, IndexRepository, IndexRepositoryStreams}
-import com.karasiq.shadowcloud.test.utils.TestUtils.ByteStringOps
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 

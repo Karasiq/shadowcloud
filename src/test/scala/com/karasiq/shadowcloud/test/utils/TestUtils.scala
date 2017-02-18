@@ -4,32 +4,11 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs._
-import com.karasiq.shadowcloud.utils.Utils
 
 import scala.language.postfixOps
 import scala.util.Random
 
-object TestUtils {
-  implicit class ByteStringOps(private val bs: ByteString) {
-    def toHexString: String = {
-      Utils.toHexString(bs)
-    }
-  }
-
-  implicit class ByteStringObjOps(private val bs: ByteString.type) {
-    def fromHexString(hexString: String): ByteString = {
-      Utils.parseHexString(hexString)
-    }
-
-    def fromChunks(chunks: Seq[Chunk]): ByteString = {
-      chunks.map(_.data.plain).fold(ByteString.empty)(_ ++ _)
-    }
-
-    def fromEncryptedChunks(chunks: Seq[Chunk]): ByteString = {
-      chunks.map(_.data.encrypted).fold(ByteString.empty)(_ ++ _)
-    }
-  }
-
+object TestUtils extends TestImplicits {
   def randomBytes(length: Int): ByteString = {
     val array = new Array[Byte](length)
     Random.nextBytes(array)

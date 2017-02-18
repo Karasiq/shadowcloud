@@ -4,14 +4,13 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.index.{Chunk, File, Folder}
 import com.karasiq.shadowcloud.serialization.SerializationModule
-import com.karasiq.shadowcloud.test.utils.TestUtils
-import com.karasiq.shadowcloud.test.utils.TestUtils.ByteStringOps
+import com.karasiq.shadowcloud.test.utils.{TestImplicits, TestUtils}
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.io.Source
 import scala.language.postfixOps
 
-class SerializeTest extends FlatSpec with Matchers {
+class SerializeTest extends FlatSpec with Matchers with TestImplicits {
   val kryo = SerializationModule.kryo
 
   "Kryo serializer" should "serialize chunk" in {
@@ -40,7 +39,6 @@ class SerializeTest extends FlatSpec with Matchers {
   }
 
   it should "read test diff" in {
-    import TestUtils.ByteStringObjOps
     val diff = TestUtils.testDiff
     val bytes = Source.fromResource("test-diff-kryo.txt").mkString.trim()
     kryo.fromBytes[IndexDiff](ByteString.fromHexString(bytes)) shouldBe diff

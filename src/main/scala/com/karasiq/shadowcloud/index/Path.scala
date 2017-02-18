@@ -16,7 +16,17 @@ case class Path(nodes: Seq[String]) {
   }
 
   def name: String = {
-    if (isRoot) "/" else nodes.last
+    // if (isRoot) "/" else nodes.last
+    require(!isRoot, "Root path has no name")
+    nodes.last
+  }
+
+  def move(path: Path): Path = {
+    if (isRoot) path else path / name
+  }
+
+  def rename(name: String): Path = {
+    if (isRoot) this / name else parent / name
   }
 
   override def toString: String = {
@@ -29,12 +39,8 @@ object Path {
 
   implicit def fromString(str: String): Path = {
     val nodes: Seq[String] = str.split(separators).filter(_.nonEmpty)
-    if (nodes.nonEmpty) Path(nodes) else root
+    if (nodes.isEmpty) root else Path(nodes)
   }
 
   private[this] val separators = Array('/', '\\')
-}
-
-trait HasPath {
-  def path: Path
 }

@@ -53,7 +53,7 @@ private[storage] final class DefaultIndexMerger[@specialized(Long) T](firstKey: 
   }
 
   def removePending(diff: IndexDiff): Unit = {
-    _pending = pending.diff(diff, Decider.keepLeft, FolderDecider.mutualExclude, Decider.keepLeft)
+    _pending = pending.diffWith(diff, Decider.keepLeft, FolderDecider.mutualExclude, Decider.keepLeft)
   }
 
   def clear(): Unit = {

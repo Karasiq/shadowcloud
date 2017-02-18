@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.test.utils
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index._
-import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, IndexDiff}
+import com.karasiq.shadowcloud.index.diffs._
 import com.karasiq.shadowcloud.utils.Utils
 
 import scala.language.postfixOps
@@ -56,7 +56,7 @@ object TestUtils {
       Chunk(Checksum(hashingMethod, 100, preCalcHashes(2), 100, preCalcHashes(2)), EncryptionParameters.empty, Data(text.slice(200, 300), text.slice(200, 300))),
       Chunk(Checksum(hashingMethod, 56, preCalcHashes(3), 56, preCalcHashes(3)), EncryptionParameters.empty, Data(text.slice(300, 356), text.slice(300, 356)))
     )
-    (text, File(Path.root, "test.txt", testTimestamp, testTimestamp, Checksum(hashingMethod, 356, textHash, 356, textHash), chunks))
+    (text, File(Path.root / "test.txt", testTimestamp, testTimestamp, Checksum(hashingMethod, 356, textHash, 356, textHash), chunks))
   }
 
   def testChunk: Chunk = {
@@ -65,7 +65,7 @@ object TestUtils {
 
   def testDiff: IndexDiff = {
     val (_, file) = indexedBytes
-    IndexDiff(testTimestamp, Seq(FolderDiff(Path.root, testTimestamp, newFiles = Set(file))), ChunkIndexDiff(file.chunks.toSet))
+    IndexDiff(testTimestamp, FolderIndexDiff.seq(FolderDiff(Path.root, testTimestamp, newFiles = Set(file))), ChunkIndexDiff(file.chunks.toSet))
   }
 
   def randomChunk: Chunk = {
@@ -88,7 +88,7 @@ object TestUtils {
     val encSize = chunks.map(_.checksum.encryptedSize).sum
     val hash = hashing.createHash(ByteString.fromChunks(chunks))
     val encHash = hashing.createHash(ByteString.fromEncryptedChunks(chunks))
-    File(parent, s"$randomString.txt", System.currentTimeMillis(), System.currentTimeMillis(),
+    File(parent / s"$randomString.txt", System.currentTimeMillis(), System.currentTimeMillis(),
       Checksum(hashing.method, size, hash, encSize, encHash), chunks)
   }
 
@@ -101,6 +101,6 @@ object TestUtils {
   def randomDiff: IndexDiff = {
     val folder = randomFolder()
     val chunks = folder.files.flatMap(_.chunks)
-    IndexDiff(folder.lastModified, Seq(FolderDiff.wrap(folder)), ChunkIndexDiff(chunks))
+    IndexDiff(folder.lastModified, FolderIndexDiff.create(folder), ChunkIndexDiff(chunks))
   }
 }

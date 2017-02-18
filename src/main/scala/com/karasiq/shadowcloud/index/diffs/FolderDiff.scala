@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.index.diffs
 
 import com.karasiq.shadowcloud.index._
-import com.karasiq.shadowcloud.index.utils.FolderDecider
+import com.karasiq.shadowcloud.index.utils.{FolderDecider, HasPath}
 import com.karasiq.shadowcloud.utils.MergeUtil
 import com.karasiq.shadowcloud.utils.MergeUtil.SplitDecider
 
@@ -66,7 +66,7 @@ object FolderDiff {
     apply(left, right)
   }
 
-  def wrap(folder: Folder): FolderDiff = {
+  def create(folder: Folder): FolderDiff = {
     FolderDiff(folder.path, folder.lastModified, folder.files, Set.empty, folder.folders, Set.empty)
   }
 }

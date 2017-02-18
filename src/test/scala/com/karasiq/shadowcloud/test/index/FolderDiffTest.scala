@@ -1,5 +1,6 @@
 package com.karasiq.shadowcloud.test.index
 
+import com.karasiq.shadowcloud.index.diffs.FolderIndexDiff
 import com.karasiq.shadowcloud.index.{Folder, FolderIndex, Path}
 import com.karasiq.shadowcloud.test.utils.TestUtils
 import org.scalatest.{FlatSpec, Matchers}
@@ -39,7 +40,7 @@ class FolderDiffTest extends FlatSpec with Matchers {
   it should "modify folder index" in {
     val index = FolderIndex(Seq(folder1))
     val diff = folder2.diff(folder1)
-    val index1 = index.patch(Seq(diff))
+    val index1 = index.patch(FolderIndexDiff.seq(diff))
     index1.folders shouldBe Map(
       Path.root → Folder(Path.root, 0, folder1.created, Set(folder1.path.name)),
       folder1.path → folder2

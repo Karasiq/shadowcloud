@@ -1,14 +1,18 @@
 package com.karasiq.shadowcloud.index
 
 import com.karasiq.shadowcloud.index.diffs.FolderDiff
+import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasPath, HasWithoutData, Mergeable}
 import com.karasiq.shadowcloud.utils.Utils
 
 import scala.collection.GenTraversableOnce
 import scala.language.postfixOps
 
-case class Folder(path: Path, created: Long = 0, lastModified: Long = 0, folders: Set[String] = Set.empty, files: Set[File] = Set.empty) {
+case class Folder(path: Path, created: Long = 0, lastModified: Long = 0,
+                  folders: Set[String] = Set.empty, files: Set[File] = Set.empty)
+  extends HasPath with HasEmpty with HasWithoutData[Folder] with Mergeable[Folder, FolderDiff] {
+  
   require(lastModified >= created, "Invalid folder time")
-  require(files.forall(_.parent == this.path), "Invalid file paths")
+  require(files.forall(_.path.parent == this.path), "Invalid file paths")
 
   def addFiles(files: GenTraversableOnce[File]): Folder = {
     val newFiles = this.files ++ files
@@ -63,7 +67,11 @@ case class Folder(path: Path, created: Long = 0, lastModified: Long = 0, folders
   }
 
   def withPath(newPath: Path): Folder = {
-    copy(path = newPath, files = files.map(_.copy(parent = newPath)))
+    copy(path = newPath, files = files.map(file ⇒ file.copy(path = file.path.move(newPath))))
+  }
+
+  def isEmpty: Boolean = {
+    files.isEmpty && folders.isEmpty
   }
 
   def withoutData: Folder = {

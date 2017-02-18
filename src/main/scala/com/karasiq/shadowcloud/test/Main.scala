@@ -7,7 +7,7 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Compression, FileIO, Sink, Source}
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.index._
-import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.serialization.Serialization
 import com.karasiq.shadowcloud.storage.IndexRepository
 import com.karasiq.shadowcloud.streams.{ChunkEncryptor, ChunkVerifier, FileSplitter}
@@ -32,7 +32,7 @@ object Main extends App {
     .fold(Seq.empty[Chunk])(_ :+ _)
     .runForeach { chunks ⇒
       val chunksWithoutData = chunks.map(_.withoutData)
-      val file = File(Path.root, "LICENSE", System.currentTimeMillis(), System.currentTimeMillis(), Checksum(hashingMethod, chunks.map(_.checksum.size).sum), chunksWithoutData)
+      val file = File(Path.root / "LICENSE", System.currentTimeMillis(), System.currentTimeMillis(), Checksum(hashingMethod, chunks.map(_.checksum.size).sum), chunksWithoutData)
       val chunkIndex = ChunkIndex(chunksWithoutData)
       val folderIndex = FolderIndex.empty.addFiles(file)
       println(chunkIndex)
@@ -40,7 +40,7 @@ object Main extends App {
       assert(folderIndex.folders.values.flatMap(_.files).flatMap(_.chunks).forall(chunkIndex.contains))
 
       val storage = IndexRepository.numeric(IndexRepository.fromDirectory(Paths.get(sys.props("shadowcloud.test.storage"))))
-      val diff = IndexDiff(System.currentTimeMillis(), FolderIndex.empty.diff(folderIndex), ChunkIndex.empty.diff(chunkIndex))
+      val diff = IndexDiff(System.currentTimeMillis(), FolderIndexDiff.wrap(folderIndex), ChunkIndexDiff.wrap(chunkIndex))
 
       Source.single(diff)
         .via(Serialization.toBytes())

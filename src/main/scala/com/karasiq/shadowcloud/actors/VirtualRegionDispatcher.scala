@@ -9,9 +9,10 @@ import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
 import com.karasiq.shadowcloud.actors.events.{RegionEvent, StorageEvent}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
-import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.IndexMerger
 import com.karasiq.shadowcloud.storage.IndexMerger.RegionKey
+import com.karasiq.shadowcloud.utils.Utils
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
@@ -22,7 +23,7 @@ object VirtualRegionDispatcher {
   // Messages
   sealed trait Message
   case class Register(storageId: String, dispatcher: ActorRef) extends Message
-  case class WriteIndex(diff: IndexDiff) extends Message
+  case class WriteIndex(diff: FolderIndexDiff) extends Message
   object WriteIndex extends MessageStatus[IndexDiff, IndexDiff]
   case object GetIndex extends Message {
     case class Success(diffs: Seq[(RegionKey, IndexDiff)])
@@ -51,21 +52,17 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
     // -----------------------------------------------------------------------
     // Global index commands
     // -----------------------------------------------------------------------
-    case WriteIndex(diff) ⇒
-      if (diff.chunks.nonEmpty) {
-        log.error("Illegal index write: {}", diff)
-        sender() ! WriteIndex.Failure(diff, new IllegalArgumentException("Illegal index write"))
+    case WriteIndex(folders) ⇒
+      val diff = IndexDiff(Utils.timestamp, folders)
+      val actors = storages.forIndexWrite(diff)
+      if (actors.isEmpty) {
+        log.warning("No index storages available on {}", regionId)
+        sender() ! WriteIndex.Failure(diff, new IllegalStateException("No storages available"))
       } else {
-        val actors = storages.forIndexWrite(diff)
-        if (actors.isEmpty) {
-          log.warning("No index storages available on {}", regionId)
-          sender() ! WriteIndex.Failure(diff, new IllegalStateException("No storages available"))
-        } else {
-          merger.addPending(diff)
-          log.info("Writing to virtual region [{}] index: {}", regionId, diff)
-          actors.foreach(_ ! IndexSynchronizer.AddPending(diff))
-          sender() ! WriteIndex.Success(diff, merger.pending)
-        }
+        merger.addPending(diff)
+        log.info("Writing to virtual region [{}] index: {}", regionId, diff)
+        actors.foreach(_ ! IndexSynchronizer.AddPending(diff))
+        sender() ! WriteIndex.Success(diff, merger.pending)
       }
 
     case GetIndex ⇒

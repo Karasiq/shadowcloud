@@ -2,11 +2,17 @@ package com.karasiq.shadowcloud.index
 
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.HashingMethod
+import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.utils.Utils
 
 import scala.language.postfixOps
 
-case class Checksum(method: HashingMethod = HashingMethod.default, size: Long = 0, hash: ByteString = ByteString.empty, encryptedSize: Long = 0, encryptedHash: ByteString = ByteString.empty) {
+case class Checksum(method: HashingMethod = HashingMethod.default, size: Long = 0, hash: ByteString = ByteString.empty,
+                    encryptedSize: Long = 0, encryptedHash: ByteString = ByteString.empty) extends HasEmpty {
+  def isEmpty: Boolean = {
+    size == 0 && hash.isEmpty && encryptedSize == 0 && encryptedHash.isEmpty
+  }
+
   override def hashCode(): Int = {
     (method, size, hash).hashCode()
   }

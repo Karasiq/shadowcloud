@@ -51,6 +51,6 @@ class FolderTest extends FlatSpec with Matchers {
     val newPath = folder.path / TestUtils.randomString
     val folder1 = folder.withPath(newPath)
     folder1.path shouldBe newPath
-    folder1.files shouldBe folder.files.map(_.copy(parent = newPath))
+    folder1.files shouldBe folder.files.map(file ⇒ file.copy(path = file.path.move(newPath)))
   }
 }

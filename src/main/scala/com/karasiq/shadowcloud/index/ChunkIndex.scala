@@ -1,18 +1,20 @@
 package com.karasiq.shadowcloud.index
 
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
+import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData, Mergeable}
 import com.karasiq.shadowcloud.utils.Utils
 
 import scala.collection.GenTraversableOnce
 import scala.language.postfixOps
 
-case class ChunkIndex(chunks: Set[Chunk] = Set.empty) {
+case class ChunkIndex(chunks: Set[Chunk] = Set.empty)
+  extends Mergeable[ChunkIndex, ChunkIndexDiff] with HasEmpty with HasWithoutData[ChunkIndex] {
   def contains(chunk: Chunk): Boolean = {
     chunks.contains(chunk)
   }
 
   def addChunks(chunks: GenTraversableOnce[Chunk]): ChunkIndex = {
-    ChunkIndex(this.chunks ++ chunks)
+    withChunks(this.chunks ++ chunks)
   }
 
   def addChunks(chunks: Chunk*): ChunkIndex = {
@@ -20,7 +22,7 @@ case class ChunkIndex(chunks: Set[Chunk] = Set.empty) {
   }
 
   def deleteChunks(chunks: GenTraversableOnce[Chunk]): ChunkIndex = {
-    copy(this.chunks -- chunks)
+    withChunks(this.chunks -- chunks)
   }
 
   def deleteChunks(chunks: Chunk*): ChunkIndex = {
@@ -39,10 +41,22 @@ case class ChunkIndex(chunks: Set[Chunk] = Set.empty) {
     deleteChunks(diff.deletedChunks).addChunks(diff.newChunks)
   }
 
+  def isEmpty: Boolean = {
+    chunks.isEmpty
+  }
+
+  def withoutData: ChunkIndex = {
+    withChunks(chunks.map(_.withoutData))
+  }
+
   override def toString: String = {
     val hashesStr = chunks.take(20).map(chunk ⇒ Utils.toHexString(chunk.checksum.hash)).mkString(", ")
     val cutHashesStr = if (chunks.size > 20) hashesStr + ", ..." else hashesStr
     s"ChunkIndex($cutHashesStr)"
+  }
+
+  private[this] def withChunks(chunks: Set[Chunk]): ChunkIndex = {
+    if (chunks.isEmpty) ChunkIndex.empty else copy(chunks)
   }
 }
 

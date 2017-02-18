@@ -15,7 +15,7 @@ case class FileVersions(files: Map[String, Seq[File]]) {
 
 object FileVersions {
   def apply(folder: Folder): FileVersions = {
-    val files = folder.files.groupBy(_.name).mapValues(_.toIndexedSeq.sortBy(_.lastModified))
+    val files = folder.files.groupBy(_.path.name).mapValues(_.toIndexedSeq.sortBy(_.lastModified))
     FileVersions(files)
   }
 }

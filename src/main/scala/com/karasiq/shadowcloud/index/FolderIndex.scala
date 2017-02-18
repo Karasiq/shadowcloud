@@ -1,13 +1,14 @@
 package com.karasiq.shadowcloud.index
 
-import com.karasiq.shadowcloud.index.diffs.FolderDiff
-import com.karasiq.shadowcloud.utils.MergeUtil.State._
-import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
+import com.karasiq.shadowcloud.index.diffs.{FolderDiff, FolderIndexDiff}
+import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData, Mergeable}
+import com.karasiq.shadowcloud.utils.Utils
 
 import scala.collection.{GenTraversableOnce, mutable}
 import scala.language.postfixOps
 
-case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Path.root, 0, 0))) {
+case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Path.root)))
+  extends Mergeable[FolderIndex, FolderIndexDiff] with HasEmpty with HasWithoutData[FolderIndex] {
   require(folders.contains(Path.root), "No root directory")
 
   def contains(folder: Path): Boolean = {
@@ -15,16 +16,16 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
   }
 
   def addFiles(files: GenTraversableOnce[File]): FolderIndex = {
-    val diffs = files.toVector.groupBy(_.parent).map { case (path, files) ⇒
+    val diffs = files.toVector.groupBy(_.path.parent).map { case (path, files) ⇒
       FolderDiff(path, files.map(_.lastModified).max, newFiles = files.toSet)
     }
-    patch(diffs)
+    applyDiffs(diffs)
   }
 
   def addFolders(folders: GenTraversableOnce[Folder]): FolderIndex = {
     val diffs = folders.toIterator.flatMap { folder ⇒
       val existing = this.folders.get(folder.path)
-      val diff = if (existing.isEmpty) FolderDiff.wrap(folder) else folder.diff(existing.get)
+      val diff = if (existing.isEmpty) FolderDiff.create(folder) else folder.diff(existing.get)
       val parent = this.folders.get(folder.path.parent)
       if (folder.path.isRoot || parent.exists(_.folders.contains(folder.path.name))) {
         Iterator.single(diff)
@@ -32,7 +33,7 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
         Iterator(FolderDiff(folder.path.parent, folder.lastModified, newFolders = Set(folder.path.name)), diff)
       }
     }
-    patch(diffs)
+    applyDiffs(diffs)
   }
 
   def addFolders(folders: Folder*): FolderIndex = {
@@ -44,17 +45,17 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
   }
 
   def deleteFiles(files: GenTraversableOnce[File]): FolderIndex = {
-    val diffs = files.toVector.groupBy(_.parent).map { case (path, files) ⇒
+    val diffs = files.toVector.groupBy(_.path.parent).map { case (path, files) ⇒
       FolderDiff(path, Utils.timestamp, deletedFiles = files.toSet)
     }
-    patch(diffs)
+    applyDiffs(diffs)
   }
 
   def deleteFolders(folders: GenTraversableOnce[Path]): FolderIndex = {
     val deleted = folders.toVector.groupBy(_.parent).map { case (path, folders) ⇒
       FolderDiff(path, Utils.timestamp, deletedFolders = folders.map(_.name).toSet)
     }
-    patch(deleted)
+    applyDiffs(deleted)
   }
 
   def deleteFiles(files: File*): FolderIndex = {
@@ -69,24 +70,27 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
     addFolders(second.folders.values)
   }
 
-  def diff(second: FolderIndex): Seq[FolderDiff] = {
-    val diffs = MergeUtil.compareMaps(this.folders, second.folders).values.flatMap {
-      case Left(folder) ⇒
-        Iterator.single(FolderDiff.wrap(folder))
-
-      case Right(folder) ⇒
-        Iterator.single(FolderDiff.wrap(folder))
-
-      case Conflict(left, right) ⇒
-        Iterator.single(right.diff(left))
-
-      case Equal(_) ⇒
-        Iterator.empty
-    }
-    diffs.toVector
+  def diff(second: FolderIndex): FolderIndexDiff = {
+    FolderIndexDiff(this, second)
   }
 
-  def patch(diffs: GenTraversableOnce[FolderDiff]): FolderIndex = {
+  def patch(diff: FolderIndexDiff): FolderIndex = {
+    applyDiffs(diff.folders)
+  }
+
+  def isEmpty: Boolean = {
+    folders == Map(Path.root → Folder(Path.root))
+  }
+
+  def withoutData: FolderIndex = {
+    withFolders(folders.mapValues(_.withoutData))
+  }
+
+  override def toString: String = {
+    s"FolderIndex(${folders.values.mkString(", ")})"
+  }
+
+  private[this] def applyDiffs(diffs: GenTraversableOnce[FolderDiff]): FolderIndex = {
     val modified = mutable.AnyRefMap[Path, Folder]()
     val deleted = mutable.Set[Path]()
     diffs.foreach { diff ⇒
@@ -94,7 +98,7 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
       if (folder.isEmpty) {
         if (diff.newFiles.nonEmpty || diff.newFolders.nonEmpty) {
           if (!diff.path.isRoot) { // Add reference in parent folder
-            val parent = diff.path.parent
+          val parent = diff.path.parent
             modified += parent → modified.get(parent)
               .orElse(folders.get(parent))
               .fold(Folder(parent, diff.time, diff.time, Set(diff.path.name)))(_.addFolders(diff.path.name))
@@ -111,11 +115,11 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
         .foreach(path ⇒ modified += path → Folder(path, diff.time, diff.time))
       diff.deletedFolders.map(diff.path / _).foreach(deleted +=)
     }
-    copy(folders ++ modified -- deleted)
+    withFolders(folders ++ modified -- deleted)
   }
 
-  override def toString: String = {
-    s"FolderIndex(${folders.values.mkString(", ")})"
+  private[this] def withFolders(folders: Map[Path, Folder]): FolderIndex = {
+    if (folders.isEmpty) FolderIndex.empty else copy(folders)
   }
 }
 

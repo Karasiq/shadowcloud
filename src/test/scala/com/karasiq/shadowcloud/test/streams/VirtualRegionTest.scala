@@ -12,7 +12,7 @@ import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
 import com.karasiq.shadowcloud.actors.{IndexSynchronizer, _}
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
-import com.karasiq.shadowcloud.index.diffs.{FolderDiff, IndexDiff}
+import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.{ChunkRepository, IndexRepository, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.test.utils.TestUtils.ByteStringOps
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
@@ -25,6 +25,7 @@ import scala.language.postfixOps
 class VirtualRegionTest extends ActorSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
   val folder = TestUtils.randomFolder()
+  val folderDiff = FolderIndexDiff.create(folder)
   val indexRepository = IndexRepository.fromDirectory(Files.createTempDirectory("vrt-index"))
   val fileRepository = ChunkRepository.fromDirectory(Files.createTempDirectory("vrt-chunks"))
   val index = TestActorRef(IndexSynchronizer.props("testStorage", indexRepository), "index")
@@ -74,14 +75,14 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
   }
 
   it should "add folder" in {
-    testRegion ! VirtualRegionDispatcher.WriteIndex(IndexDiff.newFolders(folder))
+    testRegion ! VirtualRegionDispatcher.WriteIndex(FolderIndexDiff.create(folder))
     val VirtualRegionDispatcher.WriteIndex.Success(diff, result) = receiveOne(1 second)
     diff.time shouldBe > (TestUtils.testTimestamp)
-    diff.folders shouldBe Seq(FolderDiff.wrap(folder))
+    diff.folders shouldBe folderDiff
     diff.chunks.newChunks shouldBe empty
     diff.chunks.deletedChunks shouldBe empty
     result.time shouldBe > (TestUtils.testTimestamp)
-    result.folders shouldBe Seq(FolderDiff.wrap(folder))
+    result.folders shouldBe folderDiff
     result.chunks.newChunks shouldBe Set(chunk)
     result.chunks.deletedChunks shouldBe empty
   }
@@ -92,7 +93,7 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
     val StorageEnvelope("testStorage", StorageEvent.IndexUpdated(sequenceNr, diff, remote)) = receiveOne(5 seconds)
     sequenceNr shouldBe 1
     diff.time shouldBe > (TestUtils.testTimestamp)
-    diff.folders shouldBe Seq(FolderDiff.wrap(folder))
+    diff.folders shouldBe folderDiff
     diff.chunks.newChunks shouldBe Set(chunk)
     diff.chunks.deletedChunks shouldBe empty
     remote shouldBe false
@@ -120,7 +121,7 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
     expectNoMsg(1 second)
     storage ! IndexSynchronizer.GetIndex
     val IndexSynchronizer.GetIndex.Success(Seq((1, firstDiff), (2, secondDiff))) = receiveOne(1 second)
-    firstDiff.folders shouldBe Seq(FolderDiff.wrap(folder))
+    firstDiff.folders shouldBe folderDiff
     firstDiff.chunks.newChunks shouldBe Set(chunk)
     firstDiff.chunks.deletedChunks shouldBe empty
     secondDiff shouldBe diff1

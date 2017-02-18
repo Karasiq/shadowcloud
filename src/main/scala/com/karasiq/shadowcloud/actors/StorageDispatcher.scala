@@ -27,16 +27,9 @@ class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef) e
   val pending = PendingOperation.chunk
 
   def receive: Receive = {
-    case msg @ ChunkIODispatcher.WriteChunk.Success(_, chunk) ⇒
-      log.debug("Chunk written, appending to index: {}", chunk)
-      pending.finish(chunk, msg)
-      StorageEvent.stream.publish(StorageEnvelope(storageId, StorageEvent.ChunkWritten(chunk)))
-      index ! IndexSynchronizer.AddPending(IndexDiff.newChunks(chunk.withoutData))
-
-    case msg @ ChunkIODispatcher.WriteChunk.Failure(chunk, error) ⇒
-      log.error(error, "Chunk write failure: {}", chunk)
-      pending.finish(chunk, msg)
-
+    // -----------------------------------------------------------------------
+    // Chunk commands
+    // -----------------------------------------------------------------------
     case msg @ ChunkIODispatcher.WriteChunk(chunk) ⇒
       pending.addWaiter(chunk, sender(), { () ⇒
         log.debug("Writing chunk: {}", chunk)
@@ -47,6 +40,22 @@ class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef) e
       log.debug("Reading chunk: {}", chunk)
       chunkIO.forward(msg)
 
+    // -----------------------------------------------------------------------
+    // Chunk responses
+    // -----------------------------------------------------------------------
+    case msg @ ChunkIODispatcher.WriteChunk.Success(_, chunk) ⇒
+      log.debug("Chunk written, appending to index: {}", chunk)
+      pending.finish(chunk, msg)
+      StorageEvent.stream.publish(StorageEnvelope(storageId, StorageEvent.ChunkWritten(chunk)))
+      index ! IndexSynchronizer.AddPending(IndexDiff.newChunks(chunk.withoutData))
+
+    case msg @ ChunkIODispatcher.WriteChunk.Failure(chunk, error) ⇒
+      log.error(error, "Chunk write failure: {}", chunk)
+      pending.finish(chunk, msg)
+
+    // -----------------------------------------------------------------------
+    // Index commands
+    // -----------------------------------------------------------------------
     case msg: IndexSynchronizer.Message ⇒
       index.forward(msg)
   }

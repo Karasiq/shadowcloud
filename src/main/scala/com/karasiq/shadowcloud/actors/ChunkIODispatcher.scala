@@ -47,7 +47,7 @@ class ChunkIODispatcher(baseChunkRepository: BaseChunkRepository, keyExtractor: 
       pending.finish(msg.key, msg)
   }
 
-  def writeChunk(chunk: Chunk): Unit = {
+  private[this] def writeChunk(chunk: Chunk): Unit = {
     Source.single(chunk.data.encrypted)
       .alsoTo(Sink.onComplete {
         case Success(Done) ⇒

@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.test.streams
+package com.karasiq.shadowcloud.test.actors
 
 import java.nio.file.Files
 

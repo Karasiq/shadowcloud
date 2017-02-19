@@ -126,6 +126,9 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
         log.info("Chunk written: {}", chunk)
         chunks.registerChunk(storages.getDispatcher(storageId), chunk)
         RegionEvent.stream.publish(RegionEnvelope(regionId, RegionEvent.ChunkWritten(storageId, chunk)))
+
+      case _ ⇒
+        // Ignore
     }
 
     case Terminated(dispatcher) ⇒

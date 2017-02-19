@@ -41,4 +41,9 @@ private[shadowcloud] object Utils {
     if (size > limit) sb.append(", (").append(size - limit).append(" more)")
     sb.result()
   }
+
+  def printSize(bytes: Long): String = {
+    val gb = bytes.toDouble / 1024 / 1024 / 1024
+    f"$gb%.2f GB"
+  }
 }

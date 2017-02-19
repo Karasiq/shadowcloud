@@ -1,11 +1,12 @@
 package com.karasiq.shadowcloud.actors
 
-import akka.actor.{Actor, ActorLogging, ActorRef, PossiblyHarmful, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.pattern.pipe
 import akka.util.Timeout
 import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
 import com.karasiq.shadowcloud.actors.internal.DiffStats
+import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
 
 import scala.concurrent.ExecutionContext
@@ -15,11 +16,7 @@ import scala.language.postfixOps
 object StorageMaintainer {
   // Messages
   sealed trait Message
-  object CheckHealth extends Message
-
-  // Internal messages
-  private sealed trait InternalMessage extends Message with PossiblyHarmful
-  private case class UpdateHealth(health: StorageHealth) extends InternalMessage
+  object CheckHealth extends Message with MessageStatus[String, StorageHealth]
 
   // Events
   sealed trait Event
@@ -39,9 +36,9 @@ class StorageMaintainer(storageId: String, storageDispatcher: ActorRef, healthPr
   private[this] val schedule = context.system.scheduler.schedule(30 seconds, 30 seconds, self, CheckHealth)
 
   // State
-  var health = StorageHealth(0, 0, 0)
-  var diffsCount = 0
+  var health = StorageHealth.empty
   var stats = DiffStats.empty
+  var diffsCount = 0
 
   def updateHealth(health: StorageHealth): Unit = {
     this.health = health
@@ -59,10 +56,16 @@ class StorageMaintainer(storageId: String, storageDispatcher: ActorRef, healthPr
     // Storage status
     // -----------------------------------------------------------------------
     case CheckHealth ⇒
-      healthProvider.health.map(UpdateHealth).pipeTo(self)
+      healthProvider.health
+        .map(CheckHealth.Success(storageId, _))
+        .recover(PartialFunction(CheckHealth.Failure(storageId, _)))
+        .pipeTo(self)
 
-    case UpdateHealth(health) ⇒
+    case CheckHealth.Success(`storageId`, health) ⇒
       updateHealth(health)
+
+    case CheckHealth.Failure(`storageId`, error) ⇒
+      log.error(error, "Health update failure: {}", storageId)
 
     // -----------------------------------------------------------------------
     // Storage events

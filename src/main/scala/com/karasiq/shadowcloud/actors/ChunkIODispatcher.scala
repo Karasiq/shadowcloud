@@ -6,7 +6,8 @@ import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.internal.PendingOperation
-import com.karasiq.shadowcloud.actors.utils.{ChunkKeyExtractor, MessageStatus}
+import com.karasiq.shadowcloud.actors.utils.MessageStatus
+import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.storage.ChunkRepository
 import com.karasiq.shadowcloud.storage.ChunkRepository.BaseChunkRepository
@@ -24,21 +25,21 @@ object ChunkIODispatcher {
   object ReadChunk extends MessageStatus[Chunk, Source[ByteString, _]]
 
   // Props
-  def props(baseChunkRepository: BaseChunkRepository, keyExtractor: ChunkKeyExtractor = ChunkKeyExtractor.hash): Props = {
-    Props(classOf[ChunkIODispatcher], baseChunkRepository, keyExtractor)
+  def props(baseChunkRepository: BaseChunkRepository): Props = {
+    Props(classOf[ChunkIODispatcher], baseChunkRepository)
   }
 }
 
-class ChunkIODispatcher(baseChunkRepository: BaseChunkRepository, keyExtractor: ChunkKeyExtractor) extends Actor {
+class ChunkIODispatcher(baseChunkRepository: BaseChunkRepository) extends Actor {
   import ChunkIODispatcher._
-
   implicit val actorMaterializer = ActorMaterializer()
   val pending = PendingOperation.chunk
   val chunkRepository = ChunkRepository.hexString(baseChunkRepository)
+  val config = AppConfig().storage
 
   def receive: Receive = {
     case ReadChunk(chunk) ⇒
-      sender() ! ReadChunk.Success(chunk, chunkRepository.read(keyExtractor.key(chunk)))
+      sender() ! ReadChunk.Success(chunk, chunkRepository.read(config.chunkKey(chunk)))
 
     case WriteChunk(chunk) ⇒
       pending.addWaiter(chunk, sender(), () ⇒ writeChunk(chunk))
@@ -56,6 +57,6 @@ class ChunkIODispatcher(baseChunkRepository: BaseChunkRepository, keyExtractor: 
         case Failure(error) ⇒
           self ! WriteChunk.Failure(chunk, error)
       })
-      .runWith(chunkRepository.write(keyExtractor.key(chunk)))
+      .runWith(chunkRepository.write(config.chunkKey(chunk)))
   }
 }

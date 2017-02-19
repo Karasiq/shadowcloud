@@ -7,6 +7,6 @@ import scala.language.postfixOps
 
 private[storage] final class NoOpStorageHealthProvider extends StorageHealthProvider {
   override val health: Future[StorageHealth] = {
-    Future.successful(StorageHealth(Long.MaxValue, Long.MaxValue, 0L))
+    Future.successful(StorageHealth.unlimited)
   }
 }

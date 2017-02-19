@@ -18,12 +18,17 @@ case class StorageHealth(canWrite: Long, totalSpace: Long, usedSpace: Long) {
   }
 }
 
+object StorageHealth {
+  val empty = StorageHealth(0, 0, 0)
+  val unlimited = StorageHealth(Long.MaxValue, Long.MaxValue, 0)
+}
+
 trait StorageHealthProvider {
   def health: Future[StorageHealth]
 }
 
 object StorageHealthProvider {
-  val infinite: StorageHealthProvider = {
+  val unlimited: StorageHealthProvider = {
     new NoOpStorageHealthProvider
   }
 

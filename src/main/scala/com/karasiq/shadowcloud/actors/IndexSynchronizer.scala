@@ -140,6 +140,9 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
 
       case ChunkWritten(chunk) ⇒
         merger.addPending(IndexDiff.newChunks(chunk.withoutData))
+
+      case _ ⇒
+        log.warning("Event not handled: {}", event)
     }
   }
 

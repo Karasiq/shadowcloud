@@ -4,8 +4,9 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.index.Chunk
 import org.apache.commons.codec.binary.Hex
 
+import scala.collection.TraversableLike
 import scala.concurrent.duration.FiniteDuration
-import scala.language.postfixOps
+import scala.language.{higherKinds, postfixOps}
 
 private[shadowcloud] object Utils {
   def toHexString(bs: ByteString): String = {
@@ -45,5 +46,9 @@ private[shadowcloud] object Utils {
   def printSize(bytes: Long): String = {
     val gb = bytes.toDouble / 1024 / 1024 / 1024
     f"$gb%.2f GB"
+  }
+
+  def takeOrAll[T, Col[`T`] <: TraversableLike[T, Col[T]]](all: Col[T], count: Int): Col[T] = {
+    if (count > 0) all.take(count) else all
   }
 }

@@ -13,7 +13,7 @@ import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
 import com.karasiq.shadowcloud.actors.{IndexSynchronizer, _}
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
-import com.karasiq.shadowcloud.storage.{ChunkRepository, IndexRepository, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 
@@ -33,7 +33,7 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
   val testRegion = TestActorRef(VirtualRegionDispatcher.props("testRegion"), "testRegion")
 
   "Virtual region" should "register storage" in {
-    testRegion ! VirtualRegionDispatcher.Register("testStorage", storage)
+    testRegion ! VirtualRegionDispatcher.Register("testStorage", storage, StorageHealth.unlimited)
     expectNoMsg(100 millis)
   }
 

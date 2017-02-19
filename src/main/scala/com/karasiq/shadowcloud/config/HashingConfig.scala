@@ -1,5 +1,6 @@
 package com.karasiq.shadowcloud.config
 
+import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.HashingMethod
 
 import scala.language.postfixOps

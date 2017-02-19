@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.config
+package com.karasiq.shadowcloud.config.utils
 
 import com.karasiq.shadowcloud.utils.Utils
 

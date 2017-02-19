@@ -5,29 +5,31 @@ import akka.event.LoggingAdapter
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
+import com.karasiq.shadowcloud.config.StorageConfig
 import com.karasiq.shadowcloud.crypto.EncryptionModule
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
 import com.karasiq.shadowcloud.utils.Utils
 
 import scala.collection.mutable
-import scala.language.postfixOps
+import scala.language.{implicitConversions, postfixOps}
 
 private[actors] object ChunksTracker {
   object Status extends Enumeration {
     val PENDING, STORED = Value
   }
-  case class ChunkStatus(status: Status.Value, time: Long, chunk: Chunk, dispatchers: Set[ActorRef] = Set.empty, waiters: Set[ActorRef] = Set.empty)
+  case class ChunkStatus(status: Status.Value, time: Long, chunk: Chunk, writingChunk: Set[ActorRef] = Set.empty,
+                         hasChunk: Set[ActorRef] = Set.empty, waitingChunk: Set[ActorRef] = Set.empty)
 }
 
-private[actors] final class ChunksTracker(storages: StorageTracker, log: LoggingAdapter)(implicit context: ActorContext) {
+private[actors] final class ChunksTracker(config: StorageConfig, storages: StorageTracker, log: LoggingAdapter)(implicit context: ActorContext) {
   import ChunksTracker._
   private[this] implicit val sender: ActorRef = context.self
   private[this] val chunks = mutable.AnyRefMap[ByteString, ChunkStatus]()
 
   def readChunk(chunk: Chunk, receiver: ActorRef): Option[ChunkStatus] = {
-    val status = chunks.get(chunk.checksum.hash)
-    status match {
+    val statusOption = getChunk(chunk)
+    statusOption match {
       case Some(status) ⇒
         if (!Utils.isSameChunk(status.chunk, chunk)) {
           receiver ! ReadChunk.Failure(chunk, new IllegalArgumentException(s"Chunks conflict: ${status.chunk} / $chunk"))
@@ -48,19 +50,12 @@ private[actors] final class ChunksTracker(storages: StorageTracker, log: Logging
       case None ⇒
         receiver ! ReadChunk.Failure(chunk, new IllegalArgumentException("Chunk not found"))
     }
-    status
-  }
-
-  private def storageWriteChunk(status: ChunkStatus): Set[ActorRef] = {
-    require(status.chunk.data.nonEmpty)
-    val selected = storages.forWrite(status) // TODO: Replication
-    selected.foreach(_ ! WriteChunk(status.chunk))
-    selected.toSet
+    statusOption
   }
 
   def writeChunk(chunk: Chunk, receiver: ActorRef): ChunkStatus = {
-    require(chunk.data.nonEmpty && chunk.checksum.hash.nonEmpty)
-    chunks.get(chunk.checksum.hash) match {
+    require(chunk.nonEmpty)
+    getChunk(chunk) match {
       case Some(stored) if stored.status == Status.STORED ⇒
         val chunkWithData = if (Utils.isSameChunk(stored.chunk, chunk) && chunk.data.encrypted.nonEmpty) {
           chunk
@@ -75,67 +70,61 @@ private[actors] final class ChunksTracker(storages: StorageTracker, log: Logging
       case Some(pending) if pending.status == Status.PENDING ⇒
         context.watch(receiver)
         log.info("Already writing chunk, added to queue: {}", chunk)
-        val newStatus = pending.copy(waiters = pending.waiters + receiver)
-        chunks += chunk.checksum.hash → newStatus
-        newStatus
+        putStatus(pending.copy(waitingChunk = pending.waitingChunk + receiver))
 
       case None ⇒
         context.watch(receiver)
-        val status = ChunkStatus(Status.PENDING, Utils.timestamp, chunk, Set.empty, Set(receiver))
+        val status = ChunkStatus(Status.PENDING, Utils.timestamp, chunk, waitingChunk = Set(receiver))
         val written = storageWriteChunk(status)
-        log.info("Writing chunk to {}: {}", written, chunk)
-        val newStatus = status.copy(dispatchers = written)
-        chunks += chunk.checksum.hash → newStatus
-        newStatus
+        if (written.isEmpty) {
+          log.warning("No storages available for write: {}", chunk)
+        } else {
+          log.info("Writing chunk to {}: {}", written, chunk)
+        }
+        putStatus(status.copy(writingChunk = written))
     }
   }
 
   def retryPendingChunks(): Unit = {
-    chunks.foreach { case (hash, status) ⇒
-      if (status.status == Status.PENDING && status.dispatchers.isEmpty) {
+    chunks.foreachValue { status ⇒
+      if (status.status == Status.PENDING && status.hasChunk.isEmpty) {
         val written = storageWriteChunk(status)
         if (written.nonEmpty) {
           log.debug("Retrying chunk write to {}: {}", written, status)
-          chunks += hash → status.copy(dispatchers = written)
+          putStatus(status.copy(hasChunk = written))
         }
       }
     }
   }
 
-  def registerChunk(dispatcher: ActorRef, chunk: Chunk): Unit = {
-    val hash: ByteString = chunk.checksum.hash
-    chunks.get(hash) match {
+  def registerChunk(dispatcher: ActorRef, chunk: Chunk): ChunkStatus = {
+    getChunk(chunk) match {
       case Some(status) if !Utils.isSameChunk(status.chunk, chunk) ⇒
         log.error("Chunk conflict: {} / {}", status.chunk, chunk)
+        status
 
       case Some(status)  ⇒
-        if (status.status == Status.PENDING) {
-          log.debug("Resolved pending chunk: {}", chunk)
-          require(status.chunk.data.nonEmpty)
-          status.waiters.foreach(_ ! WriteChunk.Success(status.chunk, status.chunk))
-          chunks += chunk.checksum.hash → status.copy(status = Status.STORED, chunk = status.chunk.withoutData, dispatchers = Set(dispatcher), waiters = Set.empty)
-        } else if (!status.dispatchers.contains(dispatcher)) {
+        if (status.status == Status.PENDING) { // Chunk is pending
+          val newStatus = status.copy(writingChunk = status.writingChunk - dispatcher,
+            hasChunk = status.hasChunk + dispatcher)
+          val needWrites = math.max(0, config.replicationFactor - newStatus.hasChunk.size)
+          if (needWrites == 0) {
+            require(status.chunk.data.nonEmpty)
+            log.debug("Resolved pending chunk: {}", chunk)
+            status.waitingChunk.foreach(_ ! WriteChunk.Success(status.chunk, status.chunk))
+            putStatus(newStatus.copy(status = Status.STORED,
+              chunk = status.chunk.withoutData, waitingChunk = Set.empty))
+          } else {
+            log.debug("Need {} more writes for {}", needWrites, chunk)
+            putStatus(newStatus)
+          }
+        } else { // Chunk is already stored
           log.info("Chunk duplicate found on {}: {}", dispatcher, chunk)
-          chunks += hash → status.copy(dispatchers = status.dispatchers + dispatcher)
+          putStatus(status.copy(writingChunk = status.writingChunk - dispatcher, hasChunk = status.hasChunk + dispatcher))
         }
 
-      case None ⇒
-        chunks += hash → ChunkStatus(Status.STORED, Utils.timestamp, chunk.withoutData, Set(dispatcher))
-    }
-  }
-
-  private def removeActor(status: ChunkStatus, actor: ActorRef): Unit = {
-    if (!status.dispatchers.contains(actor) && !status.waiters.contains(actor)) return
-    val hash = status.chunk.checksum.hash
-    val newStatus = status.copy(dispatchers = status.dispatchers - actor, waiters = status.waiters - actor)
-    if (status.status == Status.STORED && newStatus.dispatchers.isEmpty) {
-      log.warning("Chunk is lost: {}", newStatus.chunk)
-      chunks -= hash
-    } else if (status.status == Status.PENDING && newStatus.waiters.isEmpty) {
-      log.warning("Chunk write cancelled: {}", newStatus.chunk)
-      chunks -= hash
-    } else {
-      chunks += hash → newStatus
+      case None ⇒ // Chunk first seen
+        putStatus(ChunkStatus(Status.STORED, Utils.timestamp, chunk.withoutData, hasChunk = Set(dispatcher)))
     }
   }
 
@@ -144,7 +133,7 @@ private[actors] final class ChunksTracker(storages: StorageTracker, log: Logging
   }
 
   def unregisterChunk(dispatcher: ActorRef, chunk: Chunk): Unit = {
-    chunks.get(chunk.checksum.hash) match {
+    getChunk(chunk) match {
       case Some(status) ⇒
         if (Utils.isSameChunk(status.chunk, chunk)) {
           removeActor(status, dispatcher)
@@ -160,5 +149,48 @@ private[actors] final class ChunksTracker(storages: StorageTracker, log: Logging
   def update(dispatcher: ActorRef, diff: ChunkIndexDiff): Unit = {
     diff.deletedChunks.foreach(unregisterChunk(dispatcher, _))
     diff.newChunks.foreach(registerChunk(dispatcher, _))
+  }
+
+  private[this] def getChunk(chunk: Chunk): Option[ChunkStatus] = {
+    chunks.get(config.chunkKey(chunk))
+  }
+
+  private[this] def putStatus(status: ChunkStatus): ChunkStatus = {
+    chunks += config.chunkKey(status.chunk) → status
+    status
+  }
+
+  private[this] def removeStatus(status: ChunkStatus): Option[ChunkStatus] = {
+    chunks.remove(config.chunkKey(status.chunk))
+  }
+
+  private[this] def storageWriteChunk(status: ChunkStatus): Set[ActorRef] = {
+    require(status.chunk.data.nonEmpty)
+    val writingCount = status.writingChunk.size + status.hasChunk.size
+    val available = storages.forWrite(status)
+    val selected = if (writingCount > 0) {
+      available.take(config.replicationFactor - writingCount)
+    } else {
+      Utils.takeOrAll(available, config.replicationFactor)
+    }
+    selected.foreach(_ ! WriteChunk(status.chunk))
+    selected.toSet
+  }
+
+  private[this] def removeActor(status: ChunkStatus, actor: ActorRef): Unit = {
+    if (!status.hasChunk.contains(actor) && !status.writingChunk.contains(actor) &&
+      !status.waitingChunk.contains(actor)) return
+
+    val newStatus = status.copy(writingChunk = status.writingChunk - actor,
+      hasChunk = status.hasChunk - actor, waitingChunk = status.waitingChunk - actor)
+    if (status.status == Status.STORED && newStatus.hasChunk.isEmpty) {
+      log.warning("Chunk is lost: {}", newStatus.chunk)
+      removeStatus(status)
+    } else if (status.status == Status.PENDING && newStatus.waitingChunk.isEmpty) {
+      log.warning("Chunk write cancelled: {}", newStatus.chunk)
+      removeStatus(status)
+    } else {
+      putStatus(newStatus)
+    }
   }
 }

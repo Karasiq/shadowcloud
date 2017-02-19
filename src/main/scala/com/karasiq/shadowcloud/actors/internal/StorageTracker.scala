@@ -4,59 +4,82 @@ import akka.actor.{ActorContext, ActorRef}
 import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.internal.ChunksTracker.ChunkStatus
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.storage.StorageHealth
 
 import scala.collection.mutable
 import scala.language.postfixOps
-import scala.util.Random
+
+private[actors] object StorageTracker {
+  case class Storage(id: String, dispatcher: ActorRef, health: StorageHealth)
+}
 
 private[actors] final class StorageTracker(implicit context: ActorContext) { // TODO: Quota
-  private[this] val storageIds = mutable.AnyRefMap[ActorRef, String]()
-  private[this] val dispatchers = mutable.AnyRefMap[String, ActorRef]()
+  import StorageTracker.Storage
+  private[this] val storages = mutable.AnyRefMap[String, Storage]()
+  private[this] val storagesByAR = mutable.AnyRefMap[ActorRef, Storage]()
 
   def contains(dispatcher: ActorRef): Boolean = {
-    storageIds.contains(dispatcher)
+    storagesByAR.contains(dispatcher)
   }
 
   def contains(storageId: String): Boolean = {
-    dispatchers.contains(storageId)
+    storages.contains(storageId)
   }
 
-  def all: Iterable[ActorRef] = {
-    storageIds.keys
+  def available(toWrite: Long = 0): Seq[ActorRef] = {
+    storagesByAR.values.toSeq
+      .filter(_.health.canWrite > toWrite)
+      .sortBy(_.id)
+      .map(_.dispatcher)
   }
 
-  def forIndexWrite(diff: IndexDiff): Seq[ActorRef] = { // TODO: Selective write
-    all.toSeq
+  def forIndexWrite(diff: IndexDiff): Seq[ActorRef] = {
+    available(1024) // At least 1KB
   }
 
   def forRead(status: ChunkStatus): Seq[ActorRef] = {
-    Random.shuffle(storageIds.keySet.intersect(status.dispatchers).toVector)
+    available().filter(status.hasChunk.contains)
   }
 
   def forWrite(chunk: ChunkStatus): Seq[ActorRef] = {
-    Random.shuffle(storageIds.keys.toVector)
+    def dispatcherCanWrite(dispatcher: ActorRef): Boolean = {
+      !chunk.hasChunk.contains(dispatcher) &&
+        !chunk.writingChunk.contains(dispatcher) &&
+        !chunk.waitingChunk.contains(dispatcher)
+    }
+    val writeSize = chunk.chunk.checksum.encryptedSize
+    available(writeSize).filter(dispatcherCanWrite)
   }
 
   def getStorageId(dispatcher: ActorRef): String = {
-    storageIds(dispatcher)
+    storagesByAR(dispatcher).id
   }
 
   def getDispatcher(storageId: String): ActorRef = {
-    dispatchers(storageId)
+    storages(storageId).dispatcher
   }
 
-  def register(storageId: String, dispatcher: ActorRef): Unit = {
+  def register(storageId: String, dispatcher: ActorRef, health: StorageHealth): Unit = {
     context.watch(dispatcher)
-    storageIds += dispatcher → storageId
-    dispatchers += storageId → dispatcher
+    val storage = Storage(storageId, dispatcher, health)
+    storages += storageId → storage
+    storagesByAR += dispatcher → storage
     StorageEvent.stream.subscribe(context.self, storageId)
   }
 
   def unregister(dispatcher: ActorRef): Unit = {
     context.unwatch(dispatcher)
-    storageIds.remove(dispatcher).foreach { storageId ⇒
-      dispatchers -= storageId
-      StorageEvent.stream.unsubscribe(context.self, storageId)
+    storagesByAR.remove(dispatcher).foreach { storage ⇒
+      storages -= storage.id
+      StorageEvent.stream.unsubscribe(context.self, storage.id)
+    }
+  }
+
+  def update(storageId: String, health: StorageHealth): Unit = {
+    storages.get(storageId).foreach { storage ⇒
+      val newStatus = storage.copy(health = health)
+      storages += storageId → newStatus
+      storagesByAR += storage.dispatcher → newStatus
     }
   }
 }

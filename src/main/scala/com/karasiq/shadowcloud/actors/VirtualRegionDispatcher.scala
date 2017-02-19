@@ -9,9 +9,10 @@ import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
 import com.karasiq.shadowcloud.actors.events.{RegionEvent, StorageEvent}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
+import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
-import com.karasiq.shadowcloud.storage.IndexMerger
 import com.karasiq.shadowcloud.storage.IndexMerger.RegionKey
+import com.karasiq.shadowcloud.storage.{IndexMerger, StorageHealth}
 import com.karasiq.shadowcloud.utils.Utils
 
 import scala.concurrent.ExecutionContext
@@ -22,7 +23,7 @@ import scala.util.{Failure, Success}
 object VirtualRegionDispatcher {
   // Messages
   sealed trait Message
-  case class Register(storageId: String, dispatcher: ActorRef) extends Message
+  case class Register(storageId: String, dispatcher: ActorRef, health: StorageHealth) extends Message
   case class WriteIndex(diff: FolderIndexDiff) extends Message
   object WriteIndex extends MessageStatus[IndexDiff, IndexDiff]
   case object GetIndex extends Message {
@@ -44,8 +45,9 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
   require(regionId.nonEmpty)
   implicit val executionContext: ExecutionContext = context.dispatcher
   implicit val timeout = Timeout(10 seconds)
+  val config = AppConfig()
   val storages = new StorageTracker
-  val chunks = new ChunksTracker(storages, log)
+  val chunks = new ChunksTracker(config.storage, storages, log)
   val merger = IndexMerger.region
 
   def receive: Receive = {
@@ -54,13 +56,13 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
     // -----------------------------------------------------------------------
     case WriteIndex(folders) ⇒
       val diff = IndexDiff(Utils.timestamp, folders)
-      val actors = storages.forIndexWrite(diff)
+      val actors = Utils.takeOrAll(storages.forIndexWrite(diff), config.index.replicationFactor)
       if (actors.isEmpty) {
         log.warning("No index storages available on {}", regionId)
         sender() ! WriteIndex.Failure(diff, new IllegalStateException("No storages available"))
       } else {
         merger.addPending(diff)
-        log.info("Writing to virtual region [{}] index: {}", regionId, diff)
+        log.info("Writing to virtual region [{}] index: {} (storages = {})", regionId, diff, actors)
         actors.foreach(_ ! IndexSynchronizer.AddPending(diff))
         sender() ! WriteIndex.Success(diff, merger.pending)
       }
@@ -70,7 +72,7 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
 
     case Synchronize ⇒
       log.info("Force synchronizing indexes of virtual region: {}", regionId)
-      storages.all.foreach(_ ! IndexSynchronizer.Synchronize)
+      storages.available().foreach(_ ! IndexSynchronizer.Synchronize)
 
     // -----------------------------------------------------------------------
     // Read/write commands
@@ -92,9 +94,9 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
     // -----------------------------------------------------------------------
     // Storage events
     // -----------------------------------------------------------------------
-    case Register(storageId, dispatcher) if !storages.contains(storageId) ⇒
+    case Register(storageId, dispatcher, health) if !storages.contains(storageId) ⇒
       log.info("Registered storage: {}", dispatcher)
-      storages.register(storageId, dispatcher)
+      storages.register(storageId, dispatcher, health)
       val indexFuture = (dispatcher ? IndexSynchronizer.GetIndex).mapTo[IndexSynchronizer.GetIndex.Success]
       indexFuture.onComplete {
         case Success(IndexSynchronizer.GetIndex.Success(diffs)) ⇒

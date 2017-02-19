@@ -10,6 +10,7 @@ import com.karasiq.shadowcloud.storage.files.FileChunkRepository
 import com.karasiq.shadowcloud.storage.inmem.InMemoryChunkRepository
 import com.karasiq.shadowcloud.storage.wrappers.{ByteStringChunkRepository, HexStringChunkRepositoryWrapper}
 
+import scala.collection.concurrent.TrieMap
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
@@ -22,8 +23,12 @@ trait ChunkRepository[ChunkKey] {
 object ChunkRepository {
   type BaseChunkRepository = ChunkRepository[String]
 
+  def fromTrieMap[T](map: TrieMap[T, ByteString]): ChunkRepository[T] = {
+    new InMemoryChunkRepository(map)
+  }
+
   def inMemory[T]: ChunkRepository[T] = {
-    new InMemoryChunkRepository
+    fromTrieMap(TrieMap.empty)
   }
 
   def fromDirectory(directory: Path)(implicit ec: ExecutionContext): BaseChunkRepository = {

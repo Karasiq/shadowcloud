@@ -14,8 +14,8 @@ import scala.language.postfixOps
 /**
   * Stores chunks in [[scala.collection.concurrent.TrieMap TrieMap]]
   */
-private[storage] class InMemoryChunkRepository[Key] extends ChunkRepository[Key] {
-  private[this] val underlying = new TrieMapStreams[Key, ByteString](TrieMap.empty, _.length)
+private[storage] class InMemoryChunkRepository[Key](storage: TrieMap[Key, ByteString]) extends ChunkRepository[Key] {
+  private[this] val underlying = new TrieMapStreams[Key, ByteString](storage, _.length)
 
   def chunks: Source[Key, NotUsed] = {
     underlying.keys

@@ -14,8 +14,8 @@ import scala.language.postfixOps
 /**
   * Stores index in [[scala.collection.concurrent.TrieMap TrieMap]]
   */
-private[storage] class InMemoryIndexRepository[Key] extends IndexRepository[Key] {
-  private[this] val underlying = new TrieMapStreams[Key, ByteString](TrieMap.empty, _.length)
+private[storage] class InMemoryIndexRepository[Key](storage: TrieMap[Key, ByteString]) extends IndexRepository[Key] {
+  private[this] val underlying = new TrieMapStreams[Key, ByteString](storage, _.length)
 
   def keys: Source[Key, NotUsed] = {
     underlying.keys

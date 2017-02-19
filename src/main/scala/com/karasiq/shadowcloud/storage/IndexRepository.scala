@@ -10,6 +10,7 @@ import com.karasiq.shadowcloud.storage.files.FileIndexRepository
 import com.karasiq.shadowcloud.storage.inmem.InMemoryIndexRepository
 import com.karasiq.shadowcloud.storage.wrappers.{NumericIndexRepository, NumericIndexRepositoryWrapper}
 
+import scala.collection.concurrent.TrieMap
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
@@ -22,8 +23,12 @@ trait IndexRepository[Key] {
 object IndexRepository {
   type BaseIndexRepository = IndexRepository[String]
 
+  def fromTrieMap[T](map: TrieMap[T, ByteString]): IndexRepository[T] = {
+    new InMemoryIndexRepository(map)
+  }
+
   def inMemory[T]: IndexRepository[T] = {
-    new InMemoryIndexRepository
+    fromTrieMap(TrieMap.empty)
   }
 
   def fromDirectory(directory: Path)(implicit ec: ExecutionContext): BaseIndexRepository = {

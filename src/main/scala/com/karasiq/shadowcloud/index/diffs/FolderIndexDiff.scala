@@ -9,13 +9,15 @@ import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 import scala.language.postfixOps
 
 case class FolderIndexDiff(folders: Seq[FolderDiff] = Vector.empty)
-  extends MergeableDiff[FolderIndexDiff] with HasEmpty with HasWithoutData[FolderIndexDiff] {
+  extends MergeableDiff with HasEmpty with HasWithoutData {
+
+  type Repr = FolderIndexDiff
 
   // Delete wins by default
   def mergeWith(diff: FolderIndexDiff, folderDecider: FolderDecider = FolderDecider.mutualExclude): FolderIndexDiff = {
     val folders = MergeUtil.mergeByKey[Path, FolderDiff](this.folders, diff.folders, _.path, {
       case Conflict(left, right) ⇒
-        Some(left.merge(right, folderDecider)).filter(_.nonEmpty)
+        Some(left.mergeWith(right, folderDecider)).filter(_.nonEmpty)
     })
     withFolders(folders)
   }
@@ -24,7 +26,7 @@ case class FolderIndexDiff(folders: Seq[FolderDiff] = Vector.empty)
                folderDecider: FolderDecider = FolderDecider.mutualExclude): FolderIndexDiff = {
     val decider1: Decider[FolderDiff] = decider.orElse {
       case Conflict(left, right) ⇒
-        Some(right.diff(left, folderDecider)).filter(_.nonEmpty)
+        Some(right.diffWith(left, folderDecider)).filter(_.nonEmpty)
     }
     val folders = MergeUtil.mergeByKey[Path, FolderDiff](this.folders, diff.folders, _.path, decider1)
     withFolders(folders)

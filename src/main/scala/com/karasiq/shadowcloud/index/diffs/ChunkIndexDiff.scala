@@ -8,7 +8,9 @@ import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 import scala.language.postfixOps
 
 case class ChunkIndexDiff(newChunks: Set[Chunk] = Set.empty, deletedChunks: Set[Chunk] = Set.empty)
-  extends MergeableDiff[ChunkIndexDiff] with HasEmpty with HasWithoutData[ChunkIndexDiff] {
+  extends MergeableDiff with HasEmpty with HasWithoutData {
+  
+  type Repr = ChunkIndexDiff
 
   // Delete wins by default
   def mergeWith(diff: ChunkIndexDiff, decider: SplitDecider[Chunk] = SplitDecider.dropDuplicates): ChunkIndexDiff = {

@@ -9,8 +9,10 @@ import scala.language.postfixOps
 
 case class Folder(path: Path, created: Long = 0, lastModified: Long = 0,
                   folders: Set[String] = Set.empty, files: Set[File] = Set.empty)
-  extends HasPath with HasEmpty with HasWithoutData[Folder] with Mergeable[Folder, FolderDiff] {
-  
+  extends HasPath with HasEmpty with HasWithoutData with Mergeable {
+
+  type Repr = Folder
+  type DiffRepr = FolderDiff
   require(lastModified >= created, "Invalid folder time")
   require(files.forall(_.path.parent == this.path), "Invalid file paths")
 

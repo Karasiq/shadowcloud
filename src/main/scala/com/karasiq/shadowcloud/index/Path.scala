@@ -42,5 +42,5 @@ object Path {
     if (nodes.isEmpty) root else Path(nodes)
   }
 
-  private[this] val separators = Array('/', '\\')
+  private[this] val separators: Array[Char] = Array('/', '\\')
 }

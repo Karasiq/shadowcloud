@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.index.diffs
 
 import com.karasiq.shadowcloud.index._
-import com.karasiq.shadowcloud.index.utils.{FolderDecider, HasPath}
+import com.karasiq.shadowcloud.index.utils._
 import com.karasiq.shadowcloud.utils.MergeUtil
 import com.karasiq.shadowcloud.utils.MergeUtil.SplitDecider
 
@@ -9,12 +9,12 @@ import scala.language.postfixOps
 
 case class FolderDiff(path: Path, time: Long = 0, newFiles: Set[File] = Set.empty,
                       deletedFiles: Set[File] = Set.empty, newFolders: Set[String] = Set.empty,
-                      deletedFolders: Set[String] = Set.empty) extends HasPath {
-  def nonEmpty: Boolean = {
-    newFiles.nonEmpty || deletedFiles.nonEmpty || newFolders.nonEmpty || deletedFolders.nonEmpty
-  }
+                      deletedFolders: Set[String] = Set.empty)
+  extends HasPath with MergeableDiff with HasEmpty with HasWithoutData {
 
-  def merge(diff: FolderDiff, decider: FolderDecider = FolderDecider.mutualExclude): FolderDiff = {
+  type Repr = FolderDiff
+
+  def mergeWith(diff: FolderDiff, decider: FolderDecider = FolderDecider.mutualExclude): FolderDiff = {
     require(diff.path == path, "Invalid path")
     val (newFiles, deletedFiles) = MergeUtil.splitSets(this.newFiles ++ diff.newFiles,
       this.deletedFiles ++ diff.deletedFiles, decider.files)
@@ -23,9 +23,17 @@ case class FolderDiff(path: Path, time: Long = 0, newFiles: Set[File] = Set.empt
     copy(path, math.max(time, diff.time), newFiles, deletedFiles, newFolders, deletedFolders)
   }
 
-  def diff(oldDiff: FolderDiff, decider: FolderDecider = FolderDecider.mutualExclude): FolderDiff = {
+  def diffWith(oldDiff: FolderDiff, decider: FolderDecider = FolderDecider.mutualExclude): FolderDiff = {
     require(oldDiff.path == path, "Invalid path")
-    merge(oldDiff.reverse, decider)
+    mergeWith(oldDiff.reverse, decider)
+  }
+
+  def merge(right: FolderDiff): FolderDiff = {
+    mergeWith(right)
+  }
+
+  def diff(right: FolderDiff): FolderDiff = {
+    diffWith(right)
   }
 
   def reverse: FolderDiff = {
@@ -38,6 +46,10 @@ case class FolderDiff(path: Path, time: Long = 0, newFiles: Set[File] = Set.empt
 
   def creates: FolderDiff = {
     copy(deletedFiles = Set.empty, deletedFolders = Set.empty)
+  }
+
+  def isEmpty: Boolean = {
+    newFiles.isEmpty && deletedFiles.isEmpty && newFolders.isEmpty && deletedFolders.isEmpty
   }
 
   def withoutData: FolderDiff = {

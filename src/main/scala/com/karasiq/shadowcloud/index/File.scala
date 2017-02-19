@@ -7,7 +7,9 @@ import scala.language.postfixOps
 
 case class File(path: Path, created: Long = 0, lastModified: Long = 0,
                 checksum: Checksum = Checksum.empty, chunks: Seq[Chunk] = Nil)
-                extends HasPath with HasEmpty with HasWithoutData[File] {
+  extends HasPath with HasEmpty with HasWithoutData {
+
+  type Repr = File
   require(!path.isRoot && lastModified >= created)
 
   def withoutData: File = {

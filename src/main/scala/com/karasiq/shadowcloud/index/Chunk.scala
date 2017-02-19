@@ -6,7 +6,9 @@ import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData}
 import scala.language.postfixOps
 
 case class Chunk(checksum: Checksum = Checksum.empty, encryption: EncryptionParameters = EncryptionParameters.empty,
-                 data: Data = Data.empty) extends HasEmpty with HasWithoutData[Chunk] {
+                 data: Data = Data.empty) extends HasEmpty with HasWithoutData {
+  type Repr = Chunk
+  
   def isEmpty: Boolean = {
     data.isEmpty
   }

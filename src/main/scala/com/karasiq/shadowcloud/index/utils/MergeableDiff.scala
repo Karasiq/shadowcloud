@@ -2,12 +2,14 @@ package com.karasiq.shadowcloud.index.utils
 
 import scala.language.postfixOps
 
-trait MergeableDiff[Self] extends Mergeable[Self, Self] {
-  def reverse: Self
-  def creates: Self
-  def deletes: Self
+trait MergeableDiff extends Mergeable {
+  type Repr
+  type DiffRepr = Repr
+  def reverse: Repr
+  def creates: Repr
+  def deletes: Repr
 
-  override def patch(diff: Self): Self = {
+  override def patch(diff: Repr): Repr = {
     merge(diff)
   }
 }

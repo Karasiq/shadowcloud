@@ -9,7 +9,9 @@ import scala.language.postfixOps
 
 case class IndexDiff(time: Long = 0, folders: FolderIndexDiff = FolderIndexDiff.empty,
                      chunks: ChunkIndexDiff = ChunkIndexDiff.empty)
-  extends MergeableDiff[IndexDiff] with HasEmpty with HasWithoutData[IndexDiff] {
+  extends MergeableDiff with HasEmpty with HasWithoutData {
+
+  type Repr = IndexDiff
 
   // Delete wins by default
   def mergeWith(diff: IndexDiff, folderDecider: FolderDecider = FolderDecider.mutualExclude,

@@ -8,7 +8,10 @@ import scala.collection.{GenTraversableOnce, mutable}
 import scala.language.postfixOps
 
 case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Path.root)))
-  extends Mergeable[FolderIndex, FolderIndexDiff] with HasEmpty with HasWithoutData[FolderIndex] {
+  extends Mergeable with HasEmpty with HasWithoutData {
+
+  type Repr = FolderIndex
+  type DiffRepr = FolderIndexDiff
   require(folders.contains(Path.root), "No root directory")
 
   def contains(folder: Path): Boolean = {

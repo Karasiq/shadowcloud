@@ -2,6 +2,7 @@ package com.karasiq.shadowcloud.index.utils
 
 import scala.language.postfixOps
 
-trait HasWithoutData[T] {
-  def withoutData: T
+trait HasWithoutData {
+  type Repr
+  def withoutData: Repr
 }

@@ -7,8 +7,10 @@ import com.karasiq.shadowcloud.utils.Utils
 import scala.collection.GenTraversableOnce
 import scala.language.postfixOps
 
-case class ChunkIndex(chunks: Set[Chunk] = Set.empty)
-  extends Mergeable[ChunkIndex, ChunkIndexDiff] with HasEmpty with HasWithoutData[ChunkIndex] {
+case class ChunkIndex(chunks: Set[Chunk] = Set.empty) extends Mergeable with HasEmpty with HasWithoutData {
+  type Repr = ChunkIndex
+  type DiffRepr = ChunkIndexDiff
+
   def contains(chunk: Chunk): Boolean = {
     chunks.contains(chunk)
   }

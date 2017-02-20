@@ -1,7 +1,9 @@
 package com.karasiq.shadowcloud.actors.internal
 
+import akka.Done
 import akka.actor.{ActorContext, ActorRef}
 import akka.event.LoggingAdapter
+import akka.stream.IOResult
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
@@ -12,7 +14,9 @@ import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
 import com.karasiq.shadowcloud.utils.Utils
 
 import scala.collection.mutable
+import scala.concurrent.Future
 import scala.language.{implicitConversions, postfixOps}
+import scala.util.Success
 
 private[actors] object ChunksTracker {
   object Status extends Enumeration {
@@ -35,7 +39,10 @@ private[actors] final class ChunksTracker(config: StorageConfig, storages: Stora
           receiver ! ReadChunk.Failure(chunk, new IllegalArgumentException(s"Chunks conflict: ${status.chunk} / $chunk"))
         } else if (status.chunk.data.encrypted.nonEmpty) {
           log.info("Chunk extracted from cache: {}", status.chunk)
-          receiver ! ReadChunk.Success(status.chunk, Source.single(status.chunk.data.encrypted))
+          val data = status.chunk.data.encrypted
+          val source = Source.single(data)
+            .mapMaterializedValue(_ ⇒ Future.successful(IOResult(data.length, Success(Done))))
+          receiver ! ReadChunk.Success(status.chunk, source)
         } else {
           storages.forRead(status).headOption match {
             case Some(dispatcher) ⇒

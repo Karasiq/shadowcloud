@@ -9,15 +9,14 @@ import scala.collection.mutable
 import scala.language.postfixOps
 
 private[actors] object RegionTracker {
-  case class RegionStatus(regionId: String, storages: Set[String] = Set.empty)
-  case class StorageStatus(storageId: String, props: StorageProps, regions: Set[String] = Set.empty)
-  case class State(regions: Map[String, RegionStatus], storages: Map[String, StorageStatus])
+  case class RegionStatus(regionId: String, dispatcher: ActorRef, storages: Set[String] = Set.empty)
+  case class StorageStatus(storageId: String, props: StorageProps, dispatcher: ActorRef, regions: Set[String] = Set.empty)
 }
 
 private[actors] final class RegionTracker {
   import RegionTracker._
-  private[this] val regions = mutable.AnyRefMap.empty[String, (RegionStatus, ActorRef)]
-  private[this] val storages = mutable.AnyRefMap.empty[String, (StorageStatus, ActorRef)]
+  val regions = mutable.AnyRefMap.empty[String, RegionStatus]
+  val storages = mutable.AnyRefMap.empty[String, StorageStatus]
 
   def containsRegion(regionId: String): Boolean = {
     regions.contains(regionId)
@@ -33,49 +32,49 @@ private[actors] final class RegionTracker {
 
   def addRegion(regionId: String, dispatcher: ActorRef): Unit = {
     require(!containsRegion(regionId))
-    regions += regionId → (RegionStatus(regionId), dispatcher)
+    regions += regionId → RegionStatus(regionId, dispatcher)
   }
 
   def addStorage(storageId: String, props: StorageProps, dispatcher: ActorRef): Unit = {
     require(!containsStorage(storageId))
-    storages += storageId → (StorageStatus(storageId, props), dispatcher)
+    storages += storageId → StorageStatus(storageId, props, dispatcher)
   }
 
-  def deleteRegion(regionId: String): ActorRef = {
+  def deleteRegion(regionId: String): RegionStatus = {
     require(containsRegion(regionId))
-    storages.foreach { case (storageId, (storageStatus, storage)) ⇒
-      if (storageStatus.regions.contains(regionId)) {
-        storages += storageId → (storageStatus.copy(regions = storageStatus.regions - regionId), storage)
+    storages.foreach { case (storageId, storage) ⇒
+      if (storage.regions.contains(regionId)) {
+        storages += storageId → storage.copy(regions = storage.regions - regionId)
       }
     }
-    regions.remove(regionId).get._2
+    regions.remove(regionId).get
   }
 
-  def deleteStorage(storageId: String): ActorRef = {
+  def deleteStorage(storageId: String): StorageStatus = {
     require(containsStorage(storageId))
-    regions.foreach { case (regionId, (regionStatus, region)) ⇒
-      if (regionStatus.storages.contains(regionId)) {
-        regions += regionId → (regionStatus.copy(storages = regionStatus.storages - storageId), region)
+    regions.foreach { case (regionId, region) ⇒
+      if (region.storages.contains(regionId)) {
+        regions += regionId → region.copy(storages = region.storages - storageId)
       }
     }
-    storages.remove(storageId).get._2
+    storages.remove(storageId).get
   }
 
   def registerStorage(regionId: String, storageId: String): Unit = {
     require(containsRegionAndStorage(regionId, storageId))
-    val (regionStatus, region) = regions(regionId)
-    val (storageStatus, storage) = storages(storageId)
-    regions += regionId → (regionStatus.copy(storages = regionStatus.storages + storageId), region)
-    storages += storageId → (storageStatus.copy(regions = storageStatus.regions + regionId), storage)
-    region ! RegionDispatcher.Register(storageId, storage, StorageHealth.empty)
+    val region = regions(regionId)
+    val storage = storages(storageId)
+    regions += regionId → region.copy(storages = region.storages + storageId)
+    storages += storageId → storage.copy(regions = storage.regions + regionId)
+    region.dispatcher ! RegionDispatcher.Register(storageId, storage.dispatcher, StorageHealth.empty)
   }
 
   def unregisterStorage(regionId: String, storageId: String): Unit = {
     require(containsRegionAndStorage(regionId, storageId))
-    val (regionStatus, region) = regions(regionId)
-    val (storageStatus, storage) = storages(storageId)
-    regions += regionId → (regionStatus.copy(storages = regionStatus.storages - storageId), region)
-    storages += storageId → (storageStatus.copy(regions = storageStatus.regions - regionId), storage)
-    region ! RegionDispatcher.Unregister(storageId)
+    val region = regions(regionId)
+    val storage = storages(storageId)
+    regions += regionId → region.copy(storages = region.storages - storageId)
+    storages += storageId → storage.copy(regions = storage.regions - regionId)
+    region.dispatcher ! RegionDispatcher.Unregister(storageId)
   }
 }

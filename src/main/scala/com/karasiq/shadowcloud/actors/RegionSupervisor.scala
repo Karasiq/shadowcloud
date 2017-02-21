@@ -4,6 +4,7 @@ import akka.actor.{ActorLogging, OneForOneStrategy, PossiblyHarmful, Props, Supe
 import akka.persistence.PersistentActor
 import akka.util.Timeout
 import com.karasiq.shadowcloud.actors.internal.RegionTracker
+import com.karasiq.shadowcloud.actors.internal.RegionTracker.{RegionStatus, StorageStatus}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.utils.StorageInstantiator
 
@@ -19,6 +20,9 @@ object RegionSupervisor {
   case class DeleteStorage(storageId: String) extends Message
   case class RegisterStorage(regionId: String, storageId: String) extends Message
   case class UnregisterStorage(regionId: String, storageId: String) extends Message
+  case object GetState {
+    case class Success(regions: Map[String, RegionStatus], storages: Map[String, StorageStatus])
+  }
 
   // Internal messages
   private sealed trait InternalMessage extends Message with PossiblyHarmful
@@ -60,8 +64,8 @@ class RegionSupervisor(instantiator: StorageInstantiator) extends PersistentActo
 
     case RegionDeleted(regionId) ⇒
       log.debug("Region deleted: {}", regionId)
-      val dispatcher = state.deleteRegion(regionId)
-      context.stop(dispatcher)
+      val region = state.deleteRegion(regionId)
+      context.stop(region.dispatcher)
 
     // -----------------------------------------------------------------------
     // Storages
@@ -73,8 +77,8 @@ class RegionSupervisor(instantiator: StorageInstantiator) extends PersistentActo
 
     case StorageDeleted(storageId) ⇒
       log.info("Storage deleted: {}", storageId)
-      val dispatcher = state.deleteStorage(storageId)
-      context.stop(dispatcher)
+      val storage = state.deleteStorage(storageId)
+      context.stop(storage.dispatcher)
 
     // -----------------------------------------------------------------------
     // Storage registration
@@ -123,6 +127,12 @@ class RegionSupervisor(instantiator: StorageInstantiator) extends PersistentActo
 
     case UnregisterStorage(regionId, storageId) if state.containsRegionAndStorage(regionId, storageId) ⇒
       persist(StorageUnregistered(regionId, storageId))(updateState)
+
+    // -----------------------------------------------------------------------
+    // State actions
+    // -----------------------------------------------------------------------
+    case GetState ⇒
+      sender() ! GetState.Success(state.regions.toMap, state.storages.toMap)
   }
 
   override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {

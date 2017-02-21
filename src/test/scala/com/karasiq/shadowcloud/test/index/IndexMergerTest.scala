@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.test.index
 
 import com.karasiq.shadowcloud.index.FolderIndex
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.storage.IndexMerger
+import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.WordSpecLike
 

@@ -1,30 +1,40 @@
 package com.karasiq.shadowcloud.actors
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ActorRefFactory, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, NotInfluenceReceiveTimeout, Props}
+import akka.pattern.pipe
+import akka.util.Timeout
 import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
-import com.karasiq.shadowcloud.actors.internal.PendingOperation
+import com.karasiq.shadowcloud.actors.internal.{DiffStats, PendingOperation, StorageStatsTracker}
+import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.storage.ChunkRepository.BaseChunkRepository
-import com.karasiq.shadowcloud.storage.IndexRepository.BaseIndexRepository
+import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
 
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
 object StorageDispatcher {
-  // Props
-  def props(storageId: String, index: ActorRef, chunkIO: ActorRef): Props = {
-    Props(classOf[StorageDispatcher], storageId, index, chunkIO)
-  }
+  // Messages
+  sealed trait Message
+  object CheckHealth extends Message with NotInfluenceReceiveTimeout with MessageStatus[String, StorageHealth]
 
-  def create(storageId: String, index: BaseIndexRepository, chunks: BaseChunkRepository)(implicit arf: ActorRefFactory): ActorRef = {
-    val indexSynchronizer = arf.actorOf(IndexSynchronizer.props(storageId, index), "indexSynchronizer")
-    val chunkIODispatcher = arf.actorOf(ChunkIODispatcher.props(chunks), "chunkIODispatcher")
-    arf.actorOf(props(storageId, indexSynchronizer, chunkIODispatcher), "storageDispatcher")
+  // Props
+  def props(storageId: String, index: ActorRef, chunkIO: ActorRef, health: StorageHealthProvider): Props = {
+    Props(classOf[StorageDispatcher], storageId, index, chunkIO, health)
   }
 }
 
-class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef) extends Actor with ActorLogging {
+class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef, health: StorageHealthProvider) extends Actor with ActorLogging {
+  import StorageDispatcher._
+
+  // Context
+  import context.dispatcher
+  private[this] implicit val timeout = Timeout(10 seconds)
+  private[this] val schedule = context.system.scheduler.schedule(Duration.Zero, 30 seconds, self, CheckHealth)
+
+  // State
   val pending = PendingOperation.chunk
+  val stats = new StorageStatsTracker(storageId, health, log)
 
   def receive: Receive = {
     // -----------------------------------------------------------------------
@@ -58,12 +68,53 @@ class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef) e
     // -----------------------------------------------------------------------
     case msg: IndexSynchronizer.Message ⇒
       index.forward(msg)
+
+    // -----------------------------------------------------------------------
+    // Storage health
+    // -----------------------------------------------------------------------
+    case CheckHealth ⇒
+      stats.checkHealth()
+        .map(CheckHealth.Success(storageId, _))
+        .recover(PartialFunction(CheckHealth.Failure(storageId, _)))
+        .pipeTo(self)
+
+    case CheckHealth.Success(`storageId`, health) ⇒
+      stats.updateHealth(_ ⇒ health)
+
+    case CheckHealth.Failure(`storageId`, error) ⇒
+      log.error(error, "Health update failure: {}", storageId)
+
+    // -----------------------------------------------------------------------
+    // Storage events
+    // -----------------------------------------------------------------------
+    case StorageEnvelope(`storageId`, event) ⇒ event match {
+      case StorageEvent.IndexLoaded(diffs) ⇒
+        val newStats = diffs.foldLeft(DiffStats.empty)((stat, kv) ⇒ stat + DiffStats(kv._2))
+        stats.updateStats(newStats)
+
+      case StorageEvent.IndexUpdated(_, diff, _) ⇒
+        stats.addStats(DiffStats(diff))
+
+      case StorageEvent.ChunkWritten(chunk) ⇒
+        val written = chunk.checksum.encryptedSize
+        log.debug("{} bytes written, updating storage health", written)
+        stats.updateHealth(_ - written)
+
+      case _ ⇒
+        // Ignore
+    }
   }
 
-  @scala.throws[Exception](classOf[Exception])
   override def preStart(): Unit = {
     super.preStart()
     context.watch(chunkIO)
     context.watch(index)
+    StorageEvent.stream.subscribe(self, storageId)
+  }
+
+  override def postStop(): Unit = {
+    StorageEvent.stream.unsubscribe(self)
+    schedule.cancel()
+    super.postStop()
   }
 }

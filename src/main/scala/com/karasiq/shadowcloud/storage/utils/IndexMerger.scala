@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.storage
+package com.karasiq.shadowcloud.storage.utils
 
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}

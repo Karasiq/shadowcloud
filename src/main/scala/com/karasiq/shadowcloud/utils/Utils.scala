@@ -47,7 +47,7 @@ private[shadowcloud] object Utils {
     if (bytes < 1024) {
       s"$bytes bytes"
     } else {
-      val units = Array("KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+      val units = Array("bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
       val digitGroup = math.max(0, math.min(units.length - 1, (Math.log10(bytes) / Math.log10(1024)).toInt))
       f"${bytes / Math.pow(1024, digitGroup)}%.2f ${units(digitGroup)}"
     }

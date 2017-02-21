@@ -11,8 +11,9 @@ import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
-import com.karasiq.shadowcloud.storage.IndexMerger.RegionKey
-import com.karasiq.shadowcloud.storage.{IndexMerger, StorageHealth}
+import com.karasiq.shadowcloud.storage.StorageHealth
+import com.karasiq.shadowcloud.storage.utils.IndexMerger
+import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.utils.Utils
 
 import scala.concurrent.ExecutionContext
@@ -20,10 +21,11 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-object VirtualRegionDispatcher {
+object RegionDispatcher {
   // Messages
   sealed trait Message
-  case class Register(storageId: String, dispatcher: ActorRef, health: StorageHealth) extends Message
+  case class Register(storageId: String, dispatcher: ActorRef, health: StorageHealth = StorageHealth.empty) extends Message
+  case class Unregister(storageId: String) extends Message
   case class WriteIndex(diff: FolderIndexDiff) extends Message
   object WriteIndex extends MessageStatus[IndexDiff, IndexDiff]
   case object GetIndex extends Message {
@@ -34,14 +36,14 @@ object VirtualRegionDispatcher {
   // Internal messages
   private case class PushDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)]) extends Message
 
-  // Props 
+  // Props
   def props(regionId: String): Props = {
-    Props(classOf[VirtualRegionDispatcher], regionId)
+    Props(classOf[RegionDispatcher], regionId)
   }
 }
 
-class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging {
-  import VirtualRegionDispatcher._
+class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
+  import RegionDispatcher._
   require(regionId.nonEmpty)
   implicit val executionContext: ExecutionContext = context.dispatcher
   implicit val timeout = Timeout(10 seconds)
@@ -97,6 +99,7 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
     case Register(storageId, dispatcher, health) if !storages.contains(storageId) ⇒
       log.info("Registered storage: {} -> {} [{}]", storageId, dispatcher, health)
       storages.register(storageId, dispatcher, health)
+      if (health == StorageHealth.empty) dispatcher ! StorageDispatcher.CheckHealth
       val indexFuture = (dispatcher ? IndexSynchronizer.GetIndex).mapTo[IndexSynchronizer.GetIndex.Success]
       indexFuture.onComplete {
         case Success(IndexSynchronizer.GetIndex.Success(diffs)) ⇒
@@ -105,6 +108,12 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
         case Failure(error) ⇒
           log.error(error, "Error fetching index: {}", dispatcher)
       }
+
+    case Unregister(storageId) if storages.contains(storageId) ⇒
+      val dispatcher = storages.getDispatcher(storageId)
+      dropStorageDiffs(storageId)
+      storages.unregister(dispatcher)
+      chunks.unregister(dispatcher)
 
     case PushDiffs(storageId, diffs) if storages.contains(storageId) ⇒
       addStorageDiffs(storageId, diffs)
@@ -132,6 +141,7 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
       case StorageEvent.HealthUpdated(health) ⇒
         log.debug("Storage [{}] health report: {}", storageId, health)
         storages.update(storageId, health)
+        chunks.retryPendingChunks()
 
       case _ ⇒
         // Ignore

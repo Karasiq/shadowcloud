@@ -13,6 +13,13 @@ import scala.concurrent.Future
 import scala.language.postfixOps
 
 case class StorageHealth(canWrite: Long, totalSpace: Long, usedSpace: Long) {
+  require(canWrite >= 0 && totalSpace >= 0 && usedSpace >= 0)
+
+  def -(bytes: Long): StorageHealth = {
+    val newUsedSpace = usedSpace + bytes
+    copy(canWrite = math.max(0L, canWrite - bytes), usedSpace = if (newUsedSpace >= 0) newUsedSpace else Long.MaxValue)
+  }
+
   override def toString: String = {
     f"StorageHealth(${Utils.printSize(canWrite)} available, ${Utils.printSize(usedSpace)}/${Utils.printSize(totalSpace)})"
   }

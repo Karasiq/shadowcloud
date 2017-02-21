@@ -7,9 +7,9 @@ import akka.stream.IOResult
 import akka.stream.scaladsl.{Keep, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.storage.IndexRepository
 import com.karasiq.shadowcloud.storage.IndexRepository.BaseIndexRepository
-import com.karasiq.shadowcloud.storage.utils.IndexIOResult
-import com.karasiq.shadowcloud.storage.{IndexRepository, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 

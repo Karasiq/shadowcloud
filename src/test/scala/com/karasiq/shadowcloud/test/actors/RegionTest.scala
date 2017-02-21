@@ -15,7 +15,7 @@ import com.karasiq.shadowcloud.actors.{IndexSynchronizer, _}
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
-import com.karasiq.shadowcloud.storage.utils.IndexIOResult
+import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.streams.ByteStringConcat
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
@@ -25,37 +25,51 @@ import scala.language.postfixOps
 import scala.util.Success
 
 // Uses local filesystem
-class VirtualRegionTest extends ActorSpec with FlatSpecLike {
+class RegionTest extends ActorSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
   val folder = TestUtils.randomFolder()
   val folderDiff = FolderIndexDiff.create(folder)
   val indexRepository = IndexRepository.fromDirectory(Files.createTempDirectory("vrt-index"))
-  val fileRepository = ChunkRepository.fromDirectory(Files.createTempDirectory("vrt-chunks"))
+  val chunksDir = Files.createTempDirectory("vrt-chunks")
+  val fileRepository = ChunkRepository.fromDirectory(chunksDir)
   val index = TestActorRef(IndexSynchronizer.props("testStorage", indexRepository), "index")
   val chunkIO = TestActorRef(ChunkIODispatcher.props(fileRepository), "chunkIO")
-  val storage = TestActorRef(StorageDispatcher.props("testStorage", index, chunkIO), "storage")
-  val testRegion = TestActorRef(VirtualRegionDispatcher.props("testRegion"), "testRegion")
+  val healthProvider = StorageHealthProvider.fromDirectory(chunksDir)
+  val initialHealth = healthProvider.health.futureValue
+  val storage = TestActorRef(StorageDispatcher.props("testStorage", index, chunkIO, healthProvider), "storage")
+  val testRegion = TestActorRef(RegionDispatcher.props("testRegion"), "testRegion")
 
   "Virtual region" should "register storage" in {
-    testRegion ! VirtualRegionDispatcher.Register("testStorage", storage, StorageHealth.unlimited)
+    testRegion ! RegionDispatcher.Register("testStorage", storage, initialHealth)
     expectNoMsg(100 millis)
   }
 
   it should "write chunk" in {
-    StorageEvent.stream.subscribe(testActor, "testStorage")
+    storageSubscribe()
+
+    // Write chunk
     val result = testRegion ? WriteChunk(chunk)
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
     expectMsg(StorageEnvelope("testStorage", StorageEvent.ChunkWritten(chunk)))
+
+    // Health update
+    val StorageEnvelope("testStorage", StorageEvent.HealthUpdated(health)) = receiveOne(1 second)
+    health.totalSpace shouldBe initialHealth.totalSpace
+    health.usedSpace shouldBe (initialHealth.usedSpace + chunk.checksum.encryptedSize)
+    health.canWrite shouldBe (initialHealth.canWrite - chunk.checksum.encryptedSize)
+
+    // Chunk index update
     val StorageEnvelope("testStorage", StorageEvent.PendingIndexUpdated(diff)) = receiveOne(1 second)
     diff.folders shouldBe empty
     diff.time should be > TestUtils.testTimestamp
     diff.chunks.newChunks shouldBe Set(chunk)
     diff.chunks.deletedChunks shouldBe empty
+
     expectNoMsg(1 second)
     val storedChunks = fileRepository.chunks.runWith(TestSink.probe)
     storedChunks.requestNext(chunk.checksum.hash.toHexString)
     storedChunks.expectComplete()
-    StorageEvent.stream.unsubscribe(testActor, "testStorage")
+    storageUnsubscribe()
   }
 
   it should "read chunk" in {
@@ -74,8 +88,8 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
   }
 
   it should "add folder" in {
-    testRegion ! VirtualRegionDispatcher.WriteIndex(FolderIndexDiff.create(folder))
-    val VirtualRegionDispatcher.WriteIndex.Success(diff, result) = receiveOne(1 second)
+    testRegion ! RegionDispatcher.WriteIndex(FolderIndexDiff.create(folder))
+    val RegionDispatcher.WriteIndex.Success(diff, result) = receiveOne(1 second)
     diff.time shouldBe > (TestUtils.testTimestamp)
     diff.folders shouldBe folderDiff
     diff.chunks.newChunks shouldBe empty
@@ -87,8 +101,8 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
   }
 
   it should "write index" in {
-    StorageEvent.stream.subscribe(testActor, "testStorage")
-    testRegion ! VirtualRegionDispatcher.Synchronize
+    storageSubscribe()
+    testRegion ! RegionDispatcher.Synchronize
     val StorageEnvelope("testStorage", StorageEvent.IndexUpdated(sequenceNr, diff, remote)) = receiveOne(5 seconds)
     sequenceNr shouldBe 1
     diff.time shouldBe > (TestUtils.testTimestamp)
@@ -97,7 +111,7 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
     diff.chunks.deletedChunks shouldBe empty
     remote shouldBe false
     expectNoMsg(1 second)
-    StorageEvent.stream.unsubscribe(testActor)
+    storageUnsubscribe()
   }
 
   it should "read index" in {
@@ -111,8 +125,8 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
     sideWrite.sendComplete()
     val IndexIOResult("2", `diff1`, IOResult(_, Success(Done))) = sideWriteResult.requestNext()
     sideWriteResult.expectComplete()
-    StorageEvent.stream.subscribe(testActor, "testStorage")
-    testRegion ! VirtualRegionDispatcher.Synchronize
+    storageSubscribe()
+    testRegion ! RegionDispatcher.Synchronize
     val StorageEnvelope("testStorage", StorageEvent.IndexUpdated(sequenceNr, diff, remote)) = receiveOne(5 seconds)
     sequenceNr shouldBe 2
     diff shouldBe diff1
@@ -124,6 +138,14 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
     firstDiff.chunks.newChunks shouldBe Set(chunk)
     firstDiff.chunks.deletedChunks shouldBe empty
     secondDiff shouldBe diff1
+    storageUnsubscribe()
+  }
+
+  private def storageUnsubscribe() = {
     StorageEvent.stream.unsubscribe(testActor)
+  }
+
+  private def storageSubscribe(): Unit = {
+    StorageEvent.stream.subscribe(testActor, "testStorage")
   }
 }

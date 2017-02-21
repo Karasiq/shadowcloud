@@ -10,9 +10,9 @@ import com.karasiq.shadowcloud.actors.events.StorageEvent._
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.storage.IndexRepository
 import com.karasiq.shadowcloud.storage.IndexRepository.BaseIndexRepository
-import com.karasiq.shadowcloud.storage.utils.IndexIOResult
-import com.karasiq.shadowcloud.storage.{IndexMerger, IndexRepository, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -38,21 +38,21 @@ object IndexSynchronizer {
   case class Snapshot(diffs: Seq[(Long, IndexDiff)])
 
   // Props
-  def props(indexId: String, baseIndexRepository: BaseIndexRepository, streams: IndexRepositoryStreams = IndexRepositoryStreams.gzipped): Props = {
-    Props(classOf[IndexSynchronizer], indexId, baseIndexRepository, streams)
+  def props(storageId: String, baseIndexRepository: BaseIndexRepository, streams: IndexRepositoryStreams = IndexRepositoryStreams.gzipped): Props = {
+    Props(classOf[IndexSynchronizer], storageId, baseIndexRepository, streams)
   }
 }
 
-class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepository, streams: IndexRepositoryStreams) extends PersistentActor with ActorLogging {
+class IndexSynchronizer(storageId: String, baseIndexRepository: BaseIndexRepository, streams: IndexRepositoryStreams) extends PersistentActor with ActorLogging {
   import IndexSynchronizer._
   import context.dispatcher
-  require(indexId.nonEmpty)
+  require(storageId.nonEmpty)
   implicit val actorMaterializer = ActorMaterializer()
   val indexRepository = IndexRepository.numeric(baseIndexRepository)
   val merger = IndexMerger()
   val config = AppConfig().index
 
-  override val persistenceId: String = s"index_$indexId"
+  override val persistenceId: String = s"index_$storageId"
 
   // Local operations
   def receiveDefault: Receive = {
@@ -86,7 +86,7 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
         log.info("Remote diff #{} received, {} bytes: {}", sequenceNr, bytes, diff)
         persistAsync(IndexUpdated(sequenceNr, diff, remote = true))(updateState)
 
-      case Failure(error) ⇒ 
+      case Failure(error) ⇒
         log.error(error, "Diff #{} read failed", sequenceNr)
         throw error
     }
@@ -139,7 +139,7 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
   override def receiveCommand: Receive = receiveWait.orElse(receiveDefault)
 
   def updateState(event: Event): Unit = {
-    StorageEvent.stream.publish(StorageEvent.StorageEnvelope(indexId, event))
+    StorageEvent.stream.publish(StorageEvent.StorageEnvelope(storageId, event))
     event match {
       case IndexUpdated(sequenceNr, diff, _) ⇒
         merger.add(sequenceNr, diff)

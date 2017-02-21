@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.actors.events
 import com.karasiq.shadowcloud.actors.internal.StringEventBus
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.storage.IndexMerger.RegionKey
+import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 
 import scala.language.postfixOps
 

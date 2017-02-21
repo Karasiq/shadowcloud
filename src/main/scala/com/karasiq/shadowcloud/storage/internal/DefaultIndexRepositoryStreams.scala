@@ -5,8 +5,8 @@ import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Source, ZipWith}
 import akka.stream.{FlowShape, IOResult, SourceShape}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.storage.utils.IndexIOResult
-import com.karasiq.shadowcloud.storage.{IndexRepository, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.storage.IndexRepository
+import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
 
 import scala.concurrent.Future
 import scala.language.postfixOps

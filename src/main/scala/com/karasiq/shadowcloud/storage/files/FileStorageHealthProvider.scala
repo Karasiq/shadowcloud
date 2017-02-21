@@ -11,6 +11,8 @@ private[storage] final class FileStorageHealthProvider(directory: FsPath) extend
   private[this] val fileStore = Files.getFileStore(directory)
 
   def health: Future[StorageHealth] = {
-    Future.successful(StorageHealth(fileStore.getUsableSpace, fileStore.getTotalSpace, fileStore.getUnallocatedSpace))
+    val total = fileStore.getTotalSpace
+    val free = fileStore.getUsableSpace
+    Future.successful(StorageHealth(free, total, total - free))
   }
 }

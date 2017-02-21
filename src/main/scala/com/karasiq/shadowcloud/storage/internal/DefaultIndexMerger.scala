@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.storage.internal
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.index.utils.FolderDecider
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
-import com.karasiq.shadowcloud.storage.IndexMerger
+import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.utils.MergeUtil.Decider
 
 import scala.collection.{SortedMap, mutable}

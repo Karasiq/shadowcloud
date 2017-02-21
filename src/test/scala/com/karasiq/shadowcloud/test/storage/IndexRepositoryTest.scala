@@ -2,15 +2,19 @@ package com.karasiq.shadowcloud.test.storage
 
 import java.nio.file.Files
 
+import akka.Done
+import akka.stream.IOResult
 import akka.stream.scaladsl.{Keep, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.IndexRepository.BaseIndexRepository
+import com.karasiq.shadowcloud.storage.utils.IndexIOResult
 import com.karasiq.shadowcloud.storage.{IndexRepository, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 
 import scala.language.postfixOps
+import scala.util.Success
 
 class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
   def testRepository(repository: BaseIndexRepository): Unit = {
@@ -24,7 +28,7 @@ class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
       .toMat(TestSink.probe)(Keep.both)
       .run()
     write.sendNext((diff.time, diff))
-    writeResult.requestNext((diff.time, diff))
+    val IndexIOResult(diff.time, `diff`, IOResult(_, Success(Done))) = writeResult.requestNext()
     write.sendComplete()
     writeResult.expectComplete()
 
@@ -39,7 +43,7 @@ class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
       .toMat(TestSink.probe)(Keep.both)
       .run()
     read.sendNext(diff.time)
-    readResult.requestNext((diff.time, diff))
+    val IndexIOResult(diff.time, `diff`, IOResult(_, Success(Done))) = readResult.requestNext()
     read.sendComplete()
     readResult.expectComplete()
 

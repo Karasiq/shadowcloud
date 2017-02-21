@@ -1,17 +1,19 @@
 package com.karasiq.shadowcloud.storage
 
+import akka.NotUsed
 import akka.stream.scaladsl.{Compression, Flow}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.serialization.Serialization
 import com.karasiq.shadowcloud.storage.internal.DefaultIndexRepositoryStreams
+import com.karasiq.shadowcloud.storage.utils.IndexIOResult
 import com.karasiq.shadowcloud.streams.ByteStringConcat
 
 import scala.language.postfixOps
 
 trait IndexRepositoryStreams {
-  def write[Key](repository: IndexRepository[Key]): Flow[(Key, IndexDiff), (Key, IndexDiff), _]
-  def read[Key](repository: IndexRepository[Key]): Flow[Key, (Key, IndexDiff), _]
+  def write[Key](repository: IndexRepository[Key]): Flow[(Key, IndexDiff), IndexIOResult[Key], NotUsed]
+  def read[Key](repository: IndexRepository[Key]): Flow[Key, IndexIOResult[Key], NotUsed]
 }
 
 // TODO: Encryption, signatures

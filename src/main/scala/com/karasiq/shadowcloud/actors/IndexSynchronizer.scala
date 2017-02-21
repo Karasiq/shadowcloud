@@ -1,19 +1,22 @@
 package com.karasiq.shadowcloud.actors
 
+import akka.Done
 import akka.actor.{ActorLogging, Props, ReceiveTimeout, Status}
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.{ActorMaterializer, IOResult}
 import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.events.StorageEvent._
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.IndexRepository.BaseIndexRepository
+import com.karasiq.shadowcloud.storage.utils.IndexIOResult
 import com.karasiq.shadowcloud.storage.{IndexMerger, IndexRepository, IndexRepositoryStreams}
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.{Failure, Success}
 
 object IndexSynchronizer {
   // Messages
@@ -26,9 +29,9 @@ object IndexSynchronizer {
   case object Synchronize extends Message
 
   // Internal messages
-  private case class ReadSuccess(sequenceNr: Long, indexDiff: IndexDiff) extends Message
+  private case class ReadSuccess(result: IndexIOResult[Long]) extends Message
   private case object CompleteRead extends Message
-  private case class WriteSuccess(sequenceNr: Long, diff: IndexDiff) extends Message
+  private case class WriteSuccess(result: IndexIOResult[Long]) extends Message
   private case object CompleteWrite extends Message
 
   // Snapshot
@@ -67,7 +70,7 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
       log.debug("Starting synchronization, last sequence number: {}", merger.lastSequenceNr)
       indexRepository.keysAfter(merger.lastSequenceNr)
         .via(streams.read(indexRepository))
-        .map(ReadSuccess.tupled)
+        .map(ReadSuccess)
         .runWith(Sink.actorRef(self, CompleteRead))
       context.become(receiveRead.orElse(receiveDefault))
 
@@ -77,9 +80,15 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
 
   // Reading remote diffs
   def receiveRead: Receive = {
-    case ReadSuccess(sequenceNr, diff) ⇒
-      log.info("Remote diff received: {}", diff)
-      persistAsync(IndexUpdated(sequenceNr, diff, remote = true))(updateState)
+    case ReadSuccess(IndexIOResult(sequenceNr, diff, IOResult(bytes, ioResult))) ⇒ ioResult match {
+      case Success(Done) ⇒
+        log.info("Remote diff #{} received, {} bytes: {}", sequenceNr, bytes, diff)
+        persistAsync(IndexUpdated(sequenceNr, diff, remote = true))(updateState)
+
+      case Failure(error) ⇒ 
+        log.error(error, "Diff #{} read failed", sequenceNr)
+        throw error
+    }
 
     case Status.Failure(error) ⇒
       throw error
@@ -95,9 +104,14 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
 
   // Writing local diffs
   def receiveWrite: Receive = {
-    case WriteSuccess(sequenceNr, diff) ⇒
-      log.info("Diff written: {}", diff)
-      persistAsync(IndexUpdated(sequenceNr, diff, remote = false))(updateState)
+    case WriteSuccess(IndexIOResult(sequenceNr, diff, IOResult(bytes, ioResult))) ⇒ ioResult match {
+      case Success(Done) ⇒
+        log.info("Diff #{} written, {} bytes: {}", sequenceNr, bytes, diff)
+        persistAsync(IndexUpdated(sequenceNr, diff, remote = false))(updateState)
+
+      case Failure(error) ⇒
+        log.error(error, "Diff #{} write error: {}", sequenceNr, diff)
+    }
 
     case Status.Failure(error) ⇒
       log.error(error, "Write error")
@@ -156,7 +170,7 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
     log.info("Writing diff #{}: {}", sequenceNr, diff)
     Source.single((sequenceNr, diff))
       .via(streams.write(indexRepository))
-      .map(WriteSuccess.tupled)
+      .map(WriteSuccess)
       .runWith(Sink.actorRef(self, CompleteWrite))
     context.become(receiveWrite.orElse(receiveDefault))
   }

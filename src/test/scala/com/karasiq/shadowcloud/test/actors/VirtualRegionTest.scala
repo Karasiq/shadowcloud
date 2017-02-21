@@ -2,7 +2,9 @@ package com.karasiq.shadowcloud.test.actors
 
 import java.nio.file.Files
 
+import akka.Done
 import akka.pattern.ask
+import akka.stream.IOResult
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestActorRef
@@ -14,11 +16,13 @@ import com.karasiq.shadowcloud.actors.{IndexSynchronizer, _}
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
+import com.karasiq.shadowcloud.storage.utils.IndexIOResult
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.Success
 
 // Uses local filesystem
 class VirtualRegionTest extends ActorSpec with FlatSpecLike {
@@ -109,7 +113,7 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
     val diff1 = TestUtils.randomDiff
     sideWrite.sendNext((2.toString, diff1))
     sideWrite.sendComplete()
-    sideWriteResult.requestNext((2.toString, diff1))
+    val IndexIOResult("2", `diff1`, IOResult(_, Success(Done))) = sideWriteResult.requestNext()
     sideWriteResult.expectComplete()
     StorageEvent.stream.subscribe(testActor, "testStorage")
     testRegion ! VirtualRegionDispatcher.Synchronize

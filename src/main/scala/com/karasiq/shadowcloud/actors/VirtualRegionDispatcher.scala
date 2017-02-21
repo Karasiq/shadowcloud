@@ -95,7 +95,7 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
     // Storage events
     // -----------------------------------------------------------------------
     case Register(storageId, dispatcher, health) if !storages.contains(storageId) ⇒
-      log.info("Registered storage: {}", dispatcher)
+      log.info("Registered storage: {} -> {} [{}]", storageId, dispatcher, health)
       storages.register(storageId, dispatcher, health)
       val indexFuture = (dispatcher ? IndexSynchronizer.GetIndex).mapTo[IndexSynchronizer.GetIndex.Success]
       indexFuture.onComplete {
@@ -128,6 +128,10 @@ class VirtualRegionDispatcher(regionId: String) extends Actor with ActorLogging 
         log.info("Chunk written: {}", chunk)
         chunks.registerChunk(storages.getDispatcher(storageId), chunk)
         RegionEvent.stream.publish(RegionEnvelope(regionId, RegionEvent.ChunkWritten(storageId, chunk)))
+
+      case StorageEvent.HealthUpdated(health) ⇒
+        log.debug("Storage [{}] health report: {}", storageId, health)
+        storages.update(storageId, health)
 
       case _ ⇒
         // Ignore

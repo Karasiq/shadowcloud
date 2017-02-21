@@ -33,7 +33,7 @@ case class Checksum(method: HashingMethod = HashingMethod.default, size: Long = 
     def sizeAndHash(prefix: String, size: Long, hash: ByteString) = {
       if (size == 0 || hash.isEmpty) ""
       else if (size != 0 && hash.isEmpty) s"$prefix: $size bytes"
-      else s"$prefix: $size bytes [${Utils.toHexString(hash)}]"
+      else s"$prefix: ${Utils.printSize(size)} [${Utils.toHexString(hash)}]"
     }
     val plain = sizeAndHash("plain", size, hash)
     val encrypted = sizeAndHash("encrypted", encryptedSize, encryptedHash)

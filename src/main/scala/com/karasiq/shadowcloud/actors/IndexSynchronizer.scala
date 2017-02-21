@@ -67,6 +67,7 @@ class IndexSynchronizer(indexId: String, baseIndexRepository: BaseIndexRepositor
   // Wait for synchronize command
   def receiveWait: Receive = {
     case Synchronize ⇒
+      // TODO: Reload remote keys
       log.debug("Starting synchronization, last sequence number: {}", merger.lastSequenceNr)
       indexRepository.keysAfter(merger.lastSequenceNr)
         .via(streams.read(indexRepository))

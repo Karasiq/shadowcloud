@@ -9,7 +9,6 @@ import com.karasiq.shadowcloud.actors.internal.DiffStats
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
 
-import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -31,7 +30,7 @@ class StorageMaintainer(storageId: String, storageDispatcher: ActorRef, healthPr
   import StorageMaintainer._
 
   // Context
-  private[this] implicit val executionContext: ExecutionContext = context.dispatcher
+  import context.dispatcher
   private[this] implicit val timeout = Timeout(10 seconds)
   private[this] val schedule = context.system.scheduler.schedule(30 seconds, 30 seconds, self, CheckHealth)
 

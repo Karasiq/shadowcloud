@@ -44,8 +44,13 @@ private[shadowcloud] object Utils {
   }
 
   def printSize(bytes: Long): String = {
-    val gb = bytes.toDouble / 1024 / 1024 / 1024
-    f"$gb%.2f GB"
+    if (bytes < 1024) {
+      s"$bytes bytes"
+    } else {
+      val units = Array("KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+      val digitGroup = math.max(0, math.min(units.length - 1, (Math.log10(bytes) / Math.log10(1024)).toInt))
+      f"${bytes / Math.pow(1024, digitGroup)}%.2f ${units(digitGroup)}"
+    }
   }
 
   def takeOrAll[T, Col[`T`] <: TraversableLike[T, Col[T]]](all: Col[T], count: Int): Col[T] = {

@@ -8,7 +8,6 @@ import akka.stream.IOResult
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestActorRef
-import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors.events.StorageEvent
 import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
@@ -17,6 +16,7 @@ import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.utils.IndexIOResult
+import com.karasiq.shadowcloud.streams.ByteStringConcat
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 
@@ -59,15 +59,11 @@ class VirtualRegionTest extends ActorSpec with FlatSpecLike {
   }
 
   it should "read chunk" in {
-    val future = testRegion ? ReadChunk(chunk.withoutData)
-    whenReady(future) {
-      case ReadChunk.Success(_, source) ⇒
-        val probe = source
-          .fold(ByteString.empty)(_ ++ _)
-          .runWith(TestSink.probe)
-        probe.requestNext(chunk.data.encrypted)
-        probe.expectComplete()
-    }
+    testRegion ! ReadChunk(chunk.withoutData)
+    val ReadChunk.Success(_, source) = receiveOne(1 second)
+    val probe = source.via(ByteStringConcat()).runWith(TestSink.probe)
+    probe.requestNext(chunk.data.encrypted)
+    probe.expectComplete()
   }
 
   it should "deduplicate chunk" in {

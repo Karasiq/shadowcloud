@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.actors.internal
 
-import akka.actor.ActorRef
+import akka.actor.{ActorContext, ActorRef}
 import com.karasiq.shadowcloud.actors.RegionDispatcher
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
@@ -12,12 +12,12 @@ private[actors] object RegionTracker {
   case class RegionStatus(regionId: String, dispatcher: ActorRef, storages: Set[String] = Set.empty)
   case class StorageStatus(storageId: String, props: StorageProps, dispatcher: ActorRef, regions: Set[String] = Set.empty)
 
-  def apply(): RegionTracker = {
+  def apply()(implicit context: ActorContext): RegionTracker = {
     new RegionTracker
   }
 }
 
-private[actors] final class RegionTracker {
+private[actors] final class RegionTracker(implicit context: ActorContext) {
   import RegionTracker._
 
   // -----------------------------------------------------------------------
@@ -60,11 +60,12 @@ private[actors] final class RegionTracker {
   def deleteRegion(regionId: String): RegionStatus = {
     require(containsRegion(regionId))
     storages.foreach { case (storageId, storage) ⇒
-      if (storage.regions.contains(regionId)) {
+      if (storage.regions.contains(regionId))
         storages += storageId → storage.copy(regions = storage.regions - regionId)
-      }
     }
-    regions.remove(regionId).get
+    val status = regions.remove(regionId).get
+    context.stop(status.dispatcher)
+    status
   }
 
   def deleteStorage(storageId: String): StorageStatus = {
@@ -75,7 +76,16 @@ private[actors] final class RegionTracker {
         region.dispatcher ! RegionDispatcher.Unregister(storageId)
       }
     }
-    storages.remove(storageId).get
+    val status = storages.remove(storageId).get
+    context.stop(status.dispatcher)
+    status
+  }
+
+  def clear(): Unit = {
+    regions.foreachValue(region ⇒ context.stop(region.dispatcher))
+    storages.foreachValue(storage ⇒ context.stop(storage.dispatcher))
+    regions.clear()
+    storages.clear()
   }
 
   // -----------------------------------------------------------------------

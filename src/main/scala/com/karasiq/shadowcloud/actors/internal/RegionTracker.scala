@@ -11,6 +11,10 @@ import scala.language.postfixOps
 private[actors] object RegionTracker {
   case class RegionStatus(regionId: String, dispatcher: ActorRef, storages: Set[String] = Set.empty)
   case class StorageStatus(storageId: String, props: StorageProps, dispatcher: ActorRef, regions: Set[String] = Set.empty)
+
+  def apply(): RegionTracker = {
+    new RegionTracker
+  }
 }
 
 private[actors] final class RegionTracker {
@@ -53,8 +57,9 @@ private[actors] final class RegionTracker {
   def deleteStorage(storageId: String): StorageStatus = {
     require(containsStorage(storageId))
     regions.foreach { case (regionId, region) ⇒
-      if (region.storages.contains(regionId)) {
+      if (region.storages.contains(storageId)) {
         regions += regionId → region.copy(storages = region.storages - storageId)
+        region.dispatcher ! RegionDispatcher.Unregister(storageId)
       }
     }
     storages.remove(storageId).get

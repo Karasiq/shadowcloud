@@ -42,7 +42,6 @@ object RegionSupervisor {
   }
 }
 
-// TODO: Test
 class RegionSupervisor(instantiator: StorageInstantiator) extends PersistentActor with ActorLogging {
   import RegionSupervisor._
 
@@ -51,7 +50,7 @@ class RegionSupervisor(instantiator: StorageInstantiator) extends PersistentActo
   val persistenceId: String = "regions"
 
   // State
-  val state = new RegionTracker()
+  val state = RegionTracker()
 
   def updateState(event: Event): Unit = event match {
     // -----------------------------------------------------------------------
@@ -104,7 +103,7 @@ class RegionSupervisor(instantiator: StorageInstantiator) extends PersistentActo
     // -----------------------------------------------------------------------
     // Regions
     // -----------------------------------------------------------------------
-    case AddRegion(regionId) if state.containsRegion(regionId) ⇒
+    case AddRegion(regionId) if !state.containsRegion(regionId) ⇒
       persist(RegionAdded(regionId))(updateState)
 
     case DeleteRegion(regionId) if state.containsRegion(regionId) ⇒
@@ -113,7 +112,7 @@ class RegionSupervisor(instantiator: StorageInstantiator) extends PersistentActo
     // -----------------------------------------------------------------------
     // Storages
     // -----------------------------------------------------------------------
-    case AddStorage(storageId, props) if state.containsStorage(storageId) ⇒
+    case AddStorage(storageId, props) if !state.containsStorage(storageId) ⇒
       persist(StorageAdded(storageId, props))(updateState)
 
     case DeleteStorage(storageId) if state.containsStorage(storageId) ⇒

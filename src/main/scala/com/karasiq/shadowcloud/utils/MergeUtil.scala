@@ -4,9 +4,9 @@ import scala.collection.mutable
 import scala.language.postfixOps
 
 object MergeUtil {
-  //------------------------------------------
-  // TYPES
-  //------------------------------------------
+  // -----------------------------------------------------------------------
+  // Types
+  // -----------------------------------------------------------------------
   sealed trait State[+T]
   object State {
     sealed trait SingleSide[+T] extends State[T] {
@@ -22,9 +22,9 @@ object MergeUtil {
   type Decider[V] = PartialFunction[State[V], Option[V]]
   type SplitDecider[V] = Equal[V] ⇒ Option[State[V]]
 
-  //------------------------------------------
-  // COMPARE
-  //------------------------------------------
+  // -----------------------------------------------------------------------
+  // Compare
+  // -----------------------------------------------------------------------
   def compareMaps[K <: AnyRef, V](left: Map[K, V], right: Map[K, V]): Map[K, State[V]] = {
     val newMap = mutable.AnyRefMap[K, State[V]]()
     newMap ++= left.mapValues(Left(_))
@@ -52,9 +52,9 @@ object MergeUtil {
     newSet.toSet
   }
 
-  //------------------------------------------
-  // MERGE
-  //------------------------------------------
+  // -----------------------------------------------------------------------
+  // Merge
+  // -----------------------------------------------------------------------
   def mergeMaps[K <: AnyRef, V](left: Map[K, V], right: Map[K, V], decider: Decider[V]): Map[K, V] = {
     compareMaps(left, right).flatMap { case (key, value) ⇒ decider.orElse(Decider.default).apply(value).map((key, _)) }
   }
@@ -68,9 +68,9 @@ object MergeUtil {
   }
 
 
-  //------------------------------------------
-  // SPLIT
-  //------------------------------------------
+  // -----------------------------------------------------------------------
+  // Split
+  // -----------------------------------------------------------------------
   def splitSets[V](left: Set[V], right: Set[V], decider: SplitDecider[V]): (Set[V], Set[V]) = {
     val newLeft, newRight = Set.newBuilder[V]
     def pushElement: PartialFunction[State[V], Unit] = {
@@ -98,9 +98,9 @@ object MergeUtil {
     (newLeft.result(), newRight.result())
   }
 
-  //------------------------------------------
-  // DECIDERS
-  //------------------------------------------
+  // -----------------------------------------------------------------------
+  // Deciders
+  // -----------------------------------------------------------------------
   object Decider {
     def default[V]: Decider[V] = {
       case Left(left) ⇒
@@ -146,9 +146,9 @@ object MergeUtil {
     }
   }
 
-  //------------------------------------------
-  // SPLIT DECIDERS
-  //------------------------------------------
+  // -----------------------------------------------------------------------
+  // Split deciders
+  // -----------------------------------------------------------------------
   object SplitDecider {
     def dropDuplicates[V]: SplitDecider[V] = _ ⇒ None
     def keepBoth[V]: SplitDecider[V] = Some.apply

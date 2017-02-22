@@ -1,6 +1,5 @@
 package com.karasiq.shadowcloud.actors
 
-import akka.Done
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.stream.scaladsl.Source
 import akka.stream.{ActorMaterializer, IOResult}
@@ -11,6 +10,7 @@ import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.storage.ChunkRepository
 import com.karasiq.shadowcloud.storage.ChunkRepository.BaseChunkRepository
+import com.karasiq.shadowcloud.utils.Utils
 
 import scala.concurrent.Future
 import scala.language.postfixOps
@@ -52,28 +52,17 @@ class ChunkIODispatcher(baseChunkRepository: BaseChunkRepository) extends Actor 
   }
 
   private[this] def writeChunk(chunk: Chunk): Unit = {
-    val ioResultFuture = Source.single(chunk.data.encrypted)
-      .runWith(chunkRepository.write(config.chunkKey(chunk)))
-
-    def onSuccess(written: Long): Unit = {
-      log.debug("{} bytes written, chunk: {}", written, chunk)
-      self ! WriteChunk.Success(chunk, chunk)
-    }
-
-    def onFailure(error: Throwable): Unit = {
-      log.error(error, "Chunk write error: {}", chunk)
-      self ! WriteChunk.Failure(chunk, error)
-    }
-
-    ioResultFuture.onComplete {
-      case Success(IOResult(written, Success(Done))) ⇒
-        onSuccess(written)
-
-      case Success(IOResult(_, Failure(error))) ⇒
-        onFailure(error)
+    val key = config.chunkKey(chunk)
+    val writeSink = chunkRepository.write(key)
+    val future = Source.single(chunk.data.encrypted).runWith(writeSink)
+    Utils.onIoComplete(future) {
+      case Success(written) ⇒
+        log.debug("{} bytes written, chunk: {}", written, chunk)
+        self ! WriteChunk.Success(chunk, chunk)
 
       case Failure(error) ⇒
-        onFailure(error)
+        log.error(error, "Chunk write error: {}", chunk)
+        self ! WriteChunk.Failure(chunk, error)
     }
   }
 }

@@ -27,15 +27,22 @@ object StorageDispatcher {
 class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef, health: StorageHealthProvider) extends Actor with ActorLogging {
   import StorageDispatcher._
 
+  // -----------------------------------------------------------------------
   // Context
+  // -----------------------------------------------------------------------
   import context.dispatcher
   private[this] implicit val timeout = Timeout(10 seconds)
   private[this] val schedule = context.system.scheduler.schedule(Duration.Zero, 30 seconds, self, CheckHealth)
 
+  // -----------------------------------------------------------------------
   // State
-  val pending = PendingOperation.chunk
-  val stats = new StorageStatsTracker(storageId, health, log)
+  // -----------------------------------------------------------------------
+  val pending = PendingOperation.withChunk
+  val stats = StorageStatsTracker(storageId, health, log)
 
+  // -----------------------------------------------------------------------
+  // Receive
+  // -----------------------------------------------------------------------
   def receive: Receive = {
     // -----------------------------------------------------------------------
     // Chunk commands
@@ -89,11 +96,11 @@ class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef, h
     // -----------------------------------------------------------------------
     case StorageEnvelope(`storageId`, event) ⇒ event match {
       case StorageEvent.IndexLoaded(diffs) ⇒
-        val newStats = diffs.foldLeft(DiffStats.empty)((stat, kv) ⇒ stat + DiffStats(kv._2))
+        val newStats = DiffStats(diffs.map(_._2):_*)
         stats.updateStats(newStats)
 
       case StorageEvent.IndexUpdated(_, diff, _) ⇒
-        stats.addStats(DiffStats(diff))
+        stats.appendStats(DiffStats(diff))
 
       case StorageEvent.ChunkWritten(chunk) ⇒
         val written = chunk.checksum.encryptedSize
@@ -105,6 +112,9 @@ class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef, h
     }
   }
 
+  // -----------------------------------------------------------------------
+  // Lifecycle hooks
+  // -----------------------------------------------------------------------
   override def preStart(): Unit = {
     super.preStart()
     context.watch(chunkIO)

@@ -124,7 +124,7 @@ class IndexSynchronizer(storageId: String, baseIndexRepository: BaseIndexReposit
   }
 
   override def receiveRecover: Receive = {
-    case SnapshotOffer(_, Snapshot(diffs)) ⇒
+    case SnapshotOffer(_, Snapshot(diffs)) ⇒ // TODO: Snapshots
       log.debug("Loading snapshot with sequence number: {}", diffs.lastOption.fold(0L)(_._1))
       updateState(IndexLoaded(diffs))
 

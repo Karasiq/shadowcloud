@@ -75,9 +75,13 @@ class RegionTest extends ActorSpec with FlatSpecLike {
   it should "read chunk" in {
     testRegion ! ReadChunk(chunk.withoutData)
     val ReadChunk.Success(_, source) = receiveOne(1 second)
-    val probe = source.via(ByteStringConcat()).runWith(TestSink.probe)
+    val (future, probe) = source
+      .via(ByteStringConcat())
+      .toMat(TestSink.probe)(Keep.both)
+      .run()
     probe.requestNext(chunk.data.encrypted)
     probe.expectComplete()
+    future.futureValue shouldBe IOResult(chunk.checksum.encryptedSize, Success(Done))
   }
 
   it should "deduplicate chunk" in {

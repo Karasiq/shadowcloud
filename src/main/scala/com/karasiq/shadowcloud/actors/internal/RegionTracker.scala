@@ -19,9 +19,16 @@ private[actors] object RegionTracker {
 
 private[actors] final class RegionTracker {
   import RegionTracker._
+
+  // -----------------------------------------------------------------------
+  // State
+  // -----------------------------------------------------------------------
   val regions = mutable.AnyRefMap.empty[String, RegionStatus]
   val storages = mutable.AnyRefMap.empty[String, StorageStatus]
 
+  // -----------------------------------------------------------------------
+  // Contains
+  // -----------------------------------------------------------------------
   def containsRegion(regionId: String): Boolean = {
     regions.contains(regionId)
   }
@@ -34,6 +41,9 @@ private[actors] final class RegionTracker {
     containsRegion(regionId) && containsStorage(storageId)
   }
 
+  // -----------------------------------------------------------------------
+  // Add
+  // -----------------------------------------------------------------------
   def addRegion(regionId: String, dispatcher: ActorRef): Unit = {
     require(!containsRegion(regionId))
     regions += regionId → RegionStatus(regionId, dispatcher)
@@ -44,6 +54,9 @@ private[actors] final class RegionTracker {
     storages += storageId → StorageStatus(storageId, props, dispatcher)
   }
 
+  // -----------------------------------------------------------------------
+  // Delete
+  // -----------------------------------------------------------------------
   def deleteRegion(regionId: String): RegionStatus = {
     require(containsRegion(regionId))
     storages.foreach { case (storageId, storage) ⇒
@@ -65,6 +78,9 @@ private[actors] final class RegionTracker {
     storages.remove(storageId).get
   }
 
+  // -----------------------------------------------------------------------
+  // Register/unregister
+  // -----------------------------------------------------------------------
   def registerStorage(regionId: String, storageId: String): Unit = {
     require(containsRegionAndStorage(regionId, storageId))
     val region = regions(regionId)

@@ -48,8 +48,8 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
   implicit val executionContext: ExecutionContext = context.dispatcher
   implicit val timeout = Timeout(10 seconds)
   val config = AppConfig()
-  val storages = new StorageTracker
-  val chunks = new ChunksTracker(config.storage, storages, log)
+  val storages = StorageTracker()
+  val chunks = ChunksTracker(config.storage, storages, log)
   val merger = IndexMerger.region
 
   def receive: Receive = {

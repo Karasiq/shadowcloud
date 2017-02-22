@@ -11,13 +11,24 @@ import scala.language.postfixOps
 
 private[actors] object StorageTracker {
   case class Storage(id: String, dispatcher: ActorRef, health: StorageHealth)
+
+  def apply()(implicit context: ActorContext): StorageTracker = {
+    new StorageTracker()
+  }
 }
 
 private[actors] final class StorageTracker(implicit context: ActorContext) { // TODO: Quota
-  import StorageTracker.Storage
+  import StorageTracker._
+
+  // -----------------------------------------------------------------------
+  // State
+  // -----------------------------------------------------------------------
   private[this] val storages = mutable.AnyRefMap[String, Storage]()
   private[this] val storagesByAR = mutable.AnyRefMap[ActorRef, Storage]()
 
+  // -----------------------------------------------------------------------
+  // Contains
+  // -----------------------------------------------------------------------
   def contains(dispatcher: ActorRef): Boolean = {
     storagesByAR.contains(dispatcher)
   }
@@ -26,6 +37,9 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
     storages.contains(storageId)
   }
 
+  // -----------------------------------------------------------------------
+  // Dispatchers for read/write
+  // -----------------------------------------------------------------------
   def available(toWrite: Long = 0): Seq[ActorRef] = {
     storagesByAR.values.toSeq
       .filter(_.health.canWrite > toWrite)
@@ -51,14 +65,9 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
     available(writeSize).filter(dispatcherCanWrite)
   }
 
-  def getStorageId(dispatcher: ActorRef): String = {
-    storagesByAR(dispatcher).id
-  }
-
-  def getDispatcher(storageId: String): ActorRef = {
-    storages(storageId).dispatcher
-  }
-
+  // -----------------------------------------------------------------------
+  // Register/unregister
+  // -----------------------------------------------------------------------
   def register(storageId: String, dispatcher: ActorRef, health: StorageHealth): Unit = {
     context.watch(dispatcher)
     val storage = Storage(storageId, dispatcher, health)
@@ -75,6 +84,20 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
     }
   }
 
+  // -----------------------------------------------------------------------
+  // Get storages
+  // -----------------------------------------------------------------------
+  def getStorageId(dispatcher: ActorRef): String = {
+    storagesByAR(dispatcher).id
+  }
+
+  def getDispatcher(storageId: String): ActorRef = {
+    storages(storageId).dispatcher
+  }
+
+  // -----------------------------------------------------------------------
+  // Update state
+  // -----------------------------------------------------------------------
   def update(storageId: String, health: StorageHealth): Unit = {
     storages.get(storageId).foreach { storage ⇒
       val newStatus = storage.copy(health = health)

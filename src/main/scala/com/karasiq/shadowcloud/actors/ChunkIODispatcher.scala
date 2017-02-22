@@ -35,19 +35,20 @@ class ChunkIODispatcher(baseChunkRepository: BaseChunkRepository) extends Actor 
   import ChunkIODispatcher._
   import context.dispatcher
   implicit val actorMaterializer = ActorMaterializer()
-  val pending = PendingOperation.chunk
+  val chunksWrite = PendingOperation.withChunk
   val chunkRepository = ChunkRepository.hexString(baseChunkRepository)
   val config = AppConfig().storage
 
   def receive: Receive = {
     case ReadChunk(chunk) ⇒
-      sender() ! ReadChunk.Success(chunk, chunkRepository.read(config.chunkKey(chunk)))
+      val stream = chunkRepository.read(config.chunkKey(chunk))
+      sender() ! ReadChunk.Success(chunk, stream)
 
     case WriteChunk(chunk) ⇒
-      pending.addWaiter(chunk, sender(), () ⇒ writeChunk(chunk))
+      chunksWrite.addWaiter(chunk, sender(), () ⇒ writeChunk(chunk))
 
     case msg: WriteChunk.Status ⇒
-      pending.finish(msg.key, msg)
+      chunksWrite.finish(msg.key, msg)
   }
 
   private[this] def writeChunk(chunk: Chunk): Unit = {

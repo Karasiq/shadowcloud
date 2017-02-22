@@ -8,6 +8,12 @@ import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
 import scala.concurrent.Future
 import scala.language.postfixOps
 
+private[actors] object StorageStatsTracker {
+  def apply(storageId: String, healthProvider: StorageHealthProvider, log: LoggingAdapter): StorageStatsTracker = {
+    new StorageStatsTracker(storageId, healthProvider, log)
+  }
+}
+
 private[actors] final class StorageStatsTracker(storageId: String, healthProvider: StorageHealthProvider, log: LoggingAdapter) {
   private[this] var health = StorageHealth.empty
   private[this] var stats = DiffStats.empty
@@ -23,7 +29,7 @@ private[actors] final class StorageStatsTracker(storageId: String, healthProvide
     log.debug("Storage [{}] stats updated: {}", stats)
   }
 
-  def addStats(stats: DiffStats): Unit = {
+  def appendStats(stats: DiffStats): Unit = {
     updateStats(this.stats + stats)
   }
 

@@ -26,5 +26,5 @@ private[actors] final class PendingOperation[Key <: AnyRef] {
 }
 
 private[actors] object PendingOperation {
-  def chunk: PendingOperation[Chunk] = new PendingOperation
+  def withChunk: PendingOperation[Chunk] = new PendingOperation
 }

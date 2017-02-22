@@ -22,15 +22,28 @@ private[actors] object ChunksTracker {
   object Status extends Enumeration {
     val PENDING, STORED = Value
   }
+
   case class ChunkStatus(status: Status.Value, time: Long, chunk: Chunk, writingChunk: Set[ActorRef] = Set.empty,
                          hasChunk: Set[ActorRef] = Set.empty, waitingChunk: Set[ActorRef] = Set.empty)
+
+  def apply(config: StorageConfig, storages: StorageTracker,
+            log: LoggingAdapter)(implicit context: ActorContext): ChunksTracker = {
+    new ChunksTracker(config, storages, log)
+  }
 }
 
 private[actors] final class ChunksTracker(config: StorageConfig, storages: StorageTracker, log: LoggingAdapter)(implicit context: ActorContext) {
   import ChunksTracker._
+
+  // -----------------------------------------------------------------------
+  // State
+  // -----------------------------------------------------------------------
   private[this] implicit val sender: ActorRef = context.self
   private[this] val chunks = mutable.AnyRefMap[ByteString, ChunkStatus]()
 
+  // -----------------------------------------------------------------------
+  // Read/write
+  // -----------------------------------------------------------------------
   def readChunk(chunk: Chunk, receiver: ActorRef): Option[ChunkStatus] = {
     val statusOption = getChunk(chunk)
     statusOption match {
@@ -82,7 +95,7 @@ private[actors] final class ChunksTracker(config: StorageConfig, storages: Stora
       case None ⇒
         context.watch(receiver)
         val status = ChunkStatus(Status.PENDING, Utils.timestamp, chunk, waitingChunk = Set(receiver))
-        val written = storageWriteChunk(status)
+        val written = writeChunkToStorages(status)
         if (written.isEmpty) {
           log.warning("No storages available for write: {}", chunk)
         } else {
@@ -95,7 +108,7 @@ private[actors] final class ChunksTracker(config: StorageConfig, storages: Stora
   def retryPendingChunks(): Unit = {
     chunks.foreachValue { status ⇒
       if (status.status == Status.PENDING && status.hasChunk.isEmpty) {
-        val written = storageWriteChunk(status)
+        val written = writeChunkToStorages(status)
         if (written.nonEmpty) {
           log.debug("Retrying chunk write to {}: {}", written, status)
           putStatus(status.copy(hasChunk = written))
@@ -104,6 +117,9 @@ private[actors] final class ChunksTracker(config: StorageConfig, storages: Stora
     }
   }
 
+  // -----------------------------------------------------------------------
+  // Update state
+  // -----------------------------------------------------------------------
   def registerChunk(dispatcher: ActorRef, chunk: Chunk): ChunkStatus = {
     getChunk(chunk) match {
       case Some(status) if !Utils.isSameChunk(status.chunk, chunk) ⇒
@@ -136,14 +152,14 @@ private[actors] final class ChunksTracker(config: StorageConfig, storages: Stora
   }
 
   def unregister(dispatcher: ActorRef): Unit = {
-    chunks.foreachValue(removeActor(_, dispatcher))
+    chunks.foreachValue(removeActorRef(_, dispatcher))
   }
 
   def unregisterChunk(dispatcher: ActorRef, chunk: Chunk): Unit = {
     getChunk(chunk) match {
       case Some(status) ⇒
         if (Utils.isSameChunk(status.chunk, chunk)) {
-          removeActor(status, dispatcher)
+          removeActorRef(status, dispatcher)
         } else {
           log.warning("Unknown chunk deleted: {} (existing: {})", chunk, status.chunk)
         }
@@ -158,6 +174,9 @@ private[actors] final class ChunksTracker(config: StorageConfig, storages: Stora
     diff.newChunks.foreach(registerChunk(dispatcher, _))
   }
 
+  // -----------------------------------------------------------------------
+  // Internal functions
+  // -----------------------------------------------------------------------
   private[this] def getChunk(chunk: Chunk): Option[ChunkStatus] = {
     chunks.get(config.chunkKey(chunk))
   }
@@ -171,20 +190,20 @@ private[actors] final class ChunksTracker(config: StorageConfig, storages: Stora
     chunks.remove(config.chunkKey(status.chunk))
   }
 
-  private[this] def storageWriteChunk(status: ChunkStatus): Set[ActorRef] = {
-    require(status.chunk.data.nonEmpty)
+  private[this] def writeChunkToStorages(status: ChunkStatus): Set[ActorRef] = {
+    require(status.chunk.data.nonEmpty, "Chunks is empty")
     val writingCount = status.writingChunk.size + status.hasChunk.size
-    val available = storages.forWrite(status)
-    val selected = if (writingCount > 0) {
-      available.take(config.replicationFactor - writingCount)
+    val availableStorages = storages.forWrite(status)
+    val selectedStorages = if (writingCount > 0) {
+      availableStorages.take(config.replicationFactor - writingCount)
     } else {
-      Utils.takeOrAll(available, config.replicationFactor)
+      Utils.takeOrAll(availableStorages, config.replicationFactor)
     }
-    selected.foreach(_ ! WriteChunk(status.chunk))
-    selected.toSet
+    selectedStorages.foreach(_ ! WriteChunk(status.chunk))
+    selectedStorages.toSet
   }
 
-  private[this] def removeActor(status: ChunkStatus, actor: ActorRef): Unit = {
+  private[this] def removeActorRef(status: ChunkStatus, actor: ActorRef): Unit = {
     if (!status.hasChunk.contains(actor) && !status.writingChunk.contains(actor) &&
       !status.waitingChunk.contains(actor)) return
 

@@ -9,9 +9,9 @@ import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestActorRef
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
-import com.karasiq.shadowcloud.actors.events.StorageEvent
-import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
-import com.karasiq.shadowcloud.actors.{IndexSynchronizer, _}
+import com.karasiq.shadowcloud.actors._
+import com.karasiq.shadowcloud.actors.events.StorageEvents
+import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
@@ -32,7 +32,7 @@ class RegionTest extends ActorSpec with FlatSpecLike {
   val indexRepository = IndexRepository.fromDirectory(Files.createTempDirectory("vrt-index"))
   val chunksDir = Files.createTempDirectory("vrt-chunks")
   val fileRepository = ChunkRepository.fromDirectory(chunksDir)
-  val index = TestActorRef(IndexSynchronizer.props("testStorage", indexRepository), "index")
+  val index = TestActorRef(IndexDispatcher.props("testStorage", indexRepository), "index")
   val chunkIO = TestActorRef(ChunkIODispatcher.props(fileRepository), "chunkIO")
   val healthProvider = StorageHealthProvider.fromDirectory(chunksDir)
   val initialHealth = healthProvider.health.futureValue
@@ -50,16 +50,16 @@ class RegionTest extends ActorSpec with FlatSpecLike {
     // Write chunk
     val result = testRegion ? WriteChunk(chunk)
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
-    expectMsg(StorageEnvelope("testStorage", StorageEvent.ChunkWritten(chunk)))
+    expectMsg(StorageEnvelope("testStorage", StorageEvents.ChunkWritten(chunk)))
 
     // Health update
-    val StorageEnvelope("testStorage", StorageEvent.HealthUpdated(health)) = receiveOne(1 second)
+    val StorageEnvelope("testStorage", StorageEvents.HealthUpdated(health)) = receiveOne(1 second)
     health.totalSpace shouldBe initialHealth.totalSpace
     health.usedSpace shouldBe (initialHealth.usedSpace + chunk.checksum.encryptedSize)
     health.canWrite shouldBe (initialHealth.canWrite - chunk.checksum.encryptedSize)
 
     // Chunk index update
-    val StorageEnvelope("testStorage", StorageEvent.PendingIndexUpdated(diff)) = receiveOne(1 second)
+    val StorageEnvelope("testStorage", StorageEvents.PendingIndexUpdated(diff)) = receiveOne(1 second)
     diff.folders shouldBe empty
     diff.time should be > TestUtils.testTimestamp
     diff.chunks.newChunks shouldBe Set(chunk)
@@ -107,7 +107,7 @@ class RegionTest extends ActorSpec with FlatSpecLike {
   it should "write index" in {
     storageSubscribe()
     testRegion ! RegionDispatcher.Synchronize
-    val StorageEnvelope("testStorage", StorageEvent.IndexUpdated(sequenceNr, diff, remote)) = receiveOne(5 seconds)
+    val StorageEnvelope("testStorage", StorageEvents.IndexUpdated(sequenceNr, diff, remote)) = receiveOne(5 seconds)
     sequenceNr shouldBe 1
     diff.time shouldBe > (TestUtils.testTimestamp)
     diff.folders shouldBe folderDiff
@@ -131,13 +131,13 @@ class RegionTest extends ActorSpec with FlatSpecLike {
     sideWriteResult.expectComplete()
     storageSubscribe()
     testRegion ! RegionDispatcher.Synchronize
-    val StorageEnvelope("testStorage", StorageEvent.IndexUpdated(sequenceNr, diff, remote)) = receiveOne(5 seconds)
+    val StorageEnvelope("testStorage", StorageEvents.IndexUpdated(sequenceNr, diff, remote)) = receiveOne(5 seconds)
     sequenceNr shouldBe 2
     diff shouldBe diff1
     remote shouldBe true
     expectNoMsg(1 second)
-    storage ! IndexSynchronizer.GetIndex
-    val IndexSynchronizer.GetIndex.Success(Seq((1, firstDiff), (2, secondDiff))) = receiveOne(1 second)
+    storage ! IndexDispatcher.GetIndex
+    val IndexDispatcher.GetIndex.Success(Seq((1, firstDiff), (2, secondDiff))) = receiveOne(1 second)
     firstDiff.folders shouldBe folderDiff
     firstDiff.chunks.newChunks shouldBe Set(chunk)
     firstDiff.chunks.deletedChunks shouldBe empty
@@ -146,10 +146,10 @@ class RegionTest extends ActorSpec with FlatSpecLike {
   }
 
   private def storageUnsubscribe() = {
-    StorageEvent.stream.unsubscribe(testActor)
+    StorageEvents.stream.unsubscribe(testActor)
   }
 
   private def storageSubscribe(): Unit = {
-    StorageEvent.stream.subscribe(testActor, "testStorage")
+    StorageEvents.stream.subscribe(testActor, "testStorage")
   }
 }

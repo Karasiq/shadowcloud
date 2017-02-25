@@ -6,7 +6,7 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.storage.files.FileStorageHealthProvider
 import com.karasiq.shadowcloud.storage.inmem.InMemoryStorageHealthProvider
 import com.karasiq.shadowcloud.storage.internal.NoOpStorageHealthProvider
-import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.utils.MemorySize
 
 import scala.collection.mutable
 import scala.concurrent.Future
@@ -21,7 +21,7 @@ case class StorageHealth(canWrite: Long, totalSpace: Long, usedSpace: Long) {
   }
 
   override def toString: String = {
-    f"StorageHealth(${Utils.printSize(canWrite)} available, ${Utils.printSize(usedSpace)}/${Utils.printSize(totalSpace)})"
+    f"StorageHealth(${MemorySize.toString(canWrite)} available, ${MemorySize.toString(usedSpace)}/${MemorySize.toString(totalSpace)})"
   }
 }
 

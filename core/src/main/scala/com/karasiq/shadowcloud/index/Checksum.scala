@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.index
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.HashingMethod
 import com.karasiq.shadowcloud.index.utils.HasEmpty
-import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
 
 import scala.language.postfixOps
 
@@ -33,7 +33,7 @@ case class Checksum(method: HashingMethod = HashingMethod.default, size: Long = 
     def sizeAndHash(prefix: String, size: Long, hash: ByteString) = {
       if (size == 0 || hash.isEmpty) ""
       else if (size != 0 && hash.isEmpty) s"$prefix: $size bytes"
-      else s"$prefix: ${Utils.printSize(size)} [${Utils.toHexString(hash)}]"
+      else s"$prefix: ${MemorySize.toString(size)} [${Utils.toHexString(hash)}]"
     }
     val plain = sizeAndHash("plain", size, hash)
     val encrypted = sizeAndHash("encrypted", encryptedSize, encryptedHash)

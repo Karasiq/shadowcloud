@@ -5,15 +5,22 @@ import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.{HashingMethod, HashingModule}
 import com.karasiq.shadowcloud.index.{Checksum, Chunk, Data}
+import com.karasiq.shadowcloud.utils.MemorySize
 
 import scala.language.postfixOps
+
+object FileSplitter {
+  def apply(chunkSize: Int = MemorySize.MB, hashingMethod: HashingMethod = HashingMethod.default): FileSplitter = {
+    new FileSplitter(chunkSize, hashingMethod)
+  }
+}
 
 /**
   * Splits input data to fixed size chunks with hash
   * @param chunkSize Output chunk size
   * @param hashingMethod Hashing method
   */
-class FileSplitter(chunkSize: Int, hashingMethod: HashingMethod) extends GraphStage[FlowShape[ByteString, Chunk]] {
+final class FileSplitter(chunkSize: Int, hashingMethod: HashingMethod) extends GraphStage[FlowShape[ByteString, Chunk]] {
   val inBytes = Inlet[ByteString]("FileSplitter.inBytes")
   val outChunks = Outlet[Chunk]("FileSplitter.outChunks")
   val shape = FlowShape(inBytes, outChunks)

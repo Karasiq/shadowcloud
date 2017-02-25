@@ -8,8 +8,6 @@ import com.karasiq.shadowcloud.crypto.{HashingMethod, HashingModule}
 import scala.language.postfixOps
 
 private[crypto] final class MessageDigestHashingModule(messageDigest: MessageDigest) extends HashingModule {
-  messageDigest.reset()
-
   val method = {
     HashingMethod.Digest(messageDigest.getAlgorithm)
   }

@@ -1,12 +1,13 @@
 package com.karasiq.shadowcloud.actors
 
 import akka.Done
-import akka.actor.{ActorLogging, Props, ReceiveTimeout, Status}
+import akka.actor.{ActorLogging, PossiblyHarmful, Props, ReceiveTimeout, Status}
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, IOResult}
-import com.karasiq.shadowcloud.actors.events.StorageEvent
-import com.karasiq.shadowcloud.actors.events.StorageEvent._
+import com.karasiq.shadowcloud.actors.events.StorageEvents
+import com.karasiq.shadowcloud.actors.events.StorageEvents._
+import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
@@ -18,7 +19,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-object IndexSynchronizer {
+object IndexDispatcher {
   // Messages
   sealed trait Message
   case object GetIndex extends Message {
@@ -29,22 +30,23 @@ object IndexSynchronizer {
   case object Synchronize extends Message
 
   // Internal messages
-  private case class ReadSuccess(result: IndexIOResult[Long]) extends Message
-  private case object CompleteRead extends Message
-  private case class WriteSuccess(result: IndexIOResult[Long]) extends Message
-  private case object CompleteWrite extends Message
+  private sealed trait InternalMessage extends Message with PossiblyHarmful
+  private case class ReadSuccess(result: IndexIOResult[Long]) extends InternalMessage
+  private case object CompleteRead extends InternalMessage
+  private case class WriteSuccess(result: IndexIOResult[Long]) extends InternalMessage
+  private case object CompleteWrite extends InternalMessage
 
   // Snapshot
   case class Snapshot(diffs: Seq[(Long, IndexDiff)])
 
   // Props
   def props(storageId: String, baseIndexRepository: BaseIndexRepository, streams: IndexRepositoryStreams = IndexRepositoryStreams.gzipped): Props = {
-    Props(classOf[IndexSynchronizer], storageId, baseIndexRepository, streams)
+    Props(classOf[IndexDispatcher], storageId, baseIndexRepository, streams)
   }
 }
 
-class IndexSynchronizer(storageId: String, baseIndexRepository: BaseIndexRepository, streams: IndexRepositoryStreams) extends PersistentActor with ActorLogging {
-  import IndexSynchronizer._
+class IndexDispatcher(storageId: String, baseIndexRepository: BaseIndexRepository, streams: IndexRepositoryStreams) extends PersistentActor with ActorLogging {
+  import IndexDispatcher._
   import context.dispatcher
   require(storageId.nonEmpty)
   implicit val actorMaterializer = ActorMaterializer()
@@ -107,7 +109,7 @@ class IndexSynchronizer(storageId: String, baseIndexRepository: BaseIndexReposit
   def receiveWrite: Receive = {
     case WriteSuccess(IndexIOResult(sequenceNr, diff, IOResult(bytes, ioResult))) ⇒ ioResult match {
       case Success(Done) ⇒
-        log.info("Diff #{} written, {} bytes: {}", sequenceNr, bytes, diff)
+        log.debug("Diff #{} written, {} bytes: {}", sequenceNr, bytes, diff)
         persistAsync(IndexUpdated(sequenceNr, diff, remote = false))(updateState)
 
       case Failure(error) ⇒
@@ -136,10 +138,12 @@ class IndexSynchronizer(storageId: String, baseIndexRepository: BaseIndexReposit
       context.setReceiveTimeout(2 minutes)
   }
 
-  override def receiveCommand: Receive = receiveWait.orElse(receiveDefault)
+  override def receiveCommand: Receive = {
+    receiveWait.orElse(receiveDefault)
+  }
 
   def updateState(event: Event): Unit = {
-    StorageEvent.stream.publish(StorageEvent.StorageEnvelope(storageId, event))
+    StorageEvents.stream.publish(StorageEnvelope(storageId, event))
     event match {
       case IndexUpdated(sequenceNr, diff, _) ⇒
         merger.add(sequenceNr, diff)
@@ -153,8 +157,8 @@ class IndexSynchronizer(storageId: String, baseIndexRepository: BaseIndexReposit
           merger.add(sequenceNr, diff)
         }
 
-      case ChunkWritten(chunk) ⇒
-        merger.addPending(IndexDiff.newChunks(chunk.withoutData))
+      // case ChunkWritten(chunk) ⇒
+      //   merger.addPending(IndexDiff.newChunks(chunk.withoutData))
 
       case _ ⇒
         log.warning("Event not handled: {}", event)

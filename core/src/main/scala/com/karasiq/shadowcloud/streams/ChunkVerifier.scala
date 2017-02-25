@@ -8,7 +8,13 @@ import com.karasiq.shadowcloud.index.Chunk
 import scala.collection.mutable
 import scala.language.postfixOps
 
-class ChunkVerifier extends GraphStage[FlowShape[Chunk, Chunk]] {
+object ChunkVerifier {
+  def apply(): ChunkVerifier = {
+    new ChunkVerifier()
+  }
+}
+
+final class ChunkVerifier extends GraphStage[FlowShape[Chunk, Chunk]] {
   val inlet = Inlet[Chunk]("ChunkVerifier.in")
   val outlet = Outlet[Chunk]("ChunkVerifier.out")
   val shape = FlowShape(inlet, outlet)

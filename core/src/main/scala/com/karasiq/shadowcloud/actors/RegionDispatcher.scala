@@ -1,16 +1,18 @@
 package com.karasiq.shadowcloud.actors
 
+import java.io.FileNotFoundException
+
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
-import com.karasiq.shadowcloud.actors.events.RegionEvent.RegionEnvelope
-import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
-import com.karasiq.shadowcloud.actors.events.{RegionEvent, StorageEvent}
+import com.karasiq.shadowcloud.actors.events.{RegionEvents, StorageEvents}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
+import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.index.{File, Folder, Path}
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
@@ -32,6 +34,10 @@ object RegionDispatcher {
     case class Success(diffs: Seq[(RegionKey, IndexDiff)])
   }
   case object Synchronize extends Message
+  case class GetFiles(path: Path) extends Message
+  object GetFiles extends MessageStatus[Path, Set[File]]
+  case class GetFolder(path: Path) extends Message
+  object GetFolder extends MessageStatus[Path, Folder]
 
   // Internal messages
   private case class PushDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)]) extends Message
@@ -64,9 +70,31 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
         sender() ! WriteIndex.Failure(diff, new IllegalStateException("No storages available"))
       } else {
         merger.addPending(diff)
-        log.info("Writing to virtual region [{}] index: {} (storages = {})", regionId, diff, actors)
-        actors.foreach(_ ! IndexSynchronizer.AddPending(diff))
+        log.debug("Writing to virtual region [{}] index: {} (storages = {})", regionId, diff, actors)
+        actors.foreach(_ ! IndexDispatcher.AddPending(diff))
         sender() ! WriteIndex.Success(diff, merger.pending)
+      }
+
+    case GetFiles(path) ⇒
+      val files = merger.folders.folders
+        .get(path.parent)
+        .map(_.files.filter(_.path == path))
+        .filter(_.nonEmpty)
+      files match {
+        case Some(files) ⇒
+          sender() ! GetFiles.Success(path, files)
+
+        case None ⇒
+          sender() ! GetFiles.Failure(path, new FileNotFoundException(s"No such file: $path"))
+      }
+
+    case GetFolder(path) ⇒
+      merger.folders.folders.get(path) match {
+        case Some(folder) ⇒
+          sender() ! GetFolder.Success(path, folder)
+
+        case None ⇒
+          sender() ! GetFolder.Failure(path, new FileNotFoundException(s"No such directory: $path"))
       }
 
     case GetIndex ⇒
@@ -74,7 +102,7 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
 
     case Synchronize ⇒
       log.info("Force synchronizing indexes of virtual region: {}", regionId)
-      storages.available().foreach(_ ! IndexSynchronizer.Synchronize)
+      storages.available().foreach(_ ! IndexDispatcher.Synchronize)
 
     // -----------------------------------------------------------------------
     // Read/write commands
@@ -100,9 +128,9 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
       log.info("Registered storage: {} -> {} [{}]", storageId, dispatcher, health)
       storages.register(storageId, dispatcher, health)
       if (health == StorageHealth.empty) dispatcher ! StorageDispatcher.CheckHealth
-      val indexFuture = (dispatcher ? IndexSynchronizer.GetIndex).mapTo[IndexSynchronizer.GetIndex.Success]
+      val indexFuture = (dispatcher ? IndexDispatcher.GetIndex).mapTo[IndexDispatcher.GetIndex.Success]
       indexFuture.onComplete {
-        case Success(IndexSynchronizer.GetIndex.Success(diffs)) ⇒
+        case Success(IndexDispatcher.GetIndex.Success(diffs)) ⇒
           self ! PushDiffs(storageId, diffs)
 
         case Failure(error) ⇒
@@ -119,26 +147,26 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
       addStorageDiffs(storageId, diffs)
       chunks.retryPendingChunks()
 
-    case StorageEnvelope(storageId, event) if storages.contains(storageId) ⇒ event match {
-      case StorageEvent.IndexLoaded(diffs) ⇒
+    case StorageEnvelope(storageId, event: StorageEvents.Event) if storages.contains(storageId) ⇒ event match {
+      case StorageEvents.IndexLoaded(diffs) ⇒
         log.info("Storage [{}] index loaded: {} diffs", storageId, diffs.length)
         dropStorageDiffs(storageId)
         addStorageDiffs(storageId, diffs)
 
-      case StorageEvent.IndexUpdated(sequenceNr, diff, _) ⇒
-        log.info("Storage [{}] index updated: {}", storageId, diff)
+      case StorageEvents.IndexUpdated(sequenceNr, diff, _) ⇒
+        log.debug("Storage [{}] index updated: {}", storageId, diff)
         addStorageDiff(storageId, sequenceNr, diff)
 
-      case StorageEvent.PendingIndexUpdated(diff) ⇒
+      case StorageEvents.PendingIndexUpdated(diff) ⇒
         log.debug("Storage [{}] pending index updated: {}", storageId, diff)
         merger.addPending(diff)
 
-      case StorageEvent.ChunkWritten(chunk) ⇒
-        log.info("Chunk written: {}", chunk)
+      case StorageEvents.ChunkWritten(chunk) ⇒
+        log.debug("Chunk written: {}", chunk)
         chunks.registerChunk(storages.getDispatcher(storageId), chunk)
-        RegionEvent.stream.publish(RegionEnvelope(regionId, RegionEvent.ChunkWritten(storageId, chunk)))
+        RegionEvents.stream.publish(RegionEnvelope(regionId, RegionEvents.ChunkWritten(storageId, chunk)))
 
-      case StorageEvent.HealthUpdated(health) ⇒
+      case StorageEvents.HealthUpdated(health) ⇒
         log.debug("Storage [{}] health report: {}", storageId, health)
         storages.update(storageId, health)
         chunks.retryPendingChunks()
@@ -163,8 +191,8 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
       chunks.update(dispatcher, diff.chunks)
       val regionKey = RegionKey(diff.time, storageId, sequenceNr)
       merger.add(regionKey, diff)
-      log.info("Virtual region [{}] index updated: {} -> {}", regionId, regionKey, diff)
-      RegionEvent.stream.publish(RegionEnvelope(regionId, RegionEvent.IndexUpdated(regionKey, diff)))
+      log.debug("Virtual region [{}] index updated: {} -> {}", regionId, regionKey, diff)
+      RegionEvents.stream.publish(RegionEnvelope(regionId, RegionEvents.IndexUpdated(regionKey, diff)))
     }
   }
 
@@ -178,7 +206,7 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
   }
 
   override def postStop(): Unit = {
-    StorageEvent.stream.unsubscribe(self)
+    StorageEvents.stream.unsubscribe(self)
     super.postStop()
   }
 }

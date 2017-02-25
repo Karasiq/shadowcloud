@@ -35,6 +35,6 @@ object StorageProps {
   }
 
   def fromDirectory(directory: Path): StorageProps = {
-    StorageProps("filesystem", Address(directory.toUri))
+    StorageProps("files", Address(directory.toUri))
   }
 }

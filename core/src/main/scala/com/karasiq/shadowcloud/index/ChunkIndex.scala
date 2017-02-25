@@ -52,9 +52,7 @@ case class ChunkIndex(chunks: Set[Chunk] = Set.empty) extends Mergeable with Has
   }
 
   override def toString: String = {
-    val hashesStr = chunks.take(20).map(chunk ⇒ Utils.toHexString(chunk.checksum.hash)).mkString(", ")
-    val cutHashesStr = if (chunks.size > 20) hashesStr + ", ..." else hashesStr
-    s"ChunkIndex($cutHashesStr)"
+    s"ChunkIndex(${Utils.printHashes(chunks)})"
   }
 
   private[this] def withChunks(chunks: Set[Chunk]): ChunkIndex = {

@@ -1,6 +1,7 @@
 name := "shadowcloud-core"
 
-libraryDependencies ++= ProjectDeps.akka ++
+libraryDependencies ++=
+  ProjectDeps.akka.all ++
   ProjectDeps.kryo ++
   ProjectDeps.bouncyCastle ++
   ProjectDeps.scalaTest

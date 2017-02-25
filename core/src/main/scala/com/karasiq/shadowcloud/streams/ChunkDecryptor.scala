@@ -8,7 +8,13 @@ import com.karasiq.shadowcloud.index.Chunk
 import scala.collection.mutable
 import scala.language.postfixOps
 
-class ChunkDecryptor extends GraphStage[FlowShape[Chunk, Chunk]] {
+object ChunkDecryptor {
+  def apply(): ChunkDecryptor = {
+    new ChunkDecryptor()
+  }
+}
+
+final class ChunkDecryptor extends GraphStage[FlowShape[Chunk, Chunk]] {
   val inlet = Inlet[Chunk]("ChunkDecryptor.in")
   val outlet = Outlet[Chunk]("ChunkDecryptor.out")
   val shape = FlowShape(inlet, outlet)

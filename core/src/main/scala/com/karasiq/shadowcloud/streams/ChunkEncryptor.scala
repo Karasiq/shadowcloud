@@ -8,7 +8,13 @@ import com.karasiq.shadowcloud.index.Chunk
 import scala.language.postfixOps
 import scala.util.Random
 
-class ChunkEncryptor(encryptionMethod: EncryptionMethod, hashingMethod: HashingMethod) extends GraphStage[FlowShape[Chunk, Chunk]] {
+object ChunkEncryptor {
+  def apply(encryptionMethod: EncryptionMethod = EncryptionMethod.default, hashingMethod: HashingMethod = HashingMethod.default): ChunkEncryptor = {
+    new ChunkEncryptor(encryptionMethod, hashingMethod)
+  }
+}
+
+final class ChunkEncryptor(encryptionMethod: EncryptionMethod, hashingMethod: HashingMethod) extends GraphStage[FlowShape[Chunk, Chunk]] {
   val inlet = Inlet[Chunk]("ChunkEncryptor.in")
   val outlet = Outlet[Chunk]("ChunkEncryptor.out")
   val shape = FlowShape(inlet, outlet)

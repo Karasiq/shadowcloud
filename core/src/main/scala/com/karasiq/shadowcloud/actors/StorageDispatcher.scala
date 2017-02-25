@@ -3,9 +3,9 @@ package com.karasiq.shadowcloud.actors
 import akka.actor.{Actor, ActorLogging, ActorRef, NotInfluenceReceiveTimeout, Props}
 import akka.pattern.pipe
 import akka.util.Timeout
-import com.karasiq.shadowcloud.actors.events.StorageEvent
-import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
+import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.internal.{DiffStats, PendingOperation, StorageStatsTracker}
+import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
@@ -63,8 +63,8 @@ class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef, h
     case msg @ ChunkIODispatcher.WriteChunk.Success(_, chunk) ⇒
       log.debug("Chunk written, appending to index: {}", chunk)
       pending.finish(chunk, msg)
-      StorageEvent.stream.publish(StorageEnvelope(storageId, StorageEvent.ChunkWritten(chunk)))
-      index ! IndexSynchronizer.AddPending(IndexDiff.newChunks(chunk.withoutData))
+      StorageEvents.stream.publish(StorageEnvelope(storageId, StorageEvents.ChunkWritten(chunk)))
+      index ! IndexDispatcher.AddPending(IndexDiff.newChunks(chunk.withoutData))
 
     case msg @ ChunkIODispatcher.WriteChunk.Failure(chunk, error) ⇒
       log.error(error, "Chunk write failure: {}", chunk)
@@ -73,7 +73,7 @@ class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef, h
     // -----------------------------------------------------------------------
     // Index commands
     // -----------------------------------------------------------------------
-    case msg: IndexSynchronizer.Message ⇒
+    case msg: IndexDispatcher.Message ⇒
       index.forward(msg)
 
     // -----------------------------------------------------------------------
@@ -94,15 +94,15 @@ class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef, h
     // -----------------------------------------------------------------------
     // Storage events
     // -----------------------------------------------------------------------
-    case StorageEnvelope(`storageId`, event) ⇒ event match {
-      case StorageEvent.IndexLoaded(diffs) ⇒
+    case StorageEnvelope(`storageId`, event: StorageEvents.Event) ⇒ event match {
+      case StorageEvents.IndexLoaded(diffs) ⇒
         val newStats = DiffStats(diffs.map(_._2):_*)
         stats.updateStats(newStats)
 
-      case StorageEvent.IndexUpdated(_, diff, _) ⇒
+      case StorageEvents.IndexUpdated(_, diff, _) ⇒
         stats.appendStats(DiffStats(diff))
 
-      case StorageEvent.ChunkWritten(chunk) ⇒
+      case StorageEvents.ChunkWritten(chunk) ⇒
         val written = chunk.checksum.encryptedSize
         log.debug("{} bytes written, updating storage health", written)
         stats.updateHealth(_ - written)
@@ -119,11 +119,11 @@ class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef, h
     super.preStart()
     context.watch(chunkIO)
     context.watch(index)
-    StorageEvent.stream.subscribe(self, storageId)
+    StorageEvents.stream.subscribe(self, storageId)
   }
 
   override def postStop(): Unit = {
-    StorageEvent.stream.unsubscribe(self)
+    StorageEvents.stream.unsubscribe(self)
     schedule.cancel()
     super.postStop()
   }

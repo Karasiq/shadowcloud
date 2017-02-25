@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.actors.internal
 
 import akka.actor.{ActorContext, ActorRef}
-import com.karasiq.shadowcloud.actors.events.StorageEvent
+import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.internal.ChunksTracker.ChunkStatus
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.StorageHealth
@@ -73,14 +73,14 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
     val storage = Storage(storageId, dispatcher, health)
     storages += storageId → storage
     storagesByAR += dispatcher → storage
-    StorageEvent.stream.subscribe(context.self, storageId)
+    StorageEvents.stream.subscribe(context.self, storageId)
   }
 
   def unregister(dispatcher: ActorRef): Unit = {
     context.unwatch(dispatcher)
     storagesByAR.remove(dispatcher).foreach { storage ⇒
       storages -= storage.id
-      StorageEvent.stream.unsubscribe(context.self, storage.id)
+      StorageEvents.stream.unsubscribe(context.self, storage.id)
     }
   }
 

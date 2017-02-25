@@ -5,6 +5,7 @@ import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import akka.util.Timeout
 import com.karasiq.shadowcloud.actors.internal.RegionTracker
 import com.karasiq.shadowcloud.actors.internal.RegionTracker.{RegionStatus, StorageStatus}
+import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.utils.StorageInstantiator
 
@@ -133,6 +134,15 @@ class RegionSupervisor(val instantiator: StorageInstantiator)
     // -----------------------------------------------------------------------
     case GetState ⇒
       sender() ! GetState.Success(state.regions.toMap, state.storages.toMap)
+
+    // -----------------------------------------------------------------------
+    // Envelopes
+    // -----------------------------------------------------------------------
+    case RegionEnvelope(regionId, message) if state.containsRegion(regionId) ⇒
+      state.regions(regionId).dispatcher.forward(message)
+
+    case StorageEnvelope(storageId, message) if state.containsStorage(storageId) ⇒
+      state.storages(storageId).dispatcher.forward(message)
   }
 
   // -----------------------------------------------------------------------

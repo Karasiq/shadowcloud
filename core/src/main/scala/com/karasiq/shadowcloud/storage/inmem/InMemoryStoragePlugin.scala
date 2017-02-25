@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.storage.inmem
 
 import akka.actor.{ActorContext, ActorRef}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, IndexSynchronizer, StorageDispatcher}
+import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, IndexDispatcher, StorageDispatcher}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
@@ -16,7 +16,7 @@ private[storage] final class InMemoryStoragePlugin extends StoragePlugin {
     val chunkMap = TrieMap.empty[String, ByteString]
     val chunks = ChunkRepository.fromTrieMap(chunkMap)
     val health = StorageHealthProvider.fromMaps(indexMap, chunkMap)
-    val indexSynchronizer = context.actorOf(IndexSynchronizer.props(storageId, index), "index")
+    val indexSynchronizer = context.actorOf(IndexDispatcher.props(storageId, index), "index")
     val chunkIO = context.actorOf(ChunkIODispatcher.props(chunks), "chunks")
     context.actorOf(StorageDispatcher.props(storageId, indexSynchronizer, chunkIO, health), "dispatcher")
   }

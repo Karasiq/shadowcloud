@@ -20,7 +20,7 @@ class FileSplitterTest extends ActorSpec with FlatSpecLike {
 
   "File splitter" should "split text" in {
     val fullOut = Source.single(sourceBytes)
-      .via(new FileSplitter(100, hashingMethod))
+      .via(FileSplitter(100, hashingMethod))
       .map(_.checksum.hash)
       .runWith(Sink.seq)
 
@@ -29,7 +29,7 @@ class FileSplitterTest extends ActorSpec with FlatSpecLike {
 
   it should "join text" in {
     val (in, out) = TestSource.probe[ByteString]
-      .via(new FileSplitter(100, sourceFile.checksum.method))
+      .via(FileSplitter(100, sourceFile.checksum.method))
       .map(_.checksum.hash)
       .toMat(TestSink.probe)(Keep.both)
       .run()
@@ -58,10 +58,10 @@ class FileSplitterTest extends ActorSpec with FlatSpecLike {
     }
 
     val (file, chunks) = Source.single(sourceBytes)
-      .via(new FileSplitter(100, hashingMethod))
-      .via(new ChunkEncryptor(EncryptionMethod.AES(), hashingMethod))
-      .via(new ChunkVerifier)
-      .viaMat(new FileIndexer(hashingMethod))(Keep.right)
+      .via(FileSplitter(100, hashingMethod))
+      .via(ChunkEncryptor(EncryptionMethod.AES(), hashingMethod))
+      .via(ChunkVerifier())
+      .viaMat(FileIndexer(hashingMethod))(Keep.right)
       .map(testChunk) // Verify again
       .toMat(Sink.seq)(Keep.both)
       .run()
@@ -69,8 +69,8 @@ class FileSplitterTest extends ActorSpec with FlatSpecLike {
     whenReady(chunks) { chunks ⇒
       chunks.map(_.checksum.hash) shouldBe sourceHashes
       val future = Source(chunks)
-        .via(new ChunkDecryptor)
-        .via(new ChunkVerifier)
+        .via(ChunkDecryptor())
+        .via(ChunkVerifier())
         .map(testChunk)
         .runWith(Sink.ignore)
 

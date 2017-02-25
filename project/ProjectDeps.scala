@@ -3,9 +3,9 @@ import sbt._
 object ProjectDeps {
   type Deps = Seq[ModuleID]
 
-  object Akka {
+  object akka {
     private val akkaV = "2.4.17"
-    private val akkaHttpV = "10.0.1"
+    private val akkaHttpV = "10.0.4"
 
     def actors: Deps = Seq(
       "com.typesafe.akka" %% "akka-actor" % akkaV,
@@ -30,11 +30,9 @@ object ProjectDeps {
     }
   }
 
-  def akka: Deps = Akka.all
-
   def kryo: Deps = Seq(
     // "com.esotericsoftware" % "kryo" % "4.0.0",
-    "com.twitter" %% "chill" % "0.9.1"
+    "com.twitter" %% "chill" % "0.9.2"
   )
 
   def bouncyCastle: Deps = Seq(

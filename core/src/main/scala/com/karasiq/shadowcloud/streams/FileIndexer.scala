@@ -6,13 +6,21 @@ import akka.stream.stage._
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import com.karasiq.shadowcloud.crypto.{HashingMethod, HashingModule}
 import com.karasiq.shadowcloud.index.{Checksum, Chunk}
+import com.karasiq.shadowcloud.streams.FileIndexer.IndexedFile
 
 import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
 
-case class IndexedFile(checksum: Checksum, chunks: Seq[Chunk])
+object FileIndexer {
+  case class IndexedFile(checksum: Checksum, chunks: Seq[Chunk])
 
-class FileIndexer(hashingMethod: HashingMethod) extends GraphStageWithMaterializedValue[FlowShape[Chunk, Chunk], Future[IndexedFile]] {
+  def apply(hashingMethod: HashingMethod = HashingMethod.default): FileIndexer = {
+    new FileIndexer(hashingMethod)
+  }
+}
+
+// TODO: Content type
+final class FileIndexer(hashingMethod: HashingMethod) extends GraphStageWithMaterializedValue[FlowShape[Chunk, Chunk], Future[IndexedFile]] {
   val inlet = Inlet[Chunk]("FileIndexer.in")
   val outlet = Outlet[Chunk]("FileIndexer.out")
   val shape = FlowShape(inlet, outlet)

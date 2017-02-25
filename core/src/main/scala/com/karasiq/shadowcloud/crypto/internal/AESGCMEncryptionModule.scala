@@ -5,7 +5,7 @@ import java.security.SecureRandom
 import javax.crypto.KeyGenerator
 
 import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule, EncryptionParameters}
+import com.karasiq.shadowcloud.crypto.{CryptoUtils, EncryptionMethod, EncryptionModule, EncryptionParameters}
 import org.bouncycastle.crypto.engines.AESEngine
 import org.bouncycastle.crypto.modes.GCMBlockCipher
 import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
@@ -13,20 +13,10 @@ import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
 import scala.language.postfixOps
 
 private[crypto] final class AESGCMEncryptionModule(bits: Int = 256) extends EncryptionModule {
-  private val secureRandom = SecureRandom.getInstanceStrong
-  private val keyGenerator = KeyGenerator.getInstance("AES")
+  private[this] val secureRandom = SecureRandom.getInstanceStrong
+  private[this] val keyGenerator = KeyGenerator.getInstance("AES", CryptoUtils.provider)
   keyGenerator.init(bits, secureRandom)
-  private var aes: GCMBlockCipher = _
-
-  private def createAesInstance() = {
-    new GCMBlockCipher(new AESEngine)
-  }
-
-  private def generateIV(): ByteString = {
-    val iv = Array.ofDim[Byte](12)
-    secureRandom.nextBytes(iv)
-    ByteString(iv)
-  }
+  private[this] val aes = new GCMBlockCipher(new AESEngine)
 
   def createParameters(): EncryptionParameters = {
     EncryptionParameters(EncryptionMethod.AES("GCM", bits), ByteString(keyGenerator.generateKey().getEncoded), generateIV())
@@ -37,8 +27,15 @@ private[crypto] final class AESGCMEncryptionModule(bits: Int = 256) extends Encr
   }
 
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
-    aes = createAesInstance()
-    aes.init(encrypt, new ParametersWithIV(new KeyParameter(parameters.key.toArray), parameters.iv.toArray))
+    val key = parameters.key.toArray
+    val iv = parameters.iv.toArray
+    val keyParams = new ParametersWithIV(new KeyParameter(key), iv)
+    try {
+      aes.init(encrypt, keyParams)
+    } catch { case _: IllegalArgumentException ⇒
+      aes.init(encrypt, new ParametersWithIV(new KeyParameter(key), Array[Byte](0)))
+      aes.init(encrypt, keyParams)
+    }
   }
 
   def process(data: ByteString): ByteString = {
@@ -53,5 +50,11 @@ private[crypto] final class AESGCMEncryptionModule(bits: Int = 256) extends Encr
     val output = Array.ofDim[Byte](aes.getOutputSize(0))
     val length = aes.doFinal(output, 0)
     ByteString(ByteBuffer.wrap(output, 0, length))
+  }
+
+  private[this] def generateIV(): ByteString = {
+    val iv = Array.ofDim[Byte](12)
+    secureRandom.nextBytes(iv)
+    ByteString(iv)
   }
 }

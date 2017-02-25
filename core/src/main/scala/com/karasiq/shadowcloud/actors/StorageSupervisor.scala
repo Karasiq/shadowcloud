@@ -17,11 +17,12 @@ class StorageSupervisor(instantiator: StorageInstantiator, storageId: String, pr
   val storage = instantiator.createStorage(storageId, props)
 
   override def receive: Receive = {
-    case msg if sender() == storage ⇒
-      context.parent ! msg
-
-    case msg: ChunkIODispatcher.Message ⇒
-      storage.forward(msg)
+    case msg ⇒
+      if (sender() == storage) {
+        context.parent ! msg
+      } else {
+        storage.forward(msg)
+      }
   }
 
   override def postStop(): Unit = {

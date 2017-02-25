@@ -1,8 +1,8 @@
 package com.karasiq.shadowcloud.actors.internal
 
 import akka.event.LoggingAdapter
-import com.karasiq.shadowcloud.actors.events.StorageEvent
-import com.karasiq.shadowcloud.actors.events.StorageEvent.StorageEnvelope
+import com.karasiq.shadowcloud.actors.events.StorageEvents
+import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
 
 import scala.concurrent.Future
@@ -21,12 +21,12 @@ private[actors] final class StorageStatsTracker(storageId: String, healthProvide
   def updateHealth(func: StorageHealth ⇒ StorageHealth): Unit = {
     this.health = func(this.health)
     log.debug("Storage [{}] health updated: {}", storageId, health)
-    StorageEvent.stream.publish(StorageEnvelope(storageId, StorageEvent.HealthUpdated(health)))
+    StorageEvents.stream.publish(StorageEnvelope(storageId, StorageEvents.HealthUpdated(health)))
   }
 
   def updateStats(stats: DiffStats): Unit = {
     this.stats = stats
-    log.debug("Storage [{}] stats updated: {}", stats)
+    log.debug("Storage [{}] stats updated: {}", storageId, stats)
   }
 
   def appendStats(stats: DiffStats): Unit = {

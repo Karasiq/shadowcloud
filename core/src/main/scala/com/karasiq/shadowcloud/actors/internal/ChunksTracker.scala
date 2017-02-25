@@ -51,7 +51,7 @@ private[actors] final class ChunksTracker(config: StorageConfig, storages: Stora
         if (!Utils.isSameChunk(status.chunk, chunk)) {
           receiver ! ReadChunk.Failure(chunk, new IllegalArgumentException(s"Chunks conflict: ${status.chunk} / $chunk"))
         } else if (status.chunk.data.encrypted.nonEmpty) {
-          log.info("Chunk extracted from cache: {}", status.chunk)
+          log.debug("Chunk extracted from cache: {}", status.chunk)
           val data = status.chunk.data.encrypted
           val source = Source.single(data)
             .mapMaterializedValue(_ ⇒ Future.successful(IOResult(data.length, Success(Done))))
@@ -59,7 +59,7 @@ private[actors] final class ChunksTracker(config: StorageConfig, storages: Stora
         } else {
           storages.forRead(status).headOption match {
             case Some(dispatcher) ⇒
-              log.info("Reading chunk from {}: {}", dispatcher, chunk)
+              log.debug("Reading chunk from {}: {}", dispatcher, chunk)
               dispatcher.tell(ReadChunk(chunk), receiver)
 
             case None ⇒
@@ -84,12 +84,12 @@ private[actors] final class ChunksTracker(config: StorageConfig, storages: Stora
           stored.chunk.copy(data = chunk.data.copy(encrypted = encryptor.encrypt(chunk.data.plain, stored.chunk.encryption)))
         }
         receiver ! WriteChunk.Success(chunkWithData, chunkWithData)
-        log.info("Chunk restored from index, write skipped: {}", chunkWithData)
+        log.debug("Chunk restored from index, write skipped: {}", chunkWithData)
         stored.copy(chunk = chunkWithData)
 
       case Some(pending) if pending.status == Status.PENDING ⇒
         context.watch(receiver)
-        log.info("Already writing chunk, added to queue: {}", chunk)
+        log.debug("Already writing chunk, added to queue: {}", chunk)
         putStatus(pending.copy(waitingChunk = pending.waitingChunk + receiver))
 
       case None ⇒
@@ -99,7 +99,7 @@ private[actors] final class ChunksTracker(config: StorageConfig, storages: Stora
         if (written.isEmpty) {
           log.warning("No storages available for write: {}", chunk)
         } else {
-          log.info("Writing chunk to {}: {}", written, chunk)
+          log.debug("Writing chunk to {}: {}", written, chunk)
         }
         putStatus(status.copy(writingChunk = written))
     }
@@ -141,9 +141,11 @@ private[actors] final class ChunksTracker(config: StorageConfig, storages: Stora
             log.debug("Need {} more writes for {}", needWrites, chunk)
             putStatus(newStatus)
           }
-        } else { // Chunk is already stored
-          log.info("Chunk duplicate found on {}: {}", dispatcher, chunk)
+        } else if (!status.hasChunk.contains(dispatcher)) {
+          log.debug("Chunk duplicate found on {}: {}", dispatcher, chunk)
           putStatus(status.copy(writingChunk = status.writingChunk - dispatcher, hasChunk = status.hasChunk + dispatcher))
+        } else {
+          status
         }
 
       case None ⇒ // Chunk first seen

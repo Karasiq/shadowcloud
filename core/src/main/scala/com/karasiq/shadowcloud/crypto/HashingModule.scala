@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.crypto
 
-import java.security.MessageDigest
+import java.security.{MessageDigest, Provider}
 
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.internal.MessageDigestHashingModule
@@ -23,14 +23,23 @@ trait HashingModule {
 }
 
 object HashingModule {
+  val default = apply(HashingMethod.default)
+
   def apply(method: HashingMethod): HashingModule = method match {
     case HashingMethod.Digest(alg) ⇒
-      apply(alg)
+      digest(alg)
   }
 
   def apply(alg: String): HashingModule = {
-    new MessageDigestHashingModule(MessageDigest.getInstance(alg))
+    digest(alg)
   }
 
-  val default = apply(HashingMethod.default)
+  def digest(alg: String, provider: Option[Provider] = Some(CryptoUtils.provider)): HashingModule = {
+    val md = if (provider.isEmpty) MessageDigest.getInstance(alg) else MessageDigest.getInstance(alg, provider.get)
+    fromMessageDigest(md)
+  }
+
+  def fromMessageDigest(md: MessageDigest): HashingModule = {
+    new MessageDigestHashingModule(md)
+  }
 }

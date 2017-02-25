@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.index
 
 import com.karasiq.shadowcloud.crypto.EncryptionParameters
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData}
-import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.utils.MemorySize
 
 import scala.language.postfixOps
 
@@ -31,6 +31,6 @@ case class Chunk(checksum: Checksum = Checksum.empty, encryption: EncryptionPara
   }
 
   override def toString: String = {
-    s"Chunk($checksum, $encryption, ${Utils.printSize(data.plain.length)}/${Utils.printSize(data.encrypted.length)})"
+    s"Chunk($checksum, $encryption, ${MemorySize.toString(data.plain.length)}/${MemorySize.toString(data.encrypted.length)})"
   }
 }

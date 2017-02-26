@@ -40,7 +40,7 @@ object RegionDispatcher {
   object GetFolder extends MessageStatus[Path, Folder]
 
   // Internal messages
-  private case class PushDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)]) extends Message
+  private case class PushDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)], pending: IndexDiff) extends Message
 
   // Props
   def props(regionId: String): Props = {
@@ -130,8 +130,8 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
       if (health == StorageHealth.empty) dispatcher ! StorageDispatcher.CheckHealth
       val indexFuture = (dispatcher ? IndexDispatcher.GetIndex).mapTo[IndexDispatcher.GetIndex.Success]
       indexFuture.onComplete {
-        case Success(IndexDispatcher.GetIndex.Success(diffs)) ⇒
-          self ! PushDiffs(storageId, diffs)
+        case Success(IndexDispatcher.GetIndex.Success(diffs, pending)) ⇒
+          self ! PushDiffs(storageId, diffs, pending)
 
         case Failure(error) ⇒
           log.error(error, "Error fetching index: {}", dispatcher)
@@ -143,7 +143,8 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
       storages.unregister(dispatcher)
       chunks.unregister(dispatcher)
 
-    case PushDiffs(storageId, diffs) if storages.contains(storageId) ⇒
+    case PushDiffs(storageId, diffs, pending) if storages.contains(storageId) ⇒
+      merger.addPending(pending)
       addStorageDiffs(storageId, diffs)
       chunks.retryPendingChunks()
 
@@ -151,6 +152,7 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
       case StorageEvents.IndexLoaded(diffs) ⇒
         log.info("Storage [{}] index loaded: {} diffs", storageId, diffs.length)
         dropStorageDiffs(storageId)
+        chunks.unregister(storages.getDispatcher(storageId))
         addStorageDiffs(storageId, diffs)
 
       case StorageEvents.IndexUpdated(sequenceNr, diff, _) ⇒

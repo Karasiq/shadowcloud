@@ -80,6 +80,6 @@ class ChunkProcessing(implicit ec: ExecutionContext) {
   }
 
   protected def parallelFlow(func: Chunk ⇒ Chunk): ChunkFlow = {
-    parallelFlow(sys.runtime.availableProcessors(), func)
+    parallelFlow(sys.runtime.availableProcessors() * 2, func)
   }
 }

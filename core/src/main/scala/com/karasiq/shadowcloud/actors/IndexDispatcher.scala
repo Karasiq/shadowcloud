@@ -1,10 +1,10 @@
 package com.karasiq.shadowcloud.actors
 
-import akka.Done
-import akka.actor.{ActorLogging, PossiblyHarmful, Props, ReceiveTimeout, Status}
+import akka.actor.{ActorLogging, DeadLetterSuppression, PossiblyHarmful, Props, ReceiveTimeout, Status}
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, IOResult}
+import akka.{Done, NotUsed}
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.events.StorageEvents._
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
@@ -23,7 +23,7 @@ object IndexDispatcher {
   // Messages
   sealed trait Message
   case object GetIndex extends Message {
-    case class Success(diffs: Seq[(Long, IndexDiff)])
+    case class Success(diffs: Seq[(Long, IndexDiff)], pending: IndexDiff)
   }
   case class AddPending(diff: IndexDiff) extends Message
   object AddPending extends MessageStatus[IndexDiff, IndexDiff]
@@ -31,10 +31,10 @@ object IndexDispatcher {
 
   // Internal messages
   private sealed trait InternalMessage extends Message with PossiblyHarmful
+  private case class StartRead(keys: Set[Long]) extends InternalMessage
   private case class ReadSuccess(result: IndexIOResult[Long]) extends InternalMessage
-  private case object CompleteRead extends InternalMessage
   private case class WriteSuccess(result: IndexIOResult[Long]) extends InternalMessage
-  private case object CompleteWrite extends InternalMessage
+  private case object StreamCompleted extends InternalMessage with DeadLetterSuppression
 
   // Snapshot
   case class Snapshot(diffs: Seq[(Long, IndexDiff)])
@@ -59,7 +59,7 @@ class IndexDispatcher(storageId: String, baseIndexRepository: BaseIndexRepositor
   // Local operations
   def receiveDefault: Receive = {
     case GetIndex ⇒
-      sender() ! GetIndex.Success(merger.diffs.toVector)
+      sender() ! GetIndex.Success(merger.diffs.toVector, merger.pending)
 
     case AddPending(diff) ⇒
       log.debug("Pending diff added: {}", diff)
@@ -69,16 +69,17 @@ class IndexDispatcher(storageId: String, baseIndexRepository: BaseIndexRepositor
   // Wait for synchronize command
   def receiveWait: Receive = {
     case Synchronize ⇒
-      // TODO: Reload remote keys
       log.debug("Starting synchronization, last sequence number: {}", merger.lastSequenceNr)
-      indexRepository.keysAfter(merger.lastSequenceNr)
-        .via(streams.read(indexRepository))
-        .map(ReadSuccess)
-        .runWith(Sink.actorRef(self, CompleteRead))
-      context.become(receiveRead.orElse(receiveDefault))
+      readRemoteKeys()
 
     case ReceiveTimeout ⇒
       throw new IllegalArgumentException("Receive timeout")
+  }
+
+  // Loading remote diff keys
+  def receivePreRead: Receive = {
+    case StartRead(keys) ⇒
+      readDiffs(keys)
   }
 
   // Reading remote diffs
@@ -96,7 +97,7 @@ class IndexDispatcher(storageId: String, baseIndexRepository: BaseIndexRepositor
     case Status.Failure(error) ⇒
       throw error
 
-    case CompleteRead ⇒
+    case StreamCompleted ⇒
       log.debug("Synchronization read completed")
       if (merger.pending.nonEmpty) {
         write(merger.lastSequenceNr + 1, merger.pending)
@@ -120,7 +121,7 @@ class IndexDispatcher(storageId: String, baseIndexRepository: BaseIndexRepositor
       log.error(error, "Write error")
       scheduleSync()
 
-    case CompleteWrite ⇒
+    case StreamCompleted ⇒
       log.debug("Synchronization write completed")
       scheduleSync()
   }
@@ -142,7 +143,7 @@ class IndexDispatcher(storageId: String, baseIndexRepository: BaseIndexRepositor
     receiveWait.orElse(receiveDefault)
   }
 
-  def updateState(event: Event): Unit = {
+  private[this] def updateState(event: Event): Unit = {
     StorageEvents.stream.publish(StorageEnvelope(storageId, event))
     event match {
       case IndexUpdated(sequenceNr, diff, _) ⇒
@@ -156,27 +157,61 @@ class IndexDispatcher(storageId: String, baseIndexRepository: BaseIndexRepositor
         for ((sequenceNr, diff) ← diffs) {
           merger.add(sequenceNr, diff)
         }
-
-      // case ChunkWritten(chunk) ⇒
-      //   merger.addPending(IndexDiff.newChunks(chunk.withoutData))
-
+        
       case _ ⇒
         log.warning("Event not handled: {}", event)
     }
   }
 
-  def scheduleSync(): Unit = {
-    log.debug("Scheduling synchronize in {}", config.syncInterval.toCoarsest)
-    context.system.scheduler.scheduleOnce(config.syncInterval, self, Synchronize)
-    context.become(receiveWait.orElse(receiveDefault))
+  private[this] def become(receive: Receive): Unit = {
+    context.become(receive.orElse(receiveDefault))
   }
 
-  def write(sequenceNr: Long, diff: IndexDiff): Unit = {
+  private[this] def scheduleSync(): Unit = {
+    log.debug("Scheduling synchronize in {}", config.syncInterval.toCoarsest)
+    context.system.scheduler.scheduleOnce(config.syncInterval, self, Synchronize)
+    become(receiveWait)
+  }
+
+  private[this] def readRemoteKeys(): Unit = {
+    indexRepository.keys
+      .fold(Set.empty[Long])(_ + _)
+      .map(StartRead)
+      .runWith(Sink.actorRef(self, NotUsed))
+    become(receivePreRead)
+  }
+
+  private[this] def readDiffs(keys: Set[Long]): Unit = {
+    def startRead(): Unit = {
+      val keySeq = keys.toVector
+        .filter(_ > merger.lastSequenceNr)
+        .sorted
+      if (keySeq.nonEmpty) log.debug("Reading diffs: {}", keySeq)
+      Source(keySeq)
+        .via(streams.read(indexRepository))
+        .map(ReadSuccess)
+        .runWith(Sink.actorRef(self, StreamCompleted))
+      become(receiveRead)
+    }
+
+    val toRemove = merger.diffs.keySet.diff(keys)
+    if (toRemove.nonEmpty) {
+      log.warning("Diffs evicted: {}", toRemove)
+      persistAsync(IndexLoaded(merger.diffs.filterKeys(!toRemove.contains(_)).toVector)) { event ⇒
+        updateState(event)
+        startRead()
+      }
+    } else {
+      startRead()
+    }
+  }
+
+  private[this] def write(sequenceNr: Long, diff: IndexDiff): Unit = {
     log.info("Writing diff #{}: {}", sequenceNr, diff)
     Source.single((sequenceNr, diff))
       .via(streams.write(indexRepository))
       .map(WriteSuccess)
-      .runWith(Sink.actorRef(self, CompleteWrite))
-    context.become(receiveWrite.orElse(receiveDefault))
+      .runWith(Sink.actorRef(self, StreamCompleted))
+    become(receiveWrite)
   }
 }

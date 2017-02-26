@@ -131,7 +131,7 @@ class RegionTest extends ActorSpec with FlatSpecLike {
     remote shouldBe true
     expectNoMsg(1 second)
     storage ! IndexDispatcher.GetIndex
-    val IndexDispatcher.GetIndex.Success(Seq((1, firstDiff), (2, secondDiff))) = receiveOne(1 second)
+    val IndexDispatcher.GetIndex.Success(Seq((1, firstDiff), (2, secondDiff)), IndexDiff.empty) = receiveOne(1 second)
     firstDiff.folders shouldBe folderDiff
     firstDiff.chunks.newChunks shouldBe Set(chunk)
     firstDiff.chunks.deletedChunks shouldBe empty

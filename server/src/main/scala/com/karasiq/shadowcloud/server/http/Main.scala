@@ -16,10 +16,10 @@ import com.karasiq.shadowcloud.actors.RegionSupervisor.{AddRegion, AddStorage, R
 import com.karasiq.shadowcloud.index.{File, Path}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams._
-import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
 
-import scala.concurrent.Future
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
 object Main extends HttpApp with App with PredefinedToResponseMarshallers {
@@ -27,7 +27,7 @@ object Main extends HttpApp with App with PredefinedToResponseMarshallers {
   implicit val actorSystem = ActorSystem("shadowcloud-server")
   implicit val actorMaterializer = ActorMaterializer()
   implicit val executionContext = actorSystem.dispatcher
-  val chunkProcessing = ChunkProcessing()
+  val chunkProcessing = ChunkProcessing()(ExecutionContext.global)
 
   // Region supervisor
   val regionSupervisor = actorSystem.actorOf(RegionSupervisor.props(), "regions")
@@ -90,7 +90,7 @@ object Main extends HttpApp with App with PredefinedToResponseMarshallers {
   private[this] def writeFile(regionId: String, path: Path): Sink[ByteString, Future[File]] = {
     // TODO: Actor publisher
     implicit val timeout = Timeout(1 hour)
-    Flow.fromGraph(FileSplitter())
+    Flow.fromGraph(FileSplitter(MemorySize.MB * 8))
       .via(chunkProcessing.beforeWrite())
       .map((regionId, _))
       .via(regionStreams.writeChunks)

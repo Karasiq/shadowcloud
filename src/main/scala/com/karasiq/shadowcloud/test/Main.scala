@@ -10,7 +10,7 @@ import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.serialization.Serialization
 import com.karasiq.shadowcloud.storage.IndexRepository
-import com.karasiq.shadowcloud.streams.{ChunkEncryptor, ChunkVerifier, FileSplitter}
+import com.karasiq.shadowcloud.streams.FileSplitter
 
 import scala.concurrent.ExecutionContext
 import scala.language.{implicitConversions, postfixOps}
@@ -26,7 +26,7 @@ object Main extends App {
   private val hashingMethod = HashingMethod.default
   private val encryptionMethod = EncryptionMethod.AES()
   FileIO.fromPath("LICENSE")
-    .via(new FileSplitter(3333, hashingMethod))
+    .via(new FileSplitter(3333))
     .via(new ChunkEncryptor(encryptionMethod, hashingMethod))
     .via(new ChunkVerifier)
     .fold(Seq.empty[Chunk])(_ :+ _)

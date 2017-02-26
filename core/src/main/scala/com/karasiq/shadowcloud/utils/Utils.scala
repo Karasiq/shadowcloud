@@ -10,7 +10,7 @@ import scala.collection.TraversableLike
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.{higherKinds, postfixOps}
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 private[shadowcloud] object Utils {
   // -----------------------------------------------------------------------
@@ -56,21 +56,17 @@ private[shadowcloud] object Utils {
   // -----------------------------------------------------------------------
   // Futures
   // -----------------------------------------------------------------------
-  def onIoComplete(future: Future[IOResult])(pf: PartialFunction[Try[Long], Unit])(implicit ec: ExecutionContext): Unit = {
-    import scala.util.{Failure, Success}
-    @inline def onSuccess(bytes: Long): Unit = {
-      val value = Success(bytes)
-      if (pf.isDefinedAt(value)) pf(value)
-    }
-    @inline def onFailure(error: Throwable): Unit = {
-      val value = Failure(error)
-      if (pf.isDefinedAt(value)) pf(value)
-    }
-    future.onComplete {
-      case Success(IOResult(written, Success(Done))) ⇒ onSuccess(written)
-      case Success(IOResult(_, Failure(error))) ⇒ onFailure(error)
-      case Failure(error) ⇒ onFailure(error)
-    }
+  def unwrapIOResult(future: Future[IOResult])(implicit ec: ExecutionContext): Future[Long] = {
+    future
+      .recover { case error ⇒ IOResult(0, Failure(error)) }
+      .map {
+        case IOResult(written, Success(Done)) ⇒ written
+        case IOResult(_, Failure(error)) ⇒ throw error
+      }
+  }
+
+  def onIOComplete(future: Future[IOResult])(pf: PartialFunction[Try[Long], Unit])(implicit ec: ExecutionContext): Unit = {
+    unwrapIOResult(future).onComplete(pf)
   }
 
   // -----------------------------------------------------------------------

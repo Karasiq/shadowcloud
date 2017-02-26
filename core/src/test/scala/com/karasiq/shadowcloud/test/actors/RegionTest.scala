@@ -16,7 +16,6 @@ import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
-import com.karasiq.shadowcloud.streams.ByteStringConcat
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 
@@ -74,14 +73,9 @@ class RegionTest extends ActorSpec with FlatSpecLike {
 
   it should "read chunk" in {
     testRegion ! ReadChunk(chunk.withoutData)
-    val ReadChunk.Success(_, source) = receiveOne(1 second)
-    val (future, probe) = source
-      .via(ByteStringConcat())
-      .toMat(TestSink.probe)(Keep.both)
-      .run()
-    probe.requestNext(chunk.data.encrypted)
-    probe.expectComplete()
-    future.futureValue shouldBe IOResult(chunk.checksum.encryptedSize, Success(Done))
+    val ReadChunk.Success(_, result) = receiveOne(1 second)
+    result shouldBe chunk
+    result.data.encrypted shouldBe chunk.data.encrypted
   }
 
   it should "deduplicate chunk" in {

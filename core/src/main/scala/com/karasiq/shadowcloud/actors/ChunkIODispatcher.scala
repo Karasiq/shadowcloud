@@ -1,18 +1,17 @@
 package com.karasiq.shadowcloud.actors
 
 import akka.actor.{Actor, ActorLogging, Props}
-import akka.stream.scaladsl.Source
-import akka.stream.{ActorMaterializer, IOResult}
-import akka.util.ByteString
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{Keep, Sink, Source}
 import com.karasiq.shadowcloud.actors.internal.PendingOperation
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.storage.ChunkRepository
 import com.karasiq.shadowcloud.storage.ChunkRepository.BaseChunkRepository
+import com.karasiq.shadowcloud.streams.ByteStringConcat
 import com.karasiq.shadowcloud.utils.Utils
 
-import scala.concurrent.Future
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
@@ -23,7 +22,7 @@ object ChunkIODispatcher {
   object WriteChunk extends MessageStatus[Chunk, Chunk]
 
   case class ReadChunk(chunk: Chunk) extends Message
-  object ReadChunk extends MessageStatus[Chunk, Source[ByteString, Future[IOResult]]]
+  object ReadChunk extends MessageStatus[Chunk, Chunk]
 
   // Props
   def props(baseChunkRepository: BaseChunkRepository): Props = {
@@ -36,26 +35,29 @@ class ChunkIODispatcher(baseChunkRepository: BaseChunkRepository) extends Actor 
   import context.dispatcher
   implicit val actorMaterializer = ActorMaterializer()
   val chunksWrite = PendingOperation.withChunk
+  val chunksRead = PendingOperation.withChunk
   val chunkRepository = ChunkRepository.hexString(baseChunkRepository)
   val config = AppConfig().storage
 
   def receive: Receive = {
-    case ReadChunk(chunk) ⇒
-      val stream = chunkRepository.read(config.chunkKey(chunk))
-      sender() ! ReadChunk.Success(chunk, stream)
-
     case WriteChunk(chunk) ⇒
       chunksWrite.addWaiter(chunk, sender(), () ⇒ writeChunk(chunk))
 
+    case ReadChunk(chunk) ⇒
+      chunksRead.addWaiter(chunk, sender(), () ⇒ readChunk(chunk))
+
     case msg: WriteChunk.Status ⇒
       chunksWrite.finish(msg.key, msg)
+
+    case msg: ReadChunk.Status ⇒
+      chunksRead.finish(msg.key, msg)
   }
 
   private[this] def writeChunk(chunk: Chunk): Unit = {
     val key = config.chunkKey(chunk)
     val writeSink = chunkRepository.write(key)
     val future = Source.single(chunk.data.encrypted).runWith(writeSink)
-    Utils.onIoComplete(future) {
+    Utils.onIOComplete(future) {
       case Success(written) ⇒
         log.debug("{} bytes written, chunk: {}", written, chunk)
         self ! WriteChunk.Success(chunk, chunk)
@@ -63,6 +65,26 @@ class ChunkIODispatcher(baseChunkRepository: BaseChunkRepository) extends Actor 
       case Failure(error) ⇒
         log.error(error, "Chunk write error: {}", chunk)
         self ! WriteChunk.Failure(chunk, error)
+    }
+  }
+
+  private[this] def readChunk(chunk: Chunk): Unit = {
+    val key = config.chunkKey(chunk)
+    val readSource = chunkRepository.read(key)
+    val (ioResult, future) = readSource
+      .via(ByteStringConcat())
+      .map(bs ⇒ chunk.copy(data = chunk.data.copy(encrypted = bs)))
+      .toMat(Sink.head)(Keep.both)
+      .run()
+
+    Utils.unwrapIOResult(ioResult).zip(future).onComplete {
+      case Success((bytes, chunkWithData)) ⇒
+        log.debug("{} bytes read, chunk: {}", bytes, chunkWithData)
+        self ! ReadChunk.Success(chunk, chunkWithData)
+
+      case Failure(error) ⇒
+        log.error(error, "Chunk write error: {}", chunk)
+        self ! ReadChunk.Failure(chunk, error)
     }
   }
 }

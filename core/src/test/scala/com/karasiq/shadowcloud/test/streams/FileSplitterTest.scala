@@ -1,10 +1,9 @@
 package com.karasiq.shadowcloud.test.streams
 
-import akka.Done
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule, HashingModule}
+import com.karasiq.shadowcloud.crypto.{EncryptionModule, HashingModule}
 import com.karasiq.shadowcloud.index.{Checksum, Chunk, Data}
 import com.karasiq.shadowcloud.streams._
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
@@ -17,10 +16,12 @@ class FileSplitterTest extends ActorSpec with FlatSpecLike {
   val (sourceBytes, sourceFile) = TestUtils.indexedBytes
   val hashingMethod = sourceFile.checksum.method
   val sourceHashes = sourceFile.chunks.map(_.checksum.hash)
+  val chunkProcessing = ChunkProcessing()(system.dispatcher)
 
   "File splitter" should "split text" in {
     val fullOut = Source.single(sourceBytes)
-      .via(FileSplitter(100, hashingMethod))
+      .via(FileSplitter(100))
+      .via(chunkProcessing.createHashes(hashingMethod))
       .map(_.checksum.hash)
       .runWith(Sink.seq)
 
@@ -29,7 +30,8 @@ class FileSplitterTest extends ActorSpec with FlatSpecLike {
 
   it should "join text" in {
     val (in, out) = TestSource.probe[ByteString]
-      .via(FileSplitter(100, sourceFile.checksum.method))
+      .via(FileSplitter(100))
+      .via(chunkProcessing.createHashes(hashingMethod))
       .map(_.checksum.hash)
       .toMat(TestSink.probe)(Keep.both)
       .run()
@@ -41,6 +43,7 @@ class FileSplitterTest extends ActorSpec with FlatSpecLike {
     in.sendNext(sourceBytes.drop(300))
     in.sendComplete()
     out.requestNext(sourceHashes(3))
+    out.request(1)
     out.expectComplete()
   }
 
@@ -57,27 +60,14 @@ class FileSplitterTest extends ActorSpec with FlatSpecLike {
       chunk
     }
 
-    val (file, chunks) = Source.single(sourceBytes)
-      .via(FileSplitter(100, hashingMethod))
-      .via(ChunkEncryptor(EncryptionMethod.AES(), hashingMethod))
-      .via(ChunkVerifier())
-      .viaMat(FileIndexer(hashingMethod))(Keep.right)
-      .map(testChunk) // Verify again
-      .toMat(Sink.seq)(Keep.both)
-      .run()
-
-    whenReady(chunks) { chunks ⇒
-      chunks.map(_.checksum.hash) shouldBe sourceHashes
-      val future = Source(chunks)
-        .via(ChunkDecryptor())
-        .via(ChunkVerifier())
-        .map(testChunk)
-        .runWith(Sink.ignore)
-
-      future.futureValue shouldBe Done
-    }
+    val file = Source.single(sourceBytes)
+      .via(FileSplitter(100))
+      .via(chunkProcessing.beforeWrite(hashing = hashingMethod))
+      .map(testChunk)
+      .runWith(FileIndexer(hashingMethod))
 
     whenReady(file) { file ⇒
+      file.chunks.map(_.checksum.hash) shouldBe sourceHashes
       file.checksum.hash shouldBe sourceFile.checksum.hash
       file.chunks.map(_.checksum.hash) shouldBe sourceHashes
     }

@@ -18,6 +18,10 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
     folders.contains(folder)
   }
 
+  def get(folder: Path): Option[Folder] = {
+    folders.get(folder)
+  }
+
   def addFiles(files: GenTraversableOnce[File]): FolderIndex = {
     val diffs = files.toVector.groupBy(_.path.parent).map { case (path, files) ⇒
       FolderDiff(path, files.map(_.lastModified).max, newFiles = files.toSet)

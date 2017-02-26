@@ -3,52 +3,39 @@ package com.karasiq.shadowcloud.streams
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.{HashingMethod, HashingModule}
-import com.karasiq.shadowcloud.index.{Checksum, Chunk, Data}
+import com.karasiq.shadowcloud.index.{Chunk, Data}
 import com.karasiq.shadowcloud.utils.MemorySize
 
 import scala.language.postfixOps
 
 object FileSplitter {
-  def apply(chunkSize: Int = MemorySize.MB, hashingMethod: HashingMethod = HashingMethod.default): FileSplitter = {
-    new FileSplitter(chunkSize, hashingMethod)
+  def apply(chunkSize: Int = MemorySize.MB): FileSplitter = {
+    new FileSplitter(chunkSize)
   }
 }
 
 /**
-  * Splits input data to fixed size chunks with hash
+  * Splits input data to fixed size chunks
   * @param chunkSize Output chunk size
-  * @param hashingMethod Hashing method
   */
-final class FileSplitter(chunkSize: Int, hashingMethod: HashingMethod) extends GraphStage[FlowShape[ByteString, Chunk]] {
+final class FileSplitter(chunkSize: Int) extends GraphStage[FlowShape[ByteString, Chunk]] {
+  require(chunkSize > 0)
   val inBytes = Inlet[ByteString]("FileSplitter.inBytes")
   val outChunks = Outlet[Chunk]("FileSplitter.outChunks")
   val shape = FlowShape(inBytes, outChunks)
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
-    private[this] val hashingModule = HashingModule(hashingMethod)
     private[this] var buffer = ByteString.empty
-
-    private[this] def hashAndWrite(bytes: ByteString): Unit = {
-      val sizeToHash = chunkSize - buffer.length
-      if (sizeToHash > 0) {
-        val bytesToHash = bytes.take(sizeToHash)
-        hashingModule.update(bytesToHash)
-      }
-      buffer ++= bytes
-    }
 
     private[this] def emitNextChunk(after: () ⇒ Unit = () ⇒ ()): Unit = {
       require(buffer.nonEmpty, "Buffer is empty")
       val (chunkBytes, nextChunkPart) = buffer.splitAt(chunkSize)
 
       // Create new chunk
-      val chunk = Chunk(checksum = Checksum(hashingModule.method, chunkBytes.size, hashingModule.createHash()), data = Data(plain = chunkBytes))
+      val chunk = Chunk(data = Data(plain = chunkBytes))
 
       // Reset buffer
-      buffer = ByteString.empty
-      hashingModule.reset()
-      if (nextChunkPart.nonEmpty) hashAndWrite(nextChunkPart)
+      buffer = nextChunkPart
 
       // Emit chunk
       emit(outChunks, chunk, after)
@@ -78,7 +65,7 @@ final class FileSplitter(chunkSize: Int, hashingMethod: HashingMethod) extends G
 
     def onPush(): Unit = {
       val bytes = grab(inBytes)
-      if (bytes.nonEmpty) hashAndWrite(bytes)
+      buffer ++= bytes
       emitOrPullBytes()
     }
 

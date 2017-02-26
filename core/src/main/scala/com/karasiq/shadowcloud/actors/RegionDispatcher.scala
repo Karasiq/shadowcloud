@@ -12,7 +12,7 @@ import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
-import com.karasiq.shadowcloud.index.{File, Folder, Path}
+import com.karasiq.shadowcloud.index.{File, Folder, FolderIndex, Path}
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
@@ -76,7 +76,7 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
       }
 
     case GetFiles(path) ⇒
-      val files = merger.folders.folders
+      val files = folderIndex
         .get(path.parent)
         .map(_.files.filter(_.path == path))
         .filter(_.nonEmpty)
@@ -89,7 +89,7 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
       }
 
     case GetFolder(path) ⇒
-      merger.folders.folders.get(path) match {
+      folderIndex.get(path) match {
         case Some(folder) ⇒
           sender() ! GetFolder.Success(path, folder)
 
@@ -203,6 +203,10 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
 
   private[this] def dropStorageDiffs(storageId: String): Unit = {
     merger.remove(merger.diffs.keySet.toSet.filter(_.indexId == storageId))
+  }
+
+  private[this] def folderIndex: FolderIndex = {
+    merger.folders.patch(merger.pending.folders)
   }
 
   override def postStop(): Unit = {

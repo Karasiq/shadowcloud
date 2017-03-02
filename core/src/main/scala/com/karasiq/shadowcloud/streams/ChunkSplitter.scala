@@ -8,9 +8,9 @@ import com.karasiq.shadowcloud.utils.MemorySize
 
 import scala.language.postfixOps
 
-object FileSplitter {
-  def apply(chunkSize: Int = MemorySize.MB): FileSplitter = {
-    new FileSplitter(chunkSize)
+object ChunkSplitter {
+  def apply(chunkSize: Int = MemorySize.MB): ChunkSplitter = {
+    new ChunkSplitter(chunkSize)
   }
 }
 
@@ -18,7 +18,7 @@ object FileSplitter {
   * Splits input data to fixed size chunks
   * @param chunkSize Output chunk size
   */
-final class FileSplitter(chunkSize: Int) extends GraphStage[FlowShape[ByteString, Chunk]] {
+final class ChunkSplitter(chunkSize: Int) extends GraphStage[FlowShape[ByteString, Chunk]] {
   require(chunkSize > 0)
   val inBytes = Inlet[ByteString]("FileSplitter.inBytes")
   val outChunks = Outlet[Chunk]("FileSplitter.outChunks")

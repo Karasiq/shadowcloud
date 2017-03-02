@@ -34,7 +34,7 @@ object HashingModule {
     digest(alg)
   }
 
-  def digest(alg: String, provider: Option[Provider] = Some(CryptoUtils.provider)): HashingModule = {
+  def digest(alg: String, provider: Option[Provider] = None): HashingModule = {
     val md = if (provider.isEmpty) MessageDigest.getInstance(alg) else MessageDigest.getInstance(alg, provider.get)
     fromMessageDigest(md)
   }

@@ -12,15 +12,15 @@ import org.scalatest.FlatSpecLike
 import scala.language.postfixOps
 
 //noinspection ZeroIndexToHead
-class FileSplitterTest extends ActorSpec with FlatSpecLike {
+class ChunkSplitterTest extends ActorSpec with FlatSpecLike {
   val (sourceBytes, sourceFile) = TestUtils.indexedBytes
   val hashingMethod = sourceFile.checksum.method
   val sourceHashes = sourceFile.chunks.map(_.checksum.hash)
   val chunkProcessing = ChunkProcessing()(system.dispatcher)
 
-  "File splitter" should "split text" in {
+  "Chunk splitter" should "split text" in {
     val fullOut = Source.single(sourceBytes)
-      .via(FileSplitter(100))
+      .via(ChunkSplitter(100))
       .via(chunkProcessing.createHashes(hashingMethod))
       .map(_.checksum.hash)
       .runWith(Sink.seq)
@@ -30,7 +30,7 @@ class FileSplitterTest extends ActorSpec with FlatSpecLike {
 
   it should "join text" in {
     val (in, out) = TestSource.probe[ByteString]
-      .via(FileSplitter(100))
+      .via(ChunkSplitter(100))
       .via(chunkProcessing.createHashes(hashingMethod))
       .map(_.checksum.hash)
       .toMat(TestSink.probe)(Keep.both)
@@ -61,7 +61,7 @@ class FileSplitterTest extends ActorSpec with FlatSpecLike {
     }
 
     val file = Source.single(sourceBytes)
-      .via(FileSplitter(100))
+      .via(ChunkSplitter(100))
       .via(chunkProcessing.beforeWrite(hashing = hashingMethod))
       .map(testChunk)
       .runWith(FileIndexer(hashingMethod))

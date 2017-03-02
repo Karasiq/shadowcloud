@@ -1,10 +1,12 @@
 package com.karasiq.shadowcloud.actors
 
+import java.util.concurrent.TimeoutException
+
+import akka.Done
 import akka.actor.{ActorLogging, DeadLetterSuppression, PossiblyHarmful, Props, ReceiveTimeout, Status}
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.stream.{ActorMaterializer, IOResult}
-import akka.{Done, NotUsed}
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.events.StorageEvents._
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
@@ -15,7 +17,6 @@ import com.karasiq.shadowcloud.storage.IndexRepository
 import com.karasiq.shadowcloud.storage.IndexRepository.BaseIndexRepository
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 
-import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
@@ -31,7 +32,7 @@ object IndexDispatcher {
 
   // Internal messages
   private sealed trait InternalMessage extends Message with PossiblyHarmful
-  private case class StartRead(keys: Set[Long]) extends InternalMessage
+  private case class KeysLoaded(keys: Set[Long]) extends InternalMessage
   private case class ReadSuccess(result: IndexIOResult[Long]) extends InternalMessage
   private case class WriteSuccess(result: IndexIOResult[Long]) extends InternalMessage
   private case object StreamCompleted extends InternalMessage with DeadLetterSuppression
@@ -64,6 +65,9 @@ class IndexDispatcher(storageId: String, baseIndexRepository: BaseIndexRepositor
     case AddPending(diff) ⇒
       log.debug("Pending diff added: {}", diff)
       persistAsync(PendingIndexUpdated(diff))(updateState)
+
+    case ReceiveTimeout ⇒
+      throw new TimeoutException("Receive timeout")
   }
 
   // Wait for synchronize command
@@ -71,15 +75,19 @@ class IndexDispatcher(storageId: String, baseIndexRepository: BaseIndexRepositor
     case Synchronize ⇒
       log.debug("Starting synchronization, last sequence number: {}", merger.lastSequenceNr)
       readRemoteKeys()
-
-    case ReceiveTimeout ⇒
-      throw new IllegalArgumentException("Receive timeout")
   }
 
   // Loading remote diff keys
   def receivePreRead: Receive = {
-    case StartRead(keys) ⇒
-      readDiffs(keys)
+    case KeysLoaded(keys) ⇒
+      become {
+        case StreamCompleted ⇒
+          readDiffs(keys)
+      }
+
+    case Status.Failure(error) ⇒
+      log.error(error, "Diffs load failed")
+      throw error
   }
 
   // Reading remote diffs
@@ -136,7 +144,7 @@ class IndexDispatcher(storageId: String, baseIndexRepository: BaseIndexRepositor
 
     case RecoveryCompleted ⇒
       context.system.scheduler.scheduleOnce(config.syncInterval, self, Synchronize)
-      context.setReceiveTimeout(2 minutes)
+      context.setReceiveTimeout(config.syncInterval * 10)
   }
 
   override def receiveCommand: Receive = {
@@ -176,8 +184,8 @@ class IndexDispatcher(storageId: String, baseIndexRepository: BaseIndexRepositor
   private[this] def readRemoteKeys(): Unit = {
     indexRepository.keys
       .fold(Set.empty[Long])(_ + _)
-      .map(StartRead)
-      .runWith(Sink.actorRef(self, NotUsed))
+      .map(KeysLoaded)
+      .runWith(Sink.actorRef(self, StreamCompleted))
     become(receivePreRead)
   }
 

@@ -11,12 +11,16 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
 object ChunkProcessing {
-  def apply()(implicit ec: ExecutionContext): ChunkProcessing = {
-    new ChunkProcessing
+  def apply(parallelism: Int = allCores)(implicit ec: ExecutionContext): ChunkProcessing = {
+    new ChunkProcessing(parallelism)
+  }
+
+  private def allCores: Int = {
+    sys.runtime.availableProcessors()
   }
 }
 
-class ChunkProcessing(implicit ec: ExecutionContext) {
+class ChunkProcessing(parallelism: Int)(implicit ec: ExecutionContext) {
   type ChunkFlow = Flow[Chunk, Chunk, NotUsed]
 
   def generateKey(method: EncryptionMethod = EncryptionMethod.default): ChunkFlow = {
@@ -75,11 +79,11 @@ class ChunkProcessing(implicit ec: ExecutionContext) {
   }
 
   protected def parallelFlow(parallelism: Int, func: Chunk ⇒ Chunk): ChunkFlow = {
-    require(parallelism > 0)
-    Flow[Chunk].mapAsync(parallelism)(chunk ⇒ Future(func(chunk)))
+    Flow[Chunk]
+      .mapAsync(if (parallelism > 0) parallelism else ChunkProcessing.allCores)(chunk ⇒ Future(func(chunk)))
   }
 
   protected def parallelFlow(func: Chunk ⇒ Chunk): ChunkFlow = {
-    parallelFlow(sys.runtime.availableProcessors() * 2, func)
+    parallelFlow(parallelism, func)
   }
 }

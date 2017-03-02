@@ -16,7 +16,7 @@ private[crypto] final class AESGCMEncryptionModule(bits: Int = 256) extends Encr
   private[this] val secureRandom = SecureRandom.getInstanceStrong
   private[this] val keyGenerator = KeyGenerator.getInstance("AES", CryptoUtils.provider)
   keyGenerator.init(bits, secureRandom)
-  private[this] val aes = new GCMBlockCipher(new AESEngine)
+  private[this] val aes = new GCMBlockCipher(new AESEngine) // TODO: AESFastEngine, hardware acceleration
 
   def createParameters(): EncryptionParameters = {
     EncryptionParameters(EncryptionMethod.AES("GCM", bits), ByteString(keyGenerator.generateKey().getEncoded), generateIV())

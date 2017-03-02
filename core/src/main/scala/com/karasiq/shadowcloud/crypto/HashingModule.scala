@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.crypto
 import java.security.{MessageDigest, Provider}
 
 import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.internal.MessageDigestHashingModule
+import com.karasiq.shadowcloud.crypto.internal.{MessageDigestHashingModule, NoOpHashingModule}
 
 import scala.language.postfixOps
 
@@ -23,12 +23,8 @@ trait HashingModule {
 }
 
 object HashingModule {
-  val default = apply(HashingMethod.default)
-
-  def apply(method: HashingMethod): HashingModule = method match {
-    case HashingMethod.Digest(alg) ⇒
-      digest(alg)
-  }
+  val none: HashingModule = new NoOpHashingModule
+  val default: HashingModule = apply(HashingMethod.default.algorithm)
 
   def apply(alg: String): HashingModule = {
     digest(alg)

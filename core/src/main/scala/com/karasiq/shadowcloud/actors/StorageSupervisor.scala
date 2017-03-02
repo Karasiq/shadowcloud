@@ -1,8 +1,8 @@
 package com.karasiq.shadowcloud.actors
 
 import akka.actor.{Actor, ActorLogging, OneForOneStrategy, Props, SupervisorStrategy}
+import com.karasiq.shadowcloud.actors.internal.StorageInstantiator
 import com.karasiq.shadowcloud.storage.props.StorageProps
-import com.karasiq.shadowcloud.storage.utils.StorageInstantiator
 
 import scala.language.postfixOps
 

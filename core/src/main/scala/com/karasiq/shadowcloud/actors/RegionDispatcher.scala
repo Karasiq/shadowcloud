@@ -13,6 +13,7 @@ import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.index.{File, Folder, FolderIndex, Path}
+import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
@@ -54,8 +55,9 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
   implicit val executionContext: ExecutionContext = context.dispatcher
   implicit val timeout = Timeout(10 seconds)
   val config = AppConfig()
+  val modules = ModuleRegistry()
   val storages = StorageTracker()
-  val chunks = ChunksTracker(config.storage, storages, log)
+  val chunks = ChunksTracker(config.storage, modules, storages, log)
   val merger = IndexMerger.region
 
   def receive: Receive = {

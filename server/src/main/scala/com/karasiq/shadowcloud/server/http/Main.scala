@@ -27,10 +27,10 @@ object Main extends HttpApp with App with PredefinedToResponseMarshallers {
   implicit val actorSystem = ActorSystem("shadowcloud-server")
   implicit val actorMaterializer = ActorMaterializer()
   implicit val executionContext = actorSystem.dispatcher
-  val chunkProcessing = ChunkProcessing()
+  val chunkProcessing = ChunkProcessing(actorSystem)
 
   // Region supervisor
-  val regionSupervisor = actorSystem.actorOf(RegionSupervisor.props(), "regions")
+  val regionSupervisor = actorSystem.actorOf(RegionSupervisor.props, "regions")
   regionSupervisor ! AddRegion("testRegion")
   regionSupervisor ! AddStorage("testStorage", StorageProps.fromDirectory(Files.createTempDirectory("scl-http-test")))
   regionSupervisor ! RegisterStorage("testRegion", "testStorage")
@@ -94,7 +94,7 @@ object Main extends HttpApp with App with PredefinedToResponseMarshallers {
       .via(chunkProcessing.beforeWrite())
       .map((regionId, _))
       .via(regionStreams.writeChunks)
-      .toMat(FileIndexer())(Keep.right)
+      .toMat(chunkProcessing.index())(Keep.right)
       .mapMaterializedValue { future ⇒
         Source.fromFuture(future)
           .map((regionId, path, _))

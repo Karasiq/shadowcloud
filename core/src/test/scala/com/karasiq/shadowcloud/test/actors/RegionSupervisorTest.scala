@@ -12,7 +12,7 @@ class RegionSupervisorTest extends ActorSpec with FlatSpecLike with Matchers {
   import RegionSupervisor._
   val testRegion = "testRegion"
   val testStorage = "testStorage"
-  val supervisor = system.actorOf(props(), "supervisor")
+  val supervisor = system.actorOf(props, "supervisor")
 
   "Region supervisor" should "add region" in {
     supervisor ! AddRegion(testRegion)

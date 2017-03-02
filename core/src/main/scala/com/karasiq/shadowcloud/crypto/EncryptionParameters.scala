@@ -17,5 +17,5 @@ case class EncryptionParameters(method: EncryptionMethod, key: ByteString, iv: B
 
 object EncryptionParameters {
   // No encryption
-  val empty = EncryptionParameters(EncryptionMethod.Plain, ByteString.empty, ByteString.empty)
+  val empty = EncryptionParameters(EncryptionMethod.none, ByteString.empty, ByteString.empty)
 }

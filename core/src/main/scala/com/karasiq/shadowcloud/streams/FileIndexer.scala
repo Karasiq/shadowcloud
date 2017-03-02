@@ -4,8 +4,9 @@ import java.io.IOException
 
 import akka.stream._
 import akka.stream.stage._
-import com.karasiq.shadowcloud.crypto.{HashingMethod, HashingModule}
+import com.karasiq.shadowcloud.crypto.HashingMethod
 import com.karasiq.shadowcloud.index.{Checksum, Chunk}
+import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.streams.FileIndexer.IndexedFile
 
 import scala.concurrent.{Future, Promise}
@@ -14,13 +15,13 @@ import scala.language.postfixOps
 object FileIndexer {
   case class IndexedFile(checksum: Checksum, chunks: Seq[Chunk])
 
-  def apply(hashingMethod: HashingMethod = HashingMethod.default): FileIndexer = {
-    new FileIndexer(hashingMethod)
+  def apply(registry: ModuleRegistry, method: HashingMethod = HashingMethod.default): FileIndexer = {
+    new FileIndexer(registry, method)
   }
 }
 
 // TODO: Content type
-final class FileIndexer(hashingMethod: HashingMethod) extends GraphStageWithMaterializedValue[SinkShape[Chunk], Future[IndexedFile]] {
+final class FileIndexer(registry: ModuleRegistry, method: HashingMethod) extends GraphStageWithMaterializedValue[SinkShape[Chunk], Future[IndexedFile]] {
   val inlet = Inlet[Chunk]("FileIndexer.in")
   val shape = SinkShape(inlet)
 
@@ -28,8 +29,8 @@ final class FileIndexer(hashingMethod: HashingMethod) extends GraphStageWithMate
   def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, Future[IndexedFile]) = {
     val promise = Promise[IndexedFile]
     val logic = new GraphStageLogic(shape) with InHandler {
-      private[this] val plainHash = HashingModule(hashingMethod)
-      private[this] val encryptedHash = HashingModule(hashingMethod)
+      private[this] val plainHash = registry.hashingModule(method)
+      private[this] val encryptedHash = registry.hashingModule(method)
       private[this] var plainSize = 0L
       private[this] var encryptedSize = 0L
       private[this] val chunks = Vector.newBuilder[Chunk]
@@ -45,7 +46,7 @@ final class FileIndexer(hashingMethod: HashingMethod) extends GraphStageWithMate
       }
 
       override def onUpstreamFinish(): Unit = {
-        val indexedFile = IndexedFile(Checksum(hashingMethod, plainSize, plainHash.createHash(), encryptedSize, encryptedHash.createHash()), chunks.result())
+        val indexedFile = IndexedFile(Checksum(method, plainSize, plainHash.createHash(), encryptedSize, encryptedHash.createHash()), chunks.result())
         promise.trySuccess(indexedFile)
         completeStage()
       }

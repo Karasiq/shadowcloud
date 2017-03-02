@@ -3,7 +3,6 @@ package com.karasiq.shadowcloud.test.streams
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.{EncryptionModule, HashingModule}
 import com.karasiq.shadowcloud.index.{Checksum, Chunk, Data}
 import com.karasiq.shadowcloud.streams._
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
@@ -16,7 +15,7 @@ class ChunkSplitterTest extends ActorSpec with FlatSpecLike {
   val (sourceBytes, sourceFile) = TestUtils.indexedBytes
   val hashingMethod = sourceFile.checksum.method
   val sourceHashes = sourceFile.chunks.map(_.checksum.hash)
-  val chunkProcessing = ChunkProcessing()(system.dispatcher)
+  val chunkProcessing = ChunkProcessing(system)
 
   "Chunk splitter" should "split text" in {
     val fullOut = Source.single(sourceBytes)
@@ -49,8 +48,8 @@ class ChunkSplitterTest extends ActorSpec with FlatSpecLike {
 
   "Chunk encryptor" should "encrypt chunk stream" in {
     def testChunk(chunk: Chunk) = {
-      val hasher = HashingModule(chunk.checksum.method)
-      val decryptor = EncryptionModule(chunk.encryption.method)
+      val hasher = chunkProcessing.moduleRegistry.hashingModule(chunk.checksum.method)
+      val decryptor = chunkProcessing.moduleRegistry.encryptionModule(chunk.encryption.method)
       val hash1 = hasher.createHash(chunk.data.plain)
       val hash2 = hasher.createHash(chunk.data.encrypted)
       val size1 = chunk.data.plain.length
@@ -64,7 +63,7 @@ class ChunkSplitterTest extends ActorSpec with FlatSpecLike {
       .via(ChunkSplitter(100))
       .via(chunkProcessing.beforeWrite(hashing = hashingMethod))
       .map(testChunk)
-      .runWith(FileIndexer(hashingMethod))
+      .runWith(FileIndexer(chunkProcessing.moduleRegistry, hashingMethod))
 
     whenReady(file) { file ⇒
       file.chunks.map(_.checksum.hash) shouldBe sourceHashes

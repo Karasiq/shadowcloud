@@ -50,7 +50,7 @@ object TestUtils extends TestImplicits {
   def randomChunk: Chunk = {
     val data = randomBytes(100)
     val hashing = HashingModule.default
-    val encryption = EncryptionModule(EncryptionMethod.AES())
+    val encryption = EncryptionModule.default
     val encParameters = encryption.createParameters()
     val encData = encryption.encrypt(data, encParameters)
     Chunk(

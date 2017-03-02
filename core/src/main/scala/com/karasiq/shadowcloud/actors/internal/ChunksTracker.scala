@@ -5,9 +5,9 @@ import akka.event.LoggingAdapter
 import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.config.StorageConfig
-import com.karasiq.shadowcloud.crypto.EncryptionModule
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
+import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.utils.Utils
 
 import scala.collection.mutable
@@ -21,13 +21,13 @@ private[actors] object ChunksTracker {
   case class ChunkStatus(status: Status.Value, time: Long, chunk: Chunk, writingChunk: Set[ActorRef] = Set.empty,
                          hasChunk: Set[ActorRef] = Set.empty, waitingChunk: Set[ActorRef] = Set.empty)
 
-  def apply(config: StorageConfig, storages: StorageTracker,
+  def apply(config: StorageConfig, modules: ModuleRegistry, storages: StorageTracker,
             log: LoggingAdapter)(implicit context: ActorContext): ChunksTracker = {
-    new ChunksTracker(config, storages, log)
+    new ChunksTracker(config, modules, storages, log)
   }
 }
 
-private[actors] final class ChunksTracker(config: StorageConfig, storages: StorageTracker, log: LoggingAdapter)(implicit context: ActorContext) {
+private[actors] final class ChunksTracker(config: StorageConfig, modules: ModuleRegistry, storages: StorageTracker, log: LoggingAdapter)(implicit context: ActorContext) {
   import ChunksTracker._
 
   // -----------------------------------------------------------------------
@@ -72,7 +72,7 @@ private[actors] final class ChunksTracker(config: StorageConfig, storages: Stora
         val chunkWithData = if (Utils.isSameChunk(stored.chunk, chunk) && chunk.data.encrypted.nonEmpty) {
           chunk
         } else {
-          val encryptor = EncryptionModule(stored.chunk.encryption.method)
+          val encryptor = modules.encryptionModule(stored.chunk.encryption.method)
           stored.chunk.copy(data = chunk.data.copy(encrypted = encryptor.encrypt(chunk.data.plain, stored.chunk.encryption)))
         }
         receiver ! WriteChunk.Success(chunkWithData, chunkWithData)

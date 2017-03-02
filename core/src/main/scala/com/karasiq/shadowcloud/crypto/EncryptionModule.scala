@@ -25,17 +25,10 @@ trait EncryptionModule {
 }
 
 object EncryptionModule {
-  import EncryptionMethod._
   val plain: EncryptionModule = new PlainEncryptionModule
+  val default: EncryptionModule = AES_GCM()
 
-  def apply(method: EncryptionMethod): EncryptionModule = method match {
-    case Plain ⇒
-      plain
-      
-    case AES("GCM", bits @ (128 | 256)) ⇒
-      new AESGCMEncryptionModule(bits)
-
-    case aes: AES ⇒
-      throw new IllegalArgumentException(s"AES mode unsupported: $aes")
+  def AES_GCM(bits: Int = 256): EncryptionModule = {
+    new AESGCMEncryptionModule(bits)
   }
 }

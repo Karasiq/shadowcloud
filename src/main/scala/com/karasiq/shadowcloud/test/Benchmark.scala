@@ -17,7 +17,7 @@ private object Benchmark extends App {
   implicit val actorSystem = ActorSystem("shadowcloud-benchmark")
   implicit val actorMaterializer = ActorMaterializer()
   implicit val timeout = Timeout(15 seconds)
-  val chunkProcessing = ChunkProcessing()(actorSystem.dispatcher)
+  val chunkProcessing = ChunkProcessing(actorSystem)
 
   // Start
   startWriteBenchmark()
@@ -32,6 +32,7 @@ private object Benchmark extends App {
       .via(ChunkSplitter(chunkSize))
       .take(chunkCount)
       .via(chunkProcessing.beforeWrite(encryptionMethod, hashingMethod))
+      .alsoTo(chunkProcessing.index())
       .runWith(Sink.onComplete {
         case Success(Done) ⇒
           val elapsed = (System.nanoTime() - startTime).nanos

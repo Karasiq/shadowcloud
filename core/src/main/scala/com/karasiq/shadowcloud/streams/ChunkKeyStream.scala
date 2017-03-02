@@ -3,22 +3,23 @@ package com.karasiq.shadowcloud.streams
 import akka.stream._
 import akka.stream.stage.{GraphStage, GraphStageLogic, OutHandler}
 import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.providers.ModuleRegistry
 
 import scala.language.postfixOps
 import scala.util.Random
 
 object ChunkKeyStream {
-  def apply(encryptionMethod: EncryptionMethod = EncryptionMethod.default): ChunkKeyStream = {
-    new ChunkKeyStream(encryptionMethod)
+  def apply(registry: ModuleRegistry, method: EncryptionMethod = EncryptionMethod.default): ChunkKeyStream = {
+    new ChunkKeyStream(registry, method)
   }
 }
 
-final class ChunkKeyStream(encryptionMethod: EncryptionMethod) extends GraphStage[SourceShape[EncryptionParameters]] {
+final class ChunkKeyStream(registry: ModuleRegistry, method: EncryptionMethod) extends GraphStage[SourceShape[EncryptionParameters]] {
   val outlet = Outlet[EncryptionParameters]("ChunkKeyStream.out")
   val shape = SourceShape(outlet)
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with OutHandler {
-    private[this] val encryptionModule = EncryptionModule(encryptionMethod)
+    private[this] val encryptionModule = registry.encryptionModule(method)
     private[this] var keyParameters = encryptionModule.createParameters()
     private[this] var encryptedCount = 0
     private[this] var changeKeyIn = Random.nextInt(256)

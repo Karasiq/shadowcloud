@@ -1,13 +1,16 @@
 package com.karasiq.shadowcloud.test.crypto
 
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule}
+import com.karasiq.shadowcloud.crypto.EncryptionMethod
+import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.test.utils.TestUtils._
+import com.typesafe.config.ConfigFactory
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.language.postfixOps
 
 class EncryptionTest extends FlatSpec with Matchers {
-  val plainModule = EncryptionModule(EncryptionMethod.Plain)
+  val modules = ModuleRegistry(ConfigFactory.load().getConfig("shadowcloud"))
+  val plainModule = modules.encryptionModule(EncryptionMethod.Plain)
   val plainParameters = plainModule.createParameters()
 
   "Plain module" should "process data" in {
@@ -21,7 +24,7 @@ class EncryptionTest extends FlatSpec with Matchers {
   }
 
   val aesMethod = EncryptionMethod.AES()
-  val aesModule = EncryptionModule(aesMethod)
+  val aesModule = modules.encryptionModule(aesMethod)
   val aesParameters = aesModule.createParameters()
 
   "AES module" should "generate key" in {

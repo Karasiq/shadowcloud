@@ -3,11 +3,11 @@ package com.karasiq.shadowcloud.actors
 import akka.actor.{ActorLogging, OneForOneStrategy, PossiblyHarmful, Props, SupervisorStrategy}
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import akka.util.Timeout
-import com.karasiq.shadowcloud.actors.internal.RegionTracker
 import com.karasiq.shadowcloud.actors.internal.RegionTracker.{RegionStatus, StorageStatus}
+import com.karasiq.shadowcloud.actors.internal.{RegionTracker, StorageInstantiator}
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
+import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.storage.props.StorageProps
-import com.karasiq.shadowcloud.storage.utils.StorageInstantiator
 
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -42,13 +42,12 @@ object RegionSupervisor {
   private case class Snapshot(regions: Map[String, Set[String]], storages: Map[String, StorageProps])
 
   // Props
-  def props(instantiator: StorageInstantiator = StorageInstantiator.default): Props = {
-    Props(classOf[RegionSupervisor], instantiator)
+  def props: Props = {
+    Props(classOf[RegionSupervisor])
   }
 }
 
-class RegionSupervisor(val instantiator: StorageInstantiator)
-  extends PersistentActor with ActorLogging with RegionSupervisorState {
+class RegionSupervisor extends PersistentActor with ActorLogging with RegionSupervisorState {
   import RegionSupervisor._
 
   // -----------------------------------------------------------------------
@@ -56,6 +55,7 @@ class RegionSupervisor(val instantiator: StorageInstantiator)
   // -----------------------------------------------------------------------
   private[this] implicit val timeout = Timeout(10 seconds)
   val persistenceId: String = "regions"
+  val instantiator = StorageInstantiator(ModuleRegistry())
 
   // -----------------------------------------------------------------------
   // Recover

@@ -1,6 +1,7 @@
 package com.karasiq.shadowcloud.utils
 
 import com.karasiq.shadowcloud.index.Chunk
+import com.typesafe.config.ConfigFactory
 
 import scala.collection.TraversableLike
 import scala.concurrent.duration.FiniteDuration
@@ -49,4 +50,6 @@ private[shadowcloud] object Utils {
   def takeOrAll[T, Col[`T`] <: TraversableLike[T, Col[T]]](all: Col[T], count: Int): Col[T] = {
     if (count > 0) all.take(count) else all
   }
+
+  val emptyConfig = ConfigFactory.empty()
 }

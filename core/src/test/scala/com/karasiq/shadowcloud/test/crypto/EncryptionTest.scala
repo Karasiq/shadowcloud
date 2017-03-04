@@ -12,16 +12,16 @@ class EncryptionTest extends FlatSpec with Matchers {
   val modules = ModuleRegistry(ConfigFactory.load().getConfig("shadowcloud"))
 
   "Plain module" should "process data" in {
-    val plainModule = modules.encryptionModule(EncryptionMethod.Plain)
+    val plainModule = modules.encryptionModule(EncryptionMethod.none)
     testModule(plainModule)
   }
 
-  val aesMethod = EncryptionMethod.AES()
+  val aesMethod = EncryptionMethod("AES", 256)
   val aesModule = modules.encryptionModule(aesMethod)
 
   "AES module" should "generate key" in {
-    val aesParameters = aesModule.createParameters()
-    aesParameters.key.length shouldBe (aesMethod.bits / 8)
+    val aesParameters = aesModule.createParameters().symmetric
+    aesParameters.key.length shouldBe (aesMethod.keySize / 8)
     aesParameters.iv should not be empty
     println(s"Key = ${aesParameters.key.toHexString}, iv = ${aesParameters.iv.toHexString}")
   }

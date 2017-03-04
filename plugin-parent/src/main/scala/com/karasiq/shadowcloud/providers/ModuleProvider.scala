@@ -7,7 +7,12 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 import scala.language.postfixOps
 
 abstract class ModuleProvider {
-  def storages: PartialFunction[StorageProps, StoragePlugin] = PartialFunction.empty
-  def hashing: PartialFunction[HashingMethod, HashingModule] = PartialFunction.empty
-  def encryption: PartialFunction[EncryptionMethod, EncryptionModule] = PartialFunction.empty
+  type StoragePF = PartialFunction[StorageProps, StoragePlugin]
+  type HashingPF = PartialFunction[HashingMethod, HashingModule]
+  type EncryptionPF = PartialFunction[EncryptionMethod, EncryptionModule]
+
+  def name: String = ""
+  def storages: StoragePF = PartialFunction.empty
+  def hashing: HashingPF = PartialFunction.empty
+  def encryption: EncryptionPF = PartialFunction.empty
 }

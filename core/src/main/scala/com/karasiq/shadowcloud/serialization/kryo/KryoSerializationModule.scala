@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.serialization.kryo
 
 import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod}
+import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.serialization.SerializationModule
@@ -20,11 +20,11 @@ private[serialization] final class KryoSerializationModule extends Serialization
     override def newKryo(): KryoBase = {
       val kryo = super.newKryo()
       kryo.forSubclass(new ByteStringSerializer)
+      kryo.forSubclass(new ConfigSerializer)
       kryo.registerClasses(Iterator(classOf[ByteString], classOf[Checksum], classOf[Chunk], classOf[ChunkIndex],
         classOf[FolderIndex], classOf[ChunkIndexDiff], classOf[Data], classOf[File], classOf[Folder], classOf[FolderDiff],
-        classOf[FolderIndexDiff], classOf[IndexDiff], classOf[Path], classOf[HashingMethod], classOf[HashingMethod.Digest],
-        classOf[EncryptionParameters], classOf[EncryptionMethod], EncryptionMethod.Plain.getClass, classOf[EncryptionMethod.AES],
-        HashingMethod.NoHashing.getClass
+        classOf[FolderIndexDiff], classOf[IndexDiff], classOf[Path], classOf[HashingMethod], classOf[EncryptionMethod],
+        EmptyEncryptionParameters.getClass, classOf[SymmetricEncryptionParameters], classOf[AsymmetricEncryptionParameters]
       ))
       kryo
     }

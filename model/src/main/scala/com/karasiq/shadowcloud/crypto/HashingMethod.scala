@@ -1,20 +1,20 @@
 package com.karasiq.shadowcloud.crypto
 
+import com.karasiq.shadowcloud.config.SerializedProps
+import com.typesafe.config.Config
+
 import scala.language.postfixOps
 
-sealed trait HashingMethod
+case class HashingMethod(algorithm: String, provider: String = "", config: SerializedProps = SerializedProps.empty)
 
 object HashingMethod {
-  case object NoHashing extends HashingMethod
+  val none = HashingMethod("")
+  val default = HashingMethod("SHA1")
 
-  case class Digest(algorithm: String) extends HashingMethod {
-    override def toString: String = algorithm
+  def apply(config: Config): HashingMethod = {
+    val algorithm = config.getString("algorithm")
+    val provider = Option(config.getString("provider")).getOrElse("")
+    val props = if (config.entrySet().size() <= 2) SerializedProps.empty else SerializedProps.fromConfig(config)
+    HashingMethod(algorithm, provider, props)
   }
-
-  def apply(alg: String): HashingMethod = {
-    Digest(alg)
-  }
-
-  val none = NoHashing
-  val default = Digest("SHA1")
 }

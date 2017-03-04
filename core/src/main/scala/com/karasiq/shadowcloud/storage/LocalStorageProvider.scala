@@ -7,7 +7,9 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 
 import scala.language.postfixOps
 
-final class DefaultStoragesProvider extends ModuleProvider {
+private[storage] final class LocalStorageProvider extends ModuleProvider {
+  override val name = "local"
+
   override def storages: PartialFunction[StorageProps, StoragePlugin] = {
     case props if props.storageType == "memory" ⇒
       new InMemoryStoragePlugin

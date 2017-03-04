@@ -13,7 +13,7 @@ import scala.util.Random
 object TestUtils extends TestImplicits {
   val modules = ModuleRegistry(ConfigFactory.load().getConfig("shadowcloud"))
   val sha1Hashing = modules.hashingModule(HashingMethod("SHA1"))
-  val aesEncryption = modules.encryptionModule(EncryptionMethod.AES())
+  val aesEncryption = modules.encryptionModule(EncryptionMethod("AES", 256))
 
   def randomBytes(length: Int): ByteString = {
     val array = new Array[Byte](length)

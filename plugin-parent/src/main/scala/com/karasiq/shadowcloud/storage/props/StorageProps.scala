@@ -7,7 +7,7 @@ import com.karasiq.shadowcloud.storage.props.StorageProps._
 
 import scala.language.postfixOps
 
-case class StorageProps(storageType: String, address: Address = Address.empty, credentials: Credentials = Credentials.empty)
+case class StorageProps(storageType: String, address: Address = Address.empty, credentials: Credentials = Credentials.empty, provider: String = "")
 
 object StorageProps {
   // -----------------------------------------------------------------------

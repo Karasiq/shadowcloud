@@ -5,6 +5,7 @@ import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.index.{Chunk, File, Folder}
 import com.karasiq.shadowcloud.serialization.SerializationModule
 import com.karasiq.shadowcloud.test.utils.{TestImplicits, TestUtils}
+import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.io.Source
@@ -13,7 +14,13 @@ import scala.language.postfixOps
 class SerializeTest extends FlatSpec with Matchers with TestImplicits {
   val kryo = SerializationModule.kryo
 
-  "Kryo serializer" should "serialize chunk" in {
+  "Kryo serializer" should "serialize config" in {
+    val config = ConfigFactory.load()
+    val bytes = kryo.toBytes(config)
+    kryo.fromBytes[Config](bytes) shouldBe config 
+  }
+
+  it should "serialize chunk" in {
     val chunk = TestUtils.randomChunk
     val bytes = kryo.toBytes(chunk)
     kryo.fromBytes[Chunk](bytes) shouldBe chunk

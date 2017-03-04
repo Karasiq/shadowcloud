@@ -12,7 +12,6 @@ import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors._
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
-import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
@@ -79,7 +78,7 @@ class RegionTest extends ActorSpec with FlatSpecLike {
   }
 
   it should "deduplicate chunk" in {
-    val wrongChunk = chunk.copy(encryption = chunk.encryption.copy(EncryptionMethod.AES()), data = chunk.data.copy(encrypted = TestUtils.randomBytes(chunk.data.plain.length)))
+    val wrongChunk = chunk.copy(encryption = TestUtils.aesEncryption.createParameters(), data = chunk.data.copy(encrypted = TestUtils.randomBytes(chunk.data.plain.length)))
     wrongChunk shouldNot be (chunk)
     val result = testRegion ? WriteChunk(wrongChunk)
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)

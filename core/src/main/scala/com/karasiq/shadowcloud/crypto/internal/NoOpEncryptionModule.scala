@@ -5,7 +5,7 @@ import com.karasiq.shadowcloud.crypto.{EncryptionParameters, StreamEncryptionMod
 
 import scala.language.postfixOps
 
-private[crypto] final class PlainEncryptionModule extends StreamEncryptionModule {
+private[crypto] final class NoOpEncryptionModule extends StreamEncryptionModule {
   def createParameters(): EncryptionParameters = {
     EncryptionParameters.empty
   }

@@ -7,11 +7,7 @@ import com.karasiq.shadowcloud.crypto.{HashingMethod, StreamHashingModule}
 
 import scala.language.postfixOps
 
-private[bouncycastle] final class MessageDigestHashingModule(messageDigest: MessageDigest) extends StreamHashingModule {
-  val method = {
-    HashingMethod.Digest(messageDigest.getAlgorithm)
-  }
-
+private[bouncycastle] final class MessageDigestHashingModule(val method: HashingMethod, messageDigest: MessageDigest) extends StreamHashingModule {
   def update(data: ByteString): Unit = {
     messageDigest.update(data.toArray)
   }

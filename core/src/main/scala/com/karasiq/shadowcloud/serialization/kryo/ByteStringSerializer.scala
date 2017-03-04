@@ -9,13 +9,18 @@ import scala.language.postfixOps
 
 private[kryo] final class ByteStringSerializer extends chill.KSerializer[ByteString](false, true) {
   def write(kryo: Kryo, output: Output, bs: ByteString): Unit = {
-    output.writeInt(bs.length, true)
-    output.writeBytes(bs.toArray)
+    val length = bs.length
+    output.writeInt(length, true)
+    if (length != 0) output.writeBytes(bs.toArray)
   }
 
   def read(kryo: Kryo, input: Input, cls: Class[ByteString]): ByteString = {
     val length = input.readInt(true)
-    val buffer = input.readBytes(length)
-    ByteString(buffer)
+    if (length != 0) {
+      val buffer = input.readBytes(length)
+      ByteString(buffer)
+    } else {
+      ByteString.empty
+    }
   }
 }

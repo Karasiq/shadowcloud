@@ -3,14 +3,13 @@ package com.karasiq.shadowcloud.actors
 import akka.actor.{Actor, ActorLogging, Props}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
-import com.karasiq.shadowcloud.actors.internal.PendingOperation
+import com.karasiq.shadowcloud.actors.internal.{AkkaUtils, PendingOperation}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.storage.ChunkRepository
 import com.karasiq.shadowcloud.storage.ChunkRepository.BaseChunkRepository
 import com.karasiq.shadowcloud.streams.ByteStringConcat
-import com.karasiq.shadowcloud.utils.Utils
 
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
@@ -57,7 +56,7 @@ class ChunkIODispatcher(baseChunkRepository: BaseChunkRepository) extends Actor 
     val key = config.chunkKey(chunk)
     val writeSink = chunkRepository.write(key)
     val future = Source.single(chunk.data.encrypted).runWith(writeSink)
-    Utils.onIOComplete(future) {
+    AkkaUtils.onIOComplete(future) {
       case Success(written) ⇒
         log.debug("{} bytes written, chunk: {}", written, chunk)
         self ! WriteChunk.Success(chunk, chunk)
@@ -77,7 +76,7 @@ class ChunkIODispatcher(baseChunkRepository: BaseChunkRepository) extends Actor 
       .toMat(Sink.head)(Keep.both)
       .run()
 
-    Utils.unwrapIOResult(ioResult).zip(future).onComplete {
+    AkkaUtils.unwrapIOResult(ioResult).zip(future).onComplete {
       case Success((bytes, chunkWithData)) ⇒
         log.debug("{} bytes read, chunk: {}", bytes, chunkWithData)
         self ! ReadChunk.Success(chunk, chunkWithData)

@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.serialization.kryo
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod}
 import com.karasiq.shadowcloud.index._
-import com.karasiq.shadowcloud.index.diffs._
+import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.serialization.SerializationModule
 import com.twitter.chill.{KryoBase, KryoPool, ScalaKryoInstantiator}
 

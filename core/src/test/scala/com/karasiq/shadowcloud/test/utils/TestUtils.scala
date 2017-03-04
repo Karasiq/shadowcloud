@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.test.utils
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index._
-import com.karasiq.shadowcloud.index.diffs._
+import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 
 import scala.language.postfixOps
 import scala.util.Random

@@ -1,29 +1,12 @@
 package com.karasiq.shadowcloud.utils
 
-import akka.Done
-import akka.stream.IOResult
-import akka.util.ByteString
 import com.karasiq.shadowcloud.index.Chunk
-import org.apache.commons.codec.binary.Hex
 
 import scala.collection.TraversableLike
 import scala.concurrent.duration.FiniteDuration
-import scala.concurrent.{ExecutionContext, Future}
 import scala.language.{higherKinds, postfixOps}
-import scala.util.{Failure, Success, Try}
 
 private[shadowcloud] object Utils {
-  // -----------------------------------------------------------------------
-  // Hex strings
-  // -----------------------------------------------------------------------
-  def toHexString(bs: ByteString): String = {
-    Hex.encodeHexString(bs.toArray)
-  }
-
-  def parseHexString(hexString: String): ByteString = {
-    ByteString(Hex.decodeHex(hexString.toCharArray))
-  }
-
   // -----------------------------------------------------------------------
   // Time
   // -----------------------------------------------------------------------
@@ -46,27 +29,11 @@ private[shadowcloud] object Utils {
     chunks.take(limit).foreach { chunk ⇒
       if (chunk.checksum.hash.nonEmpty) {
         if (sb.nonEmpty) sb.append(", ")
-        sb.append(toHexString(chunk.checksum.hash))
+        sb.append(HexString.encode(chunk.checksum.hash))
       }
     }
     if (size > limit) sb.append(", (").append(size - limit).append(" more)")
     sb.result()
-  }
-
-  // -----------------------------------------------------------------------
-  // Futures
-  // -----------------------------------------------------------------------
-  def unwrapIOResult(future: Future[IOResult])(implicit ec: ExecutionContext): Future[Long] = {
-    future
-      .recover { case error ⇒ IOResult(0, Failure(error)) }
-      .map {
-        case IOResult(written, Success(Done)) ⇒ written
-        case IOResult(_, Failure(error)) ⇒ throw error
-      }
-  }
-
-  def onIOComplete(future: Future[IOResult])(pf: PartialFunction[Try[Long], Unit])(implicit ec: ExecutionContext): Unit = {
-    unwrapIOResult(future).onComplete(pf)
   }
 
   // -----------------------------------------------------------------------

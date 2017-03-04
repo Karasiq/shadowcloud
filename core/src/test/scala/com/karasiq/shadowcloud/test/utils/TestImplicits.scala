@@ -2,20 +2,20 @@ package com.karasiq.shadowcloud.test.utils
 
 import akka.util.ByteString
 import com.karasiq.shadowcloud.index.Chunk
-import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.utils.HexString
 
 import scala.language.postfixOps
 
 trait TestImplicits {
   implicit class ByteStringOps(private val bs: ByteString) {
     def toHexString: String = {
-      Utils.toHexString(bs)
+      HexString.encode(bs)
     }
   }
 
   implicit class ByteStringObjOps(private val bs: ByteString.type) {
     def fromHexString(hexString: String): ByteString = {
-      Utils.parseHexString(hexString)
+      HexString.decode(hexString)
     }
 
     def fromChunks(chunks: Seq[Chunk]): ByteString = {

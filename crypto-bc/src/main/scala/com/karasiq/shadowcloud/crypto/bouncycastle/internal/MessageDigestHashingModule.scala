@@ -1,13 +1,13 @@
-package com.karasiq.shadowcloud.crypto.internal
+package com.karasiq.shadowcloud.crypto.bouncycastle.internal
 
 import java.security.MessageDigest
 
 import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.{HashingMethod, HashingModule}
+import com.karasiq.shadowcloud.crypto.{HashingMethod, StreamHashingModule}
 
 import scala.language.postfixOps
 
-private[crypto] final class MessageDigestHashingModule(messageDigest: MessageDigest) extends HashingModule {
+private[bouncycastle] final class MessageDigestHashingModule(messageDigest: MessageDigest) extends StreamHashingModule {
   val method = {
     HashingMethod.Digest(messageDigest.getAlgorithm)
   }
@@ -22,10 +22,5 @@ private[crypto] final class MessageDigestHashingModule(messageDigest: MessageDig
 
   def reset(): Unit = {
     messageDigest.reset()
-  }
-
-  def hash(data: ByteString): ByteString = {
-    messageDigest.reset()
-    ByteString(messageDigest.digest(data.toArray))
   }
 }

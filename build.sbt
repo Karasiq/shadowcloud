@@ -25,13 +25,18 @@ lazy val modelJS = model.js
 // -----------------------------------------------------------------------
 lazy val core = project
   .settings(commonSettings)
-  .dependsOn(modelJVM, bouncyCastleCrypto)
+  .dependsOn(modelJVM, pluginParent, bouncyCastleCrypto)
 
 // -----------------------------------------------------------------------
 // Plugins
 // -----------------------------------------------------------------------
+lazy val pluginParent = (project in file("plugin-parent"))
+  .settings(commonSettings)
+  .dependsOn(modelJVM)
+
 lazy val bouncyCastleCrypto = (project in file("crypto-bc"))
   .settings(commonSettings)
+  .dependsOn(pluginParent)
 
 // -----------------------------------------------------------------------
 // HTTP

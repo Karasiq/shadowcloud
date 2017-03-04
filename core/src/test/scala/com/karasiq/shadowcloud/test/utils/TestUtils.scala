@@ -4,11 +4,17 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.providers.ModuleRegistry
+import com.typesafe.config.ConfigFactory
 
 import scala.language.postfixOps
 import scala.util.Random
 
 object TestUtils extends TestImplicits {
+  val modules = ModuleRegistry(ConfigFactory.load().getConfig("shadowcloud"))
+  val sha1Hashing = modules.hashingModule(HashingMethod("SHA1"))
+  val aesEncryption = modules.encryptionModule(EncryptionMethod.AES())
+
   def randomBytes(length: Int): ByteString = {
     val array = new Array[Byte](length)
     Random.nextBytes(array)
@@ -49,12 +55,10 @@ object TestUtils extends TestImplicits {
 
   def randomChunk: Chunk = {
     val data = randomBytes(100)
-    val hashing = HashingModule.default
-    val encryption = EncryptionModule.default
-    val encParameters = encryption.createParameters()
-    val encData = encryption.encrypt(data, encParameters)
+    val encParameters = aesEncryption.createParameters()
+    val encData = aesEncryption.encrypt(data, encParameters)
     Chunk(
-      Checksum(hashing.method, data.length, hashing.createHash(data), encData.length, hashing.createHash(encData)),
+      Checksum(sha1Hashing.method, data.length, sha1Hashing.createHash(data), encData.length, sha1Hashing.createHash(encData)),
       encParameters,
       Data(data, encData)
     )
@@ -62,13 +66,12 @@ object TestUtils extends TestImplicits {
 
   def randomFile(parent: Path = Path.root): File = {
     val chunks = Seq.fill(1)(randomChunk)
-    val hashing = HashingModule.default
     val size = chunks.map(_.checksum.size).sum
     val encSize = chunks.map(_.checksum.encryptedSize).sum
-    val hash = hashing.createHash(ByteString.fromChunks(chunks))
-    val encHash = hashing.createHash(ByteString.fromEncryptedChunks(chunks))
+    val hash = sha1Hashing.createHash(ByteString.fromChunks(chunks))
+    val encHash = sha1Hashing.createHash(ByteString.fromEncryptedChunks(chunks))
     File(parent / s"$randomString.txt", System.currentTimeMillis(), System.currentTimeMillis(),
-      Checksum(hashing.method, size, hash, encSize, encHash), chunks)
+      Checksum(sha1Hashing.method, size, hash, encSize, encHash), chunks)
   }
 
   def randomFolder(path: Path = Path.root / randomString): Folder = {

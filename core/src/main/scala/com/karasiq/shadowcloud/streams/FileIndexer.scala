@@ -29,8 +29,8 @@ final class FileIndexer(registry: ModuleRegistry, method: HashingMethod) extends
   def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, Future[IndexedFile]) = {
     val promise = Promise[IndexedFile]
     val logic = new GraphStageLogic(shape) with InHandler {
-      private[this] val plainHash = registry.hashingModule(method)
-      private[this] val encryptedHash = registry.hashingModule(method)
+      private[this] val plainHash = registry.streamHashingModule(method)
+      private[this] val encryptedHash = registry.streamHashingModule(method)
       private[this] var plainSize = 0L
       private[this] var encryptedSize = 0L
       private[this] val chunks = Vector.newBuilder[Chunk]

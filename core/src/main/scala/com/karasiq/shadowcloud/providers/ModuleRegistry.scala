@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.providers
 
 import akka.actor.{ActorContext, ActorSystem}
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule, HashingMethod, HashingModule}
+import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.storage.StoragePlugin
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.typesafe.config.Config
@@ -46,6 +46,16 @@ final class ModuleRegistry {
 
   def hashingModule(hashingMethod: HashingMethod): HashingModule = {
     hashModules(hashingMethod)
+  }
+
+  def streamHashingModule(hashingMethod: HashingMethod): StreamHashingModule = {
+    hashModules(hashingMethod) match {
+      case m: StreamHashingModule ⇒
+        m
+
+      case _ ⇒
+        throw new IllegalArgumentException("Stream hashing module required")
+    }
   }
 
   def encryptionModule(encryptionMethod: EncryptionMethod): EncryptionModule = {

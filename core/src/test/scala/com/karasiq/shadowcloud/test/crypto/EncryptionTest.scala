@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.test.crypto
 
-import com.karasiq.shadowcloud.crypto.EncryptionMethod
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule}
 import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.test.utils.TestUtils._
 import com.typesafe.config.ConfigFactory
@@ -10,38 +10,34 @@ import scala.language.postfixOps
 
 class EncryptionTest extends FlatSpec with Matchers {
   val modules = ModuleRegistry(ConfigFactory.load().getConfig("shadowcloud"))
-  val plainModule = modules.encryptionModule(EncryptionMethod.Plain)
-  val plainParameters = plainModule.createParameters()
 
   "Plain module" should "process data" in {
-    val data = randomBytes(100)
-    plainModule.init(encrypt = true, plainParameters)
-    val encrypted = plainModule.process(data) ++ plainModule.finish()
-    encrypted shouldBe data
-    plainModule.init(encrypt = false, plainParameters)
-    val decrypted = plainModule.process(encrypted)
-    decrypted shouldBe data
+    val plainModule = modules.encryptionModule(EncryptionMethod.Plain)
+    testModule(plainModule)
   }
 
   val aesMethod = EncryptionMethod.AES()
   val aesModule = modules.encryptionModule(aesMethod)
-  val aesParameters = aesModule.createParameters()
 
   "AES module" should "generate key" in {
+    val aesParameters = aesModule.createParameters()
     aesParameters.key.length shouldBe (aesMethod.bits / 8)
     aesParameters.iv should not be empty
     println(s"Key = ${aesParameters.key.toHexString}, iv = ${aesParameters.iv.toHexString}")
   }
 
   it should "encrypt data" in {
+    testModule(aesModule)
+  }
+
+  private[this] def testModule(module: EncryptionModule): Unit = {
     val data = randomBytes(100)
-    aesModule.init(encrypt = true, aesParameters)
-    val encrypted = aesModule.process(data) ++ aesModule.finish()
-    encrypted should not be data
+    val parameters = module.createParameters()
+    val encrypted = module.encrypt(data, parameters)
+    // encrypted should not be data
     encrypted.length should be >= data.length
-    aesModule.init(encrypt = false, aesParameters)
-    val decrypted = aesModule.process(encrypted) ++ aesModule.finish()
+    val decrypted = module.decrypt(encrypted, parameters)
     decrypted shouldBe data
-    aesModule.encrypt(decrypted, aesParameters) shouldBe encrypted // Restore
+    module.encrypt(decrypted, parameters) shouldBe encrypted // Restore
   }
 }

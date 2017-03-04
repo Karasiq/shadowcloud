@@ -1,11 +1,11 @@
 package com.karasiq.shadowcloud.crypto.internal
 
 import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.{EncryptionModule, EncryptionParameters}
+import com.karasiq.shadowcloud.crypto.{EncryptionParameters, StreamEncryptionModule}
 
 import scala.language.postfixOps
 
-private[crypto] final class PlainEncryptionModule extends EncryptionModule {
+private[crypto] final class PlainEncryptionModule extends StreamEncryptionModule {
   def createParameters(): EncryptionParameters = {
     EncryptionParameters.empty
   }
@@ -24,5 +24,13 @@ private[crypto] final class PlainEncryptionModule extends EncryptionModule {
 
   def finish(): ByteString = {
     ByteString.empty
+  }
+
+  override def encrypt(data: ByteString, parameters: EncryptionParameters): ByteString = {
+    data
+  }
+
+  override def decrypt(data: ByteString, parameters: EncryptionParameters): ByteString = {
+    data
   }
 }

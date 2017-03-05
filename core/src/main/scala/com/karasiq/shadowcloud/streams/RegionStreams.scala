@@ -10,6 +10,7 @@ import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, ZipWith}
 import akka.util.Timeout
 import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, RegionDispatcher}
+import com.karasiq.shadowcloud.config.ParallelismConfig
 import com.karasiq.shadowcloud.index.diffs.{FileVersions, FolderIndexDiff}
 import com.karasiq.shadowcloud.index.{Chunk, File, Path}
 import com.karasiq.shadowcloud.utils.Utils
@@ -19,16 +20,18 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 object RegionStreams {
-  def apply(regionSupervisor: ActorRef, parallelism: Int = 8)(implicit ec: ExecutionContext, timeout: Timeout = Timeout(5 minutes)): RegionStreams = {
+  def apply(regionSupervisor: ActorRef, parallelism: ParallelismConfig)
+           (implicit ec: ExecutionContext, timeout: Timeout = Timeout(5 minutes)): RegionStreams = {
     new RegionStreams(regionSupervisor, parallelism)
   }
 }
 
-class RegionStreams(regionSupervisor: ActorRef, parallelism: Int)(implicit ec: ExecutionContext, timeout: Timeout = Timeout(5 minutes)) {
+class RegionStreams(val regionSupervisor: ActorRef, val parallelism: ParallelismConfig)
+                   (implicit ec: ExecutionContext, timeout: Timeout = Timeout(5 minutes)) {
   type ChunkFlow = Flow[(String, Chunk), Chunk, NotUsed]
 
   val writeChunks: ChunkFlow = Flow[(String, Chunk)]
-    .mapAsync(parallelism) { case (regionId, chunk) ⇒
+    .mapAsync(parallelism.write) { case (regionId, chunk) ⇒
       regionSupervisor ? RegionEnvelope(regionId, ChunkIODispatcher.WriteChunk(chunk))
     }
     .map {
@@ -40,7 +43,7 @@ class RegionStreams(regionSupervisor: ActorRef, parallelism: Int)(implicit ec: E
     }
 
   val readChunks: ChunkFlow = Flow[(String, Chunk)]
-    .mapAsync(parallelism) { case (regionId, chunk) ⇒
+    .mapAsync(parallelism.read) { case (regionId, chunk) ⇒
       regionSupervisor ? RegionEnvelope(regionId, ChunkIODispatcher.ReadChunk(chunk))
     }
     .map {
@@ -52,7 +55,7 @@ class RegionStreams(regionSupervisor: ActorRef, parallelism: Int)(implicit ec: E
     }
 
   val findFiles: Flow[(String, Path), (Path, Set[File]), NotUsed] = Flow[(String, Path)]
-    .mapAsync(parallelism) { case (regionId, path) ⇒
+    .mapAsync(parallelism.read) { case (regionId, path) ⇒
       regionSupervisor ? RegionEnvelope(regionId, RegionDispatcher.GetFiles(path))
     }
     .map {

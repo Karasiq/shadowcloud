@@ -15,7 +15,7 @@ class ChunkSplitterTest extends ActorSpec with FlatSpecLike {
   val (sourceBytes, sourceFile) = TestUtils.indexedBytes
   val hashingMethod = sourceFile.checksum.method
   val sourceHashes = sourceFile.chunks.map(_.checksum.hash)
-  val chunkProcessing = ChunkProcessing(system)
+  val chunkProcessing = ChunkProcessing(TestUtils.config)(system.dispatcher)
 
   "Chunk splitter" should "split text" in {
     val fullOut = Source.single(sourceBytes)
@@ -48,8 +48,8 @@ class ChunkSplitterTest extends ActorSpec with FlatSpecLike {
 
   "Chunk encryptor" should "encrypt chunk stream" in {
     def testChunk(chunk: Chunk) = {
-      val hasher = chunkProcessing.moduleRegistry.hashingModule(chunk.checksum.method)
-      val decryptor = chunkProcessing.moduleRegistry.encryptionModule(chunk.encryption.method)
+      val hasher = chunkProcessing.modules.hashingModule(chunk.checksum.method)
+      val decryptor = chunkProcessing.modules.encryptionModule(chunk.encryption.method)
       val hash1 = hasher.createHash(chunk.data.plain)
       val hash2 = hasher.createHash(chunk.data.encrypted)
       val size1 = chunk.data.plain.length
@@ -63,7 +63,7 @@ class ChunkSplitterTest extends ActorSpec with FlatSpecLike {
       .via(ChunkSplitter(100))
       .via(chunkProcessing.beforeWrite(hashing = hashingMethod))
       .map(testChunk)
-      .runWith(FileIndexer(chunkProcessing.moduleRegistry, hashingMethod))
+      .runWith(FileIndexer(chunkProcessing.modules, hashingMethod))
 
     whenReady(result) { file ⇒
       file.chunks.map(_.checksum.hash) shouldBe sourceHashes

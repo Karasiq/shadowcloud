@@ -3,11 +3,14 @@ package com.karasiq.shadowcloud.storage.props
 import java.net.URI
 import java.nio.file.Path
 
+import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.storage.props.StorageProps._
 
 import scala.language.postfixOps
 
-case class StorageProps(storageType: String, address: Address = Address.empty, credentials: Credentials = Credentials.empty, provider: String = "")
+case class StorageProps(storageType: String, address: Address = Address.empty,
+                        credentials: Credentials = Credentials.empty, provider: String = "",
+                        config: SerializedProps = SerializedProps.empty)
 
 object StorageProps {
   // -----------------------------------------------------------------------

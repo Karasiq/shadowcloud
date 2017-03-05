@@ -1,11 +1,10 @@
 package com.karasiq.shadowcloud.streams
 
 import akka.NotUsed
-import akka.actor.ActorSystem
 import akka.stream.FlowShape
-import akka.stream.scaladsl.{Flow, GraphDSL, ZipWith}
+import akka.stream.scaladsl.{Flow, GraphDSL, Sink, ZipWith}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.config.AppConfig
+import com.karasiq.shadowcloud.config.{AppConfig, CryptoConfig, ParallelismConfig}
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.providers.ModuleRegistry
@@ -14,40 +13,37 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
 object ChunkProcessing {
-  def apply(moduleRegistry: ModuleRegistry, parallelism: Int = allCores)(implicit ec: ExecutionContext): ChunkProcessing = {
-    new ChunkProcessing(moduleRegistry, parallelism)
+  def apply(modules: ModuleRegistry, crypto: CryptoConfig,
+            parallelism: ParallelismConfig)(implicit ec: ExecutionContext): ChunkProcessing = {
+    new ChunkProcessing(modules, crypto, parallelism)
   }
 
-  def apply(actorSystem: ActorSystem): ChunkProcessing = {
-    apply(ModuleRegistry(AppConfig(actorSystem)))(actorSystem.dispatcher)
-  }
-
-  private def allCores: Int = {
-    sys.runtime.availableProcessors()
+  def apply(config: AppConfig)(implicit ec: ExecutionContext): ChunkProcessing = {
+    apply(ModuleRegistry(config), config.crypto, config.parallelism)
   }
 }
 
-class ChunkProcessing(val moduleRegistry: ModuleRegistry, val parallelism: Int)(implicit ec: ExecutionContext) {
+class ChunkProcessing(val modules: ModuleRegistry, val crypto: CryptoConfig, val parallelism: ParallelismConfig)(implicit ec: ExecutionContext) {
   type ChunkFlow = Flow[Chunk, Chunk, NotUsed]
 
-  def generateKey(method: EncryptionMethod = EncryptionMethod.default): ChunkFlow = {
+  def generateKey(method: EncryptionMethod = crypto.encryption.chunks): ChunkFlow = {
     Flow.fromGraph(GraphDSL.create() { implicit builder ⇒
       import GraphDSL.Implicits._
-      val keys = builder.add(ChunkKeyStream(moduleRegistry, method))
+      val keys = builder.add(ChunkKeyStream(modules, method))
       val chunkWithKey = builder.add(ZipWith((key: EncryptionParameters, chunk: Chunk) ⇒ chunk.copy(encryption = key)))
       keys ~> chunkWithKey.in0
       FlowShape(chunkWithKey.in1, chunkWithKey.out)
     })
   }
 
-  def encrypt: ChunkFlow = parallelFlow { chunk ⇒
+  def encrypt: ChunkFlow = parallelFlow(parallelism.encryption) { chunk ⇒
     require(chunk.data.plain.nonEmpty)
-    val module = moduleRegistry.encryptionModule(chunk.encryption.method)
+    val module = modules.encryptionModule(chunk.encryption.method)
     chunk.copy(data = chunk.data.copy(encrypted = module.encrypt(chunk.data.plain, chunk.encryption)))
   }
 
-  def createHashes(method: HashingMethod = HashingMethod.default): ChunkFlow = parallelFlow { chunk ⇒
-    val module = moduleRegistry.hashingModule(method)
+  def createHashes(method: HashingMethod = crypto.hashing.chunks): ChunkFlow = parallelFlow(parallelism.hashing) { chunk ⇒
+    val module = modules.hashingModule(method)
     val size = chunk.data.plain.length
     val hash = if (chunk.data.plain.nonEmpty) module.createHash(chunk.data.plain) else ByteString.empty
     val encSize = chunk.data.encrypted.length
@@ -55,15 +51,15 @@ class ChunkProcessing(val moduleRegistry: ModuleRegistry, val parallelism: Int)(
     chunk.copy(checksum = chunk.checksum.copy(method, size, hash, encSize, encHash))
   }
 
-  def decrypt: ChunkFlow = parallelFlow { chunk ⇒
+  def decrypt: ChunkFlow = parallelFlow(parallelism.encryption) { chunk ⇒
     require(chunk.data.encrypted.nonEmpty)
-    val decryptor = moduleRegistry.encryptionModule(chunk.encryption.method)
+    val decryptor = modules.encryptionModule(chunk.encryption.method)
     val decryptedData = decryptor.decrypt(chunk.data.encrypted, chunk.encryption)
     chunk.copy(data = chunk.data.copy(plain = decryptedData))
   }
 
-  def verify: ChunkFlow = parallelFlow { chunk ⇒
-    val hasher = moduleRegistry.hashingModule(chunk.checksum.method)
+  def verify: ChunkFlow = parallelFlow(parallelism.hashing) { chunk ⇒
+    val hasher = modules.hashingModule(chunk.checksum.method)
     if (chunk.checksum.hash.nonEmpty && hasher.createHash(chunk.data.plain) != chunk.checksum.hash) {
       throw new IllegalArgumentException(s"Chunk plaintext checksum not match: $chunk")
     } else if (chunk.checksum.encryptedHash.nonEmpty && hasher.createHash(chunk.data.encrypted) != chunk.checksum.encryptedHash) {
@@ -76,8 +72,8 @@ class ChunkProcessing(val moduleRegistry: ModuleRegistry, val parallelism: Int)(
     }
   }
 
-  def beforeWrite(encryption: EncryptionMethod = EncryptionMethod.default,
-                  hashing: HashingMethod = HashingMethod.default): ChunkFlow = {
+  def beforeWrite(encryption: EncryptionMethod = crypto.encryption.chunks,
+                  hashing: HashingMethod = crypto.hashing.chunks): ChunkFlow = {
     generateKey(encryption).via(encrypt).via(createHashes(hashing))
   }
 
@@ -85,16 +81,12 @@ class ChunkProcessing(val moduleRegistry: ModuleRegistry, val parallelism: Int)(
     decrypt.via(verify)
   }
 
-  def index(hashingMethod: HashingMethod = HashingMethod.default): FileIndexer = {
-    FileIndexer(moduleRegistry, hashingMethod)
+  def index(hashingMethod: HashingMethod = crypto.hashing.files): Sink[Chunk, Future[FileIndexer.Result]] = {
+    Sink.fromGraph(FileIndexer(modules, hashingMethod).async)
   }
 
-  protected def parallelFlow(parallelism: Int, func: Chunk ⇒ Chunk): ChunkFlow = {
-    Flow[Chunk]
-      .mapAsync(if (parallelism > 0) parallelism else ChunkProcessing.allCores)(chunk ⇒ Future(func(chunk)))
-  }
-
-  protected def parallelFlow(func: Chunk ⇒ Chunk): ChunkFlow = {
-    parallelFlow(parallelism, func)
+  protected def parallelFlow(parallelism: Int)(func: Chunk ⇒ Chunk): ChunkFlow = {
+    require(parallelism > 0)
+    Flow[Chunk].mapAsync(parallelism)(chunk ⇒ Future(func(chunk)))
   }
 }

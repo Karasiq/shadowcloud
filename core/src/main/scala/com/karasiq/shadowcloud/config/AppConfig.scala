@@ -4,14 +4,15 @@ import akka.actor.{ActorContext, ActorSystem}
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.typesafe.config.ConfigFactory
 
-case class AppConfig(index: IndexConfig, crypto: CryptoConfig, storage: StorageConfig)
+case class AppConfig(index: IndexConfig, crypto: CryptoConfig, storage: StorageConfig, parallelism: ParallelismConfig)
 
 object AppConfig extends ConfigImplicits {
   def apply(config: Config): AppConfig = {
     AppConfig(
       IndexConfig(config.getConfig("index")),
       CryptoConfig(config.getConfig("crypto")),
-      StorageConfig(config.getConfig("storage"))
+      StorageConfig(config.getConfig("storage")),
+      ParallelismConfig(config.getConfig("parallelism"))
     )
   }
 

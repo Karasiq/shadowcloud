@@ -9,6 +9,7 @@ object HexString {
 
   def encode(data: ByteString): String = {
     val length = data.length
+    if (length == 0) return ""
     val out = new Array[Char](length << 1)
     var dataIndex, outIndex = 0
     while (dataIndex < length) {
@@ -24,6 +25,7 @@ object HexString {
   def decode(data: String): ByteString = {
     @inline def hexCharToInt(char: Char): Int = Character.digit(char, 16)
     val length = data.length
+    if (length == 0) return ByteString.empty
     require((length & 0x01) == 0)
     val outBuilder = ByteString.newBuilder
     outBuilder.sizeHint(length >> 1)

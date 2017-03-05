@@ -13,6 +13,7 @@ import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.util.{ByteString, Timeout}
 import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.actors.RegionSupervisor.{AddRegion, AddStorage, RegisterStorage}
+import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.{File, Path}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams._
@@ -27,14 +28,15 @@ object Main extends HttpApp with App with PredefinedToResponseMarshallers {
   implicit val actorSystem = ActorSystem("shadowcloud-server")
   implicit val actorMaterializer = ActorMaterializer()
   implicit val executionContext = actorSystem.dispatcher
-  val chunkProcessing = ChunkProcessing(actorSystem)
+  val config = AppConfig(actorSystem)
+  val chunkProcessing = ChunkProcessing(config)
 
   // Region supervisor
   val regionSupervisor = actorSystem.actorOf(RegionSupervisor.props, "regions")
   regionSupervisor ! AddRegion("testRegion")
   regionSupervisor ! AddStorage("testStorage", StorageProps.fromDirectory(Files.createTempDirectory("scl-http-test")))
   regionSupervisor ! RegisterStorage("testRegion", "testStorage")
-  val regionStreams = RegionStreams(regionSupervisor)
+  val regionStreams = RegionStreams(regionSupervisor, config.parallelism)
 
   // -----------------------------------------------------------------------
   // Route

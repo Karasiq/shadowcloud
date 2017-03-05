@@ -2,18 +2,20 @@ package com.karasiq.shadowcloud.streams
 
 import java.io.IOException
 
+import akka.Done
 import akka.stream._
 import akka.stream.stage._
 import com.karasiq.shadowcloud.crypto.HashingMethod
 import com.karasiq.shadowcloud.index.{Checksum, Chunk}
 import com.karasiq.shadowcloud.providers.ModuleRegistry
-import com.karasiq.shadowcloud.streams.FileIndexer.IndexedFile
+import com.karasiq.shadowcloud.streams.FileIndexer.Result
 
 import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
+import scala.util.{Failure, Success, Try}
 
 object FileIndexer {
-  case class IndexedFile(checksum: Checksum, chunks: Seq[Chunk])
+  case class Result(checksum: Checksum, chunks: Seq[Chunk], ioResult: IOResult)
 
   def apply(registry: ModuleRegistry, method: HashingMethod = HashingMethod.default): FileIndexer = {
     new FileIndexer(registry, method)
@@ -21,13 +23,13 @@ object FileIndexer {
 }
 
 // TODO: Content type
-final class FileIndexer(registry: ModuleRegistry, method: HashingMethod) extends GraphStageWithMaterializedValue[SinkShape[Chunk], Future[IndexedFile]] {
+final class FileIndexer(registry: ModuleRegistry, method: HashingMethod) extends GraphStageWithMaterializedValue[SinkShape[Chunk], Future[Result]] {
   val inlet = Inlet[Chunk]("FileIndexer.in")
   val shape = SinkShape(inlet)
 
   @scala.throws[Exception](classOf[Exception])
-  def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, Future[IndexedFile]) = {
-    val promise = Promise[IndexedFile]
+  def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, Future[Result]) = {
+    val promise = Promise[Result]
     val logic = new GraphStageLogic(shape) with InHandler {
       private[this] val plainHash = registry.streamHashingModule(method)
       private[this] val encryptedHash = registry.streamHashingModule(method)
@@ -35,20 +37,35 @@ final class FileIndexer(registry: ModuleRegistry, method: HashingMethod) extends
       private[this] var encryptedSize = 0L
       private[this] val chunks = Vector.newBuilder[Chunk]
 
-      def onPush(): Unit = {
-        val chunk = grab(inlet)
+      private[this] def update(chunk: Chunk) = {
         plainHash.update(chunk.data.plain)
         encryptedHash.update(chunk.data.encrypted)
         plainSize += chunk.data.plain.length
         encryptedSize += chunk.data.encrypted.length
         chunks += chunk.withoutData
+      }
+
+      private[this] def finish(status: Try[Done]) = {
+        val checksum = Checksum(method, plainSize, plainHash.createHash(), encryptedSize, encryptedHash.createHash())
+        val indexedFile = Result(checksum, chunks.result(), IOResult(plainSize, status))
+        promise.trySuccess(indexedFile)
+      }
+
+      def onPush(): Unit = {
+        val chunk = grab(inlet)
         pull(inlet)
+        update(chunk)
       }
 
       override def onUpstreamFinish(): Unit = {
-        val indexedFile = IndexedFile(Checksum(method, plainSize, plainHash.createHash(), encryptedSize, encryptedHash.createHash()), chunks.result())
-        promise.trySuccess(indexedFile)
+        finish(Success(Done))
         completeStage()
+      }
+
+
+      override def onUpstreamFailure(ex: Throwable): Unit = {
+        finish(Failure(ex))
+        super.onUpstreamFailure(ex)
       }
 
       override def preStart(): Unit = {
@@ -57,7 +74,7 @@ final class FileIndexer(registry: ModuleRegistry, method: HashingMethod) extends
       }
 
       override def postStop(): Unit = {
-        promise.tryFailure(new IOException("Stream terminated"))
+        finish(Failure(new IOException("Stream terminated")))
         super.postStop()
       }
 

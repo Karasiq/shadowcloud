@@ -59,13 +59,13 @@ class ChunkSplitterTest extends ActorSpec with FlatSpecLike {
       chunk
     }
 
-    val file = Source.single(sourceBytes)
+    val result = Source.single(sourceBytes)
       .via(ChunkSplitter(100))
       .via(chunkProcessing.beforeWrite(hashing = hashingMethod))
       .map(testChunk)
       .runWith(FileIndexer(chunkProcessing.moduleRegistry, hashingMethod))
 
-    whenReady(file) { file ⇒
+    whenReady(result) { file ⇒
       file.chunks.map(_.checksum.hash) shouldBe sourceHashes
       file.checksum.hash shouldBe sourceFile.checksum.hash
       file.chunks.map(_.checksum.hash) shouldBe sourceHashes

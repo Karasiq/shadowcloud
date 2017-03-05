@@ -12,7 +12,6 @@ import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, RegionDispatcher}
 import com.karasiq.shadowcloud.index.diffs.{FileVersions, FolderIndexDiff}
 import com.karasiq.shadowcloud.index.{Chunk, File, Path}
-import com.karasiq.shadowcloud.streams.FileIndexer.IndexedFile
 import com.karasiq.shadowcloud.utils.Utils
 
 import scala.concurrent.ExecutionContext
@@ -72,18 +71,18 @@ class RegionStreams(regionSupervisor: ActorRef, parallelism: Int)(implicit ec: E
     .filter(_.nonEmpty)
     .map(FileVersions.mostRecent)
 
-  val addFile: Flow[(String, Path, IndexedFile), File, NotUsed] = {
+  val addFile: Flow[(String, Path, FileIndexer.Result), File, NotUsed] = {
     val graph = GraphDSL.create() { implicit builder ⇒
       import GraphDSL.Implicits._
 
-      val input = builder.add(Broadcast[(String, Path, IndexedFile)](2))
-      val withFiles = builder.add(ZipWith((input: (String, Path, IndexedFile), files: (Path, Set[File])) ⇒ (input, files)))
+      val input = builder.add(Broadcast[(String, Path, FileIndexer.Result)](2))
+      val withFiles = builder.add(ZipWith((input: (String, Path, FileIndexer.Result), files: (Path, Set[File])) ⇒ (input, files)))
       input.out(0) ~> withFiles.in0
       input.out(1).map(kv ⇒ (kv._1, kv._2)) ~> findFiles ~> withFiles.in1
       FlowShape(input.in, withFiles.out)
     }
 
-    Flow[(String, Path, IndexedFile)]
+    Flow[(String, Path, FileIndexer.Result)]
       .via(graph)
       .map { case ((regionId, path, result), (path1, files)) ⇒
         require(path == path1)

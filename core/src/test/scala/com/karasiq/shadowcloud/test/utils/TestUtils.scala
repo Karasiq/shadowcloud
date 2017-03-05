@@ -1,17 +1,18 @@
 package com.karasiq.shadowcloud.test.utils
 
 import akka.util.ByteString
+import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.providers.ModuleRegistry
-import com.typesafe.config.ConfigFactory
 
 import scala.language.postfixOps
 import scala.util.Random
 
 object TestUtils extends TestImplicits {
-  val modules = ModuleRegistry(ConfigFactory.load().getConfig("shadowcloud"))
+  val config = AppConfig.load()
+  val modules = ModuleRegistry(config)
   val sha1Hashing = modules.hashingModule(HashingMethod("SHA1"))
   val aesEncryption = modules.encryptionModule(EncryptionMethod("AES", 256))
 

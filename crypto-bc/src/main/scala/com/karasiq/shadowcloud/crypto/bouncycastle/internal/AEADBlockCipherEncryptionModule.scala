@@ -5,7 +5,7 @@ import java.security.SecureRandom
 import javax.crypto.KeyGenerator
 
 import akka.util.ByteString
-import com.karasiq.shadowcloud.config.SerializedProps
+import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto._
 import org.bouncycastle.crypto.modes.AEADBlockCipher
 import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
@@ -16,7 +16,7 @@ import scala.util.control.NonFatal
 private[bouncycastle] final class AEADBlockCipherEncryptionModule(cipher: AEADBlockCipher, keyAlg: String, method: EncryptionMethod) extends StreamEncryptionModule {
   private[this] val ivSize: Int = {
     try {
-      val config = SerializedProps.toConfig(method.config)
+      val config = ConfigProps.toConfig(method.config)
       config.getInt("iv-size")
     } catch {
       case NonFatal(_) ⇒ 12 // Default

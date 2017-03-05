@@ -26,7 +26,7 @@ object ChunkKeyExtractor {
 
     case _ ⇒
       Class.forName(str)
+        .asSubclass(classOf[ChunkKeyExtractor])
         .newInstance()
-        .asInstanceOf[ChunkKeyExtractor]
   }
 }

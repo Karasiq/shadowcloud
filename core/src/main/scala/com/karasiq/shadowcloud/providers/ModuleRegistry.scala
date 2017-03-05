@@ -1,72 +1,90 @@
 package com.karasiq.shadowcloud.providers
 
-import akka.actor.{ActorContext, ActorSystem}
+import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.storage.StoragePlugin
 import com.karasiq.shadowcloud.storage.props.StorageProps
-import com.typesafe.config.Config
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.language.postfixOps
 
 private[shadowcloud] object ModuleRegistry {
-  def apply(config: Config): ModuleRegistry = {
-    val registry = new ModuleRegistry()
-    config.getStringList("providers").asScala.foreach { providerClassName ⇒
-      val providerClass = Class.forName(providerClassName)
-      val provider = providerClass.asSubclass(classOf[ModuleProvider]).newInstance()
-      registry.register(provider)
+  def empty: ModuleRegistry = {
+    new ModuleRegistry
+  }
+
+  def apply(config: AppConfig): ModuleRegistry = {
+    val registry = this.empty
+    for ((pName, pClass) ← config.storage.providers.toMap) {
+      registry.register(pName, pClass.newInstance())
+    }
+    for ((pName, pClass) ← config.crypto.providers.toMap) {
+      registry.register(pName, pClass.newInstance())
     }
     registry
   }
+}
 
-  def apply(actorSystem: ActorSystem): ModuleRegistry = {
-    apply(actorSystem.settings.config.getConfig("shadowcloud"))
-  }
-
-  def apply()(implicit context: ActorContext): ModuleRegistry = {
-    apply(context.system)
-  }
-
-  private def getProviderName(provider: ModuleProvider): String = {
-    val name = if (provider.name.isEmpty) provider.getClass.getName else provider.name
-    require(name != null && name.nonEmpty)
-    name
+private[shadowcloud] final class ModuleRegistry extends StorageModuleRegistry with CryptoModuleRegistry {
+  override def toString: String = {
+    s"ModuleRegistry(storages = [${storageTypes.mkString(", ")}, hashes = [${hashingAlgorithms.mkString(", ")}], encryption = [${encryptionAlgorithms.mkString(", ")}])"
   }
 }
 
-private[shadowcloud] final class ModuleRegistry {
-  private val providers = mutable.AnyRefMap.empty[String, ModuleProvider]
-  private var storages = PartialFunction.empty[StorageProps, StoragePlugin]
-  private var hashModules = PartialFunction.empty[HashingMethod, HashingModule]
-  private var encModules = PartialFunction.empty[EncryptionMethod, EncryptionModule]
+private[shadowcloud] sealed trait StorageModuleRegistry {
+  private[this] val storageProviders = mutable.AnyRefMap.empty[String, StorageProvider]
+  private[this] var storages = PartialFunction.empty[StorageProps, StoragePlugin]
 
-  def register(provider: ModuleProvider): Unit = {
-    providers += ModuleRegistry.getProviderName(provider) → provider
+  def register(providerName: String, provider: StorageProvider): Unit = {
+    require(providerName.nonEmpty, "Provider name is empty")
     if (provider.storages != PartialFunction.empty) storages = provider.storages.orElse(storages)
-    if (provider.hashing != PartialFunction.empty) hashModules = provider.hashing.orElse(hashModules)
-    if (provider.encryption != PartialFunction.empty) encModules = provider.encryption.orElse(encModules)
+    storageProviders += providerName → provider
+  }
+
+  def register(provider: StorageProvider): Unit = {
+    register(provider.defaultName, provider)
   }
 
   def storagePlugin(storageProps: StorageProps): StoragePlugin = {
     if (storageProps.provider.isEmpty) {
       storages(storageProps)
     } else {
-      providers(storageProps.provider).storages(storageProps)
+      storageProviders(storageProps.provider).storages(storageProps)
     }
+  }
+
+  def storageTypes: Set[String] = {
+    storageProviders.values.flatMap(_.storageTypes).toSet
+  }
+}
+
+private[shadowcloud] sealed trait CryptoModuleRegistry {
+  private[this] val cryptoProviders = mutable.AnyRefMap.empty[String, CryptoProvider]
+  private[this] var hashModules = PartialFunction.empty[HashingMethod, HashingModule]
+  private[this] var encModules = PartialFunction.empty[EncryptionMethod, EncryptionModule]
+
+  def register(providerName: String, provider: CryptoProvider): Unit = {
+    require(providerName.nonEmpty, "Provider name is empty")
+    cryptoProviders += providerName → provider
+
+    if (provider.hashing != PartialFunction.empty) hashModules = provider.hashing.orElse(hashModules)
+    if (provider.encryption != PartialFunction.empty) encModules = provider.encryption.orElse(encModules)
+  }
+
+  def register(provider: CryptoProvider): Unit = {
+    register(provider.defaultName, provider)
   }
 
   def hashingModule(method: HashingMethod): HashingModule = {
     if (method.provider.isEmpty) {
       hashModules(method)
     } else {
-      providers(method.provider).hashing(method)
+      cryptoProviders(method.provider).hashing(method)
     }
   }
 
   def streamHashingModule(method: HashingMethod): StreamHashingModule = {
-    hashingModule(method) match {
+    hashingModule(method.copy(stream = true)) match {
       case m: StreamHashingModule ⇒
         m
 
@@ -79,7 +97,26 @@ private[shadowcloud] final class ModuleRegistry {
     if (method.provider.isEmpty) {
       encModules(method)
     } else {
-      providers(method.provider).encryption(method)
+      cryptoProviders(method.provider).encryption(method)
     }
+  }
+
+  def streamEncryptionModule(method: EncryptionMethod): StreamEncryptionModule = {
+    encryptionModule(method.copy(stream = true)) match {
+      case m: StreamEncryptionModule ⇒
+        m
+
+      case _ ⇒
+        throw new IllegalArgumentException("Stream encryption module required")
+    }
+  }
+
+
+  def hashingAlgorithms: Set[String] = {
+    cryptoProviders.values.flatMap(_.hashingAlgorithms).toSet
+  }
+
+  def encryptionAlgorithms: Set[String] = {
+    cryptoProviders.values.flatMap(_.encryptionAlgorithms).toSet
   }
 }

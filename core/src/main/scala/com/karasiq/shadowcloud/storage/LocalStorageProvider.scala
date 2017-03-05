@@ -1,16 +1,17 @@
 package com.karasiq.shadowcloud.storage
 
-import com.karasiq.shadowcloud.providers.ModuleProvider
+import com.karasiq.shadowcloud.providers.StorageProvider
 import com.karasiq.shadowcloud.storage.files.FileStoragePlugin
 import com.karasiq.shadowcloud.storage.inmem.InMemoryStoragePlugin
-import com.karasiq.shadowcloud.storage.props.StorageProps
 
 import scala.language.postfixOps
 
-private[storage] final class LocalStorageProvider extends ModuleProvider {
-  override val name = "local"
+private[storage] final class LocalStorageProvider extends StorageProvider {
+  override def storageTypes: Set[String] = {
+    Set("memory", "files")
+  }
 
-  override def storages: PartialFunction[StorageProps, StoragePlugin] = {
+  override def storages: StoragePF = {
     case props if props.storageType == "memory" ⇒
       new InMemoryStoragePlugin
 

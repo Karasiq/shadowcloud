@@ -1,16 +1,12 @@
 package com.karasiq.shadowcloud.test.crypto
 
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule}
-import com.karasiq.shadowcloud.providers.ModuleRegistry
-import com.karasiq.shadowcloud.test.utils.TestUtils._
-import com.typesafe.config.ConfigFactory
+import com.karasiq.shadowcloud.test.utils.TestUtils.{modules, _}
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.language.postfixOps
 
 class EncryptionTest extends FlatSpec with Matchers {
-  val modules = ModuleRegistry(ConfigFactory.load().getConfig("shadowcloud"))
-
   "Plain module" should "process data" in {
     val plainModule = modules.encryptionModule(EncryptionMethod.none)
     testModule(plainModule)

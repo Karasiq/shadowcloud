@@ -6,6 +6,7 @@ import akka.util.Timeout
 import com.karasiq.shadowcloud.actors.internal.RegionTracker.{RegionStatus, StorageStatus}
 import com.karasiq.shadowcloud.actors.internal.{RegionTracker, StorageInstantiator}
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
+import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
@@ -55,7 +56,7 @@ class RegionSupervisor extends PersistentActor with ActorLogging with RegionSupe
   // -----------------------------------------------------------------------
   private[this] implicit val timeout = Timeout(10 seconds)
   val persistenceId: String = "regions"
-  val instantiator = StorageInstantiator(ModuleRegistry())
+  val instantiator = StorageInstantiator(ModuleRegistry(AppConfig()))
 
   // -----------------------------------------------------------------------
   // Recover

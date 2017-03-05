@@ -5,6 +5,7 @@ import akka.actor.ActorSystem
 import akka.stream.FlowShape
 import akka.stream.scaladsl.{Flow, GraphDSL, ZipWith}
 import akka.util.ByteString
+import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.providers.ModuleRegistry
@@ -18,7 +19,7 @@ object ChunkProcessing {
   }
 
   def apply(actorSystem: ActorSystem): ChunkProcessing = {
-    apply(ModuleRegistry(actorSystem))(actorSystem.dispatcher)
+    apply(ModuleRegistry(AppConfig(actorSystem)))(actorSystem.dispatcher)
   }
 
   private def allCores: Int = {

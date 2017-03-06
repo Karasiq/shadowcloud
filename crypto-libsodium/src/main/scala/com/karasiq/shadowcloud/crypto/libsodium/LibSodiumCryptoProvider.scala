@@ -19,7 +19,7 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
     case method @ HashingMethod("SHA512", false, _, _) ⇒
       new SHA512HashingModule(method)
 
-    case method @ HashingMethod("BLAKE2", false, _, _) ⇒
+    case method @ HashingMethod("BLAKE2" | "Blake2b", false, _, _) ⇒
       new BLAKE2HashingModule(method)
   }
 

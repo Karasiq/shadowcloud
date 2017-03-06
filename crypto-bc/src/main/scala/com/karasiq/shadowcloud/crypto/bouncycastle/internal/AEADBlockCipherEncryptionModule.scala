@@ -7,19 +7,30 @@ import javax.crypto.KeyGenerator
 import akka.util.ByteString
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto._
-import org.bouncycastle.crypto.modes.AEADBlockCipher
+import org.bouncycastle.crypto.engines.AESEngine
+import org.bouncycastle.crypto.modes.{AEADBlockCipher, GCMBlockCipher}
 import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
 
 import scala.language.postfixOps
 import scala.util.control.NonFatal
 
-private[bouncycastle] final class AEADBlockCipherEncryptionModule(cipher: AEADBlockCipher, keyAlg: String, method: EncryptionMethod) extends StreamEncryptionModule {
+private[bouncycastle] object AEADBlockCipherEncryptionModule {
+  def AES_GCM(method: EncryptionMethod): AEADBlockCipherEncryptionModule = {
+    new AEADBlockCipherEncryptionModule(new GCMBlockCipher(new AESEngine), "AES", BCUtils.GCM_IV_SIZE, method)
+  }
+}
+
+private[bouncycastle] final class AEADBlockCipherEncryptionModule(cipher: AEADBlockCipher, keyAlg: String, defaultIvSize: Int, method: EncryptionMethod) extends StreamEncryptionModule {
   private[this] val ivSize: Int = {
-    try {
-      val config = ConfigProps.toConfig(method.config)
-      config.getInt("iv-size")
-    } catch {
-      case NonFatal(_) ⇒ 12 // Default
+    if (method.config.isEmpty) {
+      defaultIvSize
+    } else {
+      try {
+        val config = ConfigProps.toConfig(method.config)
+        config.getInt("iv-size")
+      } catch {
+        case NonFatal(_) ⇒ defaultIvSize
+      }
     }
   }
   private[this] val secureRandom = new SecureRandom()

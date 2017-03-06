@@ -1,3 +1,5 @@
 name := "shadowcloud-crypto-bc"
 
-libraryDependencies ++= ProjectDeps.bouncyCastle
+libraryDependencies ++=
+  ProjectDeps.bouncyCastle ++
+  ProjectDeps.scalaTest

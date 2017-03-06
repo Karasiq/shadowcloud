@@ -27,12 +27,12 @@ class LibSodiumTest extends FlatSpec with Matchers {
     }
 
     // Hashes
-    testHashing("SHA256", new SHA256HashingModule(HashingMethod("SHA256")),
+    testHashing("SHA256", new MultiPartHashingModule(HashingMethod("SHA256"), _.sha256()),
       "e3fc39605cd8e9245ed8cb41e2730c940e6026b9d2f72ead3b0f2d271e2290e0")
-    testHashing("SHA512", new SHA512HashingModule(HashingMethod("SHA512")),
+    testHashing("SHA512", new MultiPartHashingModule(HashingMethod("SHA512"), _.sha512()),
       "11bba64289c2fefc6caf753cc14fd3b914663f0035b0e2135bb29fc5159f9e99ddc57c577146688f4b64cfae09d9be933c22b17eb4a08cdb92e2c1d68efa0f59")
     testHashing("BLAKE2", new BLAKE2HashingModule(HashingMethod("BLAKE2")),
-      "9f84251be0c325ad771696302e9ed3cd174f84ffdd0b8de49664e9a3ea934b89a4d008581cd5803b80b3284116174b3c4a79a5029996eb59edc1fbacfd18204e")
+      "332d0df07edb201d42e94dbb5171ef8d71bcf3bd713137d7113710ae42d52779")
   } else {
     println("No libsodium found, tests skipped")
   }
@@ -58,8 +58,10 @@ class LibSodiumTest extends FlatSpec with Matchers {
   private[this] def testHashing(name: String, module: HashingModule, testHash: String): Unit = {
     s"$name module" should "generate hash" in {
       val hash = HexString.encode(module.createHash(testData))
-      // println(hash)
+      println(hash)
       hash shouldBe testHash
+      val hash1 = HexString.encode(module.createHash(testData))
+      hash1 shouldBe hash
     }
   }
 }

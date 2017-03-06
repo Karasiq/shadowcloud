@@ -11,15 +11,14 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
     Set("SHA256", "SHA512", "BLAKE2")
   }
 
-  // TODO: Streaming hashers
   override def hashing: HashingPF = ifLoaded(super.hashing) {
-    case method @ HashingMethod("SHA256", false, _, _) ⇒
-      new SHA256HashingModule(method)
+    case method @ HashingMethod("SHA256", _, _, _) ⇒
+      new MultiPartHashingModule(method, _.sha256())
 
-    case method @ HashingMethod("SHA512", false, _, _) ⇒
-      new SHA512HashingModule(method)
+    case method @ HashingMethod("SHA512", _, _, _) ⇒
+      new MultiPartHashingModule(method, _.sha512())
 
-    case method @ HashingMethod("BLAKE2" | "Blake2b", false, _, _) ⇒
+    case method @ HashingMethod("BLAKE2" | "Blake2b", _, _, _) ⇒
       new BLAKE2HashingModule(method)
   }
 

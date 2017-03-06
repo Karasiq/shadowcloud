@@ -24,13 +24,21 @@ private object Benchmark extends App {
   val chunkProcessing = ChunkProcessing(config)(actorSystem.dispatcher)
 
   // Start
-  runWriteBenchmark()
-  runWriteBenchmark(fileHashing = HashingMethod.none) // Single hashing
-  runWriteBenchmark(EncryptionMethod("Salsa20", 256, provider = "libsodium"),
-    HashingMethod("SHA256", provider = "libsodium"), HashingMethod.none)
+  runProviderBenchmark("bouncycastle", "AES", 256, "SHA1")
+  runProviderBenchmark("libsodium", "ChaCha20", 256, "BLAKE2")
   System.exit(0)
 
   // Benchmarks
+  private[this] def runProviderBenchmark(provider: String, encAlg: String, encKeySize: Int, hashAlg: String): Unit = {
+    println("----------------------------------------------------------------------")
+    println(s"${provider.capitalize} $encAlg[$encKeySize]/$hashAlg benchmark")
+    println("----------------------------------------------------------------------")
+    val encMethod = EncryptionMethod(encAlg, encKeySize, provider = provider)
+    val hashMethod = HashingMethod(hashAlg, provider = provider)
+    runWriteBenchmark(encMethod, hashMethod, HashingMethod.none)
+    runWriteBenchmark(encMethod, hashMethod, hashMethod) // Double hashing
+  }
+
   private[this] def runWriteBenchmark(encryption: EncryptionMethod = config.crypto.encryption.chunks,
                                       hashing: HashingMethod = config.crypto.hashing.chunks,
                                       fileHashing: HashingMethod = config.crypto.hashing.files): Unit = {

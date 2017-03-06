@@ -25,16 +25,22 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
 
   // TODO: AES
   override def encryptionAlgorithms: Set[String] = ifLoaded(super.encryptionAlgorithms) {
-    Set("Salsa20")
+    Set("XSalsa20/Poly1305", "ChaCha20/Poly1305") ++ (if (LSUtils.aes256GcmAvailable) Set("AES/GCM") else Set.empty)
   }
 
   override def encryption: EncryptionPF = ifLoaded(super.encryption) {
-    case method @ EncryptionMethod("Salsa20", 256, _, _, _) ⇒
-      new SalsaEncryptionModule(method)
+    case method @ EncryptionMethod("XSalsa20/Poly1305" | "XSalsa20" | "Salsa20", 256, _, _, _) ⇒
+      new SecretBoxEncryptionModule(method)
+
+    case method @ EncryptionMethod("ChaCha20/Poly1305" | "ChaCha20", 256, _, _, _)  ⇒
+      new AEADEncryptionModule(false, method)
+
+    case method @ EncryptionMethod("AES/GCM" | "AES", 256, _, _, _) if LSUtils.aes256GcmAvailable ⇒
+      new AEADEncryptionModule(true, method)
   }
 
   @inline
   private[this] def ifLoaded[T](empty: ⇒ T)(value: ⇒ T): T = {
-    if (LSUtils.libraryLoaded) value else empty
+    if (LSUtils.libraryAvailable) value else empty
   }
 }

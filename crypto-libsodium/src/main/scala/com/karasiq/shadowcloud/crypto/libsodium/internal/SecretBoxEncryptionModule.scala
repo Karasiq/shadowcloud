@@ -5,7 +5,7 @@ import com.karasiq.shadowcloud.crypto._
 import org.abstractj.kalium.NaCl.Sodium
 import org.abstractj.kalium.crypto.{Random, SecretBox}
 
-private[libsodium] final class SalsaEncryptionModule(method: EncryptionMethod) extends StreamEncryptionModule {
+private[libsodium] final class SecretBoxEncryptionModule(method: EncryptionMethod) extends StreamEncryptionModule {
   private[this] val random = new Random()
   private[this] var encryptMode = true
   private[this] var lastKey = ByteString.empty
@@ -46,10 +46,10 @@ private[libsodium] final class SalsaEncryptionModule(method: EncryptionMethod) e
   }
 
   private[this] def generateNonce(): ByteString = {
-    ByteString(random.randomBytes(Sodium.XSALSA20_POLY1305_SECRETBOX_NONCEBYTES))
+    ByteString(random.randomBytes(Sodium.CRYPTO_SECRETBOX_NONCEBYTES))
   }
 
   private[this] def generateKey(): ByteString = {
-    ByteString(random.randomBytes(Sodium.XSALSA20_POLY1305_SECRETBOX_KEYBYTES))
+    ByteString(random.randomBytes(Sodium.CRYPTO_SECRETBOX_KEYBYTES))
   }
 }

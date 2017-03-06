@@ -12,9 +12,21 @@ import scala.language.postfixOps
 class LibSodiumTest extends FlatSpec with Matchers {
   val testData = ByteString("# First, make a nonce: A single-use value never repeated under the same key\n# The nonce isn't secret, and can be sent with the ciphertext.\n# The cipher instance has a nonce_bytes method for determining how many bytes should be in a nonce")
 
-  if (LSUtils.libraryLoaded) {
-    testEncryption("Salsa", new SalsaEncryptionModule(EncryptionMethod("Salsa20", 256)),
-      Sodium.XSALSA20_POLY1305_SECRETBOX_KEYBYTES, Sodium.XSALSA20_POLY1305_SECRETBOX_NONCEBYTES)
+  if (LSUtils.libraryAvailable) {
+    // Encryption
+    testEncryption("Salsa20", new SecretBoxEncryptionModule(EncryptionMethod("Salsa20", 256)),
+      Sodium.CRYPTO_SECRETBOX_KEYBYTES, Sodium.CRYPTO_SECRETBOX_NONCEBYTES)
+    testEncryption("ChaCha20", new AEADEncryptionModule(false, EncryptionMethod("ChaCha20", 256)),
+      Sodium.CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES, Sodium.CRYPTO_AEAD_CHACHA20POLY1305_NPUBBYTES)
+
+    if (LSUtils.aes256GcmAvailable) {
+      testEncryption("AES/GCM", new AEADEncryptionModule(true, EncryptionMethod("AES/GCM", 256)),
+        Sodium.CRYPTO_AEAD_AES256GCM_KEYBYTES, Sodium.CRYPTO_AEAD_AES256GCM_NPUBBYTES)
+    } else {
+      println("Hardware AES not supported")
+    }
+
+    // Hashes
     testHashing("SHA256", new SHA256HashingModule(HashingMethod("SHA256")),
       "e3fc39605cd8e9245ed8cb41e2730c940e6026b9d2f72ead3b0f2d271e2290e0")
     testHashing("SHA512", new SHA512HashingModule(HashingMethod("SHA512")),

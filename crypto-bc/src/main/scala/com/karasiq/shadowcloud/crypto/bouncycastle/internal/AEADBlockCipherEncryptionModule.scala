@@ -12,7 +12,7 @@ import org.bouncycastle.crypto.modes.{AEADBlockCipher, GCMBlockCipher}
 import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
 
 import scala.language.postfixOps
-import scala.util.control.NonFatal
+import scala.util.Try
 
 private[bouncycastle] object AEADBlockCipherEncryptionModule {
   def AES_GCM(method: EncryptionMethod): AEADBlockCipherEncryptionModule = {
@@ -21,18 +21,9 @@ private[bouncycastle] object AEADBlockCipherEncryptionModule {
 }
 
 private[bouncycastle] final class AEADBlockCipherEncryptionModule(cipher: AEADBlockCipher, keyAlg: String, defaultIvSize: Int, method: EncryptionMethod) extends StreamEncryptionModule {
-  private[this] val ivSize: Int = {
-    if (method.config.isEmpty) {
-      defaultIvSize
-    } else {
-      try {
-        val config = ConfigProps.toConfig(method.config)
-        config.getInt("iv-size")
-      } catch {
-        case NonFatal(_) ⇒ defaultIvSize
-      }
-    }
-  }
+  private[this] val ivSize: Int = Try(ConfigProps.toConfig(method.config))
+    .map(_.getInt("iv-size"))
+    .getOrElse(defaultIvSize)
   private[this] val secureRandom = new SecureRandom()
   private[this] val keyGenerator = KeyGenerator.getInstance(keyAlg, BCUtils.provider)
   keyGenerator.init(method.keySize, secureRandom)

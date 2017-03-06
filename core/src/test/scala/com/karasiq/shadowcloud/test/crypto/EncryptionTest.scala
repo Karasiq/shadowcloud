@@ -18,8 +18,8 @@ class EncryptionTest extends FlatSpec with Matchers {
   "AES module" should "generate key" in {
     val aesParameters = aesModule.createParameters().symmetric
     aesParameters.key.length shouldBe (aesMethod.keySize / 8)
-    aesParameters.iv should not be empty
-    println(s"Key = ${aesParameters.key.toHexString}, iv = ${aesParameters.iv.toHexString}")
+    aesParameters.nonce should not be empty
+    println(s"Key = ${aesParameters.key.toHexString}, iv = ${aesParameters.nonce.toHexString}")
   }
 
   it should "encrypt data" in {

@@ -38,6 +38,10 @@ lazy val bouncyCastleCrypto = (project in file("crypto-bc"))
   .settings(commonSettings)
   .dependsOn(pluginParent)
 
+lazy val libSodiumCrypto = (project in file("crypto-libsodium"))
+  .settings(commonSettings)
+  .dependsOn(pluginParent)
+
 // -----------------------------------------------------------------------
 // HTTP
 // -----------------------------------------------------------------------

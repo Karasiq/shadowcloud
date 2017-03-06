@@ -24,7 +24,7 @@ private[serialization] final class KryoSerializationModule extends Serialization
       kryo.registerClasses(Iterator(classOf[ByteString], classOf[Checksum], classOf[Chunk], classOf[ChunkIndex],
         classOf[FolderIndex], classOf[ChunkIndexDiff], classOf[Data], classOf[File], classOf[Folder], classOf[FolderDiff],
         classOf[FolderIndexDiff], classOf[IndexDiff], classOf[Path], classOf[HashingMethod], classOf[EncryptionMethod],
-        EmptyEncryptionParameters.getClass, classOf[SymmetricEncryptionParameters], classOf[AsymmetricEncryptionParameters]
+        classOf[SymmetricEncryptionParameters], classOf[AsymmetricEncryptionParameters]
       ))
       kryo
     }

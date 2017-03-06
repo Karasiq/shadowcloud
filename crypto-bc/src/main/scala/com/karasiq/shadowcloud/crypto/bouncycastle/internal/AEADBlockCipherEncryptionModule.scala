@@ -31,13 +31,13 @@ private[bouncycastle] final class AEADBlockCipherEncryptionModule(cipher: AEADBl
   }
 
   def updateParameters(parameters: EncryptionParameters): EncryptionParameters = {
-    parameters.symmetric.copy(iv = generateIV())
+    parameters.symmetric.copy(nonce = generateIV())
   }
 
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
     val symParameters = parameters.symmetric
     val key = symParameters.key.toArray
-    val iv = symParameters.iv.toArray
+    val iv = symParameters.nonce.toArray
     val keyParams = new ParametersWithIV(new KeyParameter(key), iv)
     try {
       cipher.init(encrypt, keyParams)

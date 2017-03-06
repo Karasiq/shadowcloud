@@ -1,8 +1,9 @@
 package com.karasiq.shadowcloud.crypto.libsodium.test
 
 import akka.util.ByteString
+import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto.libsodium.internal._
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule, HashingMethod, HashingModule}
+import com.karasiq.shadowcloud.crypto.{EncryptionModule, HashingMethod, HashingModule}
 import com.karasiq.shadowcloud.utils.HexString
 import org.abstractj.kalium.NaCl.Sodium
 import org.scalatest.{FlatSpec, Matchers}
@@ -14,25 +15,27 @@ class LibSodiumTest extends FlatSpec with Matchers {
 
   if (LSUtils.libraryAvailable) {
     // Encryption
-    testEncryption("Salsa20", new SecretBoxEncryptionModule(EncryptionMethod("Salsa20", 256)),
+    testEncryption("XSalsa20/Poly1305", SecretBoxEncryptionModule(),
       Sodium.CRYPTO_SECRETBOX_KEYBYTES, Sodium.CRYPTO_SECRETBOX_NONCEBYTES)
-    testEncryption("ChaCha20", new AEADEncryptionModule(false, EncryptionMethod("ChaCha20", 256)),
+    testEncryption("ChaCha20/Poly1305", AEADEncryptionModule.ChaCha20_Poly1305(),
       Sodium.CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES, Sodium.CRYPTO_AEAD_CHACHA20POLY1305_NPUBBYTES)
 
     if (LSUtils.aes256GcmAvailable) {
-      testEncryption("AES/GCM", new AEADEncryptionModule(true, EncryptionMethod("AES/GCM", 256)),
+      testEncryption("AES/GCM", AEADEncryptionModule.AES_GCM(),
         Sodium.CRYPTO_AEAD_AES256GCM_KEYBYTES, Sodium.CRYPTO_AEAD_AES256GCM_NPUBBYTES)
     } else {
       println("Hardware AES not supported")
     }
 
     // Hashes
-    testHashing("SHA256", new MultiPartHashingModule(HashingMethod("SHA256"), _.sha256()),
+    testHashing("SHA256", MultiPartHashingModule.SHA256(),
       "e3fc39605cd8e9245ed8cb41e2730c940e6026b9d2f72ead3b0f2d271e2290e0")
-    testHashing("SHA512", new MultiPartHashingModule(HashingMethod("SHA512"), _.sha512()),
+    testHashing("SHA512", MultiPartHashingModule.SHA512(),
       "11bba64289c2fefc6caf753cc14fd3b914663f0035b0e2135bb29fc5159f9e99ddc57c577146688f4b64cfae09d9be933c22b17eb4a08cdb92e2c1d68efa0f59")
-    testHashing("BLAKE2", new BLAKE2HashingModule(HashingMethod("BLAKE2")),
-      "332d0df07edb201d42e94dbb5171ef8d71bcf3bd713137d7113710ae42d52779")
+    testHashing("Blake2b", Blake2bHashingModule(),
+      "824396f4585a22b2c4b36df76f55e669d4edfb423970071b6b616ce454a95400")
+    testHashing("Blake2b-512", Blake2bHashingModule(HashingMethod("Blake2b", config = ConfigProps("digest-size" → 512))),
+      "9f84251be0c325ad771696302e9ed3cd174f84ffdd0b8de49664e9a3ea934b89a4d008581cd5803b80b3284116174b3c4a79a5029996eb59edc1fbacfd18204e")
   } else {
     println("No libsodium found, tests skipped")
   }
@@ -58,7 +61,7 @@ class LibSodiumTest extends FlatSpec with Matchers {
   private[this] def testHashing(name: String, module: HashingModule, testHash: String): Unit = {
     s"$name module" should "generate hash" in {
       val hash = HexString.encode(module.createHash(testData))
-      println(hash)
+      // println(hash)
       hash shouldBe testHash
       val hash1 = HexString.encode(module.createHash(testData))
       hash1 shouldBe hash

@@ -14,7 +14,7 @@ private[shadowcloud] object CryptoProps extends ConfigImplicits {
 
   def encryption(config: Config): EncryptionMethod = {
     val algorithm = config.getString("algorithm")
-    val keySize = config.withDefault(128, _.getInt("key-size"))
+    val keySize = config.withDefault(256, _.getInt("key-size"))
     val stream = config.withDefault(false, _.getBoolean("stream"))
     val provider = config.withDefault("", _.getString("provider"))
     val props = ConfigProps.fromConfig(withoutPaths(config, "algorithm", "key-size", "stream", "provider"))

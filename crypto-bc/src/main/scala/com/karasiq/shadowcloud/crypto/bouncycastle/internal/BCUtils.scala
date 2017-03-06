@@ -12,6 +12,4 @@ private[bouncycastle] object BCUtils {
     "GOST3411", /* "Keccak", */ "MD2", "MD4", "MD5", "SHA1", "RIPEMD128", "RIPEMD160", "RIPEMD256", "RIPEMD320", "SHA224",
     "SHA256", "SHA384", "SHA512", /* "SHA3", "Skein", */ "SM3", "Tiger", "Whirlpool"/*, "Blake2b" */
   )
-
-  val GCM_IV_SIZE: Int = 12
 }

@@ -5,6 +5,12 @@ import com.karasiq.shadowcloud.crypto._
 import org.abstractj.kalium.NaCl.Sodium
 import org.abstractj.kalium.crypto.{Random, SecretBox}
 
+private[libsodium] object SecretBoxEncryptionModule {
+  def apply(method: EncryptionMethod = EncryptionMethod("XSalsa20/Poly1305", 256)): SecretBoxEncryptionModule = {
+    new SecretBoxEncryptionModule(method)
+  }
+}
+
 private[libsodium] final class SecretBoxEncryptionModule(method: EncryptionMethod) extends StreamEncryptionModule {
   private[this] val random = new Random()
   private[this] var encryptMode = true

@@ -24,15 +24,18 @@ private object Benchmark extends App {
   val chunkProcessing = ChunkProcessing(config)(actorSystem.dispatcher)
 
   // Start
-  runProviderBenchmark("bouncycastle", "AES", 256, "SHA1")
-  runProviderBenchmark("libsodium", "ChaCha20", 256, "BLAKE2")
+  printBlock("Default settings benchmark")
+  runWriteBenchmark()
+
+  runProviderBenchmark("bouncycastle", "AES/GCM", 256, "Blake2b")
+  runProviderBenchmark("bouncycastle", "ChaCha20", 256, "Blake2b")
+  runProviderBenchmark("libsodium", "AES/GCM", 256, "Blake2b")
+  runProviderBenchmark("libsodium", "ChaCha20/Poly1305", 256, "Blake2b")
   System.exit(0)
 
   // Benchmarks
   private[this] def runProviderBenchmark(provider: String, encAlg: String, encKeySize: Int, hashAlg: String): Unit = {
-    println("----------------------------------------------------------------------")
-    println(s"${provider.capitalize} $encAlg[$encKeySize]/$hashAlg benchmark")
-    println("----------------------------------------------------------------------")
+    printBlock(s"$provider $encAlg[$encKeySize]/$hashAlg benchmark")
     val encMethod = EncryptionMethod(encAlg, encKeySize, provider = provider)
     val hashMethod = HashingMethod(hashAlg, provider = provider)
     runWriteBenchmark(encMethod, hashMethod, HashingMethod.none)
@@ -46,26 +49,26 @@ private object Benchmark extends App {
     val chunkCount = 1024
     val mbCount = chunkCount * (chunkSize.toDouble / MemorySize.MB)
     println(s"Starting write benchmark: $encryption/$hashing/$fileHashing")
-    
-    val startTime = System.nanoTime()
-    val promise = Promise[Done]
-    randomBytesSource(chunkSize)
-      .via(ChunkSplitter(chunkSize))
-      .take(chunkCount)
-      .via(chunkProcessing.beforeWrite(encryption, hashing))
-      .alsoTo(chunkProcessing.index(fileHashing))
-      .runWith(Sink.onComplete {
-        case Success(Done) ⇒
-          val elapsed = (System.nanoTime() - startTime).nanos
-          val perMb = elapsed / mbCount
-          val speed = 1.second / perMb
-          println(f"Write benchmark completed, ${elapsed.toSeconds} seconds elapsed, ${perMb.toMillis} ms per megabyte, $speed%.2f MB/sec")
-          promise.success(Done)
 
-        case Failure(error) ⇒
-          promise.failure(error)
-      })
     try {
+      val startTime = System.nanoTime()
+      val promise = Promise[Done]
+      randomBytesSource(chunkSize)
+        .via(ChunkSplitter(chunkSize))
+        .take(chunkCount)
+        .via(chunkProcessing.beforeWrite(encryption, hashing))
+        .alsoTo(chunkProcessing.index(fileHashing))
+        .runWith(Sink.onComplete {
+          case Success(Done) ⇒
+            val elapsed = (System.nanoTime() - startTime).nanos
+            val perMb = elapsed / mbCount
+            val speed = 1.second / perMb
+            println(f"Write benchmark completed, ${elapsed.toSeconds} seconds elapsed, ${perMb.toMillis} ms per megabyte, $speed%.2f MB/sec")
+            promise.success(Done)
+
+          case Failure(error) ⇒
+            promise.failure(error)
+        })
       Await.result(promise.future, Duration.Inf)
     } catch {
       case NonFatal(exc) ⇒ println(s"Benchmark failed: $exc")
@@ -81,5 +84,12 @@ private object Benchmark extends App {
         ByteString(bytes)
       }
     })
+  }
+
+  private[this] def printBlock(str: String): Unit = {
+    println()
+    println("----------------------------------------------------------------------")
+    println(str.capitalize)
+    println("----------------------------------------------------------------------")
   }
 }

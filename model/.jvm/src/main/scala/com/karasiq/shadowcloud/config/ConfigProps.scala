@@ -4,6 +4,7 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.utils.Utils
 import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
 
+import scala.collection.JavaConverters._
 import scala.language.postfixOps
 
 private[shadowcloud] object ConfigProps {
@@ -14,6 +15,14 @@ private[shadowcloud] object ConfigProps {
       val configString = config.root().render(ConfigRenderOptions.concise())
       SerializedProps("json", ByteString(configString))
     }
+  }
+
+  def fromMap(map: Map[String, _]): SerializedProps = {
+    fromConfig(ConfigFactory.parseMap(map.asJava))
+  }
+
+  def apply(values: (String, _)*): SerializedProps = {
+    fromMap(values.toMap)
   }
 
   def toConfig(props: SerializedProps): Config = {

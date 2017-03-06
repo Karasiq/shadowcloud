@@ -1,10 +1,11 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.test
 
-import java.security.{MessageDigest, NoSuchAlgorithmException}
+import java.security.NoSuchAlgorithmException
 
 import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{AEADBlockCipherEncryptionModule, BCUtils, MessageDigestHashingModule}
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule, HashingMethod}
+import com.karasiq.shadowcloud.config.ConfigProps
+import com.karasiq.shadowcloud.crypto.bouncycastle.internal._
+import com.karasiq.shadowcloud.crypto.{EncryptionModule, HashingMethod, HashingModule}
 import com.karasiq.shadowcloud.utils.HexString
 import org.scalatest.{FlatSpec, Matchers}
 
@@ -23,19 +24,26 @@ class BouncyCastleTest extends FlatSpec with Matchers {
     "67d64b31980590f553806a43a4a7946b2d9f0aa99430afeb6992d2f03df29caf",
     "cd5a67223ed15d87c1f5bfba5226256a5578126bff0106c2e8e6743204df64306324277d5e1519a8",
     "d6d7ec52fbbb5ca8fc5a1cf32e91cf5fcdb3940bf3ce9fc02e4c93ed",
-    "e3fc39605cd8e9245ed8cb41e2730c940e6026b9d2f72ead3b0f2d271e2290e0",
+    "e3fc39605cd8e9245ed8cb41e2730c940e6026b9d2f72ead3b0f2d271e2290e0", // SHA256
     "34f9d73f9797df99ea73247512ddfe93a518791a3fa1d00cdf5760a801b63a013e7fa9086b64907740d8bf9930a1d9c4",
-    "11bba64289c2fefc6caf753cc14fd3b914663f0035b0e2135bb29fc5159f9e99ddc57c577146688f4b64cfae09d9be933c22b17eb4a08cdb92e2c1d68efa0f59",
+    "11bba64289c2fefc6caf753cc14fd3b914663f0035b0e2135bb29fc5159f9e99ddc57c577146688f4b64cfae09d9be933c22b17eb4a08cdb92e2c1d68efa0f59", // SHA512
     "510da5764778db12d7c094b86ac0f7aaf0a18eca4cedc0048dfd25f2039f3eea",
     "655cbea331b81708a8e1392ae0a5ba54c558f440b3a254ee",
     "44444854782341ac2e2e8076a8a97880d5d2f83e90f087544af94315d71c585d65f68a58174ede4e34ccb4daae71ff60ab3232a6ec521704b8560cb0b6472688"
   )
 
-  testEncryption("AES/GCM", AEADBlockCipherEncryptionModule.AES_GCM(EncryptionMethod("AES/GCM", 256)), 32, 12)
+  testEncryption("AES/GCM", AEADBlockCipherEncryptionModule.AES_GCM(), 32, 12)
+  testEncryption("Salsa20", StreamCipherEncryptionModule.Salsa20(), 32, 8)
+  testEncryption("XSalsa20", StreamCipherEncryptionModule.XSalsa20(), 32, 24)
+  testEncryption("ChaCha20", StreamCipherEncryptionModule.ChaCha20(), 32, 8)
 
   BCUtils.DIGESTS.zip(testHashes).foreach { case (alg, hash) ⇒
     testHashing(alg, hash)
   }
+
+  testHashing(DigestHashingModule.Blake2b(), "824396f4585a22b2c4b36df76f55e669d4edfb423970071b6b616ce454a95400")
+  testHashing(DigestHashingModule.Blake2b(HashingMethod("Blake2b-512", config = ConfigProps("digest-size" → 512))),
+    "9f84251be0c325ad771696302e9ed3cd174f84ffdd0b8de49664e9a3ea934b89a4d008581cd5803b80b3284116174b3c4a79a5029996eb59edc1fbacfd18204e")
 
   private[this] def testEncryption(name: String, module: EncryptionModule, keySize: Int, nonceSize: Int): Unit = {
     s"$name module" should "generate key" in {
@@ -57,15 +65,19 @@ class BouncyCastleTest extends FlatSpec with Matchers {
 
   private[this] def testHashing(name: String, testHash: String): Unit = {
     try {
-      val module = new MessageDigestHashingModule(HashingMethod(name), MessageDigest.getInstance(name, BCUtils.provider))
-      s"$name module" should "generate hash" in {
-        val hash = HexString.encode(module.createHash(testData))
-        // println('"' + hash + '"' + ",")
-        hash shouldBe testHash
-      }
+      val module = MessageDigestHashingModule(name)
+      testHashing(module, testHash)
     } catch {
       case _: NoSuchAlgorithmException ⇒
         println(s"No such algorithm: $name")
+    }
+  }
+
+  private[this] def testHashing(module: HashingModule, testHash: String): Unit = {
+    s"${module.method.algorithm} module" should "generate hash" in {
+      val hash = HexString.encode(module.createHash(testData))
+      // println('"' + hash + '"' + ",")
+      hash shouldBe testHash
     }
   }
 }

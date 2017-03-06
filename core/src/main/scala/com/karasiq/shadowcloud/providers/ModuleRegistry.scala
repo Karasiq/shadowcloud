@@ -1,5 +1,7 @@
 package com.karasiq.shadowcloud.providers
 
+import java.security.NoSuchAlgorithmException
+
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.storage.StoragePlugin
@@ -76,11 +78,12 @@ private[shadowcloud] sealed trait CryptoModuleRegistry {
   }
 
   def hashingModule(method: HashingMethod): HashingModule = {
-    if (method.provider.isEmpty) {
-      hashModules(method)
+    val pf = if (method.provider.isEmpty) {
+      hashModules
     } else {
-      cryptoProviders(method.provider).hashing(method)
+      cryptoProviders(method.provider).hashing
     }
+    moduleFromPF(pf, method)
   }
 
   def streamHashingModule(method: HashingMethod): StreamHashingModule = {
@@ -94,11 +97,12 @@ private[shadowcloud] sealed trait CryptoModuleRegistry {
   }
 
   def encryptionModule(method: EncryptionMethod): EncryptionModule = {
-    if (method.provider.isEmpty) {
-      encModules(method)
+    val pf = if (method.provider.isEmpty) {
+      encModules
     } else {
-      cryptoProviders(method.provider).encryption(method)
+      cryptoProviders(method.provider).encryption
     }
+    moduleFromPF(pf, method)
   }
 
   def streamEncryptionModule(method: EncryptionMethod): StreamEncryptionModule = {
@@ -118,5 +122,10 @@ private[shadowcloud] sealed trait CryptoModuleRegistry {
 
   def encryptionAlgorithms: Set[String] = {
     cryptoProviders.values.flatMap(_.encryptionAlgorithms).toSet
+  }
+
+  @inline 
+  private[this] def moduleFromPF[T <: CryptoMethod, R](pf: PartialFunction[T, R], method: T): R = {
+    if (pf.isDefinedAt(method)) pf(method) else throw new NoSuchAlgorithmException(method.algorithm)
   }
 }

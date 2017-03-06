@@ -8,18 +8,18 @@ import scala.language.postfixOps
 
 final class LibSodiumCryptoProvider extends CryptoProvider {
   override val hashingAlgorithms: Set[String] = ifLoaded(super.hashingAlgorithms) {
-    Set("SHA256", "SHA512", "BLAKE2")
+    Set("SHA256", "SHA512", "Blake2b")
   }
 
   override def hashing: HashingPF = ifLoaded(super.hashing) {
     case method @ HashingMethod("SHA256", _, _, _) ⇒
-      new MultiPartHashingModule(method, _.sha256())
+      MultiPartHashingModule.SHA256(method)
 
     case method @ HashingMethod("SHA512", _, _, _) ⇒
-      new MultiPartHashingModule(method, _.sha512())
+      MultiPartHashingModule.SHA512(method)
 
-    case method @ HashingMethod("BLAKE2" | "Blake2b", _, _, _) ⇒
-      new BLAKE2HashingModule(method)
+    case method @ HashingMethod("Blake2b" | "BLAKE2", _, _, _) ⇒
+      Blake2bHashingModule(method)
   }
 
   // TODO: AES
@@ -28,14 +28,14 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
   }
 
   override def encryption: EncryptionPF = ifLoaded(super.encryption) {
-    case method @ EncryptionMethod("XSalsa20/Poly1305" | "XSalsa20" | "Salsa20", 256, _, _, _) ⇒
-      new SecretBoxEncryptionModule(method)
+    case method @ EncryptionMethod("XSalsa20/Poly1305", 256, _, _, _) ⇒
+      SecretBoxEncryptionModule(method)
 
-    case method @ EncryptionMethod("ChaCha20/Poly1305" | "ChaCha20", 256, _, _, _)  ⇒
-      new AEADEncryptionModule(false, method)
+    case method @ EncryptionMethod("ChaCha20/Poly1305", 256, _, _, _)  ⇒
+      AEADEncryptionModule.ChaCha20_Poly1305(method)
 
-    case method @ EncryptionMethod("AES/GCM" | "AES", 256, _, _, _) if LSUtils.aes256GcmAvailable ⇒
-      new AEADEncryptionModule(true, method)
+    case method @ EncryptionMethod("AES/GCM", 256, _, _, _) if LSUtils.aes256GcmAvailable ⇒
+      AEADEncryptionModule.AES_GCM(method)
   }
 
   @inline

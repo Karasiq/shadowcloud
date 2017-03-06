@@ -1,20 +1,32 @@
 package com.karasiq.shadowcloud.crypto.libsodium.internal
 
 import akka.util.ByteString
-import com.karasiq.shadowcloud.config.ConfigProps
+import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.shadowcloud.config.{ConfigProps, SerializedProps}
 import com.karasiq.shadowcloud.crypto._
 import org.abstractj.kalium.NaCl.Sodium
 import org.abstractj.kalium.crypto.{Aead, Random}
 
-import scala.util.Try
+private[libsodium] object AEADEncryptionModule extends ConfigImplicits {
+  def AES_GCM(method: EncryptionMethod = EncryptionMethod("AES/GCM", 256)): AEADEncryptionModule = {
+    new AEADEncryptionModule(method, true, getADSize(method.config))
+  }
 
-private[libsodium] final class AEADEncryptionModule(useAes: Boolean, method: EncryptionMethod) extends StreamEncryptionModule {
+  def ChaCha20_Poly1305(method: EncryptionMethod = EncryptionMethod("ChaCha20/Poly1305", 256)): AEADEncryptionModule = {
+    new AEADEncryptionModule(method, false, getADSize(method.config))
+  }
+
+  private[this] def getADSize(props: SerializedProps): Int = {
+    val config = ConfigProps.toConfig(props)
+    config.withDefault(0, _.getInt("ad-size"))
+  }
+}
+
+private[libsodium] final class AEADEncryptionModule(method: EncryptionMethod, useAes: Boolean = false,
+                                                    additionalDataSize: Int = 0) extends StreamEncryptionModule {
   private[this] val KEY_BYTES = if (useAes) Sodium.CRYPTO_AEAD_AES256GCM_KEYBYTES else Sodium.CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES
   private[this] val NONCE_BYTES = if (useAes) Sodium.CRYPTO_AEAD_AES256GCM_NPUBBYTES else Sodium.CRYPTO_AEAD_CHACHA20POLY1305_NPUBBYTES
 
-  private[this] val additionalDataSize: Int = Try(ConfigProps.toConfig(method.config))
-    .map(_.getInt("ad-size"))
-    .getOrElse(0)
   private[this] val random = new Random()
   private[this] var encryptMode = true
   private[this] var lastKey = ByteString.empty

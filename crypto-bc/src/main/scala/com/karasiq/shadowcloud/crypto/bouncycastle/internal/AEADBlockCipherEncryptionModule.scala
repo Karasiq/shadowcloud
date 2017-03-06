@@ -6,24 +6,24 @@ import javax.crypto.KeyGenerator
 
 import akka.util.ByteString
 import com.karasiq.shadowcloud.config.ConfigProps
+import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto._
 import org.bouncycastle.crypto.engines.AESEngine
 import org.bouncycastle.crypto.modes.{AEADBlockCipher, GCMBlockCipher}
 import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
 
 import scala.language.postfixOps
-import scala.util.Try
 
-private[bouncycastle] object AEADBlockCipherEncryptionModule {
-  def AES_GCM(method: EncryptionMethod): AEADBlockCipherEncryptionModule = {
-    new AEADBlockCipherEncryptionModule(new GCMBlockCipher(new AESEngine), "AES", BCUtils.GCM_IV_SIZE, method)
+private[bouncycastle] object AEADBlockCipherEncryptionModule extends ConfigImplicits {
+  def AES_GCM(method: EncryptionMethod = EncryptionMethod("AES/GCM", 256)): AEADBlockCipherEncryptionModule = {
+    val config = ConfigProps.toConfig(method.config)
+    val ivSize = config.withDefault(12, _.getInt("iv-size"))
+    new AEADBlockCipherEncryptionModule(new GCMBlockCipher(new AESEngine), "AES", ivSize, method)
   }
 }
 
-private[bouncycastle] final class AEADBlockCipherEncryptionModule(cipher: AEADBlockCipher, keyAlg: String, defaultIvSize: Int, method: EncryptionMethod) extends StreamEncryptionModule {
-  private[this] val ivSize: Int = Try(ConfigProps.toConfig(method.config))
-    .map(_.getInt("iv-size"))
-    .getOrElse(defaultIvSize)
+private[bouncycastle] final class AEADBlockCipherEncryptionModule(cipher: AEADBlockCipher, keyAlg: String, ivSize: Int,
+                                                                  method: EncryptionMethod) extends StreamEncryptionModule {
   private[this] val secureRandom = new SecureRandom()
   private[this] val keyGenerator = KeyGenerator.getInstance(keyAlg, BCUtils.provider)
   keyGenerator.init(method.keySize, secureRandom)
@@ -62,7 +62,7 @@ private[bouncycastle] final class AEADBlockCipherEncryptionModule(cipher: AEADBl
   }
 
   private[this] def generateIV(): ByteString = {
-    val iv = Array.ofDim[Byte](ivSize)
+    val iv = new Array[Byte](ivSize)
     secureRandom.nextBytes(iv)
     ByteString(iv)
   }

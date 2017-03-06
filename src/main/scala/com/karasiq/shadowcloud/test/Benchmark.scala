@@ -7,13 +7,13 @@ import akka.util.{ByteString, Timeout}
 import akka.{Done, NotUsed}
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
-import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.streams.{ChunkProcessing, ChunkSplitter}
 import com.karasiq.shadowcloud.utils.MemorySize
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Promise}
 import scala.language.postfixOps
+import scala.util.control.NonFatal
 import scala.util.{Failure, Random, Success}
 
 private object Benchmark extends App {
@@ -21,13 +21,13 @@ private object Benchmark extends App {
   implicit val actorMaterializer = ActorMaterializer()
   implicit val timeout = Timeout(15 seconds)
   val config = AppConfig(actorSystem)
-  val chunkProcessing = ChunkProcessing(ModuleRegistry(config))(actorSystem.dispatcher)
+  val chunkProcessing = ChunkProcessing(config)(actorSystem.dispatcher)
 
   // Start
   runWriteBenchmark()
-  runWriteBenchmark(fileHashing = HashingMethod.none)
-  runWriteBenchmark(hashing = HashingMethod.none, fileHashing = HashingMethod.none)
-  runWriteBenchmark(encryption = EncryptionMethod.none)
+  runWriteBenchmark(fileHashing = HashingMethod.none) // Single hashing
+  runWriteBenchmark(EncryptionMethod("Salsa20", 256, provider = "libsodium"),
+    HashingMethod("SHA256", provider = "libsodium"), HashingMethod.none)
   System.exit(0)
 
   // Benchmarks
@@ -37,7 +37,7 @@ private object Benchmark extends App {
     val chunkSize = MemorySize.MB
     val chunkCount = 1024
     val mbCount = chunkCount * (chunkSize.toDouble / MemorySize.MB)
-    println(s"Starting write benchmark: $encryption/$hashing/$hashing")
+    println(s"Starting write benchmark: $encryption/$hashing/$fileHashing")
     
     val startTime = System.nanoTime()
     val promise = Promise[Done]
@@ -57,7 +57,11 @@ private object Benchmark extends App {
         case Failure(error) ⇒
           promise.failure(error)
       })
-    Await.result(promise.future, Duration.Inf)
+    try {
+      Await.result(promise.future, Duration.Inf)
+    } catch {
+      case NonFatal(exc) ⇒ println(s"Benchmark failed: $exc")
+    }
   }
 
   // Utils

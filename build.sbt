@@ -25,7 +25,7 @@ lazy val modelJS = model.js
 // -----------------------------------------------------------------------
 lazy val core = project
   .settings(commonSettings)
-  .dependsOn(modelJVM, pluginParent, bouncyCastleCrypto)
+  .dependsOn(modelJVM, pluginParent, bouncyCastleCrypto, libSodiumCrypto)
 
 // -----------------------------------------------------------------------
 // Plugins

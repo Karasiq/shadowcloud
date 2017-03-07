@@ -28,8 +28,11 @@ private object Benchmark extends App {
   runWriteBenchmark()
 
   runProviderBenchmark("bouncycastle", "AES/GCM", 256, "Blake2b")
+  runProviderBenchmark("bouncycastle", "XSalsa20", 256, "Blake2b")
   runProviderBenchmark("bouncycastle", "ChaCha20", 256, "Blake2b")
   runProviderBenchmark("libsodium", "AES/GCM", 256, "Blake2b")
+  runProviderBenchmark("libsodium", "XSalsa20", 256, "Blake2b")
+  runProviderBenchmark("libsodium", "ChaCha20", 256, "Blake2b")
   runProviderBenchmark("libsodium", "ChaCha20/Poly1305", 256, "Blake2b")
   System.exit(0)
 

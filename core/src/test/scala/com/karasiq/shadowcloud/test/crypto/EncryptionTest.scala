@@ -17,6 +17,11 @@ class EncryptionTest extends FlatSpec with Matchers {
     runTest("XSalsa20", 32, 24)
     runTest("ChaCha20/Poly1305", 32, 8)
     runTest("XSalsa20/Poly1305", 32, 24)
+
+    runDoubleCrossTest("bouncycastle", "libsodium", "Salsa20")
+    runDoubleCrossTest("bouncycastle", "libsodium", "XSalsa20")
+    runDoubleCrossTest("bouncycastle", "libsodium", "ChaCha20")
+    runDoubleCrossTest("bouncycastle", "libsodium", "AES/GCM")
   } catch {
     case e: NoSuchAlgorithmException ⇒ println(s"Not available: ${e.getMessage}")
   }
@@ -43,5 +48,28 @@ class EncryptionTest extends FlatSpec with Matchers {
     val decrypted = module.decrypt(encrypted, parameters)
     decrypted shouldBe data
     module.encrypt(decrypted, parameters) shouldBe encrypted // Restore
+  }
+
+  private[this] def runCrossTest(method1: EncryptionMethod, method2: EncryptionMethod): Unit = {
+    def toString(m: EncryptionMethod) = s"${m.provider.capitalize} (${m.algorithm})"
+    val module1 = modules.encryptionModule(method1)
+    val module2 = modules.encryptionModule(method2)
+    s"${toString(method1)}" should s"create compatible data for ${toString(method2)}" in {
+      val data = randomBytes(100)
+      val parameters = module1.createParameters()
+      val encrypted = module1.encrypt(data, parameters)
+      val decrypted = module2.decrypt(encrypted, parameters)
+      decrypted shouldBe data
+    }
+  }
+
+  private[this] def runDoubleCrossTest(method1: EncryptionMethod, method2: EncryptionMethod): Unit = {
+    runCrossTest(method1, method2)
+    runCrossTest(method2, method1)
+  }
+
+  //noinspection NameBooleanParameters
+  private[this] def runDoubleCrossTest(provider1: String, provider2: String, alg: String, keySize: Int = 256): Unit = {
+    runDoubleCrossTest(EncryptionMethod(alg, keySize, false, provider1), EncryptionMethod(alg, keySize, false, provider2))
   }
 }

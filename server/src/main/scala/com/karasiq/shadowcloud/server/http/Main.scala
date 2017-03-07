@@ -17,7 +17,7 @@ import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.{File, Path}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams._
-import com.karasiq.shadowcloud.utils.{HexString, MemorySize}
+import com.karasiq.shadowcloud.utils.MemorySize
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -46,7 +46,7 @@ object Main extends HttpApp with App with PredefinedToResponseMarshallers {
       (extractRequestEntity & extractPath) { (entity, path) ⇒
         val future = entity.dataBytes
           .runWith(writeFile("testRegion", path))
-          .map(file ⇒ HexString.encode(file.checksum.encryptedHash))
+          .map(_.chunks.mkString("\r\n"))
         complete(future)
       }
     } ~

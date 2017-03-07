@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.crypto.libsodium.internal
+package com.karasiq.shadowcloud.crypto.libsodium.hashing
 
 import java.util
 
@@ -9,15 +9,15 @@ import com.karasiq.shadowcloud.crypto.{HashingMethod, StreamHashingModule}
 import org.abstractj.kalium.NaCl
 import org.abstractj.kalium.crypto.Util
 
-private[libsodium] object Blake2bHashingModule extends ConfigImplicits {
-  def apply(method: HashingMethod = HashingMethod("Blake2b")): Blake2bHashingModule = {
+private[libsodium] object Blake2bModule extends ConfigImplicits {
+  def apply(method: HashingMethod = HashingMethod("Blake2b")): Blake2bModule = {
     val config = ConfigProps.toConfig(method.config)
     val digestSize = config.withDefault(256, _.getInt("digest-size"))
-    new Blake2bHashingModule(method, digestSize)
+    new Blake2bModule(method, digestSize)
   }
 }
 
-private[libsodium] final class Blake2bHashingModule(val method: HashingMethod, size: Int) extends StreamHashingModule {
+private[libsodium] final class Blake2bModule(val method: HashingMethod, size: Int) extends StreamHashingModule {
   private[this] val sodium = NaCl.sodium()
   private[this] val stateSize = sodium.crypto_generichash_statebytes()
   private[this] val outBytes = size / 8

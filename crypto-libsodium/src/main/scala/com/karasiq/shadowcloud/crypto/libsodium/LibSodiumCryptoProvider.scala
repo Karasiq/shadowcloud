@@ -1,6 +1,8 @@
 package com.karasiq.shadowcloud.crypto.libsodium
 
+import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
 import com.karasiq.shadowcloud.crypto.libsodium.internal._
+import com.karasiq.shadowcloud.crypto.libsodium.symmetric.{AEADCipherModule, SecretBoxModule}
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.providers.CryptoProvider
 
@@ -13,13 +15,13 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
 
   override def hashing: HashingPF = ifLoaded(super.hashing) {
     case method @ HashingMethod("SHA256", _, _, _) ⇒
-      MultiPartHashingModule.SHA256(method)
+      MultiPartHashModule.SHA256(method)
 
     case method @ HashingMethod("SHA512", _, _, _) ⇒
-      MultiPartHashingModule.SHA512(method)
+      MultiPartHashModule.SHA512(method)
 
     case method @ HashingMethod("Blake2b" | "BLAKE2", _, _, _) ⇒
-      Blake2bHashingModule(method)
+      Blake2bModule(method)
   }
 
   // TODO: AES
@@ -29,13 +31,13 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
 
   override def encryption: EncryptionPF = ifLoaded(super.encryption) {
     case method @ EncryptionMethod("XSalsa20/Poly1305", 256, _, _, _) ⇒
-      SecretBoxEncryptionModule(method)
+      SecretBoxModule(method)
 
     case method @ EncryptionMethod("ChaCha20/Poly1305", 256, _, _, _)  ⇒
-      AEADEncryptionModule.ChaCha20_Poly1305(method)
+      AEADCipherModule.ChaCha20_Poly1305(method)
 
     case method @ EncryptionMethod("AES/GCM", 256, _, _, _) if LSUtils.aes256GcmAvailable ⇒
-      AEADEncryptionModule.AES_GCM(method)
+      AEADCipherModule.AES_GCM(method)
   }
 
   @inline

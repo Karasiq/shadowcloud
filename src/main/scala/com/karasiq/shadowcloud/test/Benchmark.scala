@@ -25,8 +25,10 @@ private object Benchmark extends App {
 
   // Start
   printBlock("Default settings benchmark")
-  runWriteBenchmark()
+  println(config.crypto)
+  for (_ ← 1 to 5) runWriteBenchmark()
 
+  runProviderBenchmark("bouncycastle", "AES/GCM", 256, "SHA1")
   runProviderBenchmark("bouncycastle", "AES/GCM", 256, "Blake2b")
   runProviderBenchmark("bouncycastle", "XSalsa20", 256, "Blake2b")
   runProviderBenchmark("bouncycastle", "ChaCha20", 256, "Blake2b")
@@ -59,10 +61,10 @@ private object Benchmark extends App {
       randomBytesSource(chunkSize)
         .via(ChunkSplitter(chunkSize))
         .take(chunkCount)
-        .via(chunkProcessing.beforeWrite(encryption, hashing))
+        .via(chunkProcessing.beforeWrite(encryption, hashing, HashingMethod.none))
         // .log("chunks", _.checksum)
         // .addAttributes(ActorAttributes.logLevels(Logging.InfoLevel))
-        .alsoTo(chunkProcessing.index(fileHashing))
+        .alsoTo(chunkProcessing.index(fileHashing, HashingMethod.none))
         .runWith(Sink.onComplete {
           case Success(Done) ⇒
             val elapsed = (System.nanoTime() - startTime).nanos

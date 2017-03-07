@@ -14,7 +14,7 @@ class ConfigTest extends FlatSpec with Matchers {
     val config = AppConfig(ConfigFactory.load().getConfig("shadowcloud"))
     config.index.syncInterval shouldBe (15 seconds)
     config.index.replicationFactor shouldBe 0
-    config.crypto.hashing.chunks shouldBe HashingMethod("SHA1")
+    config.crypto.hashing.chunks shouldBe HashingMethod("Blake2b")
     config.crypto.hashing.files shouldBe HashingMethod.none
     config.storage.replicationFactor shouldBe 1
     config.storage.chunkKey shouldBe ChunkKeyExtractor.hash

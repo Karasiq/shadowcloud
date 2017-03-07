@@ -30,7 +30,7 @@ class ChunkSplitterTest extends ActorSpec with FlatSpecLike {
   it should "join text" in {
     val (in, out) = TestSource.probe[ByteString]
       .via(ChunkSplitter(100))
-      .via(chunkProcessing.createHashes(hashingMethod))
+      .via(chunkProcessing.createHashes(hashingMethod, hashingMethod))
       .map(_.checksum.hash)
       .toMat(TestSink.probe)(Keep.both)
       .run()
@@ -55,15 +55,15 @@ class ChunkSplitterTest extends ActorSpec with FlatSpecLike {
       val size1 = chunk.data.plain.length
       val size2 = chunk.data.encrypted.length
       val data = decryptor.decrypt(chunk.data.encrypted, chunk.encryption)
-      chunk shouldBe Chunk(Checksum(chunk.checksum.method, size1, hash1, size2, hash2), chunk.encryption, Data(data, chunk.data.encrypted))
+      chunk shouldBe Chunk(Checksum(chunk.checksum.method, chunk.checksum.method, size1, hash1, size2, hash2), chunk.encryption, Data(data, chunk.data.encrypted))
       chunk
     }
 
     val result = Source.single(sourceBytes)
       .via(ChunkSplitter(100))
-      .via(chunkProcessing.beforeWrite(hashing = hashingMethod))
+      .via(chunkProcessing.beforeWrite(hashing = hashingMethod, encHashing = hashingMethod))
       .map(testChunk)
-      .runWith(FileIndexer(chunkProcessing.modules, hashingMethod))
+      .runWith(FileIndexer(chunkProcessing.modules, hashingMethod, hashingMethod))
 
     whenReady(result) { file ⇒
       file.chunks.map(_.checksum.hash) shouldBe sourceHashes

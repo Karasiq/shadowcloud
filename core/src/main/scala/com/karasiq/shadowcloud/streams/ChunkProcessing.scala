@@ -42,14 +42,15 @@ class ChunkProcessing(val modules: ModuleRegistry, val crypto: CryptoConfig, val
     chunk.copy(data = chunk.data.copy(encrypted = module.encrypt(chunk.data.plain, chunk.encryption)))
   }
 
-  def createHashes(method: HashingMethod = crypto.hashing.chunks,
-                   hashCiphertext: Boolean = crypto.hashing.hashCiphertext): ChunkFlow = parallelFlow(parallelism.hashing) { chunk ⇒
-    val module = modules.hashingModule(method)
+  def createHashes(plainMethod: HashingMethod = crypto.hashing.chunks,
+                   encMethod: HashingMethod = crypto.hashing.chunksEncrypted): ChunkFlow = parallelFlow(parallelism.hashing) { chunk ⇒
+    val hasher = modules.hashingModule(plainMethod)
+    val encHasher = modules.hashingModule(encMethod)
     val size = chunk.data.plain.length
-    val hash = if (chunk.data.plain.nonEmpty) module.createHash(chunk.data.plain) else ByteString.empty
+    val hash = if (chunk.data.plain.nonEmpty) hasher.createHash(chunk.data.plain) else ByteString.empty
     val encSize = chunk.data.encrypted.length
-    val encHash = if (hashCiphertext && chunk.data.encrypted.nonEmpty) module.createHash(chunk.data.encrypted) else ByteString.empty
-    chunk.copy(checksum = chunk.checksum.copy(method, size, hash, encSize, encHash))
+    val encHash = if (chunk.data.encrypted.nonEmpty) encHasher.createHash(chunk.data.encrypted) else ByteString.empty
+    chunk.copy(checksum = chunk.checksum.copy(plainMethod, encMethod, size, hash, encSize, encHash))
   }
 
   def decrypt: ChunkFlow = parallelFlow(parallelism.encryption) { chunk ⇒
@@ -75,17 +76,17 @@ class ChunkProcessing(val modules: ModuleRegistry, val crypto: CryptoConfig, val
 
   def beforeWrite(encryption: EncryptionMethod = crypto.encryption.chunks,
                   hashing: HashingMethod = crypto.hashing.chunks,
-                  hashCiphertext: Boolean = crypto.hashing.hashCiphertext): ChunkFlow = {
-    generateKey(encryption).via(encrypt).via(createHashes(hashing, hashCiphertext))
+                  encHashing: HashingMethod = crypto.hashing.chunksEncrypted): ChunkFlow = {
+    generateKey(encryption).via(encrypt).via(createHashes(hashing, encHashing))
   }
 
   def afterRead: ChunkFlow = {
     decrypt.via(verify)
   }
 
-  def index(hashingMethod: HashingMethod = crypto.hashing.files,
-            hashCiphertext: Boolean = crypto.hashing.hashCiphertext): Sink[Chunk, Future[FileIndexer.Result]] = {
-    Sink.fromGraph(FileIndexer(modules, hashingMethod, hashCiphertext).async)
+  def index(plainHashing: HashingMethod = crypto.hashing.files,
+            encHashing: HashingMethod = crypto.hashing.filesEncrypted): Sink[Chunk, Future[FileIndexer.Result]] = {
+    Sink.fromGraph(FileIndexer(modules, plainHashing, encHashing).async)
   }
 
   protected def parallelFlow(parallelism: Int)(func: Chunk ⇒ Chunk): ChunkFlow = {

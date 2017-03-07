@@ -37,12 +37,12 @@ object TestUtils extends TestImplicits {
     val preCalcHashes = Vector("f660847d03634f41c45f7be337b02973a083721a", "dfa6cbe4eb725d390e3339075fe420791a5a394f", "e63bf72054623e911ce6a995dc520527d7fe2e2d", "802f6e7f54ca13c650741e65f188b0bdb023cb15").map(ByteString.fromHexString)
 
     val chunks = Seq(
-      Chunk(Checksum(hashingMethod, 100, preCalcHashes(0), 100, preCalcHashes(0)), EncryptionParameters.empty, Data(text.slice(0, 100), text.slice(0, 100))),
-      Chunk(Checksum(hashingMethod, 100, preCalcHashes(1), 100, preCalcHashes(1)), EncryptionParameters.empty, Data(text.slice(100, 200), text.slice(100, 200))),
-      Chunk(Checksum(hashingMethod, 100, preCalcHashes(2), 100, preCalcHashes(2)), EncryptionParameters.empty, Data(text.slice(200, 300), text.slice(200, 300))),
-      Chunk(Checksum(hashingMethod, 56, preCalcHashes(3), 56, preCalcHashes(3)), EncryptionParameters.empty, Data(text.slice(300, 356), text.slice(300, 356)))
+      Chunk(Checksum(hashingMethod, hashingMethod, 100, preCalcHashes(0), 100, preCalcHashes(0)), EncryptionParameters.empty, Data(text.slice(0, 100), text.slice(0, 100))),
+      Chunk(Checksum(hashingMethod, hashingMethod, 100, preCalcHashes(1), 100, preCalcHashes(1)), EncryptionParameters.empty, Data(text.slice(100, 200), text.slice(100, 200))),
+      Chunk(Checksum(hashingMethod, hashingMethod, 100, preCalcHashes(2), 100, preCalcHashes(2)), EncryptionParameters.empty, Data(text.slice(200, 300), text.slice(200, 300))),
+      Chunk(Checksum(hashingMethod, hashingMethod, 56, preCalcHashes(3), 56, preCalcHashes(3)), EncryptionParameters.empty, Data(text.slice(300, 356), text.slice(300, 356)))
     )
-    (text, File(Path.root / "test.txt", testTimestamp, testTimestamp, Checksum(hashingMethod, 356, textHash, 356, textHash), chunks))
+    (text, File(Path.root / "test.txt", testTimestamp, testTimestamp, Checksum(hashingMethod, hashingMethod, 356, textHash, 356, textHash), chunks))
   }
 
   def testChunk: Chunk = {
@@ -59,7 +59,7 @@ object TestUtils extends TestImplicits {
     val encParameters = aesEncryption.createParameters()
     val encData = aesEncryption.encrypt(data, encParameters)
     Chunk(
-      Checksum(sha1Hashing.method, data.length, sha1Hashing.createHash(data), encData.length, sha1Hashing.createHash(encData)),
+      Checksum(sha1Hashing.method, sha1Hashing.method, data.length, sha1Hashing.createHash(data), encData.length, sha1Hashing.createHash(encData)),
       encParameters,
       Data(data, encData)
     )
@@ -72,7 +72,7 @@ object TestUtils extends TestImplicits {
     val hash = sha1Hashing.createHash(ByteString.fromChunks(chunks))
     val encHash = sha1Hashing.createHash(ByteString.fromEncryptedChunks(chunks))
     File(parent / s"$randomString.txt", System.currentTimeMillis(), System.currentTimeMillis(),
-      Checksum(sha1Hashing.method, size, hash, encSize, encHash), chunks)
+      Checksum(sha1Hashing.method, sha1Hashing.method, size, hash, encSize, encHash), chunks)
   }
 
   def randomFolder(path: Path = Path.root / randomString): Folder = {

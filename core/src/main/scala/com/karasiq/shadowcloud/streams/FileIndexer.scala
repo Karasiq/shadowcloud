@@ -5,7 +5,6 @@ import java.io.IOException
 import akka.Done
 import akka.stream._
 import akka.stream.stage._
-import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.HashingMethod
 import com.karasiq.shadowcloud.index.{Checksum, Chunk}
 import com.karasiq.shadowcloud.providers.ModuleRegistry
@@ -18,14 +17,14 @@ import scala.util.{Failure, Success, Try}
 object FileIndexer {
   case class Result(checksum: Checksum, chunks: Seq[Chunk], ioResult: IOResult)
 
-  def apply(registry: ModuleRegistry, method: HashingMethod = HashingMethod.default,
-            hashCiphertext: Boolean = false): FileIndexer = {
-    new FileIndexer(registry, method, hashCiphertext)
+  def apply(registry: ModuleRegistry, plainHashing: HashingMethod = HashingMethod.default,
+            encryptedHashing: HashingMethod = HashingMethod.default): FileIndexer = {
+    new FileIndexer(registry, plainHashing, encryptedHashing)
   }
 }
 
 // TODO: Content type
-final class FileIndexer(registry: ModuleRegistry, method: HashingMethod, hashCiphertext: Boolean)
+final class FileIndexer(registry: ModuleRegistry, plainHashing: HashingMethod, encryptedHashing: HashingMethod)
   extends GraphStageWithMaterializedValue[SinkShape[Chunk], Future[Result]] {
 
   val inlet = Inlet[Chunk]("FileIndexer.in")
@@ -35,23 +34,23 @@ final class FileIndexer(registry: ModuleRegistry, method: HashingMethod, hashCip
   def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, Future[Result]) = {
     val promise = Promise[Result]
     val logic = new GraphStageLogic(shape) with InHandler {
-      private[this] val plainHash = registry.streamHashingModule(method)
-      private[this] val encryptedHash = if (hashCiphertext) registry.streamHashingModule(method) else null
+      private[this] val hasher = registry.streamHashingModule(plainHashing)
+      private[this] val encHasher = registry.streamHashingModule(encryptedHashing)
       private[this] var plainSize = 0L
       private[this] var encryptedSize = 0L
       private[this] val chunks = Vector.newBuilder[Chunk]
 
-      private[this] def update(chunk: Chunk) = {
-        plainHash.update(chunk.data.plain)
-        if (hashCiphertext) encryptedHash.update(chunk.data.encrypted)
+      private[this] def update(chunk: Chunk): Unit = {
+        hasher.update(chunk.data.plain)
+        encHasher.update(chunk.data.encrypted)
         plainSize += chunk.data.plain.length
         encryptedSize += chunk.data.encrypted.length
         chunks += chunk.withoutData
       }
 
-      private[this] def finish(status: Try[Done]) = {
-        val checksum = Checksum(method, plainSize, plainHash.createHash(), encryptedSize,
-          if (hashCiphertext) encryptedHash.createHash() else ByteString.empty)
+      private[this] def finish(status: Try[Done]): Unit = {
+        val checksum = Checksum(plainHashing, encryptedHashing, plainSize, hasher.createHash(),
+          encryptedSize, encHasher.createHash())
         val indexedFile = Result(checksum, chunks.result(), IOResult(plainSize, status))
         promise.trySuccess(indexedFile)
       }

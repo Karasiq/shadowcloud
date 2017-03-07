@@ -45,7 +45,7 @@ class SerializeTest extends FlatSpec with Matchers with TestImplicits {
     println(bytes.toHexString)
   }
 
-  it should "read test diff" in {
+  ignore should "read test diff" in {
     val diff = TestUtils.testDiff
     val bytes = Source.fromResource("test-diff-kryo.txt").mkString.trim()
     kryo.fromBytes[IndexDiff](ByteString.fromHexString(bytes)) shouldBe diff

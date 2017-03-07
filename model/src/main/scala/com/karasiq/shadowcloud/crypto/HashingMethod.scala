@@ -4,8 +4,8 @@ import com.karasiq.shadowcloud.config.SerializedProps
 
 import scala.language.postfixOps
 
-case class HashingMethod(algorithm: String, stream: Boolean = false,
-                         provider: String = "", config: SerializedProps = SerializedProps.empty) extends CryptoMethod {
+case class HashingMethod(algorithm: String, stream: Boolean = false, provider: String = "",
+                         config: SerializedProps = SerializedProps.empty) extends CryptoMethod {
   override def toString: String = {
     if (algorithm.isEmpty) {
       "HashingMethod.none"

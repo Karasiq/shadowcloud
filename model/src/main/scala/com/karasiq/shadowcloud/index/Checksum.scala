@@ -7,8 +7,9 @@ import com.karasiq.shadowcloud.utils.{HexString, MemorySize}
 
 import scala.language.postfixOps
 
-case class Checksum(method: HashingMethod = HashingMethod.default, size: Long = 0, hash: ByteString = ByteString.empty,
-                    encryptedSize: Long = 0, encryptedHash: ByteString = ByteString.empty) extends HasEmpty {
+case class Checksum(method: HashingMethod = HashingMethod.default, encMethod: HashingMethod = HashingMethod.default,
+                    size: Long = 0, hash: ByteString = ByteString.empty, encryptedSize: Long = 0,
+                    encryptedHash: ByteString = ByteString.empty) extends HasEmpty {
   def isEmpty: Boolean = {
     size == 0 && hash.isEmpty && encryptedSize == 0 && encryptedHash.isEmpty
   }
@@ -18,12 +19,12 @@ case class Checksum(method: HashingMethod = HashingMethod.default, size: Long = 
   }
 
   override def equals(obj: scala.Any): Boolean = obj match {
-    case Checksum(method1, size1, hash1, encryptedSize1, encryptedHash1) ⇒
+    case Checksum(method1, encMethod1, size1, hash1, encryptedSize1, encryptedHash1) ⇒
       method == method1 &&
         size == size1 &&
         hash == hash1 &&
         ((encryptedSize == 0 || encryptedSize1 == 0) || encryptedSize == encryptedSize1) &&
-        ((encryptedHash.isEmpty || encryptedHash1.isEmpty) || encryptedHash == encryptedHash1)
+        ((encryptedHash.isEmpty || encryptedHash1.isEmpty) || (encMethod == encMethod1 && encryptedHash == encryptedHash1))
 
     case _ ⇒
       false
@@ -35,9 +36,15 @@ case class Checksum(method: HashingMethod = HashingMethod.default, size: Long = 
       else if (hash.isEmpty) s"$prefix: ${MemorySize.toString(size)}"
       else s"$prefix: ${MemorySize.toString(size)} [${HexString.encode(hash)}]"
     }
+    val methods = if (method == encMethod) {
+      Seq(method.toString)
+    } else {
+      Seq(method.toString, encMethod.toString)
+    }
     val plain = sizeAndHash("plain", size, hash)
     val encrypted = sizeAndHash("encrypted", encryptedSize, encryptedHash)
-    s"Checksum(${Array(method.toString, plain, encrypted).filter(_.nonEmpty).mkString(", ")})"
+
+    s"Checksum(${(methods ++ Seq(plain, encrypted)).filter(_.nonEmpty).mkString(", ")})"
   }
 }
 

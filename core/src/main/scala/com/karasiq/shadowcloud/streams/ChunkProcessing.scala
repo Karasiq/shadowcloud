@@ -42,12 +42,13 @@ class ChunkProcessing(val modules: ModuleRegistry, val crypto: CryptoConfig, val
     chunk.copy(data = chunk.data.copy(encrypted = module.encrypt(chunk.data.plain, chunk.encryption)))
   }
 
-  def createHashes(method: HashingMethod = crypto.hashing.chunks): ChunkFlow = parallelFlow(parallelism.hashing) { chunk ⇒
+  def createHashes(method: HashingMethod = crypto.hashing.chunks,
+                   hashCiphertext: Boolean = crypto.hashing.hashCiphertext): ChunkFlow = parallelFlow(parallelism.hashing) { chunk ⇒
     val module = modules.hashingModule(method)
     val size = chunk.data.plain.length
     val hash = if (chunk.data.plain.nonEmpty) module.createHash(chunk.data.plain) else ByteString.empty
     val encSize = chunk.data.encrypted.length
-    val encHash = if (chunk.data.encrypted.nonEmpty) module.createHash(chunk.data.encrypted) else ByteString.empty
+    val encHash = if (hashCiphertext && chunk.data.encrypted.nonEmpty) module.createHash(chunk.data.encrypted) else ByteString.empty
     chunk.copy(checksum = chunk.checksum.copy(method, size, hash, encSize, encHash))
   }
 
@@ -73,16 +74,18 @@ class ChunkProcessing(val modules: ModuleRegistry, val crypto: CryptoConfig, val
   }
 
   def beforeWrite(encryption: EncryptionMethod = crypto.encryption.chunks,
-                  hashing: HashingMethod = crypto.hashing.chunks): ChunkFlow = {
-    generateKey(encryption).via(encrypt).via(createHashes(hashing))
+                  hashing: HashingMethod = crypto.hashing.chunks,
+                  hashCiphertext: Boolean = crypto.hashing.hashCiphertext): ChunkFlow = {
+    generateKey(encryption).via(encrypt).via(createHashes(hashing, hashCiphertext))
   }
 
   def afterRead: ChunkFlow = {
     decrypt.via(verify)
   }
 
-  def index(hashingMethod: HashingMethod = crypto.hashing.files): Sink[Chunk, Future[FileIndexer.Result]] = {
-    Sink.fromGraph(FileIndexer(modules, hashingMethod).async)
+  def index(hashingMethod: HashingMethod = crypto.hashing.files,
+            hashCiphertext: Boolean = crypto.hashing.hashCiphertext): Sink[Chunk, Future[FileIndexer.Result]] = {
+    Sink.fromGraph(FileIndexer(modules, hashingMethod, hashCiphertext).async)
   }
 
   protected def parallelFlow(parallelism: Int)(func: Chunk ⇒ Chunk): ChunkFlow = {

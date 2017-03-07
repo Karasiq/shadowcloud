@@ -14,7 +14,7 @@ object TestUtils extends TestImplicits {
   val config = AppConfig.load()
   val modules = ModuleRegistry(config)
   val sha1Hashing = modules.hashingModule(HashingMethod("SHA1"))
-  val aesEncryption = modules.encryptionModule(EncryptionMethod("AES", 256))
+  val aesEncryption = modules.encryptionModule(EncryptionMethod("AES/GCM", 256))
 
   def randomBytes(length: Int): ByteString = {
     val array = new Array[Byte](length)

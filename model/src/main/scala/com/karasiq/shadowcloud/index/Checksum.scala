@@ -31,8 +31,8 @@ case class Checksum(method: HashingMethod = HashingMethod.default, size: Long = 
 
   override def toString: String = {
     def sizeAndHash(prefix: String, size: Long, hash: ByteString) = {
-      if (size == 0 || hash.isEmpty) ""
-      else if (size != 0 && hash.isEmpty) s"$prefix: $size bytes"
+      if (size == 0 && hash.isEmpty) ""
+      else if (hash.isEmpty) s"$prefix: ${MemorySize.toString(size)}"
       else s"$prefix: ${MemorySize.toString(size)} [${HexString.encode(hash)}]"
     }
     val plain = sizeAndHash("plain", size, hash)

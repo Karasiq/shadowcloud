@@ -5,6 +5,7 @@ import java.io.IOException
 import akka.Done
 import akka.stream._
 import akka.stream.stage._
+import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.HashingMethod
 import com.karasiq.shadowcloud.index.{Checksum, Chunk}
 import com.karasiq.shadowcloud.providers.ModuleRegistry
@@ -17,13 +18,16 @@ import scala.util.{Failure, Success, Try}
 object FileIndexer {
   case class Result(checksum: Checksum, chunks: Seq[Chunk], ioResult: IOResult)
 
-  def apply(registry: ModuleRegistry, method: HashingMethod = HashingMethod.default): FileIndexer = {
-    new FileIndexer(registry, method)
+  def apply(registry: ModuleRegistry, method: HashingMethod = HashingMethod.default,
+            hashCiphertext: Boolean = false): FileIndexer = {
+    new FileIndexer(registry, method, hashCiphertext)
   }
 }
 
 // TODO: Content type
-final class FileIndexer(registry: ModuleRegistry, method: HashingMethod) extends GraphStageWithMaterializedValue[SinkShape[Chunk], Future[Result]] {
+final class FileIndexer(registry: ModuleRegistry, method: HashingMethod, hashCiphertext: Boolean)
+  extends GraphStageWithMaterializedValue[SinkShape[Chunk], Future[Result]] {
+
   val inlet = Inlet[Chunk]("FileIndexer.in")
   val shape = SinkShape(inlet)
 
@@ -32,21 +36,22 @@ final class FileIndexer(registry: ModuleRegistry, method: HashingMethod) extends
     val promise = Promise[Result]
     val logic = new GraphStageLogic(shape) with InHandler {
       private[this] val plainHash = registry.streamHashingModule(method)
-      private[this] val encryptedHash = registry.streamHashingModule(method)
+      private[this] val encryptedHash = if (hashCiphertext) registry.streamHashingModule(method) else null
       private[this] var plainSize = 0L
       private[this] var encryptedSize = 0L
       private[this] val chunks = Vector.newBuilder[Chunk]
 
       private[this] def update(chunk: Chunk) = {
         plainHash.update(chunk.data.plain)
-        encryptedHash.update(chunk.data.encrypted)
+        if (hashCiphertext) encryptedHash.update(chunk.data.encrypted)
         plainSize += chunk.data.plain.length
         encryptedSize += chunk.data.encrypted.length
         chunks += chunk.withoutData
       }
 
       private[this] def finish(status: Try[Done]) = {
-        val checksum = Checksum(method, plainSize, plainHash.createHash(), encryptedSize, encryptedHash.createHash())
+        val checksum = Checksum(method, plainSize, plainHash.createHash(), encryptedSize,
+          if (hashCiphertext) encryptedHash.createHash() else ByteString.empty)
         val indexedFile = Result(checksum, chunks.result(), IOResult(plainSize, status))
         promise.trySuccess(indexedFile)
       }

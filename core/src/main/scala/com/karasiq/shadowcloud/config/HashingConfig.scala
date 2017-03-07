@@ -5,13 +5,14 @@ import com.karasiq.shadowcloud.crypto.HashingMethod
 
 import scala.language.postfixOps
 
-case class HashingConfig(chunks: HashingMethod, files: HashingMethod)
+case class HashingConfig(chunks: HashingMethod, files: HashingMethod, hashCiphertext: Boolean)
 
 object HashingConfig extends ConfigImplicits {
   def apply(config: Config): HashingConfig = {
     HashingConfig(
       CryptoProps.hashing(config.getConfigOrRef("chunks")),
-      CryptoProps.hashing(config.getConfigOrRef("files"))
+      CryptoProps.hashing(config.getConfigOrRef("files")),
+      config.getBoolean("hash-ciphertext")
     )
   }
 }

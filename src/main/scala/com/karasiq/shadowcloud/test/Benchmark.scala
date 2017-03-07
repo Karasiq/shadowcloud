@@ -57,6 +57,8 @@ private object Benchmark extends App {
         .via(ChunkSplitter(chunkSize))
         .take(chunkCount)
         .via(chunkProcessing.beforeWrite(encryption, hashing))
+        // .log("chunks", _.checksum)
+        // .addAttributes(ActorAttributes.logLevels(Logging.InfoLevel))
         .alsoTo(chunkProcessing.index(fileHashing))
         .runWith(Sink.onComplete {
           case Success(Done) ⇒

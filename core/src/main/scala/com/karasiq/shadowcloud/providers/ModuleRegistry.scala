@@ -16,14 +16,22 @@ private[shadowcloud] object ModuleRegistry {
   }
 
   def apply(config: AppConfig): ModuleRegistry = {
+    fromNamedProviders(
+      config.storage.providers.instances,
+      config.crypto.providers.instances
+    )
+  }
+
+  def fromNamedProviders(storages: Seq[(String, StorageProvider)],
+                         crypto: Seq[(String, CryptoProvider)]): ModuleRegistry = {
     val registry = this.empty
-    for ((pName, pClass) ← config.storage.providers.toMap) {
-      registry.register(pName, pClass.newInstance())
-    }
-    for ((pName, pClass) ← config.crypto.providers.toMap) {
-      registry.register(pName, pClass.newInstance())
-    }
+    for ((pName, pInstance) ← storages) registry.register(pName, pInstance)
+    for ((pName, pInstance) ← crypto) registry.register(pName, pInstance)
     registry
+  }
+
+  def fromProviders(storages: Seq[StorageProvider], crypto: Seq[CryptoProvider]): ModuleRegistry = {
+    fromNamedProviders(storages.map(p ⇒ (p.defaultName, p)), crypto.map(p ⇒ (p.defaultName, p)))
   }
 }
 
@@ -37,13 +45,13 @@ private[shadowcloud] sealed trait StorageModuleRegistry {
   private[this] val storageProviders = mutable.AnyRefMap.empty[String, StorageProvider]
   private[this] var storages = PartialFunction.empty[StorageProps, StoragePlugin]
 
-  def register(providerName: String, provider: StorageProvider): Unit = {
+  private[providers] def register(providerName: String, provider: StorageProvider): Unit = {
     require(providerName.nonEmpty, "Provider name is empty")
     if (provider.storages != PartialFunction.empty) storages = provider.storages.orElse(storages)
     storageProviders += providerName → provider
   }
 
-  def register(provider: StorageProvider): Unit = {
+  private[providers] def register(provider: StorageProvider): Unit = {
     register(provider.defaultName, provider)
   }
 
@@ -65,7 +73,7 @@ private[shadowcloud] sealed trait CryptoModuleRegistry {
   private[this] var hashModules = PartialFunction.empty[HashingMethod, HashingModule]
   private[this] var encModules = PartialFunction.empty[EncryptionMethod, EncryptionModule]
 
-  def register(providerName: String, provider: CryptoProvider): Unit = {
+  private[providers] def register(providerName: String, provider: CryptoProvider): Unit = {
     require(providerName.nonEmpty, "Provider name is empty")
     cryptoProviders += providerName → provider
 
@@ -73,7 +81,7 @@ private[shadowcloud] sealed trait CryptoModuleRegistry {
     if (provider.encryption != PartialFunction.empty) encModules = provider.encryption.orElse(encModules)
   }
 
-  def register(provider: CryptoProvider): Unit = {
+  private[providers] def register(provider: CryptoProvider): Unit = {
     register(provider.defaultName, provider)
   }
 

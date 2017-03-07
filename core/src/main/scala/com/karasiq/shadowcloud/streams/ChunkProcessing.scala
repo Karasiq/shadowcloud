@@ -23,7 +23,8 @@ object ChunkProcessing {
   }
 }
 
-class ChunkProcessing(val modules: ModuleRegistry, val crypto: CryptoConfig, val parallelism: ParallelismConfig)(implicit ec: ExecutionContext) {
+class ChunkProcessing(val modules: ModuleRegistry, val crypto: CryptoConfig,
+                      val parallelism: ParallelismConfig)(implicit ec: ExecutionContext) {
   type ChunkFlow = Flow[Chunk, Chunk, NotUsed]
 
   def generateKey(method: EncryptionMethod = crypto.encryption.chunks): ChunkFlow = {

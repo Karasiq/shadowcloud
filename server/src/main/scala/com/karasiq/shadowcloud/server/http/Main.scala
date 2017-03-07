@@ -1,26 +1,20 @@
 package com.karasiq.shadowcloud.server.http
 
-import java.nio.file.Files
+import java.nio.file.{Files, Paths}
 
-import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.PredefinedToResponseMarshallers
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.server.{Directive1, HttpApp, Route}
 import akka.http.scaladsl.settings.ServerSettings
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
-import akka.util.{ByteString, Timeout}
 import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.actors.RegionSupervisor.{AddRegion, AddStorage, RegisterStorage}
 import com.karasiq.shadowcloud.config.AppConfig
-import com.karasiq.shadowcloud.index.{File, Path}
+import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams._
-import com.karasiq.shadowcloud.utils.MemorySize
 
-import scala.concurrent.Future
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 object Main extends HttpApp with App with PredefinedToResponseMarshallers {
@@ -32,11 +26,15 @@ object Main extends HttpApp with App with PredefinedToResponseMarshallers {
   val chunkProcessing = ChunkProcessing(config)
 
   // Region supervisor
+  val tempDirectory = sys.props.get("shadowcloud.temp-storage-dir")
+    .map(Paths.get(_))
+    .getOrElse(Files.createTempDirectory("scl-temp-storage"))
   val regionSupervisor = actorSystem.actorOf(RegionSupervisor.props, "regions")
   regionSupervisor ! AddRegion("testRegion")
-  regionSupervisor ! AddStorage("testStorage", StorageProps.fromDirectory(Files.createTempDirectory("scl-http-test")))
+  regionSupervisor ! AddStorage("testStorage", StorageProps.fromDirectory(tempDirectory))
   regionSupervisor ! RegisterStorage("testRegion", "testStorage")
   val regionStreams = RegionStreams(regionSupervisor, config.parallelism)
+  val fileStreams = FileStreams(regionStreams, chunkProcessing)
 
   // -----------------------------------------------------------------------
   // Route
@@ -44,15 +42,16 @@ object Main extends HttpApp with App with PredefinedToResponseMarshallers {
   protected def route: Route = {
     post {
       (extractRequestEntity & extractPath) { (entity, path) ⇒
-        val future = entity.dataBytes
-          .runWith(writeFile("testRegion", path))
+        val future = entity.withoutSizeLimit().dataBytes
+          .runWith(fileStreams.write("testRegion", path))
           .map(_.chunks.mkString("\r\n"))
         complete(future)
       }
     } ~
     get {
       (pathPrefix("file") & extractPath) { path ⇒
-        complete(HttpEntity(ContentTypes.`application/octet-stream`, getFile("testRegion", path)))
+        val stream = fileStreams.read("testRegion", path)
+        complete(HttpEntity(ContentTypes.`application/octet-stream`, stream))
       } ~
       getStaticFiles
     }
@@ -73,36 +72,6 @@ object Main extends HttpApp with App with PredefinedToResponseMarshallers {
         getFromResourceDirectory("webapp")
       }
     }
-  }
-
-  // -----------------------------------------------------------------------
-  // Actions
-  // -----------------------------------------------------------------------
-  private[this] def getFile(regionId: String, path: Path): Source[ByteString, NotUsed] = { // TODO: Byte ranges
-    implicit val timeout = Timeout(10 seconds)
-    Source.single((regionId, path))
-      .via(regionStreams.findFile)
-      .mapConcat(_.chunks.toVector)
-      .map((regionId, _))
-      .via(regionStreams.readChunks)
-      .via(chunkProcessing.afterRead)
-      .map(_.data.plain)
-  }
-
-  private[this] def writeFile(regionId: String, path: Path): Sink[ByteString, Future[File]] = {
-    // TODO: Actor publisher
-    implicit val timeout = Timeout(1 hour)
-    Flow.fromGraph(ChunkSplitter(MemorySize.MB * 8))
-      .via(chunkProcessing.beforeWrite())
-      .map((regionId, _))
-      .via(regionStreams.writeChunks)
-      .toMat(chunkProcessing.index())(Keep.right)
-      .mapMaterializedValue { future ⇒
-        Source.fromFuture(future)
-          .map((regionId, path, _))
-          .via(regionStreams.addFile)
-          .runWith(Sink.head)
-      }
   }
 
   // -----------------------------------------------------------------------

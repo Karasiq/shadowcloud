@@ -9,8 +9,8 @@ import scala.language.postfixOps
 
 private[storage] final class InMemoryStorageHealthProvider(maps: Seq[mutable.Map[_, ByteString]]) extends StorageHealthProvider {
   def health: Future[StorageHealth] = {
-    val total = sys.runtime.maxMemory()
-    val used = maps.iterator.flatMap(_.valuesIterator.map(_.length)).sum
-    Future.successful(StorageHealth(total - used, total, used))
+    val total = sys.runtime.totalMemory()
+    val used = maps.iterator.flatMap(_.valuesIterator.map(_.length.toLong)).sum
+    Future.successful(StorageHealth(math.max(0L, total - used), total, used))
   }
 }

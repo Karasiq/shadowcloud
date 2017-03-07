@@ -1,25 +1,21 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigestModule, JavaMessageDigestModule}
-import com.karasiq.shadowcloud.crypto.bouncycastle.internal._
+import com.karasiq.shadowcloud.crypto.EncryptionMethod
+import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigests, MessageDigestModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, StreamCipherModule}
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.providers.CryptoProvider
 
 import scala.language.postfixOps
 
 final class BouncyCastleCryptoProvider extends CryptoProvider with ConfigImplicits {
   override val hashingAlgorithms: Set[String] = {
-    BCUtils.DIGESTS.toSet
+    BCDigests.algorithms.toSet
   }
 
   override def hashing: HashingPF = {
-    case method @ HashingMethod("Blake2b" | "BLAKE2", _, _, _) ⇒
-      BCDigestModule.Blake2b(method)
-
     case method if hashingAlgorithms.contains(method.algorithm) ⇒
-      JavaMessageDigestModule(method)
+      MessageDigestModule(method)
   }
 
   override val encryptionAlgorithms: Set[String] = {

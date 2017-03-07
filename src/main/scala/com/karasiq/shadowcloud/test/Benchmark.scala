@@ -28,10 +28,10 @@ private object Benchmark extends App {
   println(config.crypto)
   for (_ ← 1 to 5) runWriteBenchmark()
 
-  runProviderBenchmark("bouncycastle", "AES/GCM", 256, "SHA1")
   runProviderBenchmark("bouncycastle", "AES/GCM", 256, "Blake2b")
   runProviderBenchmark("bouncycastle", "XSalsa20", 256, "Blake2b")
   runProviderBenchmark("bouncycastle", "ChaCha20", 256, "Blake2b")
+  runProviderBenchmark("bouncycastle", "ChaCha20", 256, "Skein")
   runProviderBenchmark("libsodium", "AES/GCM", 256, "Blake2b")
   runProviderBenchmark("libsodium", "XSalsa20", 256, "Blake2b")
   runProviderBenchmark("libsodium", "ChaCha20", 256, "Blake2b")

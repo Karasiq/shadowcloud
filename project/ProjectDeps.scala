@@ -44,6 +44,6 @@ object ProjectDeps {
   )
 
   def libSodiumJni: Deps = Seq(
-    "com.github.karasiq" % "kalium-fork" % "0.6.1" % "compile"
+    "com.github.karasiq" % "kalium-fork" % "0.6.2" % "compile"
   )
 }

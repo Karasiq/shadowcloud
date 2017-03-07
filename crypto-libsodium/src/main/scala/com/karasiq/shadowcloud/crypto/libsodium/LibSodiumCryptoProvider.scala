@@ -24,9 +24,14 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
       Blake2bModule(method)
   }
 
-  // TODO: AES
   override def encryptionAlgorithms: Set[String] = ifLoaded(super.encryptionAlgorithms) {
-    Set("XSalsa20/Poly1305", "ChaCha20/Poly1305") ++ (if (LSUtils.aes256GcmAvailable) Set("AES/GCM") else Set.empty)
+    @inline
+    def onlyIf(cond: Boolean)(algorithms: String*): Seq[String] = {
+      if (cond) algorithms else Nil
+    }
+
+    Set("XSalsa20/Poly1305", "ChaCha20/Poly1305", "Salsa20", "XSalsa20", "ChaCha20") ++
+      onlyIf(LSUtils.aes256GcmAvailable)("AES/GCM")
   }
 
   override def encryption: EncryptionPF = ifLoaded(super.encryption) {

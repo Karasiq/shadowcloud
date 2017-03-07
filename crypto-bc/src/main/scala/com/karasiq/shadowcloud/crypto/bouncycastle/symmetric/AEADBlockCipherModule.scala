@@ -1,40 +1,30 @@
-package com.karasiq.shadowcloud.crypto.bouncycastle.internal
+package com.karasiq.shadowcloud.crypto.bouncycastle.symmetric
 
 import java.nio.ByteBuffer
-import java.security.SecureRandom
-import javax.crypto.KeyGenerator
 
 import akka.util.ByteString
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.crypto.bouncycastle.internal.RandomKeys
 import org.bouncycastle.crypto.engines.AESEngine
 import org.bouncycastle.crypto.modes.{AEADBlockCipher, GCMBlockCipher}
 import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
 
 import scala.language.postfixOps
 
-private[bouncycastle] object AEADBlockCipherEncryptionModule extends ConfigImplicits {
-  def AES_GCM(method: EncryptionMethod = EncryptionMethod("AES/GCM", 256)): AEADBlockCipherEncryptionModule = {
+private[bouncycastle] object AEADBlockCipherModule extends ConfigImplicits {
+  def AES_GCM(method: EncryptionMethod = EncryptionMethod("AES/GCM", 256)): AEADBlockCipherModule = {
     val config = ConfigProps.toConfig(method.config)
     val ivSize = config.withDefault(12, _.getInt("iv-size"))
-    new AEADBlockCipherEncryptionModule(new GCMBlockCipher(new AESEngine), "AES", ivSize, method)
+    new AEADBlockCipherModule(new GCMBlockCipher(new AESEngine), ivSize, method)
   }
 }
 
-private[bouncycastle] final class AEADBlockCipherEncryptionModule(cipher: AEADBlockCipher, keyAlg: String, ivSize: Int,
-                                                                  method: EncryptionMethod) extends StreamEncryptionModule {
-  private[this] val secureRandom = new SecureRandom()
-  private[this] val keyGenerator = KeyGenerator.getInstance(keyAlg, BCUtils.provider)
-  keyGenerator.init(method.keySize, secureRandom)
-
-  def createParameters(): EncryptionParameters = {
-    SymmetricEncryptionParameters(method, ByteString(keyGenerator.generateKey().getEncoded), generateIV())
-  }
-
-  def updateParameters(parameters: EncryptionParameters): EncryptionParameters = {
-    parameters.symmetric.copy(nonce = generateIV())
-  }
+private[bouncycastle] final class AEADBlockCipherModule(private[this] val cipher: AEADBlockCipher,
+                                                        protected val nonceSize: Int,
+                                                        protected val method: EncryptionMethod)
+  extends StreamEncryptionModule with RandomKeys {
 
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
     val symParameters = parameters.symmetric
@@ -59,11 +49,5 @@ private[bouncycastle] final class AEADBlockCipherEncryptionModule(cipher: AEADBl
     val output = new Array[Byte](cipher.getOutputSize(0))
     val length = cipher.doFinal(output, 0)
     ByteString(ByteBuffer.wrap(output, 0, length))
-  }
-
-  private[this] def generateIV(): ByteString = {
-    val iv = new Array[Byte](ivSize)
-    secureRandom.nextBytes(iv)
-    ByteString(iv)
   }
 }

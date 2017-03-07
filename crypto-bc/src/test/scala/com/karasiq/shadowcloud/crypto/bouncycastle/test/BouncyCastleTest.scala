@@ -4,7 +4,9 @@ import java.security.NoSuchAlgorithmException
 
 import akka.util.ByteString
 import com.karasiq.shadowcloud.config.ConfigProps
+import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigestModule, JavaMessageDigestModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal._
+import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, StreamCipherModule}
 import com.karasiq.shadowcloud.crypto.{EncryptionModule, HashingMethod, HashingModule}
 import com.karasiq.shadowcloud.utils.HexString
 import org.scalatest.{FlatSpec, Matchers}
@@ -32,17 +34,17 @@ class BouncyCastleTest extends FlatSpec with Matchers {
     "44444854782341ac2e2e8076a8a97880d5d2f83e90f087544af94315d71c585d65f68a58174ede4e34ccb4daae71ff60ab3232a6ec521704b8560cb0b6472688"
   )
 
-  testEncryption("AES/GCM", AEADBlockCipherEncryptionModule.AES_GCM(), 32, 12)
-  testEncryption("Salsa20", StreamCipherEncryptionModule.Salsa20(), 32, 8)
-  testEncryption("XSalsa20", StreamCipherEncryptionModule.XSalsa20(), 32, 24)
-  testEncryption("ChaCha20", StreamCipherEncryptionModule.ChaCha20(), 32, 8)
+  testEncryption("AES/GCM", AEADBlockCipherModule.AES_GCM(), 32, 12)
+  testEncryption("Salsa20", StreamCipherModule.Salsa20(), 32, 8)
+  testEncryption("XSalsa20", StreamCipherModule.XSalsa20(), 32, 24)
+  testEncryption("ChaCha20", StreamCipherModule.ChaCha20(), 32, 8)
 
   BCUtils.DIGESTS.zip(testHashes).foreach { case (alg, hash) ⇒
     testHashing(alg, hash)
   }
 
-  testHashing(DigestHashingModule.Blake2b(), "824396f4585a22b2c4b36df76f55e669d4edfb423970071b6b616ce454a95400")
-  testHashing(DigestHashingModule.Blake2b(HashingMethod("Blake2b-512", config = ConfigProps("digest-size" → 512))),
+  testHashing(BCDigestModule.Blake2b(), "824396f4585a22b2c4b36df76f55e669d4edfb423970071b6b616ce454a95400")
+  testHashing(BCDigestModule.Blake2b(HashingMethod("Blake2b-512", config = ConfigProps("digest-size" → 512))),
     "9f84251be0c325ad771696302e9ed3cd174f84ffdd0b8de49664e9a3ea934b89a4d008581cd5803b80b3284116174b3c4a79a5029996eb59edc1fbacfd18204e")
 
   private[this] def testEncryption(name: String, module: EncryptionModule, keySize: Int, nonceSize: Int): Unit = {
@@ -65,7 +67,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
 
   private[this] def testHashing(name: String, testHash: String): Unit = {
     try {
-      val module = MessageDigestHashingModule(name)
+      val module = JavaMessageDigestModule(name)
       testHashing(module, testHash)
     } catch {
       case _: NoSuchAlgorithmException ⇒

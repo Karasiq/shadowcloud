@@ -30,6 +30,10 @@ object ProjectDeps {
     }
   }
 
+  def scalaTest: Deps = Seq(
+    "org.scalatest" %% "scalatest" % "3.0.1" % "test"
+  )
+
   def kryo: Deps = Seq(
     // "com.esotericsoftware" % "kryo" % "4.0.0",
     "com.twitter" %% "chill" % "0.9.2"
@@ -39,7 +43,7 @@ object ProjectDeps {
     "org.bouncycastle" % "bcprov-jdk15on" % "1.56"
   )
 
-  def scalaTest: Deps = Seq(
-    "org.scalatest" %% "scalatest" % "3.0.1" % "test"
+  def libSodiumJni: Deps = Seq(
+    "com.github.karasiq" % "kalium-fork" % "0.6.1" % "compile"
   )
 }

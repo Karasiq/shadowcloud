@@ -4,10 +4,9 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
 import com.karasiq.shadowcloud.crypto.libsodium.internal._
-import com.karasiq.shadowcloud.crypto.libsodium.symmetric.{AEADCipherModule, SecretBoxModule}
+import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
 import com.karasiq.shadowcloud.crypto.{EncryptionModule, HashingMethod, HashingModule}
 import com.karasiq.shadowcloud.utils.HexString
-import org.abstractj.kalium.NaCl.Sodium
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.language.postfixOps
@@ -17,14 +16,14 @@ class LibSodiumTest extends FlatSpec with Matchers {
 
   if (LSUtils.libraryAvailable) {
     // Encryption
-    testEncryption("XSalsa20/Poly1305", SecretBoxModule(),
-      Sodium.CRYPTO_SECRETBOX_KEYBYTES, Sodium.CRYPTO_SECRETBOX_NONCEBYTES)
-    testEncryption("ChaCha20/Poly1305", AEADCipherModule.ChaCha20_Poly1305(),
-      Sodium.CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES, Sodium.CRYPTO_AEAD_CHACHA20POLY1305_NPUBBYTES)
+    testEncryption("XSalsa20/Poly1305", SecretBoxModule(), SecretBoxModule.KEY_BYTES, SecretBoxModule.NONCE_BYTES)
+    testEncryption("ChaCha20/Poly1305", AEADCipherModule.ChaCha20_Poly1305(), AEADCipherModule.KEY_BYTES, AEADCipherModule.NONCE_BYTES)
+    testEncryption("Salsa20", Salsa20Module(), Salsa20Module.KEY_BYTES, Salsa20Module.NONCE_BYTES)
+    testEncryption("XSalsa20", XSalsa20Module(), XSalsa20Module.KEY_BYTES, XSalsa20Module.NONCE_BYTES)
+    testEncryption("ChaCha20", ChaCha20Module(), ChaCha20Module.KEY_BYTES, ChaCha20Module.NONCE_BYTES)
 
     if (LSUtils.aes256GcmAvailable) {
-      testEncryption("AES/GCM", AEADCipherModule.AES_GCM(),
-        Sodium.CRYPTO_AEAD_AES256GCM_KEYBYTES, Sodium.CRYPTO_AEAD_AES256GCM_NPUBBYTES)
+      testEncryption("AES/GCM", AEADCipherModule.AES_GCM(), AEADCipherModule.AES_KEY_BYTES, AEADCipherModule.AES_NONCE_BYTES)
     } else {
       println("Hardware AES not supported")
     }

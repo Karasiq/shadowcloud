@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.crypto.libsodium
 
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
 import com.karasiq.shadowcloud.crypto.libsodium.internal._
-import com.karasiq.shadowcloud.crypto.libsodium.symmetric.{AEADCipherModule, SecretBoxModule}
+import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.providers.CryptoProvider
 
@@ -38,6 +38,15 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
 
     case method @ EncryptionMethod("AES/GCM", 256, _, _, _) if LSUtils.aes256GcmAvailable ⇒
       AEADCipherModule.AES_GCM(method)
+
+    case method @ EncryptionMethod("Salsa20", 256, _, _, _) ⇒
+      Salsa20Module(method)
+
+    case method @ EncryptionMethod("XSalsa20", 256, _, _, _) ⇒
+      XSalsa20Module(method)
+
+    case method @ EncryptionMethod("ChaCha20", 256, _, _, _) ⇒
+      ChaCha20Module(method)
   }
 
   @inline

@@ -23,7 +23,7 @@ import scala.language.postfixOps
 import scala.util.Success
 
 // Uses local filesystem
-class RegionTest extends ActorSpec with FlatSpecLike {
+class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
   val folder = TestUtils.randomFolder()
   val folderDiff = FolderIndexDiff.create(folder)

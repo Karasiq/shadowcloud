@@ -8,7 +8,7 @@ import org.scalatest.{FlatSpec, Matchers}
 
 import scala.language.postfixOps
 
-class EncryptionTest extends FlatSpec with Matchers {
+class EncryptionModuleTest extends FlatSpec with Matchers {
   runTest("", 0, 0)
   runTest("AES/GCM", 32, 12)
   try {

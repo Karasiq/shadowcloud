@@ -30,17 +30,26 @@ lazy val core = project
 // -----------------------------------------------------------------------
 // Plugins
 // -----------------------------------------------------------------------
+def cryptoPlugin(id: String): Project = {
+  val prefixedId = s"crypto-$id"
+  Project(prefixedId, file(prefixedId))
+    .settings(
+      commonSettings,
+      name := s"shadowcloud-$prefixedId",
+      libraryDependencies ++= ProjectDeps.scalaTest
+    )
+    .dependsOn(pluginParent)
+}
+
 lazy val pluginParent = (project in file("plugin-parent"))
   .settings(commonSettings)
   .dependsOn(modelJVM)
 
-lazy val bouncyCastleCrypto = (project in file("crypto-bc"))
-  .settings(commonSettings)
-  .dependsOn(pluginParent)
+lazy val bouncyCastleCrypto = cryptoPlugin("bc")
+  .settings(libraryDependencies ++= ProjectDeps.bouncyCastle)
 
-lazy val libSodiumCrypto = (project in file("crypto-libsodium"))
-  .settings(commonSettings)
-  .dependsOn(pluginParent)
+lazy val libSodiumCrypto = cryptoPlugin("libsodium")
+  .settings(libraryDependencies ++= ProjectDeps.libSodiumJni)
 
 // -----------------------------------------------------------------------
 // HTTP

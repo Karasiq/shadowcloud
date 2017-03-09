@@ -7,9 +7,10 @@ import akka.stream.IOResult
 import akka.stream.scaladsl.{Keep, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.storage.IndexRepository
-import com.karasiq.shadowcloud.storage.IndexRepository.BaseIndexRepository
+import com.karasiq.shadowcloud.storage.Repository
+import com.karasiq.shadowcloud.storage.Repository.BaseRepository
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.storage.wrappers.RepositoryWrappers
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 
@@ -17,9 +18,9 @@ import scala.language.postfixOps
 import scala.util.Success
 
 class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
-  def testRepository(repository: BaseIndexRepository): Unit = {
+  def testRepository(repository: BaseRepository): Unit = {
     val diff = TestUtils.randomDiff
-    val testRepository = IndexRepository.numeric(repository)
+    val testRepository = RepositoryWrappers.longSeq(repository)
 
     // Write diff
     val streams = IndexRepositoryStreams.gzipped
@@ -58,14 +59,14 @@ class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
   }
 
   "In-memory repository" should "store diff" in {
-    testRepository(IndexRepository.inMemory)
+    testRepository(Repository.inMemory)
   }
 
   "File repository" should "store diff" in {
-    testRepository(IndexRepository.fromDirectory(Files.createTempDirectory("irp-test")))
+    testRepository(Repository.fromDirectory(Files.createTempDirectory("irp-test")))
   }
 
   it should "validate path" in {
-    intercept[IllegalArgumentException](IndexRepository.fromDirectory(Files.createTempFile("irp-test", "file")))
+    intercept[IllegalArgumentException](Repository.fromDirectory(Files.createTempFile("irp-test", "file")))
   }
 }

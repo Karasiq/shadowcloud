@@ -7,8 +7,8 @@ import com.karasiq.shadowcloud.actors.internal.{AkkaUtils, PendingOperation}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.Chunk
-import com.karasiq.shadowcloud.storage.ChunkRepository
-import com.karasiq.shadowcloud.storage.ChunkRepository.BaseChunkRepository
+import com.karasiq.shadowcloud.storage.Repository.BaseRepository
+import com.karasiq.shadowcloud.storage.wrappers.RepositoryWrappers
 import com.karasiq.shadowcloud.streams.ByteStringConcat
 
 import scala.language.postfixOps
@@ -24,18 +24,18 @@ object ChunkIODispatcher {
   object ReadChunk extends MessageStatus[Chunk, Chunk]
 
   // Props
-  def props(baseChunkRepository: BaseChunkRepository): Props = {
-    Props(classOf[ChunkIODispatcher], baseChunkRepository)
+  def props(repository: BaseRepository): Props = {
+    Props(classOf[ChunkIODispatcher], repository)
   }
 }
 
-class ChunkIODispatcher(baseChunkRepository: BaseChunkRepository) extends Actor with ActorLogging {
+class ChunkIODispatcher(repository: BaseRepository) extends Actor with ActorLogging {
   import ChunkIODispatcher._
   import context.dispatcher
   implicit val actorMaterializer = ActorMaterializer()
   val chunksWrite = PendingOperation.withChunk
   val chunksRead = PendingOperation.withChunk
-  val chunkRepository = ChunkRepository.hexString(baseChunkRepository)
+  val chunkRepository = RepositoryWrappers.hexString(repository)
   val config = AppConfig().storage
 
   def receive: Receive = {

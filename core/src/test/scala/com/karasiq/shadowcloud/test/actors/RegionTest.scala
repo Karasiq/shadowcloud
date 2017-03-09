@@ -27,9 +27,9 @@ class RegionTest extends ActorSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
   val folder = TestUtils.randomFolder()
   val folderDiff = FolderIndexDiff.create(folder)
-  val indexRepository = IndexRepository.fromDirectory(Files.createTempDirectory("vrt-index"))
+  val indexRepository = Repository.fromDirectory(Files.createTempDirectory("vrt-index"))
   val chunksDir = Files.createTempDirectory("vrt-chunks")
-  val fileRepository = ChunkRepository.fromDirectory(chunksDir)
+  val fileRepository = Repository.fromDirectory(chunksDir)
   val index = TestActorRef(IndexDispatcher.props("testStorage", indexRepository), "index")
   val chunkIO = TestActorRef(ChunkIODispatcher.props(fileRepository), "chunkIO")
   val healthProvider = StorageHealthProvider.fromDirectory(chunksDir)
@@ -64,7 +64,7 @@ class RegionTest extends ActorSpec with FlatSpecLike {
     diff.chunks.deletedChunks shouldBe empty
 
     expectNoMsg(1 second)
-    val storedChunks = fileRepository.chunks.runWith(TestSink.probe)
+    val storedChunks = fileRepository.keys.runWith(TestSink.probe)
     storedChunks.requestNext(chunk.checksum.hash.toHexString)
     storedChunks.expectComplete()
     storageUnsubscribe()

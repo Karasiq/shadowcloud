@@ -12,9 +12,9 @@ import scala.language.postfixOps
 private[storage] final class InMemoryStoragePlugin extends StoragePlugin {
   def createStorage(storageId: String, props: StorageProps)(implicit context: ActorContext): ActorRef = {
     val indexMap = TrieMap.empty[String, ByteString]
-    val index = IndexRepository.fromTrieMap(indexMap)
+    val index = Repository.fromTrieMap(indexMap)
     val chunkMap = TrieMap.empty[String, ByteString]
-    val chunks = ChunkRepository.fromTrieMap(chunkMap)
+    val chunks = Repository.fromTrieMap(chunkMap)
     val health = StorageHealthProvider.fromMaps(indexMap, chunkMap)
     val indexSynchronizer = context.actorOf(IndexDispatcher.props(storageId, index), "index")
     val chunkIO = context.actorOf(ChunkIODispatcher.props(chunks), "chunks")

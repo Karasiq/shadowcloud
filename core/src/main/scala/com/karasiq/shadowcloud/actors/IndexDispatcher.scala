@@ -13,9 +13,9 @@ import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.storage.IndexRepository
-import com.karasiq.shadowcloud.storage.IndexRepository.BaseIndexRepository
+import com.karasiq.shadowcloud.storage.Repository.BaseRepository
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.storage.wrappers.RepositoryWrappers
 
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
@@ -41,17 +41,19 @@ object IndexDispatcher {
   case class Snapshot(diffs: Seq[(Long, IndexDiff)])
 
   // Props
-  def props(storageId: String, baseIndexRepository: BaseIndexRepository, streams: IndexRepositoryStreams = IndexRepositoryStreams.gzipped): Props = {
-    Props(classOf[IndexDispatcher], storageId, baseIndexRepository, streams)
+  def props(storageId: String, repository: BaseRepository, streams: IndexRepositoryStreams = IndexRepositoryStreams.gzipped): Props = {
+    Props(classOf[IndexDispatcher], storageId, repository, streams)
   }
 }
 
-class IndexDispatcher(storageId: String, baseIndexRepository: BaseIndexRepository, streams: IndexRepositoryStreams) extends PersistentActor with ActorLogging {
+class IndexDispatcher(storageId: String, repository: BaseRepository, streams: IndexRepositoryStreams)
+  extends PersistentActor with ActorLogging {
+
   import IndexDispatcher._
   import context.dispatcher
   require(storageId.nonEmpty)
   implicit val actorMaterializer = ActorMaterializer()
-  val indexRepository = IndexRepository.numeric(baseIndexRepository)
+  val indexRepository = RepositoryWrappers.longSeq(repository)
   val merger = IndexMerger()
   val config = AppConfig().index
 

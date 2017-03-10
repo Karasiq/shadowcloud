@@ -3,7 +3,8 @@ package com.karasiq.shadowcloud.actors.internal
 import akka.actor.{ActorContext, ActorRef}
 import akka.event.LoggingAdapter
 import akka.util.ByteString
-import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
+import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk => SReadChunk, WriteChunk => SWriteChunk}
+import com.karasiq.shadowcloud.actors.RegionDispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.config.StorageConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
@@ -21,13 +22,15 @@ private[actors] object ChunksTracker {
   case class ChunkStatus(status: Status.Value, time: Long, chunk: Chunk, writingChunk: Set[ActorRef] = Set.empty,
                          hasChunk: Set[ActorRef] = Set.empty, waitingChunk: Set[ActorRef] = Set.empty)
 
-  def apply(config: StorageConfig, modules: ModuleRegistry, storages: StorageTracker,
+  def apply(regionId: String, config: StorageConfig, modules: ModuleRegistry, storages: StorageTracker,
             log: LoggingAdapter)(implicit context: ActorContext): ChunksTracker = {
-    new ChunksTracker(config, modules, storages, log)
+    new ChunksTracker(regionId, config, modules, storages, log)
   }
 }
 
-private[actors] final class ChunksTracker(config: StorageConfig, modules: ModuleRegistry, storages: StorageTracker, log: LoggingAdapter)(implicit context: ActorContext) {
+private[actors] final class ChunksTracker(regionId: String, config: StorageConfig,
+                                          modules: ModuleRegistry, storages: StorageTracker,
+                                          log: LoggingAdapter)(implicit context: ActorContext) {
   import ChunksTracker._
 
   // -----------------------------------------------------------------------
@@ -35,6 +38,7 @@ private[actors] final class ChunksTracker(config: StorageConfig, modules: Module
   // -----------------------------------------------------------------------
   private[this] implicit val sender: ActorRef = context.self
   private[this] val chunks = mutable.AnyRefMap[ByteString, ChunkStatus]()
+  private[this] val readingChunks = PendingOperation.withChunk
 
   // -----------------------------------------------------------------------
   // Read/write
@@ -49,14 +53,7 @@ private[actors] final class ChunksTracker(config: StorageConfig, modules: Module
           log.debug("Chunk extracted from cache: {}", status.chunk)
           receiver ! ReadChunk.Success(chunk, status.chunk)
         } else {
-          storages.forRead(status).headOption match {
-            case Some(dispatcher) ⇒
-              log.debug("Reading chunk from {}: {}", dispatcher, chunk)
-              dispatcher.tell(ReadChunk(chunk), receiver)
-
-            case None ⇒
-              receiver ! ReadChunk.Failure(chunk, new IllegalArgumentException("Chunk unavailable"))
-          }
+          readingChunks.addWaiter(chunk, receiver, () ⇒ readChunkFromStorage(status))
         }
 
       case None ⇒
@@ -147,6 +144,7 @@ private[actors] final class ChunksTracker(config: StorageConfig, modules: Module
 
   def unregister(dispatcher: ActorRef): Unit = {
     chunks.foreachValue(removeActorRef(_, dispatcher))
+    readingChunks.removeWaiter(dispatcher)
   }
 
   def unregisterChunk(dispatcher: ActorRef, chunk: Chunk): Unit = {
@@ -166,6 +164,18 @@ private[actors] final class ChunksTracker(config: StorageConfig, modules: Module
   def update(dispatcher: ActorRef, diff: ChunkIndexDiff): Unit = {
     diff.deletedChunks.foreach(unregisterChunk(dispatcher, _))
     diff.newChunks.foreach(registerChunk(dispatcher, _))
+  }
+
+  // -----------------------------------------------------------------------
+  // Callbacks
+  // -----------------------------------------------------------------------
+  def readSuccess(chunk: Chunk): Unit = {
+    require(chunk.nonEmpty, "Chunk is empty")
+    readingChunks.finish(chunk, ReadChunk.Success(chunk, chunk))
+  }
+
+  def readFailure(chunk: Chunk, error: Throwable): Unit = {
+    readingChunks.finish(chunk, ReadChunk.Failure(chunk, error))
   }
 
   // -----------------------------------------------------------------------
@@ -193,8 +203,20 @@ private[actors] final class ChunksTracker(config: StorageConfig, modules: Module
     } else {
       Utils.takeOrAll(availableStorages, config.replicationFactor)
     }
-    selectedStorages.foreach(_ ! WriteChunk(status.chunk))
+    selectedStorages.foreach(_ ! SWriteChunk(regionId, status.chunk))
     selectedStorages.toSet
+  }
+
+  private[this] def readChunkFromStorage(status: ChunkStatus) = {
+    val chunk = status.chunk.withoutData
+    storages.forRead(status).headOption match {
+      case Some(dispatcher) ⇒
+        log.debug("Reading chunk from {}: {}", dispatcher, chunk)
+        dispatcher ! SReadChunk(regionId, chunk)
+
+      case None ⇒
+        readingChunks.finish(status.chunk, ReadChunk.Failure(chunk, new IllegalArgumentException("Chunk unavailable")))
+    }
   }
 
   private[this] def removeActorRef(status: ChunkStatus, actor: ActorRef): Unit = {

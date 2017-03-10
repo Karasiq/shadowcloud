@@ -32,7 +32,7 @@ class RegionStreams(val regionSupervisor: ActorRef, val parallelism: Parallelism
 
   val writeChunks: ChunkFlow = Flow[(String, Chunk)]
     .mapAsync(parallelism.write) { case (regionId, chunk) ⇒
-      regionSupervisor ? RegionEnvelope(regionId, ChunkIODispatcher.WriteChunk(chunk))
+      regionSupervisor ? RegionEnvelope(regionId, RegionDispatcher.WriteChunk(chunk))
     }
     .map {
       case ChunkIODispatcher.WriteChunk.Success(_, chunk) ⇒
@@ -44,7 +44,7 @@ class RegionStreams(val regionSupervisor: ActorRef, val parallelism: Parallelism
 
   val readChunks: ChunkFlow = Flow[(String, Chunk)]
     .mapAsync(parallelism.read) { case (regionId, chunk) ⇒
-      regionSupervisor ? RegionEnvelope(regionId, ChunkIODispatcher.ReadChunk(chunk))
+      regionSupervisor ? RegionEnvelope(regionId, RegionDispatcher.ReadChunk(chunk))
     }
     .map {
       case ChunkIODispatcher.ReadChunk.Success(_, chunk) ⇒

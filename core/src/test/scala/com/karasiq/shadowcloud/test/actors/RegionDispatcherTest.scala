@@ -8,13 +8,14 @@ import akka.stream.IOResult
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestActorRef
-import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
+import com.karasiq.shadowcloud.actors.RegionDispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors._
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.storage.wrappers.RepositoryWrappers
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 
@@ -27,7 +28,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
   val folder = TestUtils.randomFolder()
   val folderDiff = FolderIndexDiff.create(folder)
-  val indexRepository = Repository.fromDirectory(Files.createTempDirectory("vrt-index"))
+  val indexRepository = RepositoryWrappers.asIndexRepo(Repository.fromDirectory(Files.createTempDirectory("vrt-index")))
   val chunksDir = Files.createTempDirectory("vrt-chunks")
   val fileRepository = Repository.fromDirectory(chunksDir)
   val index = TestActorRef(IndexDispatcher.props("testStorage", indexRepository), "index")
@@ -48,7 +49,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     // Write chunk
     val result = testRegion ? WriteChunk(chunk)
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
-    expectMsg(StorageEnvelope("testStorage", StorageEvents.ChunkWritten(chunk)))
+    expectMsg(StorageEnvelope("testStorage", StorageEvents.ChunkWritten("testRegion", chunk)))
 
     // Health update
     val StorageEnvelope("testStorage", StorageEvents.HealthUpdated(health)) = receiveOne(1 second)
@@ -57,14 +58,14 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     health.canWrite shouldBe (initialHealth.canWrite - chunk.checksum.encryptedSize)
 
     // Chunk index update
-    val StorageEnvelope("testStorage", StorageEvents.PendingIndexUpdated(diff)) = receiveOne(1 second)
+    val StorageEnvelope("testStorage", StorageEvents.PendingIndexUpdated("testRegion", diff)) = receiveOne(1 second)
     diff.folders shouldBe empty
     diff.time should be > TestUtils.testTimestamp
     diff.chunks.newChunks shouldBe Set(chunk)
     diff.chunks.deletedChunks shouldBe empty
 
     expectNoMsg(1 second)
-    val storedChunks = fileRepository.keys.runWith(TestSink.probe)
+    val storedChunks = fileRepository.subRepository("testRegion").keys.runWith(TestSink.probe)
     storedChunks.requestNext(chunk.checksum.hash.toHexString)
     storedChunks.expectComplete()
     storageUnsubscribe()
@@ -100,7 +101,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   it should "write index" in {
     storageSubscribe()
     testRegion ! RegionDispatcher.Synchronize
-    val StorageEnvelope("testStorage", StorageEvents.IndexUpdated(sequenceNr, diff, remote)) = receiveOne(5 seconds)
+    val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", sequenceNr, diff, remote)) = receiveOne(5 seconds)
     sequenceNr shouldBe 1
     diff.time shouldBe > (TestUtils.testTimestamp)
     diff.folders shouldBe folderDiff
@@ -113,23 +114,24 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
 
   it should "read index" in {
     val streams = IndexRepositoryStreams.gzipped
-    val (sideWrite, sideWriteResult) = TestSource.probe[(String, IndexDiff)]
-      .via(streams.write(indexRepository))
+    val regionRepo = indexRepository.subRepository("testRegion")
+    val (sideWrite, sideWriteResult) = TestSource.probe[(Long, IndexDiff)]
+      .via(streams.write(regionRepo))
       .toMat(TestSink.probe)(Keep.both)
       .run()
     val diff1 = TestUtils.randomDiff
-    sideWrite.sendNext((2.toString, diff1))
+    sideWrite.sendNext((2, diff1))
     sideWrite.sendComplete()
-    val IndexIOResult("2", `diff1`, IOResult(_, Success(Done))) = sideWriteResult.requestNext()
+    val IndexIOResult(2, `diff1`, IOResult(_, Success(Done))) = sideWriteResult.requestNext()
     sideWriteResult.expectComplete()
     storageSubscribe()
     testRegion ! RegionDispatcher.Synchronize
-    val StorageEnvelope("testStorage", StorageEvents.IndexUpdated(sequenceNr, diff, remote)) = receiveOne(5 seconds)
+    val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", sequenceNr, diff, remote)) = receiveOne(5 seconds)
     sequenceNr shouldBe 2
     diff shouldBe diff1
     remote shouldBe true
     expectNoMsg(1 second)
-    storage ! IndexDispatcher.GetIndex
+    storage ! IndexDispatcher.GetIndex("testRegion")
     val IndexDispatcher.GetIndex.Success(Seq((1, firstDiff), (2, secondDiff)), IndexDiff.empty) = receiveOne(1 second)
     firstDiff.folders shouldBe folderDiff
     firstDiff.chunks.newChunks shouldBe Set(chunk)

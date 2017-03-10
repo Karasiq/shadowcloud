@@ -5,14 +5,14 @@ import java.io.FileNotFoundException
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
-import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk, WriteChunk}
+import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk => SReadChunk, WriteChunk => SWriteChunk}
 import com.karasiq.shadowcloud.actors.events.{RegionEvents, StorageEvents}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
+import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
-import com.karasiq.shadowcloud.index.{File, Folder, FolderIndex, Path}
 import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
@@ -29,6 +29,7 @@ object RegionDispatcher {
   sealed trait Message
   case class Register(storageId: String, dispatcher: ActorRef, health: StorageHealth = StorageHealth.empty) extends Message
   case class Unregister(storageId: String) extends Message
+
   case class WriteIndex(diff: FolderIndexDiff) extends Message
   object WriteIndex extends MessageStatus[IndexDiff, IndexDiff]
   case object GetIndex extends Message {
@@ -39,6 +40,11 @@ object RegionDispatcher {
   object GetFiles extends MessageStatus[Path, Set[File]]
   case class GetFolder(path: Path) extends Message
   object GetFolder extends MessageStatus[Path, Folder]
+
+  case class WriteChunk(chunk: Chunk) extends Message
+  case object WriteChunk extends MessageStatus[Chunk, Chunk]
+  case class ReadChunk(chunk: Chunk) extends Message
+  case object ReadChunk extends MessageStatus[Chunk, Chunk]
 
   // Internal messages
   private case class PushDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)], pending: IndexDiff) extends Message
@@ -57,7 +63,7 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
   val config = AppConfig()
   val modules = ModuleRegistry(config)
   val storages = StorageTracker()
-  val chunks = ChunksTracker(config.storage, modules, storages, log)
+  val chunks = ChunksTracker(regionId, config.storage, modules, storages, log)
   val merger = IndexMerger.region
 
   def receive: Receive = {
@@ -73,7 +79,7 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
       } else {
         merger.addPending(diff)
         log.debug("Writing to virtual region [{}] index: {} (storages = {})", regionId, diff, actors)
-        actors.foreach(_ ! IndexDispatcher.AddPending(diff))
+        actors.foreach(_ ! IndexDispatcher.AddPending(regionId, diff))
         sender() ! WriteIndex.Success(diff, merger.pending)
       }
 
@@ -115,10 +121,19 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
     case WriteChunk(chunk) ⇒
       chunks.writeChunk(chunk, sender())
 
-    case WriteChunk.Success(_, chunk) ⇒
-      log.debug("Chunk write success: {}", chunk)
+    case SReadChunk.Success((`regionId`, _), chunk) ⇒
+      log.debug("Chunk read success: {}", chunk)
+      chunks.readSuccess(chunk)
 
-    case WriteChunk.Failure(chunk, error) ⇒
+    case SReadChunk.Failure((`regionId`, chunk), error) ⇒
+      log.error(error, "Chunk read failed: {}", chunk)
+      chunks.readFailure(chunk, error)
+
+    case SWriteChunk.Success((`regionId`, _), chunk) ⇒
+      log.debug("Chunk write success: {}", chunk)
+      // chunks.registerChunk(sender(), chunk)
+
+    case SWriteChunk.Failure((`regionId`, chunk), error) ⇒
       log.error(error, "Chunk write failed: {}", chunk)
       chunks.unregisterChunk(sender(), chunk)
       chunks.retryPendingChunks()
@@ -130,7 +145,7 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
       log.info("Registered storage: {} -> {} [{}]", storageId, dispatcher, health)
       storages.register(storageId, dispatcher, health)
       if (health == StorageHealth.empty) dispatcher ! StorageDispatcher.CheckHealth
-      val indexFuture = (dispatcher ? IndexDispatcher.GetIndex).mapTo[IndexDispatcher.GetIndex.Success]
+      val indexFuture = (dispatcher ? IndexDispatcher.GetIndex(regionId)).mapTo[IndexDispatcher.GetIndex.Success]
       indexFuture.onComplete {
         case Success(IndexDispatcher.GetIndex.Success(diffs, pending)) ⇒
           self ! PushDiffs(storageId, diffs, pending)
@@ -152,20 +167,25 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
 
     case StorageEnvelope(storageId, event: StorageEvents.Event) if storages.contains(storageId) ⇒ event match {
       case StorageEvents.IndexLoaded(diffs) ⇒
-        log.info("Storage [{}] index loaded: {} diffs", storageId, diffs.length)
+        val localDiffs = diffs.get(regionId).fold(Vector.empty[(Long, IndexDiff)])(_.toVector)
+        log.info("Storage [{}] index loaded: {} diffs", storageId, localDiffs.length)
         dropStorageDiffs(storageId)
         chunks.unregister(storages.getDispatcher(storageId))
-        addStorageDiffs(storageId, diffs)
+        addStorageDiffs(storageId, localDiffs)
 
-      case StorageEvents.IndexUpdated(sequenceNr, diff, _) ⇒
+      case StorageEvents.IndexUpdated(`regionId`, sequenceNr, diff, _) ⇒
         log.debug("Storage [{}] index updated: {}", storageId, diff)
         addStorageDiff(storageId, sequenceNr, diff)
 
-      case StorageEvents.PendingIndexUpdated(diff) ⇒
+      case StorageEvents.PendingIndexUpdated(`regionId`, diff) ⇒
         log.debug("Storage [{}] pending index updated: {}", storageId, diff)
         merger.addPending(diff)
 
-      case StorageEvents.ChunkWritten(chunk) ⇒
+      case StorageEvents.IndexDeleted(`regionId`, sequenceNrs) ⇒
+        log.debug("Diffs deleted from storage [{}]: {}", storageId, sequenceNrs)
+        dropStorageDiffs(storageId, sequenceNrs)
+
+      case StorageEvents.ChunkWritten(`regionId`, chunk) ⇒
         log.debug("Chunk written: {}", chunk)
         chunks.registerChunk(storages.getDispatcher(storageId), chunk)
         RegionEvents.stream.publish(RegionEnvelope(regionId, RegionEvents.ChunkWritten(storageId, chunk)))
@@ -205,8 +225,16 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
     addStorageDiffs(storageId, Array((sequenceNr, diff)))
   }
 
+  private[this] def dropStorageDiffs(storageId: String, sequenceNrs: Set[Long]): Unit = {
+    val preDel = merger.chunks
+    merger.delete(sequenceNrs.map(RegionKey(0, storageId, _)))
+    val deleted = merger.chunks.diff(preDel).deletedChunks
+    val dispatcher = storages.getDispatcher(storageId)
+    deleted.foreach(chunks.unregisterChunk(dispatcher, _))
+  }
+
   private[this] def dropStorageDiffs(storageId: String): Unit = {
-    merger.remove(merger.diffs.keySet.toSet.filter(_.indexId == storageId))
+    merger.delete(merger.diffs.keys.filter(_.indexId == storageId).toSet)
   }
 
   private[this] def folderIndex: FolderIndex = {

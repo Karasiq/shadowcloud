@@ -7,6 +7,7 @@ import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.storage.files.FileRepository
 import com.karasiq.shadowcloud.storage.inmem.TrieMapRepository
+import com.karasiq.shadowcloud.storage.wrappers.CategorizedRepository
 
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.{ExecutionContext, Future}
@@ -32,7 +33,7 @@ object Repository {
     fromTrieMap(TrieMap.empty)
   }
 
-  def fromDirectory(directory: Path)(implicit ec: ExecutionContext): BaseRepository = {
+  def fromDirectory(directory: Path)(implicit ec: ExecutionContext): CategorizedRepository[String, String] = {
     require(Files.isDirectory(directory), s"Not directory: $directory")
     new FileRepository(directory)
   }

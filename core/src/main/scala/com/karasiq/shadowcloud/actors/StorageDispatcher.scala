@@ -37,7 +37,7 @@ class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef, h
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
-  val pending = PendingOperation.withChunk
+  val writingChunks = PendingOperation.withRegionChunk
   val stats = StorageStatsTracker(storageId, health, log)
 
   // -----------------------------------------------------------------------
@@ -47,28 +47,28 @@ class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef, h
     // -----------------------------------------------------------------------
     // Chunk commands
     // -----------------------------------------------------------------------
-    case msg @ ChunkIODispatcher.WriteChunk(chunk) ⇒
-      pending.addWaiter(chunk, sender(), { () ⇒
+    case msg @ ChunkIODispatcher.WriteChunk(region, chunk) ⇒
+      writingChunks.addWaiter((region, chunk), sender(), { () ⇒
         log.debug("Writing chunk: {}", chunk)
         chunkIO ! msg
       })
 
-    case msg @ ChunkIODispatcher.ReadChunk(chunk) ⇒
-      log.debug("Reading chunk: {}", chunk)
+    case msg @ ChunkIODispatcher.ReadChunk(region, chunk) ⇒
+      log.debug("Reading chunk: {]/{}", region, chunk)
       chunkIO.forward(msg)
 
     // -----------------------------------------------------------------------
     // Chunk responses
     // -----------------------------------------------------------------------
-    case msg @ ChunkIODispatcher.WriteChunk.Success(_, chunk) ⇒
+    case msg @ ChunkIODispatcher.WriteChunk.Success((region, chunk), _) ⇒
       log.debug("Chunk written, appending to index: {}", chunk)
-      pending.finish(chunk, msg)
-      StorageEvents.stream.publish(StorageEnvelope(storageId, StorageEvents.ChunkWritten(chunk)))
-      index ! IndexDispatcher.AddPending(IndexDiff.newChunks(chunk.withoutData))
+      writingChunks.finish((region, chunk), msg)
+      StorageEvents.stream.publish(StorageEnvelope(storageId, StorageEvents.ChunkWritten(region, chunk)))
+      index ! IndexDispatcher.AddPending(region, IndexDiff.newChunks(chunk.withoutData))
 
-    case msg @ ChunkIODispatcher.WriteChunk.Failure(chunk, error) ⇒
-      log.error(error, "Chunk write failure: {}", chunk)
-      pending.finish(chunk, msg)
+    case msg @ ChunkIODispatcher.WriteChunk.Failure((region, chunk), error) ⇒
+      log.error(error, "Chunk write failure: {}/{}", region, chunk)
+      writingChunks.finish((region, chunk), msg)
 
     // -----------------------------------------------------------------------
     // Index commands
@@ -95,14 +95,15 @@ class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef, h
     // Storage events
     // -----------------------------------------------------------------------
     case StorageEnvelope(`storageId`, event: StorageEvents.Event) ⇒ event match {
-      case StorageEvents.IndexLoaded(diffs) ⇒
-        val newStats = DiffStats(diffs.map(_._2):_*)
+      case StorageEvents.IndexLoaded(diffMap) ⇒
+        val allDiffs = diffMap.values.flatMap(_.values).toSeq
+        val newStats = DiffStats(allDiffs:_*)
         stats.updateStats(newStats)
 
-      case StorageEvents.IndexUpdated(_, diff, _) ⇒
+      case StorageEvents.IndexUpdated(_, _, diff, _) ⇒
         stats.appendStats(DiffStats(diff))
 
-      case StorageEvents.ChunkWritten(chunk) ⇒
+      case StorageEvents.ChunkWritten(_, chunk) ⇒
         val written = chunk.checksum.encryptedSize
         log.debug("{} bytes written, updating storage health", written)
         stats.updateHealth(_ - written)

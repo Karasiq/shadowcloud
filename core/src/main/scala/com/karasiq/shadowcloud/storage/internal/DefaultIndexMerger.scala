@@ -39,11 +39,11 @@ private[storage] final class DefaultIndexMerger[@specialized(Long) T](firstKey: 
         } else {
           rebuildIndex()
         }
-        removePending(diff)
+        deletePending(diff)
     }
   }
   
-  def remove(sequenceNrs: Set[T]): Unit = {
+  def delete(sequenceNrs: Set[T]): Unit = {
     _diffs --= sequenceNrs
     rebuildIndex()
   }
@@ -52,7 +52,7 @@ private[storage] final class DefaultIndexMerger[@specialized(Long) T](firstKey: 
     _pending = pending.merge(diff)
   }
 
-  def removePending(diff: IndexDiff): Unit = {
+  def deletePending(diff: IndexDiff): Unit = {
     _pending = pending.diffWith(diff, Decider.keepLeft, FolderDecider.mutualExclude, Decider.keepLeft)
   }
 

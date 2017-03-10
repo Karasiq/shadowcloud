@@ -6,7 +6,7 @@ import com.karasiq.shadowcloud.storage.Repository
 import scala.collection.immutable.TreeSet
 import scala.language.postfixOps
 
-trait SeqRepository[@specialized(Long) Key] extends Repository[Key] {
+trait SeqRepository[Key] extends Repository[Key] {
   def sortedKeys(implicit ord: Ordering[Key]): Source[Key, _] = {
     keys.fold(TreeSet.empty[Key])(_ + _).mapConcat(identity)
   }
@@ -19,5 +19,3 @@ trait SeqRepository[@specialized(Long) Key] extends Repository[Key] {
     keys.filter(ord.gt(_, id))
   }
 }
-
-trait LongSeqRepository extends SeqRepository[Long]

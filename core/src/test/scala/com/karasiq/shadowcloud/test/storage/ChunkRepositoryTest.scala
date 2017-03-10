@@ -32,6 +32,7 @@ class ChunkRepositoryTest extends ActorSpec with FlatSpecLike {
     // Enumerate chunks
     val keys = testRepository.keys.runWith(TestSink.probe)
     keys.requestNext(chunk.checksum.hash)
+    keys.request(1)
     keys.expectComplete()
 
     // Read chunk
@@ -55,7 +56,7 @@ class ChunkRepositoryTest extends ActorSpec with FlatSpecLike {
   }
 
   "File repository" should "store chunk" in {
-    testRepository(Repository.fromDirectory(Files.createTempDirectory("crp-test")))
+    testRepository(Repository.fromDirectory(Files.createTempDirectory("crp-test")).subRepository("default"))
   }
 
   it should "validate path" in {

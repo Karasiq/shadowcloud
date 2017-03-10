@@ -20,6 +20,14 @@ private[actors] final class PendingOperation[Key <: AnyRef] {
     }
   }
 
+  def removeWaiter(actor: ActorRef): Unit = {
+    subscribers.withFilter(_._2.contains(actor))
+      .foreach { case (key, actors) ⇒
+        actors -= actor
+        if (actors.isEmpty) subscribers -= key
+      }
+  }
+
   def finish(key: Key, result: AnyRef)(implicit sender: ActorRef = ActorRef.noSender): Unit = {
     subscribers.remove(key).foreach(_.foreach(_ ! result))
   }
@@ -27,4 +35,5 @@ private[actors] final class PendingOperation[Key <: AnyRef] {
 
 private[actors] object PendingOperation {
   def withChunk: PendingOperation[Chunk] = new PendingOperation
+  def withRegionChunk: PendingOperation[(String, Chunk)] = new PendingOperation
 }

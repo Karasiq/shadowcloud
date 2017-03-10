@@ -15,9 +15,9 @@ trait IndexMerger[T] {
   def mergedDiff: IndexDiff
   def pending: IndexDiff
   def add(sequenceNr: T, diff: IndexDiff): Unit
-  def remove(sequenceNrs: Set[T]): Unit
+  def delete(sequenceNrs: Set[T]): Unit
   def addPending(diff: IndexDiff): Unit
-  def removePending(diff: IndexDiff): Unit
+  def deletePending(diff: IndexDiff): Unit
   def clear(): Unit
 }
 
@@ -25,6 +25,18 @@ object IndexMerger {
   final case class RegionKey(timestamp: Long = 0L, indexId: String = "", sequenceNr: Long = 0L) {
     override def toString: String = {
       s"($indexId/$sequenceNr at $timestamp)"
+    }
+
+    override def hashCode(): Int = {
+      (indexId, sequenceNr).hashCode()
+    }
+
+    override def equals(obj: scala.Any): Boolean = obj match {
+      case RegionKey(_, `indexId`, `sequenceNr`) ⇒
+        true
+
+      case _ ⇒
+        false
     }
   }
 

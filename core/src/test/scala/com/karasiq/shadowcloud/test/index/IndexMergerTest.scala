@@ -22,7 +22,7 @@ class IndexMergerTest extends ActorSpec with WordSpecLike {
       }
 
       "remove diff" in {
-        index.removePending(diff)
+        index.deletePending(diff)
         index.pending shouldBe IndexDiff.empty
         index.diffs shouldBe empty
         index.mergedDiff shouldBe IndexDiff.empty

@@ -18,7 +18,19 @@ import scala.language.postfixOps
 import scala.util.Success
 
 class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
-  def testRepository(repository: BaseRepository): Unit = {
+  "In-memory repository" should "store diff" in {
+    testRepository(Repository.inMemory)
+  }
+
+  "File repository" should "store diff" in {
+    testRepository(Repository.fromDirectory(Files.createTempDirectory("irp-test")).subRepository("default"))
+  }
+
+  it should "validate path" in {
+    intercept[IllegalArgumentException](Repository.fromDirectory(Files.createTempFile("irp-test", "file")))
+  }
+
+  private[this] def testRepository(repository: BaseRepository): Unit = {
     val diff = TestUtils.randomDiff
     val testRepository = RepositoryWrappers.longSeq(repository)
 
@@ -36,6 +48,7 @@ class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
     // Enumerate diffs
     val keys = testRepository.keys.runWith(TestSink.probe)
     keys.requestNext(diff.time)
+    keys.request(1)
     keys.expectComplete()
 
     // Read diff
@@ -56,17 +69,5 @@ class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
       result.count shouldBe 0L
       result.status.isFailure shouldBe true
     }
-  }
-
-  "In-memory repository" should "store diff" in {
-    testRepository(Repository.inMemory)
-  }
-
-  "File repository" should "store diff" in {
-    testRepository(Repository.fromDirectory(Files.createTempDirectory("irp-test")))
-  }
-
-  it should "validate path" in {
-    intercept[IllegalArgumentException](Repository.fromDirectory(Files.createTempFile("irp-test", "file")))
   }
 }

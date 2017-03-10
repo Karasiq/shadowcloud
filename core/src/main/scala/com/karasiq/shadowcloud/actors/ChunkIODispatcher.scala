@@ -7,7 +7,7 @@ import com.karasiq.shadowcloud.actors.internal.{AkkaUtils, PendingOperation}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.Chunk
-import com.karasiq.shadowcloud.storage.wrappers.{CategorizedRepository, RepositoryWrappers}
+import com.karasiq.shadowcloud.storage.{CategorizedRepository, RepositoryKeys}
 import com.karasiq.shadowcloud.streams.ByteStringConcat
 
 import scala.language.postfixOps
@@ -28,7 +28,7 @@ object ChunkIODispatcher {
   }
 }
 
-class ChunkIODispatcher(repository: CategorizedRepository[String, String]) extends Actor with ActorLogging {
+private final class ChunkIODispatcher(repository: CategorizedRepository[String, String]) extends Actor with ActorLogging {
   import ChunkIODispatcher._
   import context.dispatcher
   implicit val actorMaterializer = ActorMaterializer()
@@ -51,7 +51,7 @@ class ChunkIODispatcher(repository: CategorizedRepository[String, String]) exten
   }
 
   private[this] def subRepository(region: String) = {
-    RepositoryWrappers.hexString(repository.subRepository(region))
+    RepositoryKeys.toHexString(repository.subRepository(region))
   }
 
   private[this] def writeChunk(region: String, chunk: Chunk): Unit = {

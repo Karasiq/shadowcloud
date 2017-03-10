@@ -15,7 +15,6 @@ import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
-import com.karasiq.shadowcloud.storage.wrappers.RepositoryWrappers
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 
@@ -28,12 +27,12 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
   val folder = TestUtils.randomFolder()
   val folderDiff = FolderIndexDiff.create(folder)
-  val indexRepository = RepositoryWrappers.asIndexRepo(Repository.fromDirectory(Files.createTempDirectory("vrt-index")))
+  val indexRepository = Repository.forIndex(Repositories.fromDirectory(Files.createTempDirectory("vrt-index")))
   val chunksDir = Files.createTempDirectory("vrt-chunks")
-  val fileRepository = Repository.fromDirectory(chunksDir)
+  val fileRepository = Repositories.fromDirectory(chunksDir)
   val index = TestActorRef(IndexDispatcher.props("testStorage", indexRepository), "index")
   val chunkIO = TestActorRef(ChunkIODispatcher.props(fileRepository), "chunkIO")
-  val healthProvider = StorageHealthProvider.fromDirectory(chunksDir)
+  val healthProvider = StorageHealthProviders.fromDirectory(chunksDir)
   val initialHealth = healthProvider.health.futureValue
   val storage = TestActorRef(StorageDispatcher.props("testStorage", index, chunkIO, healthProvider), "storage")
   val testRegion = TestActorRef(RegionDispatcher.props("testRegion"), "testRegion")

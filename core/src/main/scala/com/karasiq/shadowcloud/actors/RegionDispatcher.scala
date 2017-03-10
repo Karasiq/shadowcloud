@@ -55,16 +55,16 @@ object RegionDispatcher {
   }
 }
 
-class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
+private final class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
   import RegionDispatcher._
   require(regionId.nonEmpty)
-  implicit val executionContext: ExecutionContext = context.dispatcher
-  implicit val timeout = Timeout(10 seconds)
-  val config = AppConfig()
-  val modules = ModuleRegistry(config)
-  val storages = StorageTracker()
-  val chunks = ChunksTracker(regionId, config.storage, modules, storages, log)
-  val merger = IndexMerger.region
+  private[this] implicit val executionContext: ExecutionContext = context.dispatcher
+  private[this] implicit val timeout = Timeout(10 seconds)
+  private[this] val config = AppConfig()
+  private[this] val modules = ModuleRegistry(config)
+  private[this] val storages = StorageTracker()
+  private[this] val chunks = ChunksTracker(regionId, config.storage, modules, storages, log)
+  private[this] val globalIndex = IndexMerger.region
 
   def receive: Receive = {
     // -----------------------------------------------------------------------
@@ -77,10 +77,10 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
         log.warning("No index storages available on {}", regionId)
         sender() ! WriteIndex.Failure(diff, new IllegalStateException("No storages available"))
       } else {
-        merger.addPending(diff)
+        globalIndex.addPending(diff)
         log.debug("Writing to virtual region [{}] index: {} (storages = {})", regionId, diff, actors)
         actors.foreach(_ ! IndexDispatcher.AddPending(regionId, diff))
-        sender() ! WriteIndex.Success(diff, merger.pending)
+        sender() ! WriteIndex.Success(diff, globalIndex.pending)
       }
 
     case GetFiles(path) ⇒
@@ -106,7 +106,7 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
       }
 
     case GetIndex ⇒
-      sender() ! GetIndex.Success(merger.diffs.toVector)
+      sender() ! GetIndex.Success(globalIndex.diffs.toVector)
 
     case Synchronize ⇒
       log.info("Force synchronizing indexes of virtual region: {}", regionId)
@@ -161,7 +161,7 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
       chunks.unregister(dispatcher)
 
     case PushDiffs(storageId, diffs, pending) if storages.contains(storageId) ⇒
-      merger.addPending(pending)
+      globalIndex.addPending(pending)
       addStorageDiffs(storageId, diffs)
       chunks.retryPendingChunks()
 
@@ -179,7 +179,7 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
 
       case StorageEvents.PendingIndexUpdated(`regionId`, diff) ⇒
         log.debug("Storage [{}] pending index updated: {}", storageId, diff)
-        merger.addPending(diff)
+        globalIndex.addPending(diff)
 
       case StorageEvents.IndexDeleted(`regionId`, sequenceNrs) ⇒
         log.debug("Diffs deleted from storage [{}]: {}", storageId, sequenceNrs)
@@ -214,7 +214,7 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
     diffs.foreach { case (sequenceNr, diff) ⇒
       chunks.update(dispatcher, diff.chunks)
       val regionKey = RegionKey(diff.time, storageId, sequenceNr)
-      merger.add(regionKey, diff)
+      globalIndex.add(regionKey, diff)
       log.debug("Virtual region [{}] index updated: {} -> {}", regionId, regionKey, diff)
       RegionEvents.stream.publish(RegionEnvelope(regionId, RegionEvents.IndexUpdated(regionKey, diff)))
     }
@@ -226,19 +226,19 @@ class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
   }
 
   private[this] def dropStorageDiffs(storageId: String, sequenceNrs: Set[Long]): Unit = {
-    val preDel = merger.chunks
-    merger.delete(sequenceNrs.map(RegionKey(0, storageId, _)))
-    val deleted = merger.chunks.diff(preDel).deletedChunks
+    val preDel = globalIndex.chunks
+    globalIndex.delete(sequenceNrs.map(RegionKey(0, storageId, _)))
+    val deleted = globalIndex.chunks.diff(preDel).deletedChunks
     val dispatcher = storages.getDispatcher(storageId)
     deleted.foreach(chunks.unregisterChunk(dispatcher, _))
   }
 
   private[this] def dropStorageDiffs(storageId: String): Unit = {
-    merger.delete(merger.diffs.keys.filter(_.indexId == storageId).toSet)
+    globalIndex.delete(globalIndex.diffs.keys.filter(_.indexId == storageId).toSet)
   }
 
   private[this] def folderIndex: FolderIndex = {
-    merger.folders.patch(merger.pending.folders)
+    globalIndex.folders.patch(globalIndex.pending.folders)
   }
 
   override def postStop(): Unit = {

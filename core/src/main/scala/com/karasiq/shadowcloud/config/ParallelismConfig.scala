@@ -2,9 +2,9 @@ package com.karasiq.shadowcloud.config
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 
-case class ParallelismConfig(hashing: Int, encryption: Int, write: Int, read: Int)
+private[shadowcloud] case class ParallelismConfig(hashing: Int, encryption: Int, write: Int, read: Int)
 
-object ParallelismConfig extends ConfigImplicits {
+private[shadowcloud] object ParallelismConfig extends ConfigImplicits {
   def apply(config: Config): ParallelismConfig = {
     ParallelismConfig(
       intOrAllCores(config, "hashing"),

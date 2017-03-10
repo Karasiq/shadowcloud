@@ -8,13 +8,13 @@ import com.karasiq.shadowcloud.providers.ModuleRegistry
 import scala.language.postfixOps
 import scala.util.Random
 
-object ChunkKeyStream {
+private[shadowcloud] object ChunkKeyStream {
   def apply(registry: ModuleRegistry, method: EncryptionMethod = EncryptionMethod.default): ChunkKeyStream = {
     new ChunkKeyStream(registry, method)
   }
 }
 
-final class ChunkKeyStream(registry: ModuleRegistry, method: EncryptionMethod) extends GraphStage[SourceShape[EncryptionParameters]] {
+private[shadowcloud] final class ChunkKeyStream(registry: ModuleRegistry, method: EncryptionMethod) extends GraphStage[SourceShape[EncryptionParameters]] {
   val outlet = Outlet[EncryptionParameters]("ChunkKeyStream.out")
   val shape = SourceShape(outlet)
 

@@ -6,9 +6,9 @@ import com.typesafe.config.ConfigException
 
 import scala.language.postfixOps
 
-case class EncryptionConfig(chunks: EncryptionMethod)
+private[shadowcloud] case class EncryptionConfig(chunks: EncryptionMethod)
 
-object EncryptionConfig extends ConfigImplicits {
+private[shadowcloud] object EncryptionConfig extends ConfigImplicits {
   def apply(config: Config): EncryptionConfig = {
     EncryptionConfig(getEncryptionMethod(config, "chunks"))
   }

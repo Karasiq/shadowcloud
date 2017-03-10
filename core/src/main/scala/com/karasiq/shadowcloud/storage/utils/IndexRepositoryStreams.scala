@@ -11,13 +11,13 @@ import com.karasiq.shadowcloud.streams.ByteStringConcat
 
 import scala.language.postfixOps
 
-trait IndexRepositoryStreams {
+private[shadowcloud] trait IndexRepositoryStreams {
   def write[Key](repository: Repository[Key]): Flow[(Key, IndexDiff), IndexIOResult[Key], NotUsed]
   def read[Key](repository: Repository[Key]): Flow[Key, IndexIOResult[Key], NotUsed]
 }
 
 // TODO: Encryption, signatures
-object IndexRepositoryStreams {
+private[shadowcloud] object IndexRepositoryStreams {
   private object Flows {
     val write = Flow[IndexDiff].via(Serialization.toBytes())
     val read = Flow[ByteString].via(ByteStringConcat()).via(Serialization.fromBytes[IndexDiff]())

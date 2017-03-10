@@ -25,7 +25,7 @@ lazy val modelJS = model.js
 // -----------------------------------------------------------------------
 lazy val core = project
   .settings(commonSettings)
-  .dependsOn(modelJVM, pluginParent, bouncyCastleCrypto, libSodiumCrypto)
+  .dependsOn(modelJVM, storagePluginParent, cryptoPluginParent, bouncyCastleCrypto, libSodiumCrypto)
 
 // -----------------------------------------------------------------------
 // Plugins
@@ -38,10 +38,10 @@ def cryptoPlugin(id: String): Project = {
       name := s"shadowcloud-$prefixedId",
       libraryDependencies ++= ProjectDeps.scalaTest
     )
-    .dependsOn(pluginParent)
+    .dependsOn(cryptoPluginParent % "provided")
 }
 
-lazy val pluginParent = (project in file("plugin-parent"))
+lazy val cryptoPluginParent = (project in file("crypto-plugin-parent"))
   .settings(commonSettings)
   .dependsOn(modelJVM)
 
@@ -50,6 +50,10 @@ lazy val bouncyCastleCrypto = cryptoPlugin("bc")
 
 lazy val libSodiumCrypto = cryptoPlugin("libsodium")
   .settings(libraryDependencies ++= ProjectDeps.libSodiumJni)
+
+lazy val storagePluginParent = (project in file("storage-plugin-parent"))
+  .settings(commonSettings, libraryDependencies ++= ProjectDeps.akka.streams)
+  .dependsOn(modelJVM)
 
 // -----------------------------------------------------------------------
 // HTTP

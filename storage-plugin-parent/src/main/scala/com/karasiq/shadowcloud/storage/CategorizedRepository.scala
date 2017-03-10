@@ -1,7 +1,6 @@
-package com.karasiq.shadowcloud.storage.wrappers
+package com.karasiq.shadowcloud.storage
 
 import akka.stream.scaladsl.{Sink, Source}
-import com.karasiq.shadowcloud.storage.Repository
 
 import scala.language.postfixOps
 

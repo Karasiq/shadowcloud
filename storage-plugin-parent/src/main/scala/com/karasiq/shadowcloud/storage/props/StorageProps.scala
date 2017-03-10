@@ -33,7 +33,7 @@ object StorageProps {
   // -----------------------------------------------------------------------
   // Defaults
   // -----------------------------------------------------------------------
-  val inMemory: StorageProps = {
+  def inMemory: StorageProps = {
     StorageProps("memory", Address(URI.create("memory:///")))
   }
 

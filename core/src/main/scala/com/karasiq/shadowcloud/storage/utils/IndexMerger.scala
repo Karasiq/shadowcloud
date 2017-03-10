@@ -7,7 +7,7 @@ import com.karasiq.shadowcloud.storage.internal.DefaultIndexMerger
 import scala.collection.SortedMap
 import scala.language.postfixOps
 
-trait IndexMerger[T] {
+private[shadowcloud] trait IndexMerger[T] {
   def lastSequenceNr: T
   def chunks: ChunkIndex
   def folders: FolderIndex
@@ -21,7 +21,7 @@ trait IndexMerger[T] {
   def clear(): Unit
 }
 
-object IndexMerger {
+private[shadowcloud] object IndexMerger {
   final case class RegionKey(timestamp: Long = 0L, indexId: String = "", sequenceNr: Long = 0L) {
     override def toString: String = {
       s"($indexId/$sequenceNr at $timestamp)"
@@ -52,10 +52,14 @@ object IndexMerger {
   /**
     * Sequential index merger
     */
-  def apply(): IndexMerger[Long] = create(0L)
+  def apply(): IndexMerger[Long] = {
+    new DefaultIndexMerger[Long](0L)
+  }
 
   /**
     * Multi-sequence index merger
     */
-  def region: IndexMerger[RegionKey] = create(RegionKey.zero)(RegionKey.ordering)
+  def region: IndexMerger[RegionKey] = {
+    create(RegionKey.zero)(RegionKey.ordering)
+  }
 }

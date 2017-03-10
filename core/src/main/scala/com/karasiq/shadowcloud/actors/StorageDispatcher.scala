@@ -24,7 +24,7 @@ object StorageDispatcher {
   }
 }
 
-class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef, health: StorageHealthProvider) extends Actor with ActorLogging {
+private final class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef, health: StorageHealthProvider) extends Actor with ActorLogging {
   import StorageDispatcher._
 
   // -----------------------------------------------------------------------

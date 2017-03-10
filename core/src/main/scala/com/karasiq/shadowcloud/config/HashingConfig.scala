@@ -6,10 +6,10 @@ import com.typesafe.config.ConfigException
 
 import scala.language.postfixOps
 
-case class HashingConfig(chunks: HashingMethod, chunksEncrypted: HashingMethod,
+private[shadowcloud] case class HashingConfig(chunks: HashingMethod, chunksEncrypted: HashingMethod,
                          files: HashingMethod, filesEncrypted: HashingMethod)
 
-object HashingConfig extends ConfigImplicits {
+private[shadowcloud] object HashingConfig extends ConfigImplicits {
   def apply(config: Config): HashingConfig = {
     HashingConfig(
       getHashingMethod(config, "chunks"),

@@ -14,8 +14,8 @@ import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.storage.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
-import com.karasiq.shadowcloud.storage.wrappers.CategorizedRepository
 
 import scala.collection.SortedMap
 import scala.language.postfixOps
@@ -50,7 +50,7 @@ object IndexDispatcher {
   }
 }
 
-class IndexDispatcher(storageId: String, repository: CategorizedRepository[String, Long], streams: IndexRepositoryStreams)
+private final class IndexDispatcher(storageId: String, repository: CategorizedRepository[String, Long], streams: IndexRepositoryStreams)
   extends PersistentActor with ActorLogging {
 
   import IndexDispatcher._

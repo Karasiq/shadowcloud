@@ -48,7 +48,7 @@ object RegionSupervisor {
   }
 }
 
-class RegionSupervisor extends PersistentActor with ActorLogging with RegionSupervisorState {
+private final class RegionSupervisor extends PersistentActor with ActorLogging with RegionSupervisorState {
   import RegionSupervisor._
 
   // -----------------------------------------------------------------------
@@ -155,7 +155,7 @@ class RegionSupervisor extends PersistentActor with ActorLogging with RegionSupe
   }
 }
 
-sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
+private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
   import RegionSupervisor._
   val state = RegionTracker()
 

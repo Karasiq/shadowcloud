@@ -6,14 +6,14 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 
 import scala.language.postfixOps
 
-object StorageSupervisor {
+private[actors] object StorageSupervisor {
   // Props
   def props(instantiator: StorageInstantiator, storageId: String, props: StorageProps): Props = {
     Props(classOf[StorageSupervisor], instantiator, storageId, props)
   }
 }
 
-class StorageSupervisor(instantiator: StorageInstantiator, storageId: String, props: StorageProps) extends Actor with ActorLogging {
+private final class StorageSupervisor(instantiator: StorageInstantiator, storageId: String, props: StorageProps) extends Actor with ActorLogging {
   val storage = instantiator.createStorage(storageId, props)
 
   override def receive: Receive = {

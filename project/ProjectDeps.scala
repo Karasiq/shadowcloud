@@ -1,3 +1,4 @@
+import sbt.Keys.libraryDependencies
 import sbt._
 
 object ProjectDeps {
@@ -27,6 +28,13 @@ object ProjectDeps {
 
     def all: Deps = {
       actors ++ streams ++ http ++ persistence
+    }
+
+    def provided: Def.Setting[Seq[ModuleID]] = {
+      libraryDependencies ++= Seq(
+        "com.typesafe.akka" %% "akka-actor" % akkaV % "provided",
+        "com.typesafe.akka" %% "akka-stream" % akkaV % "provided"
+      )
     }
   }
 

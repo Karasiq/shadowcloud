@@ -6,7 +6,7 @@ import com.typesafe.config.{ConfigObject, ConfigValueType}
 import scala.collection.JavaConverters._
 import scala.language.{implicitConversions, postfixOps}
 
-case class ProvidersConfig[T](classes: Seq[(String, Class[T])]) extends AnyVal {
+private[shadowcloud] case class ProvidersConfig[T](classes: Seq[(String, Class[T])]) extends AnyVal {
   def instances: Seq[(String, T)] = {
     classes.map { case (name, pClass) ⇒
       name → pClass.newInstance()
@@ -14,7 +14,7 @@ case class ProvidersConfig[T](classes: Seq[(String, Class[T])]) extends AnyVal {
   }
 }
 
-object ProvidersConfig extends ConfigImplicits {
+private[shadowcloud] object ProvidersConfig extends ConfigImplicits {
   def apply[T](config: Config): ProvidersConfig[T] = {
     new ProvidersConfig(readProviders[T](config.root()))
   }

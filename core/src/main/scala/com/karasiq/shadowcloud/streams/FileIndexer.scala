@@ -14,7 +14,7 @@ import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
-object FileIndexer {
+private[shadowcloud] object FileIndexer {
   case class Result(checksum: Checksum, chunks: Seq[Chunk], ioResult: IOResult)
 
   def apply(registry: ModuleRegistry, plainHashing: HashingMethod = HashingMethod.default,
@@ -24,7 +24,7 @@ object FileIndexer {
 }
 
 // TODO: Content type
-final class FileIndexer(registry: ModuleRegistry, plainHashing: HashingMethod, encryptedHashing: HashingMethod)
+private[shadowcloud] final class FileIndexer(registry: ModuleRegistry, plainHashing: HashingMethod, encryptedHashing: HashingMethod)
   extends GraphStageWithMaterializedValue[SinkShape[Chunk], Future[Result]] {
 
   val inlet = Inlet[Chunk]("FileIndexer.in")

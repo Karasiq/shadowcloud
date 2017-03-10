@@ -5,7 +5,7 @@ import java.nio.file.{Files, StandardOpenOption, Path => FSPath}
 import akka.Done
 import akka.stream.IOResult
 import akka.stream.scaladsl.{FileIO, Sink, Source}
-import com.karasiq.shadowcloud.storage.wrappers.CategorizedRepository
+import com.karasiq.shadowcloud.storage.CategorizedRepository
 import com.karasiq.shadowcloud.utils.FileSystemUtils
 
 import scala.concurrent.{ExecutionContext, Future}

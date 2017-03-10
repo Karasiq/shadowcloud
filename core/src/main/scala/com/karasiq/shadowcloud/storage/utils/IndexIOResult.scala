@@ -5,4 +5,4 @@ import com.karasiq.shadowcloud.index.diffs.IndexDiff
 
 import scala.language.postfixOps
 
-case class IndexIOResult[Key](key: Key, diff: IndexDiff, ioResult: IOResult)
+private[shadowcloud] case class IndexIOResult[Key](key: Key, diff: IndexDiff, ioResult: IOResult)

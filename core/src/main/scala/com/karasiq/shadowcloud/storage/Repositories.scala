@@ -24,6 +24,6 @@ private[shadowcloud] object Repositories {
 
   def fromDirectory(directory: Path)(implicit ec: ExecutionContext): CategorizedRepository[String, String] = {
     require(Files.isDirectory(directory), s"Not directory: $directory")
-    new FileRepository(directory)
+    FileRepository.withSubDirs(directory)
   }
 }

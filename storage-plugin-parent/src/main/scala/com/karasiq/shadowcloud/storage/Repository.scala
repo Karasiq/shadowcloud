@@ -1,10 +1,12 @@
 package com.karasiq.shadowcloud.storage
 
+import akka.Done
 import akka.stream.IOResult
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Success
 
 trait Repository[Key] {
   final type Data = ByteString
@@ -44,9 +46,43 @@ object Repository {
     def write(key: Key): Sink[Data, Result] = repository.write(key)
   }
 
-  def toCategorized[CatKey, Key](repository: Repository[(CatKey, Key)]): CategorizedRepository[CatKey, Key] = new CategorizedRepository[CatKey, Key] {
-    def keys: Source[(CatKey, Key), Result] = repository.keys
-    def read(key: (CatKey, Key)): Source[Data, Result] = repository.read(key)
-    def write(key: (CatKey, Key)): Sink[Data, Result] = repository.write(key)
+  def toCategorized[CatKey, Key](repository: Repository[(CatKey, Key)]): CategorizedRepository[CatKey, Key] = {
+    new CategorizedRepository[CatKey, Key] {
+      def keys: Source[(CatKey, Key), Result] = repository.keys
+      def read(key: (CatKey, Key)): Source[Data, Result] = repository.read(key)
+      def write(key: (CatKey, Key)): Sink[Data, Result] = repository.write(key)
+    }
+  }
+
+  def fromSubRepositories[CatKey, Key](subRepositories: () ⇒ Map[CatKey, Repository[Key]])
+                                      (implicit ec: ExecutionContext): CategorizedRepository[CatKey, Key] = {
+    new CategorizedRepository[CatKey, Key] {
+      override def subRepository(key: CatKey): Repository[Key] = {
+        val map = subRepositories()
+        map(key)
+      }
+
+      def keys: Source[(CatKey, Key), Result] = {
+        def combineIoResults(fs: Future[IOResult]*): Future[IOResult] = {
+          Future.sequence(fs).map { results ⇒
+            val failures = results.map(_.status).filter(_.isFailure)
+            val count = results.foldLeft(0L)(_ + _.count)
+            val status = failures.headOption.getOrElse(Success(Done))
+            IOResult(count, status)
+          }
+        }
+        val keySources = subRepositories().map { case (catKey, repo) ⇒ repo.keys.map((catKey, _)) }
+        val emptySrc = Source.empty[(CatKey, Key)].mapMaterializedValue(_ ⇒ Future.successful(IOResult(0, Success(Done))))
+        keySources.foldLeft(emptySrc)((s1, s2) ⇒ s1.concatMat(s2)(combineIoResults(_, _)))
+      }
+
+      def read(key: (CatKey, Key)): Source[Data, Result] = {
+        subRepository(key._1).read(key._2)
+      }
+
+      def write(key: (CatKey, Key)): Sink[Data, Result] = {
+        subRepository(key._1).write(key._2)
+      }
+    }
   }
 }

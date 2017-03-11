@@ -12,8 +12,20 @@ import org.scalatest.FlatSpecLike
 
 import scala.language.postfixOps
 
-class ChunkRepositoryTest extends ActorSpec with FlatSpecLike {
-  def testRepository(repository: BaseRepository): Unit = {
+class RepositoryTest extends ActorSpec with FlatSpecLike {
+  "In-memory repository" should "store chunk" in {
+    testRepository(Repositories.inMemory)
+  }
+
+  "File repository" should "store chunk" in {
+    testRepository(Repositories.fromDirectory(Files.createTempDirectory("crp-test")).subRepository("default"))
+  }
+
+  it should "validate path" in {
+    intercept[IllegalArgumentException](Repositories.fromDirectory(Files.createTempFile("crp-test", "file")))
+  }
+
+  private[this] def testRepository(repository: BaseRepository): Unit = {
     val chunk = TestUtils.randomChunk
     val testRepository = RepositoryKeys.toHexString(repository)
 
@@ -47,17 +59,15 @@ class ChunkRepositoryTest extends ActorSpec with FlatSpecLike {
       result.count shouldBe 0L
       result.status.isFailure shouldBe true
     }
-  }
 
-  "In-memory repository" should "store chunk" in {
-    testRepository(Repositories.inMemory)
-  }
-
-  "File repository" should "store chunk" in {
-    testRepository(Repositories.fromDirectory(Files.createTempDirectory("crp-test")).subRepository("default"))
-  }
-
-  it should "validate path" in {
-    intercept[IllegalArgumentException](Repositories.fromDirectory(Files.createTempFile("crp-test", "file")))
+    // Delete
+    val deleteResult = testRepository.delete(chunk.checksum.hash)
+    whenReady(deleteResult) { result ⇒
+      result.count shouldBe chunk.data.plain.length
+      result.wasSuccessful shouldBe true
+      val keys = testRepository.keys.runWith(TestSink.probe)
+      keys.request(1)
+      keys.expectComplete()
+    }
   }
 }

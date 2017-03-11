@@ -7,4 +7,5 @@ private[storage] final class LongSeqRepositoryWrapper(underlying: BaseRepository
   def keys: Source[Long, Result] = underlying.keys.map(_.toLong)
   def read(key: Long): Source[Data, Result] = underlying.read(key.toString)
   def write(key: Long): Sink[Data, Result] = underlying.write(key.toString)
+  def delete(key: Long): Result = underlying.delete(key.toString)
 }

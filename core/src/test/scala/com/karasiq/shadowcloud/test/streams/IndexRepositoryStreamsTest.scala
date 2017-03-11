@@ -1,10 +1,10 @@
-package com.karasiq.shadowcloud.test.storage
+package com.karasiq.shadowcloud.test.streams
 
 import java.nio.file.Files
 
 import akka.Done
 import akka.stream.IOResult
-import akka.stream.scaladsl.{Keep, Source}
+import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
@@ -15,7 +15,7 @@ import org.scalatest.FlatSpecLike
 import scala.language.postfixOps
 import scala.util.Success
 
-class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
+class IndexRepositoryStreamsTest extends ActorSpec with FlatSpecLike {
   "In-memory repository" should "store diff" in {
     testRepository(Repositories.inMemory)
   }
@@ -55,7 +55,8 @@ class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
       .toMat(TestSink.probe)(Keep.both)
       .run()
     read.sendNext(diff.time)
-    val IndexIOResult(diff.time, `diff`, IOResult(_, Success(Done))) = readResult.requestNext()
+    val IndexIOResult(diff.time, `diff`, IOResult(diffBytes, Success(Done))) = readResult.requestNext()
+    diffBytes should not be 0
     read.sendComplete()
     readResult.expectComplete()
 
@@ -66,6 +67,16 @@ class IndexRepositoryTest extends ActorSpec with FlatSpecLike {
     whenReady(rewriteResult) { result ⇒
       result.count shouldBe 0L
       result.status.isFailure shouldBe true
+    }
+
+    val deleteResult = Source.single(diff.time).via(streams.delete(testRepository)).runWith(Sink.head)
+    whenReady(deleteResult) { case (key, result) ⇒
+      key shouldBe diff.time
+      result.count shouldBe diffBytes
+      result.wasSuccessful shouldBe true
+      val keys = testRepository.keys.runWith(TestSink.probe)
+      keys.request(1)
+      keys.expectComplete()
     }
   }
 }

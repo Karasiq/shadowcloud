@@ -49,4 +49,11 @@ private[inmem] final class TrieMapStreams[K, V](map: TrieMap[K, V], length: V �
         .mapMaterializedValue(_ ⇒ result.future)
     }
   }
+
+  def delete(key: K): Future[IOResult] = {
+    val ioResult = map.remove(key)
+      .map(deleted ⇒ IOResult(length(deleted), Success(Done)))
+      .getOrElse(IOResult(0, Failure(new NoSuchElementException(key.toString))))
+    Future.successful(ioResult)
+  }
 }

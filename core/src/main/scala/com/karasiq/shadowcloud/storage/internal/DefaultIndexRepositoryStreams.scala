@@ -13,6 +13,24 @@ import scala.language.postfixOps
 
 private[storage] final class DefaultIndexRepositoryStreams(breadth: Int, writeFlow: Flow[IndexDiff, ByteString, _],
                                                            readFlow: Flow[ByteString, IndexDiff, _]) extends IndexRepositoryStreams {
+  def write[Key](repository: Repository[Key]): Flow[(Key, IndexDiff), IndexIOResult[Key], NotUsed] = {
+    Flow[(Key, IndexDiff)]
+      .flatMapMerge(breadth, { case (key, value) ⇒
+        Source.single(value).via(writeAndReturn(repository, key))
+      })
+  }
+
+  def read[Key](repository: Repository[Key]): Flow[Key, IndexIOResult[Key], NotUsed] = {
+    Flow[Key].flatMapMerge(breadth, readAndReturn(repository, _))
+  }
+
+  def delete[Key](repository: Repository[Key]): Flow[Key, (Key, IOResult), NotUsed] = {
+    Flow[Key].flatMapMerge(breadth, { key ⇒
+      Source.fromFuture(repository.delete(key))
+        .map((key, _))
+    })
+  }
+
   private[this] def writeAndReturn[Key](repository: Repository[Key], key: Key): Flow[IndexDiff, IndexIOResult[Key], NotUsed] = {
     val graph = GraphDSL.create(repository.write(key)) { implicit builder ⇒ repository ⇒
       import GraphDSL.Implicits._
@@ -45,16 +63,5 @@ private[storage] final class DefaultIndexRepositoryStreams(breadth: Int, writeFl
       SourceShape(unwrap.out)
     }
     Source.fromGraph(graph).mapMaterializedValue(_ ⇒ NotUsed)
-  }
-
-  def write[Key](repository: Repository[Key]): Flow[(Key, IndexDiff), IndexIOResult[Key], NotUsed] = {
-    Flow[(Key, IndexDiff)]
-      .flatMapMerge(breadth, { case (key, value) ⇒
-        Source.single(value).via(writeAndReturn(repository, key))
-      })
-  }
-
-  def read[Key](repository: Repository[Key]): Flow[Key, IndexIOResult[Key], NotUsed] = {
-    Flow[Key].flatMapMerge(breadth, readAndReturn(repository, _))
   }
 }

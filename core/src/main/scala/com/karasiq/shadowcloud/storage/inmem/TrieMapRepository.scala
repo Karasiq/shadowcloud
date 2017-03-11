@@ -31,4 +31,8 @@ private[storage] class TrieMapRepository[Key](storage: TrieMap[Key, ByteString])
     ByteStringConcat()
       .toMat(underlying.write(key))(Keep.right)
   }
+
+  def delete(key: Key): Result = {
+    underlying.delete(key)
+  }
 }

@@ -60,7 +60,17 @@ private[storage] final class FileRepository(folder: FSPath)(implicit ec: Executi
     Files.createDirectories(destination.getParent)
     FileIO.toPath(destination, Set(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))
   }
-  
+
+  def delete(key: String): Result = {
+    val future = Future {
+      val file = toPath(key)
+      val size = Files.size(file)
+      Files.delete(file)
+      IOResult(size, Success(Done))
+    }
+    future.recover { case error ⇒ IOResult(0, Failure(error)) }
+  }
+
   private[this] def toPath(key: String): FSPath = {
     folder.resolve(key)
   }

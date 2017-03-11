@@ -7,15 +7,16 @@ import com.karasiq.shadowcloud.utils.HexString
 import scala.language.postfixOps
 
 object RepositoryKeys {
-  def toHexString(underlying: BaseRepository): Repository[ByteString] = {
-    Repository.mapKeys(underlying, HexString.decode, HexString.encode)
+  def toHexString(repository: BaseRepository): Repository[ByteString] = {
+    Repository.mapKeys(repository, HexString.decode, HexString.encode)
   }
 
-  def toLong(underlying: BaseRepository): SeqRepository[Long] = {
-    new LongSeqRepositoryWrapper(underlying)
+  def toLong(repository: BaseRepository): SeqRepository[Long] = {
+    // Repository.toSeq(Repository.mapKeys[String, Long](underlying, _.toLong, _.toString))
+    new LongSeqRepositoryWrapper(repository)
   }
 
-  def withPrefix(underlying: BaseRepository, delimiter: String = "_"): CategorizedRepository[String, String] = {
-    new PrefixedRepositoryWrapper(underlying, delimiter)
+  def withPrefix(repository: BaseRepository, delimiter: String = "_"): CategorizedRepository[String, String] = {
+    new PrefixedRepositoryWrapper(repository, delimiter)
   }
 }

@@ -1,6 +1,5 @@
 package com.karasiq.shadowcloud.storage
 
-import akka.stream.IOResult
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.storage.wrappers.{RepositoryKeyMapper, RepositoryWrapper, SubRepositoriesWrapper}
@@ -9,7 +8,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 trait Repository[Key] {
   final type Data = ByteString
-  final type Result = Future[IOResult]
+  final type Result = Future[StorageIOResult]
 
   def keys: Source[Key, Result]
   def read(key: Key): Source[Data, Result]
@@ -47,8 +46,8 @@ object Repository {
     new RepositoryWrapper(repository) with CategorizedRepository[CatKey, Key]
   }
 
-  def fromSubRepositories[CatKey, Key](subRepositories: () ⇒ Map[CatKey, Repository[Key]])
+  def fromSubRepositories[CatKey, Key](pathString: String, subRepositories: () ⇒ Map[CatKey, Repository[Key]])
                                       (implicit ec: ExecutionContext): CategorizedRepository[CatKey, Key] = {
-    new SubRepositoriesWrapper(subRepositories)
+    new SubRepositoriesWrapper(pathString, subRepositories)
   }
 }

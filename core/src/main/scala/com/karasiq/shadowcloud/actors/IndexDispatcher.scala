@@ -2,11 +2,10 @@ package com.karasiq.shadowcloud.actors
 
 import java.util.concurrent.TimeoutException
 
-import akka.Done
 import akka.actor.{ActorLogging, DeadLetterSuppression, PossiblyHarmful, Props, ReceiveTimeout, Status}
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
+import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
-import akka.stream.{ActorMaterializer, IOResult}
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.events.StorageEvents._
 import com.karasiq.shadowcloud.actors.internal.MultiIndexMerger
@@ -14,12 +13,11 @@ import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.storage.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.storage.{CategorizedRepository, StorageIOResult}
 
 import scala.collection.SortedMap
 import scala.language.postfixOps
-import scala.util.{Failure, Success}
 
 object IndexDispatcher {
   private type LocalKey = (String, Long)
@@ -97,13 +95,13 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
 
   // Reading remote diffs
   def receiveRead: Receive = {
-    case ReadSuccess(IndexIOResult((region, sequenceNr), diff, IOResult(bytes, ioResult))) ⇒ ioResult match {
-      case Success(Done) ⇒
-        log.info("Remote diff {}/{} received, {} bytes: {}", region, sequenceNr, bytes, diff)
+    case ReadSuccess(IndexIOResult((region, sequenceNr), diff, ioResult)) ⇒ ioResult match {
+      case StorageIOResult.Success(path, _) ⇒
+        log.info("Remote diff {}/{} received from {}: {}", region, sequenceNr, path, diff)
         persistAsync(IndexUpdated(region, sequenceNr, diff, remote = true))(updateState)
 
-      case Failure(error) ⇒
-        log.error(error, "Diff #{} read failed", sequenceNr)
+      case StorageIOResult.Failure(path, error) ⇒
+        log.error(error, "Diff {}/{} read failed from {}", region, sequenceNr, path)
         throw error
     }
 
@@ -123,13 +121,13 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
 
   // Writing local diffs
   def receiveWrite: Receive = {
-    case WriteSuccess(IndexIOResult((region, sequenceNr), diff, IOResult(bytes, ioResult))) ⇒ ioResult match {
-      case Success(Done) ⇒
-        log.debug("Diff {}/{} written, {} bytes: {}", region, sequenceNr, bytes, diff)
+    case WriteSuccess(IndexIOResult((region, sequenceNr), diff, ioResult)) ⇒ ioResult match {
+      case StorageIOResult.Success(path, _) ⇒
+        log.debug("Diff {}/{} written to {}: {}", region, sequenceNr, path, diff)
         persistAsync(IndexUpdated(region, sequenceNr, diff, remote = false))(updateState)
 
-      case Failure(error) ⇒
-        log.error(error, "Diff #{} write error: {}", sequenceNr, diff)
+      case StorageIOResult.Failure(path, error) ⇒
+        log.error(error, "Diff {}/{} write error to {}: {}", region, sequenceNr, path, diff)
     }
 
     case Status.Failure(error) ⇒

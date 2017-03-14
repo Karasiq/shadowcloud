@@ -2,9 +2,7 @@ package com.karasiq.shadowcloud.test.actors
 
 import java.nio.file.Files
 
-import akka.Done
 import akka.pattern.ask
-import akka.stream.IOResult
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestActorRef
@@ -20,7 +18,6 @@ import org.scalatest.FlatSpecLike
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.util.Success
 
 // Uses local filesystem
 class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
@@ -121,7 +118,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     val diff1 = TestUtils.randomDiff
     sideWrite.sendNext((2, diff1))
     sideWrite.sendComplete()
-    val IndexIOResult(2, `diff1`, IOResult(_, Success(Done))) = sideWriteResult.requestNext()
+    val IndexIOResult(2, `diff1`, StorageIOResult.Success(_, _)) = sideWriteResult.requestNext()
     sideWriteResult.expectComplete()
     storageSubscribe()
     testRegion ! RegionDispatcher.Synchronize

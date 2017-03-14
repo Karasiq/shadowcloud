@@ -5,7 +5,7 @@ import java.nio.file.Files
 import akka.stream.scaladsl.{Keep, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.storage.{BaseRepository, Repositories, RepositoryKeys}
+import com.karasiq.shadowcloud.storage.{BaseRepository, Repositories, RepositoryKeys, StorageIOResult}
 import com.karasiq.shadowcloud.streams.ByteStringConcat
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
@@ -56,15 +56,14 @@ class RepositoryTest extends ActorSpec with FlatSpecLike {
       .runWith(testRepository.write(chunk.checksum.hash))
 
     whenReady(rewriteResult) { result ⇒
-      result.count shouldBe 0L
-      result.status.isFailure shouldBe true
+      result.isFailure shouldBe true
     }
 
     // Delete
     val deleteResult = testRepository.delete(chunk.checksum.hash)
     whenReady(deleteResult) { result ⇒
-      result.count shouldBe chunk.data.plain.length
-      result.wasSuccessful shouldBe true
+      val StorageIOResult.Success(_, count) = result
+      count shouldBe chunk.data.plain.length
       val keys = testRepository.keys.runWith(TestSink.probe)
       keys.request(1)
       keys.expectComplete()

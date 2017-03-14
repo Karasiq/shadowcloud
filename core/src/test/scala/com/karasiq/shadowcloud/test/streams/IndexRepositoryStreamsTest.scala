@@ -2,18 +2,15 @@ package com.karasiq.shadowcloud.test.streams
 
 import java.nio.file.Files
 
-import akka.Done
-import akka.stream.IOResult
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
-import com.karasiq.shadowcloud.storage.{BaseRepository, Repositories, RepositoryKeys}
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 
 import scala.language.postfixOps
-import scala.util.Success
 
 class IndexRepositoryStreamsTest extends ActorSpec with FlatSpecLike {
   "In-memory repository" should "store diff" in {
@@ -39,7 +36,7 @@ class IndexRepositoryStreamsTest extends ActorSpec with FlatSpecLike {
       .toMat(TestSink.probe)(Keep.both)
       .run()
     write.sendNext((diff.time, diff))
-    val IndexIOResult(diff.time, `diff`, IOResult(_, Success(Done))) = writeResult.requestNext()
+    val IndexIOResult(diff.time, `diff`, StorageIOResult.Success(_, _)) = writeResult.requestNext()
     write.sendComplete()
     writeResult.expectComplete()
 
@@ -55,7 +52,7 @@ class IndexRepositoryStreamsTest extends ActorSpec with FlatSpecLike {
       .toMat(TestSink.probe)(Keep.both)
       .run()
     read.sendNext(diff.time)
-    val IndexIOResult(diff.time, `diff`, IOResult(diffBytes, Success(Done))) = readResult.requestNext()
+    val IndexIOResult(diff.time, `diff`, StorageIOResult.Success(_, diffBytes)) = readResult.requestNext()
     diffBytes should not be 0
     read.sendComplete()
     readResult.expectComplete()
@@ -65,15 +62,17 @@ class IndexRepositoryStreamsTest extends ActorSpec with FlatSpecLike {
       .runWith(testRepository.write(diff.time))
 
     whenReady(rewriteResult) { result ⇒
-      result.count shouldBe 0L
-      result.status.isFailure shouldBe true
+      result.isFailure shouldBe true
     }
 
-    val deleteResult = Source.single(diff.time).via(streams.delete(testRepository)).runWith(Sink.head)
-    whenReady(deleteResult) { case (key, result) ⇒
+    val deleteResult = Source.single(diff.time)
+      .via(streams.delete(testRepository))
+      .runWith(Sink.head)
+
+    whenReady(deleteResult) { result ⇒
+      val IndexIOResult(key, _, StorageIOResult.Success(_, count)) = result 
       key shouldBe diff.time
-      result.count shouldBe diffBytes
-      result.wasSuccessful shouldBe true
+      count shouldBe diffBytes
       val keys = testRepository.keys.runWith(TestSink.probe)
       keys.request(1)
       keys.expectComplete()

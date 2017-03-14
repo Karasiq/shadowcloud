@@ -54,7 +54,7 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
       })
 
     case msg @ ChunkIODispatcher.ReadChunk(region, chunk) ⇒
-      log.debug("Reading chunk: {]/{}", region, chunk)
+      log.debug("Reading chunk: {}/{}", region, chunk)
       chunkIO.forward(msg)
 
     // -----------------------------------------------------------------------

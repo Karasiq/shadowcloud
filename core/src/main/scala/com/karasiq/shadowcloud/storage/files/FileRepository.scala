@@ -2,15 +2,13 @@ package com.karasiq.shadowcloud.storage.files
 
 import java.nio.file.{Files, StandardOpenOption, Path => FSPath}
 
-import akka.Done
-import akka.stream.IOResult
 import akka.stream.scaladsl.{FileIO, Sink, Source}
-import com.karasiq.shadowcloud.storage.{BaseRepository, CategorizedRepository, Repository}
+import com.karasiq.shadowcloud.storage.utils.StorageUtils
+import com.karasiq.shadowcloud.storage.{BaseRepository, CategorizedRepository, Repository, StorageIOResult}
 import com.karasiq.shadowcloud.utils.FileSystemUtils
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
-import scala.util.{Failure, Success}
 
 private[storage] object FileRepository {
   def singleDir(folder: FSPath)(implicit ec: ExecutionContext): BaseRepository = {
@@ -23,12 +21,12 @@ private[storage] object FileRepository {
       Files.createDirectories(path)
       singleDir(path)
     }
-    Repository.fromSubRepositories { () ⇒
+    Repository.fromSubRepositories(root.toString, { () ⇒
       val subDirs = FileSystemUtils.listSubItems(root, includeFiles = false)
         .map(dir ⇒ (dir.getFileName.toString, singleDir(dir)))
         .toMap
       subDirs.withDefault(newSubDirectory)
-    }
+    })
   }
 }
 
@@ -45,33 +43,38 @@ private[storage] final class FileRepository(folder: FSPath)(implicit ec: Executi
     Source.fromFuture(filesFuture)
       .mapConcat(identity)
       .mapMaterializedValue { _ ⇒ 
-        filesFuture
-          .map(files ⇒ IOResult(files.length, Success(Done)))
-          .recover(PartialFunction(error ⇒ IOResult(0, Failure(error))))
+        val path = folder.toString
+        StorageUtils.wrapFuture(path, filesFuture.map(files ⇒ StorageIOResult.Success(path, files.length)))
       }
   }
 
   def read(key: String): Source[Data, Result] = {
-    FileIO.fromPath(toPath(key))
+    val path = toFilePath(key)
+    FileIO.fromPath(path)
+      .mapMaterializedValue(StorageUtils.wrapIOResult(path.toString, _))
   }
 
   def write(key: String): Sink[Data, Result] = {
-    val destination = toPath(key)
-    Files.createDirectories(destination.getParent)
-    FileIO.toPath(destination, Set(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))
+    val path = toFilePath(key)
+    Files.createDirectories(path.getParent)
+    FileIO.toPath(path, Set(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))
+      .mapMaterializedValue(StorageUtils.wrapIOResult(path.toString, _))
   }
 
   def delete(key: String): Result = {
-    val future = Future {
-      val file = toPath(key)
+    val file = toFilePath(key)
+    ioOperation(file.toString, {
       val size = Files.size(file)
       Files.delete(file)
-      IOResult(size, Success(Done))
-    }
-    future.recover { case error ⇒ IOResult(0, Failure(error)) }
+      size
+    })
   }
 
-  private[this] def toPath(key: String): FSPath = {
+  private[this] def toFilePath(key: String): FSPath = {
     folder.resolve(key)
+  }
+
+  private[this] def ioOperation(path: String, f: ⇒ Long): Future[StorageIOResult] = {
+    StorageUtils.wrapFuture(path, Future(StorageIOResult.Success(path, f)))
   }
 }

@@ -31,13 +31,14 @@ class RepositoryTest extends ActorSpec with FlatSpecLike {
 
     // Write chunk
     val (write, writeResult) = TestSource.probe[ByteString]
-      .alsoTo(testRepository.write(chunk.checksum.hash))
-      .toMat(TestSink.probe)(Keep.both)
+      .toMat(testRepository.write(chunk.checksum.hash))(Keep.both)
       .run()
     write.sendNext(chunk.data.plain)
     write.sendComplete()
-    writeResult.requestNext(chunk.data.plain)
-    writeResult.expectComplete()
+    whenReady(writeResult) { result ⇒
+      result.isSuccess shouldBe true
+      result.count should not be 0
+    }
 
     // Enumerate chunks
     val keys = testRepository.keys.runWith(TestSink.probe)

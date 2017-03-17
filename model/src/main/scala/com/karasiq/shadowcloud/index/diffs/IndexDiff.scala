@@ -7,7 +7,7 @@ import com.karasiq.shadowcloud.utils.Utils
 
 import scala.language.postfixOps
 
-case class IndexDiff(time: Long = 0, folders: FolderIndexDiff = FolderIndexDiff.empty,
+case class IndexDiff(time: Long = Utils.timestamp, folders: FolderIndexDiff = FolderIndexDiff.empty,
                      chunks: ChunkIndexDiff = ChunkIndexDiff.empty)
   extends MergeableDiff with HasEmpty with HasWithoutData {
 
@@ -63,7 +63,7 @@ case class IndexDiff(time: Long = 0, folders: FolderIndexDiff = FolderIndexDiff.
 }
 
 object IndexDiff {
-  val empty = IndexDiff()
+  val empty = IndexDiff(0L)
 
   def newChunks(chunks: Chunk*): IndexDiff = {
     if (chunks.isEmpty) {

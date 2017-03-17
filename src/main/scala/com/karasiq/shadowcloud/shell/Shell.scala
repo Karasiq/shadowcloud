@@ -5,6 +5,8 @@ import java.nio.file.Files
 import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 import scala.language.postfixOps
 
 object Shell extends ImplicitConversions {
@@ -31,6 +33,11 @@ object Shell extends ImplicitConversions {
 
   def createTempStorage(storageId: String): StorageContext = {
     createStorage(storageId, StorageProps.fromDirectory(Files.createTempDirectory("sc-shell")))
+  }
+
+  def quit(): Unit = {
+    Await.result(actorSystem.terminate(), Duration.Inf)
+    sys.exit()
   }
 
   private[this] val tempDirectory = {

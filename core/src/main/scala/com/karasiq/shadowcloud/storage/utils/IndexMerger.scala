@@ -22,17 +22,17 @@ private[shadowcloud] trait IndexMerger[T] {
 }
 
 private[shadowcloud] object IndexMerger {
-  final case class RegionKey(timestamp: Long = 0L, indexId: String = "", sequenceNr: Long = 0L) {
+  final case class RegionKey(timestamp: Long = 0L, storageId: String = "", sequenceNr: Long = 0L) {
     override def toString: String = {
-      s"($indexId/$sequenceNr at $timestamp)"
+      s"($storageId/$sequenceNr at $timestamp)"
     }
 
     override def hashCode(): Int = {
-      (indexId, sequenceNr).hashCode()
+      (storageId, sequenceNr).hashCode()
     }
 
     override def equals(obj: scala.Any): Boolean = obj match {
-      case RegionKey(_, `indexId`, `sequenceNr`) ⇒
+      case RegionKey(_, `storageId`, `sequenceNr`) ⇒
         true
 
       case _ ⇒
@@ -41,7 +41,7 @@ private[shadowcloud] object IndexMerger {
   }
 
   object RegionKey {
-    implicit val ordering: Ordering[RegionKey] = Ordering.by(key ⇒ (key.timestamp, key.indexId, key.sequenceNr))
+    implicit val ordering: Ordering[RegionKey] = Ordering.by(key ⇒ (key.timestamp, key.storageId, key.sequenceNr))
     val zero: RegionKey = RegionKey()
   }
 

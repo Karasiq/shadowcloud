@@ -6,6 +6,7 @@ import scala.language.postfixOps
 
 sealed trait StorageIOResult {
   def path: String
+  def count: Long
   def isSuccess: Boolean
   final def isFailure: Boolean = !isSuccess
 }
@@ -16,6 +17,7 @@ object StorageIOResult {
   }
 
   final case class Failure(path: String, error: StorageException) extends StorageIOResult {
+    val count: Long = 0L
     val isSuccess: Boolean = false
   }
 }

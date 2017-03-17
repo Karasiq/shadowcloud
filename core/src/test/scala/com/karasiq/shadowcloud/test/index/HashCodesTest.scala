@@ -1,11 +1,14 @@
 package com.karasiq.shadowcloud.test.index
 
 import akka.util.ByteString
+import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.test.utils.TestUtils
+import com.karasiq.shadowcloud.utils.Utils
 import org.scalatest.{FlatSpec, Matchers}
 
 import scala.language.postfixOps
 
+//noinspection RedundantDefaultArgument
 class HashCodesTest extends FlatSpec with Matchers {
   "Chunks" should "be compared" in {
     val chunk1 = TestUtils.randomChunk
@@ -57,5 +60,15 @@ class HashCodesTest extends FlatSpec with Matchers {
     folder3.hashCode() shouldNot be (folder1.hashCode())
     folder4.hashCode() shouldNot be (folder1.hashCode())
     folder5.hashCode() shouldNot be (folder1.hashCode())
+  }
+
+  "Region keys" should "be compared" in {
+    val key1 = RegionKey(Utils.timestamp, "test", 0)
+    val key2 = RegionKey(0, "test", 0)
+    val key3 = RegionKey(key1.timestamp, "test", 1)
+    key1.hashCode() shouldBe key2.hashCode()
+    key1.hashCode() should not be key3.hashCode()
+    key1 shouldBe key2
+    key1 should not be key3
   }
 }

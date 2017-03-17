@@ -12,6 +12,7 @@ object RegionEvents {
   // Events
   sealed trait Event
   case class IndexUpdated(sequenceNr: RegionKey, diff: IndexDiff) extends Event
+  case class IndexDeleted(keys: Set[RegionKey]) extends Event
   case class ChunkWritten(storageId: String, chunk: Chunk) extends Event
 
   val stream = new StringEventBus[RegionEnvelope](_.regionId)

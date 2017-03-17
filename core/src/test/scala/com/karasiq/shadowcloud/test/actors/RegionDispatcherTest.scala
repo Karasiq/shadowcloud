@@ -12,6 +12,7 @@ import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
+import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
@@ -82,12 +83,9 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   }
 
   it should "add folder" in {
-    testRegion ! RegionDispatcher.WriteIndex(FolderIndexDiff.create(folder))
-    val RegionDispatcher.WriteIndex.Success(diff, result) = receiveOne(1 second)
-    diff.time shouldBe > (TestUtils.testTimestamp)
-    diff.folders shouldBe folderDiff
-    diff.chunks.newChunks shouldBe empty
-    diff.chunks.deletedChunks shouldBe empty
+    val diff = FolderIndexDiff.create(folder)
+    testRegion ! RegionDispatcher.WriteIndex(diff)
+    val RegionDispatcher.WriteIndex.Success(`diff`, result) = receiveOne(1 second)
     result.time shouldBe > (TestUtils.testTimestamp)
     result.folders shouldBe folderDiff
     result.chunks.newChunks shouldBe Set(chunk)
@@ -111,6 +109,8 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   it should "read index" in {
     val streams = IndexRepositoryStreams.gzipped
     val regionRepo = indexRepository.subRepository("testRegion")
+
+    // Write #2
     val (sideWrite, sideWriteResult) = TestSource.probe[(Long, IndexDiff)]
       .via(streams.write(regionRepo))
       .toMat(TestSink.probe)(Keep.both)
@@ -122,17 +122,27 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     sideWriteResult.expectComplete()
     storageSubscribe()
     testRegion ! RegionDispatcher.Synchronize
-    val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", sequenceNr, diff, remote)) = receiveOne(5 seconds)
-    sequenceNr shouldBe 2
-    diff shouldBe diff1
-    remote shouldBe true
+    val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", 2, `diff1`, true)) = receiveOne(5 seconds)
     expectNoMsg(1 second)
     storage ! IndexDispatcher.GetIndex("testRegion")
-    val IndexDispatcher.GetIndex.Success(Seq((1, firstDiff), (2, secondDiff)), IndexDiff.empty) = receiveOne(1 second)
+    val IndexDispatcher.GetIndex.Success(Seq((1, firstDiff), (2, `diff1`)), IndexDiff.empty) = receiveOne(1 second)
     firstDiff.folders shouldBe folderDiff
     firstDiff.chunks.newChunks shouldBe Set(chunk)
     firstDiff.chunks.deletedChunks shouldBe empty
-    secondDiff shouldBe diff1
+
+    // Delete #1
+    whenReady(regionRepo.delete(1)) { deleteResult ⇒
+      deleteResult.isSuccess shouldBe true
+      testRegion ! RegionDispatcher.Synchronize
+      val StorageEnvelope("testStorage", StorageEvents.IndexDeleted("testRegion", sequenceNrs)) = receiveOne(5 seconds)
+      sequenceNrs shouldBe Set[Long](1)
+      storage ! IndexDispatcher.GetIndex("testRegion")
+      val IndexDispatcher.GetIndex.Success(Seq((2, `diff1`)), IndexDiff.empty) = receiveOne(1 second)
+      expectNoMsg(1 second)
+      testRegion ! RegionDispatcher.GetIndex
+      val RegionDispatcher.GetIndex.Success(Seq((RegionKey(_, "testStorage", 2), `diff1`))) = receiveOne(1 second)
+    }
+
     storageUnsubscribe()
   }
 

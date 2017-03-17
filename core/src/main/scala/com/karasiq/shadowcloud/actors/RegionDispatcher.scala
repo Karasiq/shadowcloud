@@ -31,7 +31,7 @@ object RegionDispatcher {
   case class Unregister(storageId: String) extends Message
 
   case class WriteIndex(diff: FolderIndexDiff) extends Message
-  object WriteIndex extends MessageStatus[IndexDiff, IndexDiff]
+  object WriteIndex extends MessageStatus[FolderIndexDiff, IndexDiff]
   case object GetIndex extends Message {
     case class Success(diffs: Seq[(RegionKey, IndexDiff)])
   }
@@ -71,16 +71,20 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
     // Global index commands
     // -----------------------------------------------------------------------
     case WriteIndex(folders) ⇒
-      val diff = IndexDiff(Utils.timestamp, folders)
-      val actors = Utils.takeOrAll(storages.forIndexWrite(diff), config.index.replicationFactor)
-      if (actors.isEmpty) {
-        log.warning("No index storages available on {}", regionId)
-        sender() ! WriteIndex.Failure(diff, new IllegalStateException("No storages available"))
+      if (folders.isEmpty) {
+        sender() ! WriteIndex.Failure(folders, new IllegalArgumentException("Diff is empty"))
       } else {
-        globalIndex.addPending(diff)
-        log.debug("Writing to virtual region [{}] index: {} (storages = {})", regionId, diff, actors)
-        actors.foreach(_ ! IndexDispatcher.AddPending(regionId, diff))
-        sender() ! WriteIndex.Success(diff, globalIndex.pending)
+        val diff = IndexDiff(Utils.timestamp, folders)
+        val actors = Utils.takeOrAll(storages.forIndexWrite(diff), config.index.replicationFactor)
+        if (actors.isEmpty) {
+          log.warning("No index storages available on {}", regionId)
+          sender() ! WriteIndex.Failure(folders, new IllegalStateException("No storages available"))
+        } else {
+          globalIndex.addPending(diff)
+          log.debug("Writing to virtual region [{}] index: {} (storages = {})", regionId, diff, actors)
+          actors.foreach(_ ! IndexDispatcher.AddPending(regionId, diff))
+          sender() ! WriteIndex.Success(folders, globalIndex.pending)
+        }
       }
 
     case GetFiles(path) ⇒
@@ -222,19 +226,23 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
 
   @inline
   private[this] def addStorageDiff(storageId: String, sequenceNr: Long, diff: IndexDiff) = {
-    addStorageDiffs(storageId, Array((sequenceNr, diff)))
+    addStorageDiffs(storageId, Seq((sequenceNr, diff)))
   }
 
   private[this] def dropStorageDiffs(storageId: String, sequenceNrs: Set[Long]): Unit = {
     val preDel = globalIndex.chunks
-    globalIndex.delete(sequenceNrs.map(RegionKey(0, storageId, _)))
+    val regionKeys = globalIndex.diffs.keys
+      .filter(rk ⇒ rk.storageId == storageId && sequenceNrs.contains(rk.sequenceNr))
+      .toSet
+    globalIndex.delete(regionKeys)
     val deleted = globalIndex.chunks.diff(preDel).deletedChunks
     val dispatcher = storages.getDispatcher(storageId)
     deleted.foreach(chunks.unregisterChunk(dispatcher, _))
+    RegionEvents.stream.publish(RegionEnvelope(regionId, RegionEvents.IndexDeleted(regionKeys)))
   }
 
   private[this] def dropStorageDiffs(storageId: String): Unit = {
-    globalIndex.delete(globalIndex.diffs.keys.filter(_.indexId == storageId).toSet)
+    globalIndex.delete(globalIndex.diffs.keys.filter(_.storageId == storageId).toSet)
   }
 
   private[this] def folderIndex: FolderIndex = {

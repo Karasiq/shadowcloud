@@ -2,7 +2,7 @@ import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 import sbt.Keys.libraryDependencies
 import sbt._
 
-object ScalaJsDeps {
+object ScalaJSDeps {
   type Deps = Def.Setting[Seq[ModuleID]]
   object akka {
     private val akkaV = "0.2.4.16"
@@ -20,5 +20,9 @@ object ScalaJsDeps {
         "org.akka-js" %%% "akkajsstreamtestkit" % akkaV % "test"
       )
     }
+  }
+
+  def bootstrap: Deps = {
+    libraryDependencies ++= Seq("com.github.karasiq" %%% "scalajs-bootstrap" % "1.1.4")
   }
 }

@@ -14,7 +14,7 @@ lazy val model = crossProject
   .crossType(CrossType.Pure)
   .settings(commonSettings)
   .jvmSettings(libraryDependencies ++= ProjectDeps.akka.actors)
-  .jsSettings(ScalaJsDeps.akka.actors)
+  .jsSettings(ScalaJSDeps.akka.actors)
 
 lazy val modelJVM = model.jvm
 
@@ -25,33 +25,33 @@ lazy val modelJS = model.js
 // -----------------------------------------------------------------------
 lazy val core = project
   .settings(commonSettings)
-  .dependsOn(modelJVM, storagePluginParent, cryptoPluginParent, bouncyCastleCrypto, libSodiumCrypto)
+  .dependsOn(modelJVM, storageParent, cryptoParent, bouncyCastleCrypto, libSodiumCrypto)
 
 // -----------------------------------------------------------------------
 // Plugins
 // -----------------------------------------------------------------------
 def cryptoPlugin(id: String): Project = {
   val prefixedId = s"crypto-$id"
-  Project(prefixedId, file(prefixedId))
+  Project(prefixedId, file("crypto") / id)
     .settings(
       commonSettings,
       name := s"shadowcloud-$prefixedId",
       libraryDependencies ++= ProjectDeps.scalaTest
     )
-    .dependsOn(cryptoPluginParent % "provided")
+    .dependsOn(cryptoParent % "provided")
 }
 
-lazy val cryptoPluginParent = (project in file("crypto-plugin-parent"))
+lazy val cryptoParent = Project("crypto-parent", file("crypto") / "parent")
   .settings(commonSettings)
   .dependsOn(modelJVM)
 
-lazy val bouncyCastleCrypto = cryptoPlugin("bc")
+lazy val bouncyCastleCrypto = cryptoPlugin("bouncycastle")
   .settings(libraryDependencies ++= ProjectDeps.bouncyCastle)
 
 lazy val libSodiumCrypto = cryptoPlugin("libsodium")
   .settings(libraryDependencies ++= ProjectDeps.libSodiumJni)
 
-lazy val storagePluginParent = (project in file("storage-plugin-parent"))
+lazy val storageParent = Project("storage-parent", file("storage") / "parent")
   .settings(commonSettings, libraryDependencies ++= ProjectDeps.akka.streams)
   .dependsOn(modelJVM)
 
@@ -71,7 +71,7 @@ lazy val server = project
   .dependsOn(core)
   .enablePlugins(ScalaJSBundlerPlugin, JavaAppPackaging)
 
-lazy val webapp = project
+lazy val webapp = (project in file("server") / "webapp")
   .settings(commonSettings)
   .enablePlugins(ScalaJSPlugin)
 

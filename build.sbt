@@ -78,10 +78,11 @@ lazy val webapp = (project in file("server") / "webapp")
 // -----------------------------------------------------------------------
 // Misc
 // -----------------------------------------------------------------------
-lazy val root = (project in file("."))
+lazy val shell = (project in file("."))
   .settings(commonSettings)
   .settings(
     name := "shadowcloud-shell",
-    mainClass in Compile := Some("com.karasiq.shadowcloud.test.Benchmark")
+    mainClass in Compile := Some("com.karasiq.shadowcloud.test.Benchmark"),
+    initialCommands in console :="""import com.karasiq.shadowcloud.shell.Shell._"""
   )
   .dependsOn(core)

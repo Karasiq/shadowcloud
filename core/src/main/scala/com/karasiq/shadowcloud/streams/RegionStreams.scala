@@ -4,12 +4,11 @@ import java.io.FileNotFoundException
 
 import akka.NotUsed
 import akka.actor.ActorRef
-import akka.pattern.ask
 import akka.stream.FlowShape
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, ZipWith}
 import akka.util.Timeout
+import com.karasiq.shadowcloud.actors.RegionDispatcher
 import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
-import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, RegionDispatcher}
 import com.karasiq.shadowcloud.config.ParallelismConfig
 import com.karasiq.shadowcloud.index.diffs.{FileVersions, FolderIndexDiff}
 import com.karasiq.shadowcloud.index.{Chunk, File, Path}
@@ -26,53 +25,30 @@ object RegionStreams {
   }
 }
 
-class RegionStreams(val regionSupervisor: ActorRef, val parallelism: ParallelismConfig)
-                   (implicit ec: ExecutionContext, timeout: Timeout = Timeout(5 minutes)) {
-  type ChunkFlow = Flow[(String, Chunk), Chunk, NotUsed]
+final class RegionStreams(val regionSupervisor: ActorRef, val parallelism: ParallelismConfig)
+                   (implicit ec: ExecutionContext, timeout: Timeout) {
+  private[this] val regionOps = RegionOps(regionSupervisor)
 
-  val writeChunks: ChunkFlow = Flow[(String, Chunk)]
-    .mapAsync(parallelism.write) { case (regionId, chunk) ⇒
-      regionSupervisor ? RegionEnvelope(regionId, RegionDispatcher.WriteChunk(chunk))
-    }
-    .map {
-      case ChunkIODispatcher.WriteChunk.Success(_, chunk) ⇒
-        chunk
+  val writeChunks = Flow[(String, Chunk)].mapAsync(parallelism.write) { case (regionId, chunk) ⇒
+    regionOps.writeChunk(regionId, chunk)
+  }
 
-      case ChunkIODispatcher.WriteChunk.Failure(_, error) ⇒
-        throw error
-    }
+  val readChunks = Flow[(String, Chunk)].mapAsync(parallelism.read) { case (regionId, chunk) ⇒
+    regionOps.readChunk(regionId, chunk)
+  }
 
-  val readChunks: ChunkFlow = Flow[(String, Chunk)]
-    .mapAsync(parallelism.read) { case (regionId, chunk) ⇒
-      regionSupervisor ? RegionEnvelope(regionId, RegionDispatcher.ReadChunk(chunk))
-    }
-    .map {
-      case ChunkIODispatcher.ReadChunk.Success(_, chunk) ⇒
-        chunk
-
-      case ChunkIODispatcher.ReadChunk.Failure(_, error) ⇒
-        throw error
-    }
-
-  val findFiles: Flow[(String, Path), (Path, Set[File]), NotUsed] = Flow[(String, Path)]
+  val findFiles = Flow[(String, Path)]
     .mapAsync(parallelism.read) { case (regionId, path) ⇒
-      regionSupervisor ? RegionEnvelope(regionId, RegionDispatcher.GetFiles(path))
-    }
-    .map {
-      case RegionDispatcher.GetFiles.Success(path, files) ⇒
-        path → files
-
-      case RegionDispatcher.GetFiles.Failure(path, _: FileNotFoundException) ⇒
-        path → Set.empty[File]
-
-      case RegionDispatcher.GetFiles.Failure(_, error) ⇒
-        throw error
+      regionOps.getFiles(regionId, path)
+        .map((path, _))
+        .recover { case _: FileNotFoundException ⇒ (path, Set.empty[File]) }
     }
 
-  val findFile: Flow[(String, Path), File, NotUsed] = findFiles
-    .map(_._2)
-    .filter(_.nonEmpty)
-    .map(FileVersions.mostRecent)
+  val findFile = findFiles.map(e ⇒ FileVersions.mostRecent(e._2))
+
+  val getFolder = Flow[(String, Path)].mapAsync(parallelism.read) { case (regionId, path) ⇒
+    regionOps.getFolder(regionId, path)
+  }
 
   val addFile: Flow[(String, Path, FileIndexer.Result), File, NotUsed] = {
     val graph = GraphDSL.create() { implicit builder ⇒

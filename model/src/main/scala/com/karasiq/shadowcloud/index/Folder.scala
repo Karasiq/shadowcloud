@@ -96,3 +96,9 @@ case class Folder(path: Path, created: Long = 0, lastModified: Long = 0,
     s"Folder($path, folders: [${folders.mkString(", ")}], files: [${files.mkString(", ")}])"
   }
 }
+
+object Folder {
+  def create(path: Path): Folder = {
+    Folder(path, Utils.timestamp, Utils.timestamp)
+  }
+}

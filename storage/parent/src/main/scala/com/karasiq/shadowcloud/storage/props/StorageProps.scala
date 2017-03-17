@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.storage.props
 
 import java.net.URI
-import java.nio.file.Path
+import java.nio.file.{Path => FSPath}
 
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.storage.props.StorageProps._
@@ -37,7 +37,7 @@ object StorageProps {
     StorageProps("memory", Address(URI.create("memory:///")))
   }
 
-  def fromDirectory(directory: Path): StorageProps = {
+  def fromDirectory(directory: FSPath): StorageProps = {
     StorageProps("files", Address(directory.toUri))
   }
 }

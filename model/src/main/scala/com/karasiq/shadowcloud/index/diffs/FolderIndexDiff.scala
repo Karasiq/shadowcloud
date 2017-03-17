@@ -131,6 +131,19 @@ object FolderIndexDiff {
     }
   }
 
+  def deleteFiles(files: File*): FolderIndexDiff = {
+    if (files.isEmpty) {
+      empty
+    } else {
+      val diffs = files
+        .groupBy(_.path.parent)
+        .map { case (parent, files) ⇒
+          FolderDiff(parent, Utils.timestamp, deletedFiles = files.toSet)
+        }
+      FolderIndexDiff(diffs.toVector)
+    }
+  }
+
   def move(folder: Folder, newPath: Path): FolderIndexDiff = {
     require(!folder.path.isRoot, "Cannot move root")
     val timestamp = Utils.timestamp

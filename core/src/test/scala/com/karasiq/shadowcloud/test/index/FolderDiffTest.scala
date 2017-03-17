@@ -48,6 +48,25 @@ class FolderDiffTest extends FlatSpec with Matchers {
       folder1.folders.map(name ⇒ (folder1.path / name) → Folder(folder1.path / name, folder1.created, folder1.lastModified)))
   }
 
+  it should "add folder with parents" in {
+    val index = FolderIndex.empty.patch(FolderIndexDiff.create(Folder.create("/test1/test2/test3/test4")))
+    index.folders("/").folders should contain ("test1")
+    index.folders("/test1").folders should contain ("test2")
+    index.folders("/test1/test2").folders should contain ("test3")
+    index.folders("/test1/test2/test3").folders should contain ("test4")
+  }
+
+  it should "delete folder with children" in {
+    val index = FolderIndex.empty
+      .patch(FolderIndexDiff.create(Folder.create("/test1/test2/test3/test4")))
+      .patch(FolderIndexDiff.delete("/test1"))
+    index.folders("/").folders shouldBe empty
+    intercept[NoSuchElementException](index.folders("/test1"))
+    intercept[NoSuchElementException](index.folders("/test1/test2"))
+    intercept[NoSuchElementException](index.folders("/test1/test2/test3"))
+    intercept[NoSuchElementException](index.folders("/test1/test2/test3/test4"))
+  }
+
   it should "reverse" in {
     val diff = folder2.diff(folder1)
     val folder3 = folder1.patch(diff)

@@ -4,6 +4,7 @@ import com.karasiq.shadowcloud.index.diffs.{FolderDiff, FolderIndexDiff}
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData, Mergeable}
 import com.karasiq.shadowcloud.utils.Utils
 
+import scala.annotation.tailrec
 import scala.collection.{GenTraversableOnce, mutable}
 import scala.language.postfixOps
 
@@ -100,29 +101,44 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
   private[this] def applyDiffs(diffs: GenTraversableOnce[FolderDiff]): FolderIndex = {
     val modified = mutable.AnyRefMap[Path, Folder]()
     val deleted = mutable.Set[Path]()
-    diffs.foreach { diff ⇒
-      val folder = folders.get(diff.path)
-      if (folder.isEmpty) {
-        if (diff.newFiles.nonEmpty || diff.newFolders.nonEmpty) {
-          if (!diff.path.isRoot) { // Add reference in parent folder
-          val parent = diff.path.parent
-            modified += parent → modified.get(parent)
-              .orElse(folders.get(parent))
-              .fold(Folder(parent, diff.time, diff.time, Set(diff.path.name)))(_.addFolders(diff.path.name))
-          }
-          modified += diff.path → Folder(diff.path).patch(diff)
-        }
-      } else {
-        folder.map(_.patch(diff)).foreach(modified += diff.path → _)
+
+    def getOrCreate(path: Path): Folder = {
+      modified.get(path)
+        .orElse(this.get(path))
+        .getOrElse(Folder.create(path))
+    }
+
+    @tailrec
+    def createParentFolders(path: Path): Unit = {
+      if (path.isRoot) return
+      val parent = getOrCreate(path.parent)
+      modified += parent.path → parent.addFolders(path.name)
+      createParentFolders(parent.path)
+    }
+
+    @tailrec
+    def deleteFolders(paths: Set[Path]): Unit = {
+      if (paths.isEmpty) return
+      deleted ++= paths
+      val children = paths.flatMap { path ⇒
+        getOrCreate(path).folders.map(path / _)
       }
+      deleteFolders(children)
+    }
+
+    diffs.foreach { diff ⇒
+      createParentFolders(diff.path)
+      val folder = getOrCreate(diff.path)
+      modified += diff.path → folder.patch(diff)
 
       diff.newFolders
         .map(diff.path / _)
         .filterNot(path ⇒ folders.contains(path) || modified.contains(path))
-        .foreach(path ⇒ modified += path → Folder(path, diff.time, diff.time))
-      diff.deletedFolders.map(diff.path / _).foreach(deleted +=)
+        .foreach(path ⇒ modified += path → getOrCreate(path))
+
+      deleteFolders(diff.deletedFolders.map(diff.path / _))
     }
-    withFolders(folders ++ modified -- deleted)
+    withFolders(this.folders ++ modified -- deleted)
   }
 
   private[this] def withFolders(folders: Map[Path, Folder]): FolderIndex = {

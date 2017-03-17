@@ -165,7 +165,7 @@ private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
     // -----------------------------------------------------------------------
     case RegionAdded(regionId)⇒
       log.info("Region added: {}", regionId)
-      val dispatcher = context.actorOf(RegionDispatcher.props(regionId), regionId)
+      val dispatcher = context.actorOf(RegionDispatcher.props(regionId), s"region-$regionId")
       state.addRegion(regionId, dispatcher)
 
     case RegionDeleted(regionId) ⇒
@@ -177,7 +177,7 @@ private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
     // -----------------------------------------------------------------------
     case StorageAdded(storageId, props) ⇒
       log.info("Storage added: {} (props = {})", storageId, props)
-      val dispatcher = context.actorOf(StorageSupervisor.props(instantiator, storageId, props), storageId)
+      val dispatcher = context.actorOf(StorageSupervisor.props(instantiator, storageId, props), s"storage-$storageId")
       state.addStorage(storageId, props, dispatcher)
 
     case StorageDeleted(storageId) ⇒

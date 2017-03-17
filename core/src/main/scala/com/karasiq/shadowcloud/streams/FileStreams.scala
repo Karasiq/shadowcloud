@@ -1,25 +1,26 @@
 package com.karasiq.shadowcloud.streams
 
 import akka.NotUsed
-import akka.stream.ActorMaterializer
+import akka.stream.Materializer
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.util.ByteString
+import com.karasiq.shadowcloud.index.diffs.FileVersions
 import com.karasiq.shadowcloud.index.{File, Path}
-import com.karasiq.shadowcloud.utils.MemorySize
 
 import scala.concurrent.Future
 import scala.language.postfixOps
 
 object FileStreams {
-  def apply(regionStreams: RegionStreams, chunkProcessing: ChunkProcessing)(implicit am: ActorMaterializer): FileStreams = {
+  def apply(regionStreams: RegionStreams, chunkProcessing: ChunkProcessing)(implicit m: Materializer): FileStreams = {
     new FileStreams(regionStreams, chunkProcessing)
   }
 }
 
-class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProcessing)(implicit am: ActorMaterializer) {
-  def read(regionId: String, path: Path): Source[ByteString, NotUsed] = { // TODO: Byte ranges
+final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProcessing)(implicit m: Materializer) {
+  def readBy(regionId: String, path: Path, select: Set[File] ⇒ File): Source[ByteString, NotUsed] = {
     Source.single((regionId, path))
-      .via(regionStreams.findFile)
+      .via(regionStreams.findFiles)
+      .map(e ⇒ select(e._2))
       .mapConcat(_.chunks.toVector)
       .map((regionId, _))
       .via(regionStreams.readChunks)
@@ -27,8 +28,12 @@ class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProcessing
       .map(_.data.plain)
   }
 
+  def read(regionId: String, path: Path): Source[ByteString, NotUsed] = { // TODO: Byte ranges
+    readBy(regionId, path, FileVersions.mostRecent)
+  }
+
   def write(regionId: String, path: Path): Sink[ByteString, Future[File]] = {
-    Flow.fromGraph(ChunkSplitter(MemorySize.MB)) // TODO: Chunk size config
+    Flow.fromGraph(chunkProcessing.split()) // TODO: Chunk size config
       .via(chunkProcessing.beforeWrite())
       .map((regionId, _))
       .via(regionStreams.writeChunks)

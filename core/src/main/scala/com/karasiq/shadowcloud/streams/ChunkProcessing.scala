@@ -8,6 +8,7 @@ import com.karasiq.shadowcloud.config.{AppConfig, CryptoConfig, ParallelismConfi
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.providers.ModuleRegistry
+import com.karasiq.shadowcloud.utils.MemorySize
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
@@ -23,9 +24,13 @@ object ChunkProcessing {
   }
 }
 
-class ChunkProcessing(val modules: ModuleRegistry, val crypto: CryptoConfig,
-                      val parallelism: ParallelismConfig)(implicit ec: ExecutionContext) {
+final class ChunkProcessing(val modules: ModuleRegistry, val crypto: CryptoConfig,
+                            val parallelism: ParallelismConfig)(implicit ec: ExecutionContext) {
   type ChunkFlow = Flow[Chunk, Chunk, NotUsed]
+
+  def split(chunkSize: Int = MemorySize.MB): Flow[ByteString, Chunk, NotUsed] = {
+    Flow.fromGraph(ChunkSplitter(chunkSize))
+  }
 
   def generateKey(method: EncryptionMethod = crypto.encryption.chunks): ChunkFlow = {
     Flow.fromGraph(GraphDSL.create() { implicit builder ⇒

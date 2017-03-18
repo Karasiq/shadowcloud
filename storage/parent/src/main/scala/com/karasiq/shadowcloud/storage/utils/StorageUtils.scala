@@ -40,4 +40,34 @@ object StorageUtils {
   def wrapFuture(path: String, future: Future[_ <: StorageIOResult])(implicit ec: ExecutionContext): Future[StorageIOResult] = {
     future.recover { case error ⇒ StorageIOResult.Failure(path, StorageUtils.wrapException(path, error)) }
   }
+
+  def unwrapFuture(future: Future[_ <: StorageIOResult])(implicit ec: ExecutionContext): Future[StorageIOResult] = {
+    future.flatMap {
+      case r: StorageIOResult.Success ⇒
+        Future.successful(r)
+
+      case StorageIOResult.Failure(_, error) ⇒
+        Future.failed(error)
+    }
+  }
+
+  def foldIOResults(results: StorageIOResult*): StorageIOResult = {
+    if (results.isEmpty) return StorageIOResult.Success("", 0L)
+    results.find(_.isFailure) match {
+      case Some(failure) ⇒
+        failure
+
+      case None ⇒
+        val path = results.headOption.fold("")(_.path)
+        val count = results
+          .collect { case StorageIOResult.Success(_, count) ⇒ count }
+          .sum
+        StorageIOResult.Success(path, count)
+    }
+  }
+
+  def foldIOFutures(fs: Future[StorageIOResult]*)(implicit ec: ExecutionContext): Future[StorageIOResult] = {
+    val future = Future.sequence(fs).map(foldIOResults)
+    StorageUtils.wrapFuture("", future)
+  }
 }

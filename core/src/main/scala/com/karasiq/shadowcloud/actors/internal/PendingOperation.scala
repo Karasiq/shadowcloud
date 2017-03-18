@@ -28,6 +28,10 @@ private[actors] final class PendingOperation[Key <: AnyRef] {
       }
   }
 
+  def count: Int = {
+    subscribers.size
+  }
+
   def finish(key: Key, result: AnyRef)(implicit sender: ActorRef = ActorRef.noSender): Unit = {
     subscribers.remove(key).foreach(_.foreach(_ ! result))
   }

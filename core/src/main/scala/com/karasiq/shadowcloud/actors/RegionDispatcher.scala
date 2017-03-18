@@ -32,9 +32,7 @@ object RegionDispatcher {
 
   case class WriteIndex(diff: FolderIndexDiff) extends Message
   object WriteIndex extends MessageStatus[FolderIndexDiff, IndexDiff]
-  case object GetIndex extends Message {
-    case class Success(diffs: Seq[(RegionKey, IndexDiff)])
-  }
+  case object GetIndex extends Message with MessageStatus[String, IndexMerger.State[RegionKey]]
   case object Synchronize extends Message
   case class GetFiles(path: Path) extends Message
   object GetFiles extends MessageStatus[Path, Set[File]]
@@ -110,7 +108,7 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
       }
 
     case GetIndex ⇒
-      sender() ! GetIndex.Success(globalIndex.diffs.toVector)
+      sender() ! GetIndex.Success(regionId, IndexMerger.state(globalIndex))
 
     case Synchronize ⇒
       log.info("Force synchronizing indexes of virtual region: {}", regionId)
@@ -149,9 +147,9 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
       log.info("Registered storage: {} -> {} [{}]", storageId, dispatcher, health)
       storages.register(storageId, dispatcher, health)
       if (health == StorageHealth.empty) dispatcher ! StorageDispatcher.CheckHealth
-      val indexFuture = (dispatcher ? IndexDispatcher.GetIndex(regionId)).mapTo[IndexDispatcher.GetIndex.Success]
-      indexFuture.onComplete {
-        case Success(IndexDispatcher.GetIndex.Success(diffs, pending)) ⇒
+      val future = IndexDispatcher.GetIndex.unwrapFuture(dispatcher ? IndexDispatcher.GetIndex(regionId))
+      future.onComplete {
+        case Success(IndexMerger.State(diffs, pending)) ⇒
           self ! PushDiffs(storageId, diffs, pending)
 
         case Failure(error) ⇒

@@ -13,7 +13,7 @@ import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
-import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 
@@ -27,7 +27,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   val folderDiff = FolderIndexDiff.create(folder)
   val indexRepository = Repository.forIndex(Repositories.fromDirectory(Files.createTempDirectory("vrt-index")))
   val chunksDir = Files.createTempDirectory("vrt-chunks")
-  val fileRepository = Repositories.fromDirectory(chunksDir)
+  val fileRepository = Repository.forChunks(Repositories.fromDirectory(chunksDir))
   val index = TestActorRef(IndexDispatcher.props("testStorage", indexRepository), "index")
   val chunkIO = TestActorRef(ChunkIODispatcher.props(fileRepository), "chunkIO")
   val healthProvider = StorageHealthProviders.fromDirectory(chunksDir)
@@ -63,7 +63,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
 
     expectNoMsg(1 second)
     val storedChunks = fileRepository.subRepository("testRegion").keys.runWith(TestSink.probe)
-    storedChunks.requestNext(chunk.checksum.hash.toHexString)
+    storedChunks.requestNext(chunk.checksum.hash)
     storedChunks.expectComplete()
     storageUnsubscribe()
   }
@@ -125,7 +125,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", 2, `diff1`, true)) = receiveOne(5 seconds)
     expectNoMsg(1 second)
     storage ! IndexDispatcher.GetIndex("testRegion")
-    val IndexDispatcher.GetIndex.Success(Seq((1, firstDiff), (2, `diff1`)), IndexDiff.empty) = receiveOne(1 second)
+    val IndexDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((1, firstDiff), (2, `diff1`)), IndexDiff.empty)) = receiveOne(1 second)
     firstDiff.folders shouldBe folderDiff
     firstDiff.chunks.newChunks shouldBe Set(chunk)
     firstDiff.chunks.deletedChunks shouldBe empty
@@ -137,10 +137,10 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
       val StorageEnvelope("testStorage", StorageEvents.IndexDeleted("testRegion", sequenceNrs)) = receiveOne(5 seconds)
       sequenceNrs shouldBe Set[Long](1)
       storage ! IndexDispatcher.GetIndex("testRegion")
-      val IndexDispatcher.GetIndex.Success(Seq((2, `diff1`)), IndexDiff.empty) = receiveOne(1 second)
+      val IndexDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((2, `diff1`)), IndexDiff.empty)) = receiveOne(1 second)
       expectNoMsg(1 second)
       testRegion ! RegionDispatcher.GetIndex
-      val RegionDispatcher.GetIndex.Success(Seq((RegionKey(_, "testStorage", 2), `diff1`))) = receiveOne(1 second)
+      val RegionDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((RegionKey(_, "testStorage", 2), `diff1`)), _)) = receiveOne(1 second)
     }
 
     storageUnsubscribe()

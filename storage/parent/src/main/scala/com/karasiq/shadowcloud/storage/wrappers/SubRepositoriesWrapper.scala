@@ -18,24 +18,10 @@ private[storage] final class SubRepositoriesWrapper[CatKey, Key](pathString: Str
   }
 
   def keys: Source[(CatKey, Key), Result] = {
-    def combineIoResults(fs: Future[StorageIOResult]*): Future[StorageIOResult] = {
-      val future = Future.sequence(fs).map { results ⇒
-        val failures = results.collect { case f: StorageIOResult.Failure ⇒ f }
-        if (failures.isEmpty) {
-          val count = results
-            .collect { case StorageIOResult.Success(_, count) ⇒ count }
-            .sum
-          StorageIOResult.Success(pathString, count)
-        } else {
-          failures.head
-        }
-      }
-      StorageUtils.wrapFuture(pathString, future)
-    }
     val keySources = subRepositories().map { case (catKey, repo) ⇒ repo.keys.map((catKey, _)) }
     val emptySrc = Source.empty[(CatKey, Key)]
       .mapMaterializedValue(_ ⇒ Future.successful[StorageIOResult](StorageIOResult.Success(pathString, 0)))
-    keySources.foldLeft(emptySrc)((s1, s2) ⇒ s1.concatMat(s2)(combineIoResults(_, _)))
+    keySources.foldLeft(emptySrc)((s1, s2) ⇒ s1.concatMat(s2)(StorageUtils.foldIOFutures(_, _)))
   }
 
   def read(key: (CatKey, Key)): Source[Data, Result] = {

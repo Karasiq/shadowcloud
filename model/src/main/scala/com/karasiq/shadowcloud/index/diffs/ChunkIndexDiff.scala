@@ -54,7 +54,7 @@ case class ChunkIndexDiff(newChunks: Set[Chunk] = Set.empty, deletedChunks: Set[
 
   override def toString: String = {
     if (nonEmpty) {
-      s"ChunkIndexDiff(new = [${Utils.printHashes(newChunks)}], deleted = [${Utils.printHashes(deletedChunks)}])"
+      s"ChunkIndexDiff(new = [${Utils.printChunkHashes(newChunks)}], deleted = [${Utils.printChunkHashes(deletedChunks)}])"
     } else {
       "ChunkIndexDiff.empty"
     }

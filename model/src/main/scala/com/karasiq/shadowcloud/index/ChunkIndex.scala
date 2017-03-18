@@ -52,7 +52,7 @@ case class ChunkIndex(chunks: Set[Chunk] = Set.empty) extends Mergeable with Has
   }
 
   override def toString: String = {
-    s"ChunkIndex(${Utils.printHashes(chunks)})"
+    s"ChunkIndex(${Utils.printChunkHashes(chunks)})"
   }
 
   private[this] def withChunks(chunks: Set[Chunk]): ChunkIndex = {

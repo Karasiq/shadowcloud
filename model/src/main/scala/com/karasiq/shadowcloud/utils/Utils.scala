@@ -1,5 +1,6 @@
 package com.karasiq.shadowcloud.utils
 
+import akka.util.ByteString
 import com.karasiq.shadowcloud.index.Chunk
 import com.typesafe.config.ConfigFactory
 
@@ -24,17 +25,19 @@ private[shadowcloud] object Utils {
   // -----------------------------------------------------------------------
   // toString() utils
   // -----------------------------------------------------------------------
-  def printHashes(chunks: Traversable[Chunk], limit: Int = 20): String = {
-    val size = chunks.size
+  def printHashes(hashes: Traversable[ByteString], limit: Int = 20): String = {
+    val size = hashes.size
     val sb = new StringBuilder(math.min(limit, size) * 22 + 10)
-    chunks.take(limit).foreach { chunk ⇒
-      if (chunk.checksum.hash.nonEmpty) {
-        if (sb.nonEmpty) sb.append(", ")
-        sb.append(HexString.encode(chunk.checksum.hash))
-      }
+    hashes.filter(_.nonEmpty).take(limit).foreach { hash ⇒
+      if (sb.nonEmpty) sb.append(", ")
+      sb.append(HexString.encode(hash))
     }
     if (size > limit) sb.append(", (").append(size - limit).append(" more)")
     sb.result()
+  }
+
+  def printChunkHashes(chunks: Traversable[Chunk], limit: Int = 20): String = {
+    printHashes(chunks.map(_.checksum.hash))
   }
 
   // -----------------------------------------------------------------------

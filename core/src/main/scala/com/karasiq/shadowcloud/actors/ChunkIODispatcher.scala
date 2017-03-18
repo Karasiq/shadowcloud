@@ -1,15 +1,20 @@
 package com.karasiq.shadowcloud.actors
 
+import akka.NotUsed
 import akka.actor.{Actor, ActorLogging, Props}
+import akka.pattern.pipe
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
+import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.internal.PendingOperation
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.Chunk
-import com.karasiq.shadowcloud.storage.{CategorizedRepository, RepositoryKeys, StorageIOResult}
+import com.karasiq.shadowcloud.storage.utils.StorageUtils
+import com.karasiq.shadowcloud.storage.{CategorizedRepository, StorageIOResult}
 import com.karasiq.shadowcloud.streams.ByteStringConcat
 
+import scala.concurrent.Future
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
@@ -22,13 +27,18 @@ object ChunkIODispatcher {
   case class ReadChunk(region: String, chunk: Chunk) extends Message
   object ReadChunk extends MessageStatus[(String, Chunk), Chunk]
 
+  case class DeleteChunks(region: String, chunks: Set[ByteString]) extends Message
+  object DeleteChunks extends MessageStatus[(String, Set[ByteString]), StorageIOResult]
+
+  case object GetKeys extends Message with MessageStatus[NotUsed, Set[(String, ByteString)]]
+
   // Props
-  def props(repository: CategorizedRepository[String, String]): Props = {
+  def props(repository: CategorizedRepository[String, ByteString]): Props = {
     Props(classOf[ChunkIODispatcher], repository)
   }
 }
 
-private final class ChunkIODispatcher(repository: CategorizedRepository[String, String]) extends Actor with ActorLogging {
+private final class ChunkIODispatcher(repository: CategorizedRepository[String, ByteString]) extends Actor with ActorLogging {
   import ChunkIODispatcher._
   import context.dispatcher
   implicit val actorMaterializer = ActorMaterializer()
@@ -48,10 +58,21 @@ private final class ChunkIODispatcher(repository: CategorizedRepository[String, 
 
     case msg: ReadChunk.Status ⇒
       chunksRead.finish(msg.key, msg)
+
+    case DeleteChunks(region, chunks) ⇒
+      deleteChunks(region, chunks).pipeTo(sender())
+
+    case GetKeys ⇒
+      listKeys().pipeTo(sender())
   }
 
   private[this] def subRepository(region: String) = {
-    RepositoryKeys.toHexString(repository.subRepository(region))
+    repository.subRepository(region)
+  }
+
+  private def listKeys(): Future[GetKeys.Status] = {
+    val future = repository.keys.runFold(Set.empty[(String, ByteString)])(_ + _)
+    GetKeys.wrapFuture(NotUsed, future)
   }
 
   private[this] def writeChunk(region: String, chunk: Chunk): Unit = {
@@ -104,5 +125,15 @@ private final class ChunkIODispatcher(repository: CategorizedRepository[String, 
         log.error(error, "Chunk read error: {}", chunk)
         self ! ReadChunk.Failure((region, chunk), error)
     }
+  }
+
+  private[this] def deleteChunks(region: String, chunks: Set[ByteString]): Future[DeleteChunks.Status] = {
+    val localRepository = subRepository(region)
+    val result = Source(chunks)
+      .mapAsync(4)(localRepository.delete)
+      .toMat(Sink.seq)(Keep.right)
+      .mapMaterializedValue(_.map(StorageUtils.foldIOResults))
+      .run()
+    DeleteChunks.wrapFuture((region, chunks), StorageUtils.unwrapFuture(result))
   }
 }

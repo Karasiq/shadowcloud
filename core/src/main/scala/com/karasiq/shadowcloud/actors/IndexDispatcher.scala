@@ -13,10 +13,11 @@ import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.storage.{CategorizedRepository, StorageIOResult}
 
 import scala.collection.SortedMap
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
 object IndexDispatcher {
@@ -24,10 +25,9 @@ object IndexDispatcher {
 
   // Messages
   sealed trait Message
+  case object GetIndexes extends Message with MessageStatus[String, Map[String, IndexMerger.State[Long]]]
   case class GetIndex(region: String) extends Message
-  object GetIndex {
-    case class Success(diffs: Seq[(Long, IndexDiff)], pending: IndexDiff)
-  }
+  object GetIndex extends MessageStatus[String, IndexMerger.State[Long]]
   case class AddPending(region: String, diff: IndexDiff) extends Message
   object AddPending extends MessageStatus[IndexDiff, IndexDiff]
   case object Synchronize extends Message
@@ -62,8 +62,18 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
 
   // Local operations
   def receiveDefault: Receive = {
+    case GetIndexes ⇒
+      val states = index.subIndexes.mapValues(IndexMerger.state)
+      sender() ! GetIndexes.Success(storageId, states)
+
     case GetIndex(region) ⇒
-      sender() ! GetIndex.Success(index.diffs(region).toVector, index.pending(region))
+      index.subIndexes.get(region) match {
+        case Some(index) ⇒
+          sender() ! GetIndex.Success(region, IndexMerger.state(index))
+
+        case None ⇒
+          sender() ! GetIndex.Failure(region, new NoSuchElementException(region))
+      }
 
     case AddPending(region, diff) ⇒
       log.debug("Pending diff added: {}", diff)
@@ -148,7 +158,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
       updateState(event)
 
     case RecoveryCompleted ⇒
-      context.system.scheduler.scheduleOnce(config.syncInterval, self, Synchronize)
+      scheduleSync(1 second) // Initial sync
       context.setReceiveTimeout(config.syncInterval * 10)
   }
 
@@ -183,9 +193,9 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
     context.become(receive.orElse(receiveDefault))
   }
 
-  private[this] def scheduleSync(): Unit = {
-    log.debug("Scheduling synchronize in {}", config.syncInterval.toCoarsest)
-    context.system.scheduler.scheduleOnce(config.syncInterval, self, Synchronize)
+  private[this] def scheduleSync(duration: FiniteDuration = config.syncInterval): Unit = {
+    if (log.isDebugEnabled) log.debug("Scheduling synchronize in {}", duration.toCoarsest)
+    context.system.scheduler.scheduleOnce(duration, self, Synchronize)
     become(receiveWait)
   }
 

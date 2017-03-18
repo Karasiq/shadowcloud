@@ -5,7 +5,7 @@ import com.karasiq.shadowcloud.index.Chunk
 
 import scala.language.postfixOps
 
-private[shadowcloud] trait ChunkKeyExtractor {
+private[shadowcloud] trait ChunkKeyExtractor extends (Chunk ⇒ ByteString) {
   def apply(chunk: Chunk): ByteString
 }
 

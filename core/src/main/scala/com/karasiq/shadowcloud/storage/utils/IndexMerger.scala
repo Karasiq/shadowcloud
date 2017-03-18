@@ -45,6 +45,19 @@ private[shadowcloud] object IndexMerger {
     val zero: RegionKey = RegionKey()
   }
 
+  final case class State[@specialized(Long) T](diffs: Seq[(T, IndexDiff)], pending: IndexDiff)
+
+  def state[T](index: IndexMerger[T]): State[T] = {
+    State(index.diffs.toVector, index.pending)
+  }
+
+  def restore[T: Ordering](zeroKey: T, state: State[T]): IndexMerger[T] = {
+    val index = create(zeroKey)
+    state.diffs.foreach { case (key, value) ⇒ index.add(key, value) }
+    index.addPending(index.pending)
+    index
+  }
+
   def create[T: Ordering](zeroKey: T): IndexMerger[T] = {
     new DefaultIndexMerger[T](zeroKey)
   }

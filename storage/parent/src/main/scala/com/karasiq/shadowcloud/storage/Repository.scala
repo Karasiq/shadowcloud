@@ -3,6 +3,7 @@ package com.karasiq.shadowcloud.storage
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.storage.wrappers.{RepositoryKeyMapper, RepositoryWrapper, SubRepositoriesWrapper}
+import com.karasiq.shadowcloud.utils.HexString
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -32,6 +33,10 @@ object Repository {
                                           toOld: NewKey ⇒ OldKey): CategorizedRepository[CatKey, NewKey] = {
     new RepositoryKeyMapper[(CatKey, OldKey), (CatKey, NewKey)](repository, key ⇒ key.copy(_2 = toNew(key._2)),
       key ⇒ key.copy(_2 = toOld(key._2))) with CategorizedRepository[CatKey, NewKey]
+  }
+
+  def forChunks(repository: CategorizedRepository[String, String]): CategorizedRepository[String, ByteString] = {
+    mapItemKeys(repository, HexString.decode, HexString.encode)
   }
 
   def forIndex[CatKey](repository: CategorizedRepository[CatKey, String]): CategorizedRepository[CatKey, Long] = {

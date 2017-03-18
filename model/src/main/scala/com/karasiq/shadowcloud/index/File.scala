@@ -30,6 +30,6 @@ case class File(path: Path, created: Long = 0, lastModified: Long = 0,
   }
 
   override def toString: String = {
-    s"File($path, $checksum, chunks: [${Utils.printHashes(chunks)}])"
+    s"File($path, $checksum, chunks: [${Utils.printChunkHashes(chunks)}])"
   }
 }

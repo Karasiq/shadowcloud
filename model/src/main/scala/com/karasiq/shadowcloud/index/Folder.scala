@@ -69,7 +69,7 @@ case class Folder(path: Path, created: Long = 0, lastModified: Long = 0,
   }
 
   def withPath(newPath: Path): Folder = {
-    copy(path = newPath, files = files.map(file ⇒ file.copy(path = file.path.move(newPath))))
+    copy(path = newPath, files = files.map(file ⇒ file.copy(path = file.path.withParent(newPath))))
   }
 
   def isEmpty: Boolean = {

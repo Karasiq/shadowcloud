@@ -21,11 +21,11 @@ case class Path(nodes: Seq[String]) {
     nodes.last
   }
 
-  def move(path: Path): Path = {
+  def withParent(path: Path): Path = {
     if (isRoot) path else path / name
   }
 
-  def rename(name: String): Path = {
+  def withName(name: String): Path = {
     if (isRoot) this / name else parent / name
   }
 
@@ -38,9 +38,7 @@ object Path {
   val root = Path(Nil)
 
   implicit def fromString(str: String): Path = {
-    val nodes: Seq[String] = str.split(separators).filter(_.nonEmpty)
+    val nodes: Seq[String] = str.split("/").filter(_.nonEmpty)
     if (nodes.isEmpty) root else Path(nodes)
   }
-
-  private[this] val separators: Array[Char] = Array('/', '\\')
 }

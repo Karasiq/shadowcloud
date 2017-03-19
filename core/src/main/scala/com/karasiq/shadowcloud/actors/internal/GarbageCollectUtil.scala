@@ -5,13 +5,13 @@ import com.karasiq.shadowcloud.config.StorageConfig
 import com.karasiq.shadowcloud.index.{Chunk, ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 
-private[actors] object GarbageCollector {
-  def apply(config: StorageConfig, index: IndexMerger[_]): GarbageCollector = {
-    new GarbageCollector(config, index)
+private[actors] object GarbageCollectUtil {
+  def apply(config: StorageConfig, index: IndexMerger[_]): GarbageCollectUtil = {
+    new GarbageCollectUtil(config, index)
   }
 }
 
-private[actors] final class GarbageCollector(config: StorageConfig, index: IndexMerger[_]) {
+private[actors] final class GarbageCollectUtil(config: StorageConfig, index: IndexMerger[_]) {
   def orphanedChunks: Set[Chunk] = {
     val fileChunks = (for {
       (_, folder) ← currentFolders.folders

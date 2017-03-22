@@ -2,6 +2,7 @@ package com.karasiq.shadowcloud.actors
 
 import java.util.concurrent.TimeoutException
 
+import akka.NotUsed
 import akka.actor.{ActorLogging, DeadLetterSuppression, PossiblyHarmful, Props, ReceiveTimeout, Status}
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import akka.stream.ActorMaterializer
@@ -17,6 +18,7 @@ import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexR
 import com.karasiq.shadowcloud.storage.{CategorizedRepository, StorageIOResult}
 
 import scala.collection.SortedMap
+import scala.collection.mutable.{Set => MSet}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -30,6 +32,7 @@ object IndexDispatcher {
   object GetIndex extends MessageStatus[String, IndexMerger.State[Long]]
   case class AddPending(region: String, diff: IndexDiff) extends Message
   object AddPending extends MessageStatus[IndexDiff, IndexDiff]
+  case class CompactIndex(region: String) extends Message
   case object Synchronize extends Message
 
   // Internal messages
@@ -37,28 +40,31 @@ object IndexDispatcher {
   private case class KeysLoaded(keys: Set[LocalKey]) extends InternalMessage
   private case class ReadSuccess(result: IndexIOResult[LocalKey]) extends InternalMessage
   private case class WriteSuccess(result: IndexIOResult[LocalKey]) extends InternalMessage
+  private case class CompactSuccess(deleted: Set[Long], result: IndexIOResult[LocalKey]) extends InternalMessage
   private case object StreamCompleted extends InternalMessage with DeadLetterSuppression
 
   // Snapshot
   case class Snapshot(diffs: Map[String, SortedMap[Long, IndexDiff]])
 
   // Props
-  def props(storageId: String, repository: CategorizedRepository[String, Long], streams: IndexRepositoryStreams = IndexRepositoryStreams.gzipped): Props = {
-    Props(classOf[IndexDispatcher], storageId, repository, streams)
+  def props(storageId: String, repository: CategorizedRepository[String, Long]): Props = {
+    Props(classOf[IndexDispatcher], storageId, repository)
   }
 }
 
-private final class IndexDispatcher(storageId: String, repository: CategorizedRepository[String, Long], streams: IndexRepositoryStreams)
+private final class IndexDispatcher(storageId: String, repository: CategorizedRepository[String, Long])
   extends PersistentActor with ActorLogging {
-
   import IndexDispatcher._
   import context.dispatcher
+
+  // Context
   require(storageId.nonEmpty)
+  override val persistenceId: String = s"index_$storageId"
   implicit val actorMaterializer = ActorMaterializer()
+  val streams = IndexRepositoryStreams.gzipped
   val index = MultiIndexMerger()
   val config = AppConfig().index
-
-  override val persistenceId: String = s"index_$storageId"
+  val compactRequested = MSet.empty[String]
 
   // Local operations
   def receiveDefault: Receive = {
@@ -79,6 +85,12 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
       log.debug("Pending diff added: {}", diff)
       persistAsync(PendingIndexUpdated(region, diff))(updateState)
 
+    case CompactIndex(region) ⇒
+      if (!compactRequested.contains(region)) {
+        log.debug("Index compaction requested: {}", region)
+        compactRequested += region
+      }
+
     case ReceiveTimeout ⇒
       throw new TimeoutException("Receive timeout")
   }
@@ -87,7 +99,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   def receiveWait: Receive = {
     case Synchronize ⇒
       log.debug("Starting synchronization")
-      readRemoteKeys()
+      startSync()
   }
 
   // Loading remote diff keys
@@ -95,7 +107,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
     case KeysLoaded(keys) ⇒
       become {
         case StreamCompleted ⇒
-          readDiffs(keys)
+          becomeRead(keys)
       }
 
     case Status.Failure(error) ⇒
@@ -116,6 +128,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
     }
 
     case Status.Failure(error) ⇒
+      log.error(error, "Diff read failed")
       throw error
 
     case StreamCompleted ⇒
@@ -123,7 +136,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
       val pending = for ((region, index) ← index.subIndexes.toVector if index.pending.nonEmpty)
         yield ((region, index.lastSequenceNr + 1), index.pending)
       if (pending.nonEmpty) {
-        write(pending)
+        becomeWrite(pending)
       } else {
         scheduleSync()
       }
@@ -146,6 +159,29 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
 
     case StreamCompleted ⇒
       log.debug("Synchronization write completed")
+      deferAsync(NotUsed)(_ ⇒ startCompact())
+  }
+
+  // Compacting
+  def receiveCompact: Receive = {
+    case CompactSuccess(deleted, result) ⇒
+      log.info("Compact success: deleted = {}, new = {}", deleted, result)
+      if (result.diff.isEmpty) {
+        persistAsync(IndexDeleted(result.key._1, deleted))(updateState)
+      } else {
+        persistAllAsync(List(
+          IndexDeleted(result.key._1, deleted),
+          IndexUpdated(result.key._1, result.key._2, result.diff, remote = false)
+        ))(updateState)
+      }
+
+    case Status.Failure(error) ⇒
+      log.error(error, "Compact error")
+      scheduleSync()
+
+    case StreamCompleted ⇒
+      log.debug("Indexes compaction completed")
+      compactRequested.clear()
       scheduleSync()
   }
 
@@ -166,6 +202,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
     receiveWait.orElse(receiveDefault)
   }
 
+  // State
   private[this] def updateState(event: Event): Unit = {
     StorageEvents.stream.publish(StorageEnvelope(storageId, event))
     event match {
@@ -189,6 +226,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
     }
   }
 
+  // Utils
   private[this] def become(receive: Receive): Unit = {
     context.become(receive.orElse(receiveDefault))
   }
@@ -199,7 +237,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
     become(receiveWait)
   }
 
-  private[this] def readRemoteKeys(): Unit = {
+  private[this] def startSync(): Unit = {
     repository.keys
       .fold(Set.empty[(String, Long)])(_ + _)
       .map(KeysLoaded)
@@ -207,7 +245,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
     become(receivePreRead)
   }
 
-  private[this] def readDiffs(keys: Set[LocalKey]): Unit = {
+  private[this] def becomeRead(keys: Set[LocalKey]): Unit = {
     def startRead(): Unit = {
       val keySeq = keys.filter { case (region, sequenceNr) ⇒ sequenceNr > index.lastSequenceNr(region) }
         .toVector
@@ -240,7 +278,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
     }
   }
 
-  private[this] def write(diffs: Seq[((String, Long), IndexDiff)]): Unit = {
+  private[this] def becomeWrite(diffs: Seq[(LocalKey, IndexDiff)]): Unit = {
     log.debug("Writing pending diffs: {}", diffs)
     Source(diffs.toVector)
       .alsoTo(Sink.foreach { case ((region, sequenceNr), diff) ⇒
@@ -250,5 +288,53 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
       .map(WriteSuccess)
       .runWith(Sink.actorRef(self, StreamCompleted))
     become(receiveWrite)
+  }
+
+  private[this] def startCompact(): Unit = {
+    def compactIndex(region: String, index: IndexMerger[Long]): Source[CompactSuccess, NotUsed] = {
+      log.debug("Compacting diffs: {}", index.diffs)
+      val diffs = index.diffs.toVector
+      val newDiff = index.mergedDiff
+      val newSequenceNr = index.lastSequenceNr + 1
+      log.debug("Writing compacted diff: {}/{} -> {}", region, newSequenceNr, newDiff)
+      val writeResult = if (newDiff.isEmpty) {
+        // Skip write
+        val empty = IndexIOResult((region, newSequenceNr), IndexDiff.empty, StorageIOResult.Success("", 0))
+        Source.single(empty)
+      } else {
+        Source.single((region, newSequenceNr) → newDiff)
+          .via(streams.write(repository))
+          .log("compact-write")
+      }
+
+      writeResult.flatMapConcat(wr ⇒ wr.ioResult match {
+        case StorageIOResult.Success(_, _) ⇒
+          Source(diffs)
+            .map(kv ⇒ (region, kv._1))
+            .via(streams.delete(repository))
+            .log("compact-delete")
+            .filter(_.ioResult.isSuccess)
+            .map(_.key._2)
+            .fold(Set.empty[Long])(_ + _)
+            .map(CompactSuccess(_, wr))
+
+        case StorageIOResult.Failure(_, error) ⇒
+          Source.failed(error)
+      })
+    }
+
+    if (compactRequested.isEmpty) {
+      scheduleSync()
+    } else {
+      val sources = compactRequested.toVector
+        .filter(r ⇒ index.subIndexes.get(r).exists(_.diffs.size > 1))
+        .map(r ⇒ compactIndex(r, index.subIndexes(r)))
+
+      Source(sources)
+        .flatMapConcat(identity)
+        .runWith(Sink.actorRef(self, StreamCompleted))
+      
+      become(receiveCompact)
+    }
   }
 }

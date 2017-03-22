@@ -83,6 +83,6 @@ lazy val shell = (project in file("."))
   .settings(
     name := "shadowcloud-shell",
     mainClass in Compile := Some("com.karasiq.shadowcloud.test.Benchmark"),
-    initialCommands in console :="""import com.karasiq.shadowcloud.shell.Shell._"""
+    initialCommands in console := """import com.karasiq.shadowcloud.shell.Shell._"""
   )
   .dependsOn(core)

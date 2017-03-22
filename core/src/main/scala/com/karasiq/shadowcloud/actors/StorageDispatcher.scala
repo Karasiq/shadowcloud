@@ -101,14 +101,26 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
     // -----------------------------------------------------------------------
     case StorageEnvelope(`storageId`, event: StorageEvents.Event) ⇒ event match {
       case StorageEvents.IndexLoaded(diffMap) ⇒
-        val allDiffs = diffMap.values.flatMap(_.values).toSeq
-        val newStats = DiffStats(allDiffs:_*)
-        stats.updateStats(newStats)
+        diffMap.foreach { case (region, diffs) ⇒
+          val newStats = DiffStats(diffs.values.toSeq:_*)
+          stats.updateStats(region, newStats)
+        }
         gcActor ! GarbageCollector.Defer(10 minutes)
 
-      case StorageEvents.IndexUpdated(_, _, diff, _) ⇒
-        stats.appendStats(DiffStats(diff))
+      case StorageEvents.IndexUpdated(region, _, diff, _) ⇒
+        stats.appendStats(region, DiffStats(diff))
+        val forCompact = stats.requiresCompaction()
+        if (forCompact.nonEmpty) {
+          log.debug("Requesting compaction of indexes: {}", forCompact)
+          forCompact.foreach { region ⇒
+            stats.clear(region)
+            index ! IndexDispatcher.CompactIndex(region)
+          }
+        }
         gcActor ! GarbageCollector.Defer(10 minutes)
+
+      case StorageEvents.IndexDeleted(region, _) ⇒
+        stats.clear(region)
 
       case StorageEvents.ChunkWritten(_, chunk) ⇒
         val written = chunk.checksum.encryptedSize

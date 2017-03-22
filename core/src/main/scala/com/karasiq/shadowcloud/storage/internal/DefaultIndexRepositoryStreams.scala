@@ -5,14 +5,16 @@ import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Source, ZipWith}
 import akka.stream.{FlowShape, SourceShape}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams, StorageUtils}
 import com.karasiq.shadowcloud.storage.{Repository, StorageIOResult}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
 private[storage] final class DefaultIndexRepositoryStreams(breadth: Int, writeFlow: Flow[IndexDiff, ByteString, _],
-                                                           readFlow: Flow[ByteString, IndexDiff, _]) extends IndexRepositoryStreams {
+                                                           readFlow: Flow[ByteString, IndexDiff, _])
+                                                          (implicit ec: ExecutionContext) extends IndexRepositoryStreams {
+
   def write[Key](repository: Repository[Key]): Flow[(Key, IndexDiff), IndexIOResult[Key], NotUsed] = {
     Flow[(Key, IndexDiff)]
       .flatMapMerge(breadth, { case (key, value) ⇒
@@ -26,7 +28,7 @@ private[storage] final class DefaultIndexRepositoryStreams(breadth: Int, writeFl
 
   def delete[Key](repository: Repository[Key]): Flow[Key, IndexIOResult[Key], NotUsed] = {
     Flow[Key].flatMapMerge(breadth, { key ⇒
-      Source.fromFuture(repository.delete(key))
+      Source.fromFuture(StorageUtils.wrapFuture(repository.toString, repository.delete(key)))
         .map(IndexIOResult(key, IndexDiff.empty, _))
     })
   }
@@ -37,11 +39,11 @@ private[storage] final class DefaultIndexRepositoryStreams(breadth: Int, writeFl
       val broadcast = builder.add(Broadcast[IndexDiff](2, eagerCancel = true))
       val compose = builder.add(ZipWith((diff: IndexDiff, result: Future[StorageIOResult]) ⇒ (key, diff, result)))
       val unwrap = builder.add(Flow[(Key, IndexDiff, Future[StorageIOResult])].flatMapConcat { case (key, diff, future) ⇒
-        Source.fromFuture(future)
-          .map(result ⇒ IndexIOResult(key, diff, result))
+        Source.fromFuture(StorageUtils.wrapFuture(repository.toString, future))
+          .map(IndexIOResult(key, diff, _))
       })
-      broadcast.out(0) ~> writeFlow ~> repository
-      broadcast.out(1) ~> compose.in0
+      broadcast.out(0) ~> compose.in0
+      broadcast.out(1) ~> writeFlow ~> repository
       builder.materializedValue ~> compose.in1
       compose.out ~> unwrap
       FlowShape(broadcast.in, unwrap.out)
@@ -54,8 +56,8 @@ private[storage] final class DefaultIndexRepositoryStreams(breadth: Int, writeFl
       import GraphDSL.Implicits._
       val compose = builder.add(ZipWith((diff: IndexDiff, result: Future[StorageIOResult]) ⇒ (key, diff, result)))
       val unwrap = builder.add(Flow[(Key, IndexDiff, Future[StorageIOResult])].flatMapConcat { case (key, diff, future) ⇒
-        Source.fromFuture(future)
-          .map(result ⇒ IndexIOResult(key, diff, result))
+        Source.fromFuture(StorageUtils.wrapFuture(repository.toString, future))
+          .map(IndexIOResult(key, diff, _))
       })
       repository.out ~> readFlow ~> compose.in0
       builder.materializedValue ~> compose.in1

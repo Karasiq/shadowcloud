@@ -58,7 +58,10 @@ private[actors] final class MultiIndexMerger[@specialized(Long) T: Ordering](zer
   }
 
   def delete(region: String, sequenceNrs: Set[T]): Unit = {
-    regionIndexes.get(region).foreach(_.delete(sequenceNrs))
+    regionIndexes.get(region).foreach { index ⇒
+      index.delete(sequenceNrs)
+      if (index.isEmpty) regionIndexes -= region
+    }
   }
 
   def addPending(region: String, diff: IndexDiff): Unit = {

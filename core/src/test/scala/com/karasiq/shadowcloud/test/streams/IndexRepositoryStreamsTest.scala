@@ -36,7 +36,8 @@ class IndexRepositoryStreamsTest extends ActorSpec with FlatSpecLike {
       .toMat(TestSink.probe)(Keep.both)
       .run()
     write.sendNext((diff.time, diff))
-    val IndexIOResult(diff.time, `diff`, StorageIOResult.Success(_, _)) = writeResult.requestNext()
+    writeResult.request(2)
+    val IndexIOResult(diff.time, `diff`, StorageIOResult.Success(_, _)) = writeResult.expectNext()
     write.sendComplete()
     writeResult.expectComplete()
 

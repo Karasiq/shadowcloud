@@ -1,13 +1,14 @@
 package com.karasiq.shadowcloud.storage.utils
 
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.storage.internal.DefaultIndexMerger
 
 import scala.collection.SortedMap
 import scala.language.postfixOps
 
-private[shadowcloud] trait IndexMerger[T] {
+private[shadowcloud] trait IndexMerger[T] extends HasEmpty {
   def lastSequenceNr: T
   def chunks: ChunkIndex
   def folders: FolderIndex
@@ -19,6 +20,8 @@ private[shadowcloud] trait IndexMerger[T] {
   def addPending(diff: IndexDiff): Unit
   def deletePending(diff: IndexDiff): Unit
   def clear(): Unit
+
+  override def isEmpty: Boolean = diffs.isEmpty
 }
 
 private[shadowcloud] object IndexMerger {

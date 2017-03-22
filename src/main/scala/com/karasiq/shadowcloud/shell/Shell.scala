@@ -48,4 +48,13 @@ object Shell extends ImplicitConversions {
   val testRegion = createRegion("test")
   val testStorage = createStorage("test", StorageProps.fromDirectory(tempDirectory))
   testRegion.register(testStorage)
+
+  def test(): Unit = {
+    testRegion.upload("LICENSE", "LICENSE")
+    Thread.sleep(5000)
+    Files.deleteIfExists("LICENSE_remote")
+    testRegion.download("LICENSE_remote", "LICENSE")
+    Thread.sleep(5000)
+    testRegion.deleteFile("LICENSE")
+  }
 }

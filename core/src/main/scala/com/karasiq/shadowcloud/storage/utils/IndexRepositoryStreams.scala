@@ -9,6 +9,7 @@ import com.karasiq.shadowcloud.storage.Repository
 import com.karasiq.shadowcloud.storage.internal.DefaultIndexRepositoryStreams
 import com.karasiq.shadowcloud.streams.ByteStringConcat
 
+import scala.concurrent.ExecutionContext
 import scala.language.postfixOps
 
 private[shadowcloud] trait IndexRepositoryStreams {
@@ -27,10 +28,15 @@ private[shadowcloud] object IndexRepositoryStreams {
   }
 
   def create(breadth: Int, writeFlow: Flow[IndexDiff, ByteString, _],
-             readFlow: Flow[ByteString, IndexDiff, _]): IndexRepositoryStreams = {
+             readFlow: Flow[ByteString, IndexDiff, _])(implicit ec: ExecutionContext): IndexRepositoryStreams = {
     new DefaultIndexRepositoryStreams(breadth, writeFlow, readFlow)
   }
 
-  val default = create(3, Flows.write, Flows.read)
-  val gzipped = create(3, Flows.gzipWrite, Flows.gzipRead)
+  def default(implicit ec: ExecutionContext): IndexRepositoryStreams = {
+    create(3, Flows.write, Flows.read)
+  }
+  
+  def gzipped(implicit ec: ExecutionContext): IndexRepositoryStreams = {
+    create(3, Flows.gzipWrite, Flows.gzipRead)
+  }
 }

@@ -41,7 +41,7 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
   // Dispatchers for read/write
   // -----------------------------------------------------------------------
   def available(toWrite: Long = 0): Seq[ActorRef] = {
-    storagesByAR.values.toSeq
+    storagesByAR.values.toVector
       .filter(_.health.canWrite > toWrite)
       .sortBy(_.id)
       .map(_.dispatcher)

@@ -58,7 +58,7 @@ private[actors] final class GarbageCollector(index: ActorRef, chunkIO: ActorRef)
 
     case Defer(time) ⇒
       if (gcDeadline.timeLeft < time) {
-        log.warning("GC deferred to {}", time.toCoarsest) // TODO: DEbug
+        log.debug("GC deferred to {}", time.toCoarsest)
         gcDeadline = time.fromNow
       }
   }

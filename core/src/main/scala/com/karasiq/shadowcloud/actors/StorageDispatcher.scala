@@ -102,7 +102,7 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
     case StorageEnvelope(`storageId`, event: StorageEvents.Event) ⇒ event match {
       case StorageEvents.IndexLoaded(diffMap) ⇒
         diffMap.foreach { case (region, diffs) ⇒
-          val newStats = DiffStats(diffs.values.toSeq:_*)
+          val newStats = DiffStats(diffs.diffs.map(_._2):_*)
           stats.updateStats(region, newStats)
         }
         gcActor ! GarbageCollector.Defer(10 minutes)

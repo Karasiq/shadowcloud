@@ -4,7 +4,7 @@ import java.util.concurrent.TimeoutException
 
 import akka.NotUsed
 import akka.actor.{ActorLogging, DeadLetterSuppression, PossiblyHarmful, Props, ReceiveTimeout, Status}
-import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
+import akka.persistence._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import com.karasiq.shadowcloud.actors.events.StorageEvents
@@ -17,7 +17,6 @@ import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.storage.{CategorizedRepository, StorageIOResult}
 
-import scala.collection.SortedMap
 import scala.collection.mutable.{Set => MSet}
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -44,7 +43,7 @@ object IndexDispatcher {
   private case object StreamCompleted extends InternalMessage with DeadLetterSuppression
 
   // Snapshot
-  case class Snapshot(diffs: Map[String, SortedMap[Long, IndexDiff]])
+  private case class Snapshot(diffs: Map[String, IndexMerger.State[Long]])
 
   // Props
   def props(storageId: String, repository: CategorizedRepository[String, Long]): Props = {
@@ -57,7 +56,9 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   import IndexDispatcher._
   import context.dispatcher
 
+  // -----------------------------------------------------------------------
   // Context
+  // -----------------------------------------------------------------------
   require(storageId.nonEmpty)
   override val persistenceId: String = s"index_$storageId"
   implicit val actorMaterializer = ActorMaterializer()
@@ -66,7 +67,9 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   val config = AppConfig().index
   val compactRequested = MSet.empty[String]
 
+  // -----------------------------------------------------------------------
   // Local operations
+  // -----------------------------------------------------------------------
   def receiveDefault: Receive = {
     case GetIndexes ⇒
       val states = index.subIndexes.mapValues(IndexMerger.state)
@@ -83,7 +86,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
 
     case AddPending(region, diff) ⇒
       log.debug("Pending diff added: {}", diff)
-      persistAsync(PendingIndexUpdated(region, diff))(updateState)
+      persist(PendingIndexUpdated(region, diff))(updateState)
 
     case CompactIndex(region) ⇒
       if (!compactRequested.contains(region)) {
@@ -95,32 +98,38 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
       throw new TimeoutException("Receive timeout")
   }
 
-  // Wait for synchronize command
+  // -----------------------------------------------------------------------
+  // Idle state
+  // -----------------------------------------------------------------------
   def receiveWait: Receive = {
     case Synchronize ⇒
       log.debug("Starting synchronization")
-      startSync()
+      deferAsync(NotUsed)(_ ⇒ startSync())
   }
 
-  // Loading remote diff keys
-  def receivePreRead: Receive = {
+  // -----------------------------------------------------------------------
+  // Pre-read state
+  // -----------------------------------------------------------------------
+  def receivePreRead(loadedKeys: Set[LocalKey] = Set.empty): Receive = {
     case KeysLoaded(keys) ⇒
-      become {
-        case StreamCompleted ⇒
-          becomeRead(keys)
-      }
+      become(receivePreRead(loadedKeys ++ keys))
 
     case Status.Failure(error) ⇒
       log.error(error, "Diffs load failed")
       throw error
+
+    case StreamCompleted ⇒
+      deferAsync(NotUsed)(_ ⇒ startRead(loadedKeys))
   }
 
-  // Reading remote diffs
+  // -----------------------------------------------------------------------
+  // Read state
+  // -----------------------------------------------------------------------
   def receiveRead: Receive = {
     case ReadSuccess(IndexIOResult((region, sequenceNr), diff, ioResult)) ⇒ ioResult match {
       case StorageIOResult.Success(path, _) ⇒
         log.info("Remote diff {}/{} received from {}: {}", region, sequenceNr, path, diff)
-        persistAsync(IndexUpdated(region, sequenceNr, diff, remote = true))(updateState)
+        persist(IndexUpdated(region, sequenceNr, diff, remote = true))(updateState)
 
       case StorageIOResult.Failure(path, error) ⇒
         log.error(error, "Diff {}/{} read failed from {}", region, sequenceNr, path)
@@ -133,21 +142,17 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
 
     case StreamCompleted ⇒
       log.debug("Synchronization read completed")
-      val pending = for ((region, index) ← index.subIndexes.toVector if index.pending.nonEmpty)
-        yield ((region, index.lastSequenceNr + 1), index.pending)
-      if (pending.nonEmpty) {
-        becomeWrite(pending)
-      } else {
-        scheduleSync()
-      }
+      deferAsync(NotUsed)(_ ⇒ startWrite())
   }
 
-  // Writing local diffs
+  // -----------------------------------------------------------------------
+  // Write state
+  // -----------------------------------------------------------------------
   def receiveWrite: Receive = {
     case WriteSuccess(IndexIOResult((region, sequenceNr), diff, ioResult)) ⇒ ioResult match {
       case StorageIOResult.Success(path, _) ⇒
         log.debug("Diff {}/{} written to {}: {}", region, sequenceNr, path, diff)
-        persistAsync(IndexUpdated(region, sequenceNr, diff, remote = false))(updateState)
+        persist(IndexUpdated(region, sequenceNr, diff, remote = false))(updateState)
 
       case StorageIOResult.Failure(path, error) ⇒
         log.error(error, "Diff {}/{} write error to {}: {}", region, sequenceNr, path, diff)
@@ -162,14 +167,16 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
       deferAsync(NotUsed)(_ ⇒ startCompact())
   }
 
-  // Compacting
+  // -----------------------------------------------------------------------
+  // Compact state
+  // -----------------------------------------------------------------------
   def receiveCompact: Receive = {
     case CompactSuccess(deleted, result) ⇒
       log.info("Compact success: deleted = {}, new = {}", deleted, result)
       if (result.diff.isEmpty) {
-        persistAsync(IndexDeleted(result.key._1, deleted))(updateState)
+        persist(IndexDeleted(result.key._1, deleted))(updateState)
       } else {
-        persistAllAsync(List(
+        persistAll(List(
           IndexDeleted(result.key._1, deleted),
           IndexUpdated(result.key._1, result.key._2, result.diff, remote = false)
         ))(updateState)
@@ -182,9 +189,12 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
     case StreamCompleted ⇒
       log.debug("Indexes compaction completed")
       compactRequested.clear()
-      scheduleSync()
+      deferAsync(NotUsed)(_ ⇒ createSnapshot(() ⇒ scheduleSync()))
   }
 
+  // -----------------------------------------------------------------------
+  // Default receive
+  // -----------------------------------------------------------------------
   override def receiveRecover: Receive = {
     case SnapshotOffer(metadata, Snapshot(diffs)) ⇒ // TODO: Save snapshots
       log.debug("Loading snapshot: {}", metadata)
@@ -202,7 +212,9 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
     receiveWait.orElse(receiveDefault)
   }
 
+  // -----------------------------------------------------------------------
   // State
+  // -----------------------------------------------------------------------
   private[this] def updateState(event: Event): Unit = {
     StorageEvents.stream.publish(StorageEnvelope(storageId, event))
     event match {
@@ -214,8 +226,9 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
 
       case IndexLoaded(diffs) ⇒
         index.clear()
-        for ((region, subDiffs) ← diffs; (sequenceNr, diff) ← subDiffs) {
-          index.add(region, sequenceNr, diff)
+        for ((region, state) ← diffs) {
+          index.addPending(region, state.pending)
+          for ((sequenceNr, diff) ← state.diffs) index.add(region, sequenceNr, diff)
         }
 
       case IndexDeleted(region, sequenceNrs) ⇒
@@ -226,27 +239,19 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
     }
   }
 
-  // Utils
-  private[this] def become(receive: Receive): Unit = {
-    context.become(receive.orElse(receiveDefault))
-  }
-
-  private[this] def scheduleSync(duration: FiniteDuration = config.syncInterval): Unit = {
-    if (log.isDebugEnabled) log.debug("Scheduling synchronize in {}", duration.toCoarsest)
-    context.system.scheduler.scheduleOnce(duration, self, Synchronize)
-    become(receiveWait)
-  }
-
+  // -----------------------------------------------------------------------
+  // Synchronization
+  // -----------------------------------------------------------------------
   private[this] def startSync(): Unit = {
     repository.keys
       .fold(Set.empty[(String, Long)])(_ + _)
       .map(KeysLoaded)
       .runWith(Sink.actorRef(self, StreamCompleted))
-    become(receivePreRead)
+    become(receivePreRead())
   }
 
-  private[this] def becomeRead(keys: Set[LocalKey]): Unit = {
-    def startRead(): Unit = {
+  private[this] def startRead(keys: Set[LocalKey]): Unit = {
+    def becomeRead(keys: Set[LocalKey]): Unit = {
       val keySeq = keys.filter { case (region, sequenceNr) ⇒ sequenceNr > index.lastSequenceNr(region) }
         .toVector
         .sorted
@@ -271,70 +276,108 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
 
     if (deleteEvents.nonEmpty) {
       log.warning("Diffs deleted: {}", deletedDiffs)
-      persistAllAsync(deleteEvents)(updateState)
-      deferAsync(Unit)(_ ⇒ startRead())
-    } else {
-      startRead()
+      persistAll(deleteEvents)(updateState)
     }
+    deferAsync(Unit)(_ ⇒ becomeRead(keys))
   }
 
-  private[this] def becomeWrite(diffs: Seq[(LocalKey, IndexDiff)]): Unit = {
-    log.debug("Writing pending diffs: {}", diffs)
-    Source(diffs.toVector)
-      .alsoTo(Sink.foreach { case ((region, sequenceNr), diff) ⇒
-        log.info("Writing diff {}/{}: {}", region, sequenceNr, diff)
-      })
-      .via(streams.write(repository))
-      .map(WriteSuccess)
-      .runWith(Sink.actorRef(self, StreamCompleted))
-    become(receiveWrite)
+  private[this] def startWrite(): Unit = {
+    def becomeWrite(diffs: Seq[(LocalKey, IndexDiff)]): Unit = {
+      log.debug("Writing pending diffs: {}", diffs)
+      Source(diffs.toVector)
+        .alsoTo(Sink.foreach { case ((region, sequenceNr), diff) ⇒
+          log.info("Writing diff {}/{}: {}", region, sequenceNr, diff)
+        })
+        .via(streams.write(repository))
+        .map(WriteSuccess)
+        .runWith(Sink.actorRef(self, StreamCompleted))
+      become(receiveWrite)
+    }
+    val pending = for ((region, index) ← index.subIndexes.toVector if index.pending.nonEmpty)
+      yield ((region, index.lastSequenceNr + 1), index.pending)
+    if (pending.nonEmpty) {
+      becomeWrite(pending)
+    } else {
+      scheduleSync()
+    }
   }
 
   private[this] def startCompact(): Unit = {
-    def compactIndex(region: String, index: IndexMerger[Long]): Source[CompactSuccess, NotUsed] = {
-      log.debug("Compacting diffs: {}", index.diffs)
-      val diffs = index.diffs.toVector
-      val newDiff = index.mergedDiff
-      val newSequenceNr = index.lastSequenceNr + 1
-      log.debug("Writing compacted diff: {}/{} -> {}", region, newSequenceNr, newDiff)
-      val writeResult = if (newDiff.isEmpty) {
-        // Skip write
-        val empty = IndexIOResult((region, newSequenceNr), IndexDiff.empty, StorageIOResult.Success("", 0))
-        Source.single(empty)
-      } else {
-        Source.single((region, newSequenceNr) → newDiff)
-          .via(streams.write(repository))
-          .log("compact-write")
+    def becomeCompact(regions: Seq[String]): Unit = {
+      def compactIndex(region: String, index: IndexMerger[Long]): Source[CompactSuccess, NotUsed] = {
+        log.debug("Compacting diffs: {}", index.diffs)
+        val diffs = index.diffs.toVector
+        val newDiff = index.mergedDiff
+        val newSequenceNr = index.lastSequenceNr + 1
+        log.debug("Writing compacted diff: {}/{} -> {}", region, newSequenceNr, newDiff)
+        val writeResult = if (newDiff.isEmpty) {
+          // Skip write
+          val empty = IndexIOResult((region, newSequenceNr), IndexDiff.empty, StorageIOResult.Success("", 0))
+          Source.single(empty)
+        } else {
+          Source.single((region, newSequenceNr) → newDiff)
+            .via(streams.write(repository))
+            .log("compact-write")
+        }
+
+        writeResult.flatMapConcat(wr ⇒ wr.ioResult match {
+          case StorageIOResult.Success(_, _) ⇒
+            Source(diffs)
+              .map(kv ⇒ (region, kv._1))
+              .via(streams.delete(repository))
+              .log("compact-delete")
+              .filter(_.ioResult.isSuccess)
+              .map(_.key._2)
+              .fold(Set.empty[Long])(_ + _)
+              .map(CompactSuccess(_, wr))
+
+          case StorageIOResult.Failure(_, error) ⇒
+            Source.failed(error)
+        })
       }
-
-      writeResult.flatMapConcat(wr ⇒ wr.ioResult match {
-        case StorageIOResult.Success(_, _) ⇒
-          Source(diffs)
-            .map(kv ⇒ (region, kv._1))
-            .via(streams.delete(repository))
-            .log("compact-delete")
-            .filter(_.ioResult.isSuccess)
-            .map(_.key._2)
-            .fold(Set.empty[Long])(_ + _)
-            .map(CompactSuccess(_, wr))
-
-        case StorageIOResult.Failure(_, error) ⇒
-          Source.failed(error)
-      })
-    }
-
-    if (compactRequested.isEmpty) {
-      scheduleSync()
-    } else {
-      val sources = compactRequested.toVector
+      val sources = regions
         .filter(r ⇒ index.subIndexes.get(r).exists(_.diffs.size > 1))
         .map(r ⇒ compactIndex(r, index.subIndexes(r)))
 
-      Source(sources)
+      Source(sources.toVector)
         .flatMapConcat(identity)
         .runWith(Sink.actorRef(self, StreamCompleted))
-      
+
       become(receiveCompact)
     }
+    if (compactRequested.isEmpty) {
+      scheduleSync()
+    } else {
+      becomeCompact(compactRequested.toVector)
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Snapshots
+  // -----------------------------------------------------------------------
+  private[this] def createSnapshot(after: () ⇒ Unit): Unit = {
+    saveSnapshot(Snapshot(index.subIndexes.mapValues(IndexMerger.state)))
+    become {
+      case SaveSnapshotSuccess(snapshot) ⇒
+        log.debug("Snapshot saved: {}", snapshot)
+        after()
+
+      case SaveSnapshotFailure(snapshot, error) ⇒
+        log.error(error, "Snapshot saving failed: {}", snapshot)
+        after()
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Utils
+  // -----------------------------------------------------------------------
+  private[this] def scheduleSync(duration: FiniteDuration = config.syncInterval): Unit = {
+    if (log.isDebugEnabled) log.debug("Scheduling synchronize in {}", duration.toCoarsest)
+    context.system.scheduler.scheduleOnce(duration, self, Synchronize)
+    become(receiveWait)
+  }
+
+  private[this] def become(receive: Receive): Unit = {
+    context.become(receive.orElse(receiveDefault))
   }
 }

@@ -28,7 +28,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   val indexRepository = Repository.forIndex(Repositories.fromDirectory(Files.createTempDirectory("vrt-index")))
   val chunksDir = Files.createTempDirectory("vrt-chunks")
   val fileRepository = Repository.forChunks(Repositories.fromDirectory(chunksDir))
-  val index = TestActorRef(IndexDispatcher.props("testStorage", indexRepository), "index")
+  val index = system.actorOf(IndexDispatcher.props("testStorage", indexRepository), "index")
   val chunkIO = TestActorRef(ChunkIODispatcher.props(fileRepository), "chunkIO")
   val healthProvider = StorageHealthProviders.fromDirectory(chunksDir)
   val initialHealth = healthProvider.health.futureValue
@@ -111,21 +111,25 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     val regionRepo = indexRepository.subRepository("testRegion")
 
     // Write #2
+    val remoteDiff = TestUtils.randomDiff
     val (sideWrite, sideWriteResult) = TestSource.probe[(Long, IndexDiff)]
       .via(streams.write(regionRepo))
       .toMat(TestSink.probe)(Keep.both)
       .run()
-    val diff1 = TestUtils.randomDiff
-    sideWrite.sendNext((2, diff1))
+    sideWrite.sendNext((2, remoteDiff))
     sideWrite.sendComplete()
-    val IndexIOResult(2, `diff1`, StorageIOResult.Success(_, _)) = sideWriteResult.requestNext()
+    val IndexIOResult(2, `remoteDiff`, StorageIOResult.Success(_, _)) = sideWriteResult.requestNext()
     sideWriteResult.expectComplete()
+
+    // Synchronize
     storageSubscribe()
     testRegion ! RegionDispatcher.Synchronize
-    val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", 2, `diff1`, true)) = receiveOne(5 seconds)
+    val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", 2, `remoteDiff`, true)) = receiveOne(5 seconds)
     expectNoMsg(1 second)
+    
+    // Verify
     storage ! IndexDispatcher.GetIndex("testRegion")
-    val IndexDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((1, firstDiff), (2, `diff1`)), IndexDiff.empty)) = receiveOne(1 second)
+    val IndexDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((1, firstDiff), (2, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
     firstDiff.folders shouldBe folderDiff
     firstDiff.chunks.newChunks shouldBe Set(chunk)
     firstDiff.chunks.deletedChunks shouldBe empty
@@ -137,13 +141,38 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
       val StorageEnvelope("testStorage", StorageEvents.IndexDeleted("testRegion", sequenceNrs)) = receiveOne(5 seconds)
       sequenceNrs shouldBe Set[Long](1)
       storage ! IndexDispatcher.GetIndex("testRegion")
-      val IndexDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((2, `diff1`)), IndexDiff.empty)) = receiveOne(1 second)
+      val IndexDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((2, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
       expectNoMsg(1 second)
       testRegion ! RegionDispatcher.GetIndex
-      val RegionDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((RegionKey(_, "testStorage", 2), `diff1`)), _)) = receiveOne(1 second)
+      val RegionDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((RegionKey(_, "testStorage", 2), `remoteDiff`)), _)) = receiveOne(1 second)
     }
 
     storageUnsubscribe()
+  }
+
+  it should "compact index" in {
+    // Read
+    storage ! IndexDispatcher.GetIndex("testRegion")
+    val IndexDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((2, oldDiff)), IndexDiff.empty)) = receiveOne(1 second)
+
+    // Write diff #3
+    val newDiff = TestUtils.randomDiff.folders
+    testRegion ! RegionDispatcher.WriteIndex(newDiff)
+    val RegionDispatcher.WriteIndex.Success(`newDiff`, _) = receiveOne(1 second)
+
+    // Compact
+    storage ! IndexDispatcher.CompactIndex("testRegion")
+    storage ! IndexDispatcher.Synchronize
+    expectNoMsg(3 second)
+
+    // Verify
+    storage ! IndexDispatcher.GetIndexes
+    val IndexDispatcher.GetIndexes.Success("testStorage", states) = receiveOne(1 seconds)
+    states.keySet shouldBe Set("testRegion")
+    val IndexMerger.State(Seq((4, resultDiff)), IndexDiff.empty) = states("testRegion")
+    resultDiff.folders shouldBe oldDiff.folders.merge(newDiff)
+    resultDiff.chunks shouldBe oldDiff.chunks
+    resultDiff.time should be > oldDiff.time
   }
 
   private def storageUnsubscribe() = {

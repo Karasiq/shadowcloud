@@ -8,7 +8,7 @@ import scala.language.postfixOps
 import scala.reflect.ClassTag
 
 object Serialization {
-  def toBytes[T: ClassTag](module: SerializationModule = SerializationModule.default): Flow[T, ByteString, NotUsed] = {
+  def toBytes[T](module: SerializationModule = SerializationModule.default): Flow[T, ByteString, NotUsed] = {
     Flow[T].map(value ⇒ module.toBytes(value))
   }
 

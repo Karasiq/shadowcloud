@@ -44,7 +44,8 @@ object ProjectDeps {
 
   def kryo: Deps = Seq(
     // "com.esotericsoftware" % "kryo" % "4.0.0",
-    "com.twitter" %% "chill" % "0.9.2"
+    "com.twitter" %% "chill" % "0.9.2",
+    "com.twitter" %% "chill-akka" % "0.9.2"
   )
 
   def bouncyCastle: Deps = Seq(

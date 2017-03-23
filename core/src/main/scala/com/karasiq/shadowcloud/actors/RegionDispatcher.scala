@@ -169,7 +169,7 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
 
     case StorageEnvelope(storageId, event: StorageEvents.Event) if storages.contains(storageId) ⇒ event match {
       case StorageEvents.IndexLoaded(diffs) ⇒
-        val localDiffs = diffs.get(regionId).fold(Vector.empty[(Long, IndexDiff)])(_.toVector)
+        val localDiffs = diffs.get(regionId).fold(Nil: Seq[(Long, IndexDiff)])(_.diffs)
         log.info("Storage [{}] index loaded: {} diffs", storageId, localDiffs.length)
         dropStorageDiffs(storageId)
         chunks.unregister(storages.getDispatcher(storageId))

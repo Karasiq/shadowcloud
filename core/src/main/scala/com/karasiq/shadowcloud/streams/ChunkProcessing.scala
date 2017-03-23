@@ -29,7 +29,7 @@ final class ChunkProcessing(val modules: ModuleRegistry, val crypto: CryptoConfi
   type ChunkFlow = Flow[Chunk, Chunk, NotUsed]
 
   def split(chunkSize: Int = MemorySize.MB): Flow[ByteString, Chunk, NotUsed] = {
-    Flow.fromGraph(ChunkSplitter(chunkSize))
+    ChunkSplitter(chunkSize)
   }
 
   def generateKey(method: EncryptionMethod = crypto.encryption.chunks): ChunkFlow = {

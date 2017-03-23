@@ -1,17 +1,12 @@
 package com.karasiq.shadowcloud.serialization
 
 import akka.util.ByteString
-import com.karasiq.shadowcloud.serialization.kryo.KryoSerializationModule
 
 import scala.language.postfixOps
+import scala.reflect.ClassTag
 
 trait SerializationModule {
-  type Serializable = Any
+  type Serializable = AnyRef
   def toBytes[T <: Serializable](value: T): ByteString
-  def fromBytes[T <: Serializable](value: ByteString): T
-}
-
-object SerializationModule {
-  val kryo: SerializationModule = new KryoSerializationModule
-  val default = kryo
+  def fromBytes[T <: Serializable : ClassTag](value: ByteString): T
 }

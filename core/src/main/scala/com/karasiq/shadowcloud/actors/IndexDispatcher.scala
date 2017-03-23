@@ -62,7 +62,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   require(storageId.nonEmpty)
   override val persistenceId: String = s"index_$storageId"
   implicit val actorMaterializer = ActorMaterializer()
-  val streams = IndexRepositoryStreams.gzipped
+  val streams = IndexRepositoryStreams.gzipped(context.system)
   val index = MultiIndexMerger()
   val config = AppConfig().index
   val compactRequested = MSet.empty[String]

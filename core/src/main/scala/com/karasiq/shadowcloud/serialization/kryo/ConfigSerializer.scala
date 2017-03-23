@@ -8,7 +8,7 @@ import com.typesafe.config._
 
 import scala.language.postfixOps
 
-private[kryo] class ConfigSerializer extends chill.KSerializer[Config](false, true) {
+private[kryo] final class ConfigSerializer extends chill.KSerializer[Config](false, true) {
   def write(kryo: Kryo, output: Output, cfg: Config): Unit = {
     val obj = cfg.root()
     val nonEmpty = !obj.isEmpty

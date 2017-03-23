@@ -3,53 +3,53 @@ package com.karasiq.shadowcloud.test.serialization
 import akka.util.ByteString
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.index.{Chunk, File, Folder}
-import com.karasiq.shadowcloud.serialization.SerializationModule
-import com.karasiq.shadowcloud.test.utils.{TestImplicits, TestUtils}
+import com.karasiq.shadowcloud.serialization.{SerializationModule, SerializationModules}
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import com.typesafe.config.{Config, ConfigFactory}
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.FlatSpecLike
 
 import scala.io.Source
 import scala.language.postfixOps
 
-class SerializationModuleTest extends FlatSpec with Matchers with TestImplicits {
-  testModule("Kryo", SerializationModule.kryo)
+class SerializationModuleTest extends ActorSpec with FlatSpecLike {
+  testModule("Akka", SerializationModules.fromActorSystem)
 
-  private[this] def testModule(name: String, kryo: SerializationModule): Unit = {
+  private[this] def testModule(name: String, module: SerializationModule): Unit = {
     name should "serialize config" in {
       val config = ConfigFactory.load()
-      val bytes = kryo.toBytes(config)
-      kryo.fromBytes[Config](bytes) shouldBe config
+      val bytes = module.toBytes(config)
+      module.fromBytes[Config](bytes) shouldBe config
     }
 
     it should "serialize chunk" in {
       val chunk = TestUtils.randomChunk
-      val bytes = kryo.toBytes(chunk)
-      kryo.fromBytes[Chunk](bytes) shouldBe chunk
+      val bytes = module.toBytes(chunk)
+      module.fromBytes[Chunk](bytes) shouldBe chunk
     }
 
     it should "serialize file" in {
       val file = TestUtils.randomFile()
-      val bytes = kryo.toBytes(file)
-      kryo.fromBytes[File](bytes) shouldBe file
+      val bytes = module.toBytes(file)
+      module.fromBytes[File](bytes) shouldBe file
     }
 
     it should "serialize folder" in {
       val folder = TestUtils.randomFolder()
-      val bytes = kryo.toBytes(folder)
-      kryo.fromBytes[Folder](bytes) shouldBe folder
+      val bytes = module.toBytes(folder)
+      module.fromBytes[Folder](bytes) shouldBe folder
     }
 
     it should "serialize diff" in {
       val diff = TestUtils.testDiff
-      val bytes = kryo.toBytes(diff)
-      kryo.fromBytes[IndexDiff](bytes) shouldBe diff
+      val bytes = module.toBytes(diff)
+      module.fromBytes[IndexDiff](bytes) shouldBe diff
       println(bytes.toHexString)
     }
 
     ignore should "read test diff" in {
       val diff = TestUtils.testDiff
       val bytes = Source.fromResource(s"test-diff-$name.txt").mkString.trim()
-      kryo.fromBytes[IndexDiff](ByteString.fromHexString(bytes)) shouldBe diff
+      module.fromBytes[IndexDiff](ByteString.fromHexString(bytes)) shouldBe diff
     }
   }
 }

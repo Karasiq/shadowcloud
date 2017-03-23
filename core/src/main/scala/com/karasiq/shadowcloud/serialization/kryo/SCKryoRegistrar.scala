@@ -1,22 +1,31 @@
 package com.karasiq.shadowcloud.serialization.kryo
 
-import akka.util.ByteString
+import com.esotericsoftware.kryo.Kryo
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.crypto.{AsymmetricEncryptionParameters, EncryptionMethod, HashingMethod, SymmetricEncryptionParameters}
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
-import com.twitter.chill.{KryoBase, ScalaKryoInstantiator}
+import com.twitter.chill
+import com.twitter.chill.{IKryoRegistrar, _}
 
-private[kryo] final class SCKryoInstantiator extends ScalaKryoInstantiator {
-  override def newKryo(): KryoBase = {
-    val kryo = super.newKryo()
-    kryo.forSubclass(new ByteStringSerializer)
-    kryo.forSubclass(new ConfigSerializer)
-    kryo.registerClasses(Iterator(classOf[ByteString], classOf[Checksum], classOf[Chunk], classOf[ChunkIndex],
+import scala.reflect.ClassTag
+
+private[kryo] final class SCKryoRegistrar extends IKryoRegistrar {
+  def apply(kryo: Kryo): Unit = {
+    register(kryo, new ByteStringSerializer)
+    register(kryo, new ConfigSerializer)
+    kryo.registerClasses(Iterator(classOf[Checksum], classOf[Chunk], classOf[ChunkIndex],
       classOf[FolderIndex], classOf[ChunkIndexDiff], classOf[Data], classOf[File], classOf[Folder], classOf[FolderDiff],
       classOf[FolderIndexDiff], classOf[IndexDiff], classOf[Path], classOf[HashingMethod], classOf[EncryptionMethod],
       classOf[SymmetricEncryptionParameters], classOf[AsymmetricEncryptionParameters], classOf[SerializedProps]
     ))
-    kryo
+  }
+  
+  @inline
+  private[this] def register[T: ClassTag](kryo: Kryo, serializer: chill.KSerializer[T]): Unit = {
+    if (!kryo.alreadyRegistered[T]) {
+      kryo.forClass(serializer)
+      kryo.forSubclass(serializer)
+    }
   }
 }

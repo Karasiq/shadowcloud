@@ -17,7 +17,6 @@ object StorageDispatcher {
   // Messages
   sealed trait Message
   object CheckHealth extends Message with NotInfluenceReceiveTimeout with MessageStatus[String, StorageHealth]
-  object CollectGarbage extends Message with NotInfluenceReceiveTimeout
 
   // Props
   def props(storageId: String, index: ActorRef, chunkIO: ActorRef, health: StorageHealthProvider): Props = {
@@ -80,6 +79,12 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
     // -----------------------------------------------------------------------
     case msg: IndexDispatcher.Message ⇒
       index.forward(msg)
+
+    // -----------------------------------------------------------------------
+    // GC commands
+    // -----------------------------------------------------------------------
+    case msg: GarbageCollector.Message ⇒
+      gcActor ! msg
 
     // -----------------------------------------------------------------------
     // Storage health

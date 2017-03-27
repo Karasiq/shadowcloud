@@ -6,8 +6,7 @@ import akka.pattern.pipe
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.actors.internal.PendingOperation
-import com.karasiq.shadowcloud.actors.utils.MessageStatus
+import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperation}
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.storage.utils.StorageUtils

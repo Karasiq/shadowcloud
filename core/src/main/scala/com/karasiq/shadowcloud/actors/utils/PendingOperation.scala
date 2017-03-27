@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.actors.internal
+package com.karasiq.shadowcloud.actors.utils
 
 import akka.actor.ActorRef
 import com.karasiq.shadowcloud.index.Chunk

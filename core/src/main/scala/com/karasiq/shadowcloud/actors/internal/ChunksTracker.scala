@@ -5,6 +5,7 @@ import akka.event.LoggingAdapter
 import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk => SReadChunk, WriteChunk => SWriteChunk}
 import com.karasiq.shadowcloud.actors.RegionDispatcher.{ReadChunk, WriteChunk}
+import com.karasiq.shadowcloud.actors.utils.PendingOperation
 import com.karasiq.shadowcloud.config.StorageConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff

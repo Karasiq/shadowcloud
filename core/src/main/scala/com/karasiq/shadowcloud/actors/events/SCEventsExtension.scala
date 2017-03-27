@@ -1,8 +1,8 @@
 package com.karasiq.shadowcloud.actors.events
 
 import akka.actor.{ActorContext, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
-import com.karasiq.shadowcloud.actors.internal.StringEventBus
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
+import com.karasiq.shadowcloud.actors.utils.StringEventBus
 
 object SCEvents extends ExtensionId[SCEventsExtension] with ExtensionIdProvider {
   def apply()(implicit context: ActorContext): SCEventsExtension = {

@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.actors
 import akka.actor.{Actor, ActorLogging, ActorRef, NotInfluenceReceiveTimeout, Props}
 import akka.pattern.pipe
 import akka.util.Timeout
-import com.karasiq.shadowcloud.actors.events.StorageEvents
+import com.karasiq.shadowcloud.actors.events.{SCEvents, StorageEvents}
 import com.karasiq.shadowcloud.actors.internal.{DiffStats, PendingOperation, StorageStatsTracker}
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
@@ -32,6 +32,7 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
   // -----------------------------------------------------------------------
   import context.dispatcher
   private[this] implicit val timeout = Timeout(10 seconds)
+  private[this] val events = SCEvents()
   private[this] val schedule = context.system.scheduler.schedule(Duration.Zero, 30 seconds, self, CheckHealth)
   private[this] val gcActor = context.actorOf(GarbageCollector.props(index, chunkIO), "garbageCollector")
 
@@ -39,7 +40,7 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
   // State
   // -----------------------------------------------------------------------
   private[this] val writingChunks = PendingOperation.withRegionChunk
-  private[this] val stats = StorageStatsTracker(storageId, health, log)
+  private[this] val stats = StorageStatsTracker(storageId, health)
 
   // -----------------------------------------------------------------------
   // Receive
@@ -67,7 +68,7 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
     case msg @ ChunkIODispatcher.WriteChunk.Success((region, chunk), _) ⇒
       log.debug("Chunk written, appending to index: {}", chunk)
       writingChunks.finish((region, chunk), msg)
-      StorageEvents.stream.publish(StorageEnvelope(storageId, StorageEvents.ChunkWritten(region, chunk)))
+      events.storage.publish(StorageEnvelope(storageId, StorageEvents.ChunkWritten(region, chunk)))
       index ! IndexDispatcher.AddPending(region, IndexDiff.newChunks(chunk.withoutData))
 
     case msg @ ChunkIODispatcher.WriteChunk.Failure((region, chunk), error) ⇒
@@ -145,11 +146,11 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
     super.preStart()
     context.watch(chunkIO)
     context.watch(index)
-    StorageEvents.stream.subscribe(self, storageId)
+    events.storage.subscribe(self, storageId)
   }
 
   override def postStop(): Unit = {
-    StorageEvents.stream.unsubscribe(self)
+    events.storage.unsubscribe(self)
     schedule.cancel()
     super.postStop()
   }

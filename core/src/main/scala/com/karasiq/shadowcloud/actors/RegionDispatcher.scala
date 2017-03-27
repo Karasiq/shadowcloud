@@ -6,7 +6,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk => SReadChunk, WriteChunk => SWriteChunk}
-import com.karasiq.shadowcloud.actors.events.{RegionEvents, StorageEvents}
+import com.karasiq.shadowcloud.actors.events.{RegionEvents, SCEvents, StorageEvents}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
@@ -58,6 +58,7 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
   require(regionId.nonEmpty)
   private[this] implicit val executionContext: ExecutionContext = context.dispatcher
   private[this] implicit val timeout = Timeout(10 seconds)
+  private[this] val events = SCEvents()
   private[this] val config = AppConfig()
   private[this] val modules = ModuleRegistry(config)
   private[this] val storages = StorageTracker()
@@ -190,7 +191,7 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
       case StorageEvents.ChunkWritten(`regionId`, chunk) ⇒
         log.debug("Chunk written: {}", chunk)
         chunks.registerChunk(storages.getDispatcher(storageId), chunk)
-        RegionEvents.stream.publish(RegionEnvelope(regionId, RegionEvents.ChunkWritten(storageId, chunk)))
+        events.region.publish(RegionEnvelope(regionId, RegionEvents.ChunkWritten(storageId, chunk)))
 
       case StorageEvents.HealthUpdated(health) ⇒
         log.debug("Storage [{}] health report: {}", storageId, health)
@@ -218,7 +219,7 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
       val regionKey = RegionKey(diff.time, storageId, sequenceNr)
       globalIndex.add(regionKey, diff)
       log.debug("Virtual region [{}] index updated: {} -> {}", regionId, regionKey, diff)
-      RegionEvents.stream.publish(RegionEnvelope(regionId, RegionEvents.IndexUpdated(regionKey, diff)))
+      events.region.publish(RegionEnvelope(regionId, RegionEvents.IndexUpdated(regionKey, diff)))
     }
   }
 
@@ -236,7 +237,7 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
     val deleted = globalIndex.chunks.diff(preDel).deletedChunks
     val dispatcher = storages.getDispatcher(storageId)
     deleted.foreach(chunks.unregisterChunk(dispatcher, _))
-    RegionEvents.stream.publish(RegionEnvelope(regionId, RegionEvents.IndexDeleted(regionKeys)))
+    events.region.publish(RegionEnvelope(regionId, RegionEvents.IndexDeleted(regionKeys)))
   }
 
   private[this] def dropStorageDiffs(storageId: String): Unit = {
@@ -248,7 +249,7 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
   }
 
   override def postStop(): Unit = {
-    StorageEvents.stream.unsubscribe(self)
+    events.storage.unsubscribe(self)
     super.postStop()
   }
 }

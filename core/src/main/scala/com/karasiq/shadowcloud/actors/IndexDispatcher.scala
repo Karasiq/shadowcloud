@@ -7,7 +7,7 @@ import akka.actor.{ActorLogging, DeadLetterSuppression, PossiblyHarmful, Props, 
 import akka.persistence._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
-import com.karasiq.shadowcloud.actors.events.StorageEvents
+import com.karasiq.shadowcloud.actors.events.SCEvents
 import com.karasiq.shadowcloud.actors.events.StorageEvents._
 import com.karasiq.shadowcloud.actors.internal.MultiIndexMerger
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
@@ -62,6 +62,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   require(storageId.nonEmpty)
   override val persistenceId: String = s"index_$storageId"
   implicit val actorMaterializer = ActorMaterializer()
+  val events = SCEvents()
   val streams = IndexRepositoryStreams.gzipped(context.system)
   val index = MultiIndexMerger()
   val config = AppConfig().index
@@ -216,7 +217,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   // State
   // -----------------------------------------------------------------------
   private[this] def updateState(event: Event): Unit = {
-    StorageEvents.stream.publish(StorageEnvelope(storageId, event))
+    events.storage.publish(StorageEnvelope(storageId, event))
     event match {
       case IndexUpdated(region, sequenceNr, diff, _) ⇒
         index.add(region, sequenceNr, diff)

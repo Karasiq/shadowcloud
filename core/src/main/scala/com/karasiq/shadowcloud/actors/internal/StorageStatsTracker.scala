@@ -1,7 +1,8 @@
 package com.karasiq.shadowcloud.actors.internal
 
-import akka.event.LoggingAdapter
-import com.karasiq.shadowcloud.actors.events.StorageEvents
+import akka.actor.ActorContext
+import akka.event.Logging
+import com.karasiq.shadowcloud.actors.events.{SCEvents, StorageEvents}
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
 
@@ -10,12 +11,16 @@ import scala.concurrent.Future
 import scala.language.postfixOps
 
 private[actors] object StorageStatsTracker {
-  def apply(storageId: String, healthProvider: StorageHealthProvider, log: LoggingAdapter): StorageStatsTracker = {
-    new StorageStatsTracker(storageId, healthProvider, log)
+  def apply(storageId: String, healthProvider: StorageHealthProvider)(implicit context: ActorContext): StorageStatsTracker = {
+    new StorageStatsTracker(storageId, healthProvider)
   }
 }
 
-private[actors] final class StorageStatsTracker(storageId: String, healthProvider: StorageHealthProvider, log: LoggingAdapter) {
+private[actors] final class StorageStatsTracker(storageId: String, healthProvider: StorageHealthProvider)
+                                               (implicit context: ActorContext) {
+
+  private[this] val log = Logging(context.system, context.self)
+  private[this] val events = SCEvents()
   private[this] var health = StorageHealth.empty
   private[this] var stats = mutable.AnyRefMap.empty[String, DiffStats]
     .withDefaultValue(DiffStats.empty)
@@ -23,7 +28,7 @@ private[actors] final class StorageStatsTracker(storageId: String, healthProvide
   def updateHealth(func: StorageHealth ⇒ StorageHealth): Unit = {
     this.health = func(this.health)
     log.debug("Storage [{}] health updated: {}", storageId, health)
-    StorageEvents.stream.publish(StorageEnvelope(storageId, StorageEvents.HealthUpdated(health)))
+    events.storage.publish(StorageEnvelope(storageId, StorageEvents.HealthUpdated(health)))
   }
 
   def updateStats(region: String, stats: DiffStats): Unit = {

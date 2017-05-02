@@ -1,14 +1,16 @@
 package com.karasiq.shadowcloud.actors.internal
 
-import akka.actor.ActorContext
-import akka.event.Logging
-import com.karasiq.shadowcloud.actors.events.{SCEvents, StorageEvents}
-import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
-import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
-
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.language.postfixOps
+
+import akka.actor.ActorContext
+import akka.event.Logging
+
+import com.karasiq.shadowcloud.actors.events.{SCEvents, StorageEvents}
+import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
+import com.karasiq.shadowcloud.config.AppConfig
+import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
 
 private[actors] object StorageStatsTracker {
   def apply(storageId: String, healthProvider: StorageHealthProvider)(implicit context: ActorContext): StorageStatsTracker = {
@@ -20,6 +22,7 @@ private[actors] final class StorageStatsTracker(storageId: String, healthProvide
                                                (implicit context: ActorContext) {
 
   private[this] val log = Logging(context.system, context.self)
+  private[this] val config = AppConfig()
   private[this] val events = SCEvents()
   private[this] var health = StorageHealth.empty
   private[this] var stats = mutable.AnyRefMap.empty[String, DiffStats]
@@ -50,7 +53,7 @@ private[actors] final class StorageStatsTracker(storageId: String, healthProvide
   }
 
   def requiresCompaction(): Iterable[String] = { // TODO: Config
-    this.stats.filter(_._2.deletes > 0).keys
+    this.stats.filter(_._2.deletes > config.index.compactThreshold).keys
   }
 
   def checkHealth(): Future[StorageHealth] = {

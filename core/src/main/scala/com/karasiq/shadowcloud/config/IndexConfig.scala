@@ -1,15 +1,15 @@
 package com.karasiq.shadowcloud.config
 
 
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-private[shadowcloud] case class IndexConfig(syncInterval: FiniteDuration, replicationFactor: Int)
+import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+
+private[shadowcloud] case class IndexConfig(syncInterval: FiniteDuration, replicationFactor: Int, compactThreshold: Int)
 
 private[shadowcloud] object IndexConfig extends ConfigImplicits {
   def apply(config: Config): IndexConfig = {
-    IndexConfig(config.getFiniteDuration("sync-interval"), config.getInt("replication-factor"))
+    IndexConfig(config.getFiniteDuration("sync-interval"), config.getInt("replication-factor"), config.getInt("compact-threshold"))
   }
 }

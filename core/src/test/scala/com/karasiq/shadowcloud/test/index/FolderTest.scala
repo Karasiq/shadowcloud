@@ -1,19 +1,20 @@
 package com.karasiq.shadowcloud.test.index
 
-import com.karasiq.shadowcloud.index.Folder
-import com.karasiq.shadowcloud.test.utils.TestUtils
-import org.scalatest.{FlatSpec, Matchers}
-
 import scala.language.postfixOps
 
+import org.scalatest.{FlatSpec, Matchers}
+
+import com.karasiq.shadowcloud.index.{Folder, Timestamp}
+import com.karasiq.shadowcloud.test.utils.TestUtils
+
 class FolderTest extends FlatSpec with Matchers {
-  val folder = Folder(TestUtils.randomString, System.currentTimeMillis() - 1, System.currentTimeMillis() - 1)
+  val folder = Folder(TestUtils.randomString, Timestamp(System.currentTimeMillis() - 1, System.currentTimeMillis() - 1))
 
   "Folder" should "add file" in {
     val testFile = TestUtils.randomFile(folder.path)
     val folder1 = folder.addFiles(testFile)
-    folder1.created shouldBe folder.created
-    folder1.lastModified should be > folder.lastModified
+    folder1.timestamp.created shouldBe folder.timestamp.created
+    folder1.timestamp.lastModified should be > folder.timestamp.lastModified
     folder1.files shouldBe Set(testFile)
   }
 
@@ -26,15 +27,15 @@ class FolderTest extends FlatSpec with Matchers {
     val testFile = TestUtils.randomFile(folder.path)
     val folder1 = folder.addFiles(testFile)
     val folder2 = folder.deleteFiles(folder1.files.head)
-    folder2.lastModified should be > folder.lastModified
-    folder2.lastModified should be >= folder1.lastModified
+    folder2.timestamp.lastModified should be > folder.timestamp.lastModified
+    folder2.timestamp.lastModified should be >= folder1.timestamp.lastModified
     folder2.files shouldBe empty
   }
 
   it should "add subdirectory" in {
     val subDir = TestUtils.randomString
     val folder1 = folder.addFolders(subDir)
-    folder1.lastModified should be > folder.lastModified
+    folder1.timestamp.lastModified should be > folder.timestamp.lastModified
     folder1.folders shouldBe Set(subDir)
   }
 
@@ -42,8 +43,8 @@ class FolderTest extends FlatSpec with Matchers {
     val subDir = TestUtils.randomString
     val folder1 = folder.addFolders(subDir)
     val folder2 = folder1.deleteFolders(subDir)
-    folder2.lastModified should be > folder.lastModified
-    folder2.lastModified should be >= folder1.lastModified
+    folder2.timestamp.lastModified should be > folder.timestamp.lastModified
+    folder2.timestamp.lastModified should be >= folder1.timestamp.lastModified
     folder2.folders shouldBe empty
   }
 

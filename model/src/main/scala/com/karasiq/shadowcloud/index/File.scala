@@ -1,16 +1,33 @@
 package com.karasiq.shadowcloud.index
 
-import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasPath, HasWithoutData}
-import com.karasiq.shadowcloud.utils.Utils
-
 import scala.language.postfixOps
 
-case class File(path: Path, created: Long = 0, lastModified: Long = 0,
+import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasPath, HasWithoutData}
+import com.karasiq.shadowcloud.index.File.Revision
+import com.karasiq.shadowcloud.utils.Utils
+
+object File {
+  case class Revision(revision: Long) extends AnyVal with Comparable[Revision] {
+    def next: Revision = {
+      copy(revision + 1)
+    }
+
+    def compareTo(o: Revision): Int = {
+      (revision - o.revision).toInt
+    }
+  }
+
+  object Revision {
+    val first = Revision(0)
+  }
+}
+
+case class File(path: Path, timestamp: Timestamp = Timestamp.now, revision: Revision = Revision.first,
                 checksum: Checksum = Checksum.empty, chunks: Seq[Chunk] = Nil)
   extends HasPath with HasEmpty with HasWithoutData {
 
   type Repr = File
-  require(!path.isRoot && lastModified >= created)
+  require(!path.isRoot)
 
   def withoutData: File = {
     copy(chunks = chunks.map(_.withoutData))
@@ -26,10 +43,10 @@ case class File(path: Path, created: Long = 0, lastModified: Long = 0,
 
   override def equals(obj: scala.Any): Boolean = obj match {
     case f: File ⇒
-      f.path == path && f.checksum == checksum && f.chunks == chunks
+      f.path == path && f.revision == revision && f.checksum == checksum && f.chunks == chunks
   }
 
   override def toString: String = {
-    s"File($path, $checksum, chunks: [${Utils.printChunkHashes(chunks)}])"
+    s"File($path#$revision, $checksum, chunks: [${Utils.printChunkHashes(chunks)}])"
   }
 }

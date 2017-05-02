@@ -1,28 +1,26 @@
 package com.karasiq.shadowcloud.index
 
-import com.karasiq.shadowcloud.index.diffs.FolderDiff
-import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasPath, HasWithoutData, Mergeable}
-import com.karasiq.shadowcloud.utils.Utils
-
 import scala.collection.GenTraversableOnce
 import scala.language.postfixOps
 
-case class Folder(path: Path, created: Long = 0, lastModified: Long = 0,
+import com.karasiq.shadowcloud.index.diffs.FolderDiff
+import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasPath, HasWithoutData, Mergeable}
+
+case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,
                   folders: Set[String] = Set.empty, files: Set[File] = Set.empty)
   extends HasPath with HasEmpty with HasWithoutData with Mergeable {
 
   type Repr = Folder
   type DiffRepr = FolderDiff
-  require(lastModified >= created, "Invalid folder time")
   require(files.forall(_.path.parent == this.path), "Invalid file paths")
 
   def addFiles(files: GenTraversableOnce[File]): Folder = {
     val newFiles = this.files ++ files
-    copy(lastModified = Utils.timestamp, files = newFiles)
+    copy(timestamp = timestamp.modifiedNow, files = newFiles)
   }
 
   def addFolders(folders: GenTraversableOnce[String]): Folder = {
-    copy(lastModified = Utils.timestamp, folders = this.folders ++ folders)
+    copy(timestamp = timestamp.modifiedNow, folders = this.folders ++ folders)
   }
 
   def addFiles(files: File*): Folder = {
@@ -34,11 +32,11 @@ case class Folder(path: Path, created: Long = 0, lastModified: Long = 0,
   }
 
   def deleteFolders(folders: GenTraversableOnce[String]): Folder = {
-    copy(lastModified = Utils.timestamp, folders = this.folders -- folders)
+    copy(timestamp = timestamp.modifiedNow, folders = this.folders -- folders)
   }
 
   def deleteFiles(files: GenTraversableOnce[File]): Folder = {
-    copy(lastModified = Utils.timestamp, files = this.files -- files)
+    copy(timestamp = timestamp.modifiedNow, files = this.files -- files)
   }
 
   def deleteFolders(folders: String*): Folder = {
@@ -65,7 +63,7 @@ case class Folder(path: Path, created: Long = 0, lastModified: Long = 0,
       .addFiles(diff.newFiles)
       .deleteFolders(diff.deletedFolders)
       .addFolders(diff.newFolders)
-      .copy(lastModified = math.max(lastModified, diff.time))
+      .copy(timestamp = timestamp.modified(diff.time))
   }
 
   def withPath(newPath: Path): Folder = {
@@ -99,6 +97,6 @@ case class Folder(path: Path, created: Long = 0, lastModified: Long = 0,
 
 object Folder {
   def create(path: Path): Folder = {
-    Folder(path, Utils.timestamp, Utils.timestamp)
+    Folder(path)
   }
 }

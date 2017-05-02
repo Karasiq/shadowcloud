@@ -1,12 +1,12 @@
 package com.karasiq.shadowcloud.index
 
+import scala.annotation.tailrec
+import scala.collection.{mutable, GenTraversableOnce}
+import scala.language.postfixOps
+
 import com.karasiq.shadowcloud.index.diffs.{FolderDiff, FolderIndexDiff}
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData, Mergeable}
 import com.karasiq.shadowcloud.utils.Utils
-
-import scala.annotation.tailrec
-import scala.collection.{GenTraversableOnce, mutable}
-import scala.language.postfixOps
 
 case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Path.root)))
   extends Mergeable with HasEmpty with HasWithoutData {
@@ -25,7 +25,7 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
 
   def addFiles(files: GenTraversableOnce[File]): FolderIndex = {
     val diffs = files.toVector.groupBy(_.path.parent).map { case (path, files) ⇒
-      FolderDiff(path, files.map(_.lastModified).max, newFiles = files.toSet)
+      FolderDiff(path, files.map(_.timestamp.lastModified).max, newFiles = files.toSet)
     }
     applyDiffs(diffs)
   }
@@ -38,7 +38,7 @@ case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Pat
       if (folder.path.isRoot || parent.exists(_.folders.contains(folder.path.name))) {
         Iterator.single(diff)
       } else {
-        Iterator(FolderDiff(folder.path.parent, folder.lastModified, newFolders = Set(folder.path.name)), diff)
+        Iterator(FolderDiff(folder.path.parent, folder.timestamp.lastModified, newFolders = Set(folder.path.name)), diff)
       }
     }
     applyDiffs(diffs)

@@ -1,12 +1,12 @@
 package com.karasiq.shadowcloud.index.diffs
 
-import com.karasiq.shadowcloud.index.utils.{FolderDecider, HasEmpty, HasWithoutData, MergeableDiff}
+import scala.language.postfixOps
+
 import com.karasiq.shadowcloud.index.{File, Folder, FolderIndex, Path}
+import com.karasiq.shadowcloud.index.utils.{FolderDecider, HasEmpty, HasWithoutData, MergeableDiff}
+import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 import com.karasiq.shadowcloud.utils.MergeUtil.Decider
 import com.karasiq.shadowcloud.utils.MergeUtil.State.{Conflict, Equal, Left, Right}
-import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
-
-import scala.language.postfixOps
 
 case class FolderIndexDiff(folders: Seq[FolderDiff] = Vector.empty)
   extends MergeableDiff with HasEmpty with HasWithoutData {
@@ -111,7 +111,7 @@ object FolderIndexDiff {
       empty
     } else {
       val diffs = files.groupBy(_.path.parent).map { case (path, files) ⇒
-        FolderDiff(path, files.maxBy(_.lastModified).lastModified, files.toSet)
+        FolderDiff(path, files.maxBy(_.timestamp.lastModified).timestamp.lastModified, files.toSet)
       }
       FolderIndexDiff(diffs.toVector)
     }

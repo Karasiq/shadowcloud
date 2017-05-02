@@ -1,11 +1,11 @@
 package com.karasiq.shadowcloud.index.diffs
 
+import scala.language.postfixOps
+
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.utils._
 import com.karasiq.shadowcloud.utils.MergeUtil
 import com.karasiq.shadowcloud.utils.MergeUtil.SplitDecider
-
-import scala.language.postfixOps
 
 case class FolderDiff(path: Path, time: Long = 0, newFiles: Set[File] = Set.empty,
                       deletedFiles: Set[File] = Set.empty, newFolders: Set[String] = Set.empty,
@@ -70,15 +70,15 @@ object FolderDiff {
     require(oldFolder.path == newFolder.path, "Invalid path")
     val (leftFiles, rightFiles) = MergeUtil.splitSets(oldFolder.files, newFolder.files, SplitDecider.dropDuplicates)
     val (leftFolders, rightFolders) = MergeUtil.splitSets(oldFolder.folders, newFolder.folders, SplitDecider.dropDuplicates)
-    FolderDiff(oldFolder.path, newFolder.lastModified, rightFiles, leftFiles, rightFolders, leftFolders)
+    FolderDiff(oldFolder.path, newFolder.timestamp.lastModified, rightFiles, leftFiles, rightFolders, leftFolders)
   }
 
   def auto(folder1: Folder, folder2: Folder): FolderDiff = {
-    val (left, right) = if (folder1.lastModified >= folder2.lastModified) (folder1, folder2) else (folder2, folder1)
+    val (left, right) = if (folder1.timestamp.lastModified >= folder2.timestamp.lastModified) (folder1, folder2) else (folder2, folder1)
     apply(left, right)
   }
 
   def create(folder: Folder): FolderDiff = {
-    FolderDiff(folder.path, folder.lastModified, folder.files, Set.empty, folder.folders, Set.empty)
+    FolderDiff(folder.path, folder.timestamp.lastModified, folder.files, Set.empty, folder.folders, Set.empty)
   }
 }

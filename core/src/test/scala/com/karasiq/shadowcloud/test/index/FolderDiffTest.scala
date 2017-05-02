@@ -1,11 +1,12 @@
 package com.karasiq.shadowcloud.test.index
 
-import com.karasiq.shadowcloud.index.diffs.FolderIndexDiff
-import com.karasiq.shadowcloud.index.{Folder, FolderIndex, Path}
-import com.karasiq.shadowcloud.test.utils.TestUtils
+import scala.language.postfixOps
+
 import org.scalatest.{FlatSpec, Matchers}
 
-import scala.language.postfixOps
+import com.karasiq.shadowcloud.index.{Folder, FolderIndex, Path}
+import com.karasiq.shadowcloud.index.diffs.FolderIndexDiff
+import com.karasiq.shadowcloud.test.utils.TestUtils
 
 class FolderDiffTest extends FlatSpec with Matchers {
   val folder1 = TestUtils.randomFolder()
@@ -42,10 +43,10 @@ class FolderDiffTest extends FlatSpec with Matchers {
     val diff = folder2.diff(folder1)
     val index1 = index.patch(FolderIndexDiff.seq(diff))
     index1.folders shouldBe Map(
-      Path.root → Folder(Path.root, 0, folder1.created, Set(folder1.path.name)),
+      Path.root → Folder(Path.root, folder1.timestamp, Set(folder1.path.name)),
       folder1.path → folder2
-    ).++(folder2.folders.map(name ⇒ (folder2.path / name) → Folder(folder2.path / name, folder2.created, folder2.lastModified)) ++
-      folder1.folders.map(name ⇒ (folder1.path / name) → Folder(folder1.path / name, folder1.created, folder1.lastModified)))
+    ).++(folder2.folders.map(name ⇒ (folder2.path / name) → Folder(folder2.path / name, folder2.timestamp)) ++
+      folder1.folders.map(name ⇒ (folder1.path / name) → Folder(folder1.path / name, folder1.timestamp)))
   }
 
   it should "add folder with parents" in {
@@ -77,7 +78,7 @@ class FolderDiffTest extends FlatSpec with Matchers {
     reverse.deletedFiles shouldBe Set(newFile)
     reverse.deletedFolders shouldBe Set(newFolder)
     val folder4 = folder3.patch(reverse)
-    folder4 shouldBe folder1.copy(lastModified = diff.time)
+    folder4 shouldBe folder1.copy(timestamp = folder1.timestamp.modified(diff.time))
   }
 
   it should "merge" in {

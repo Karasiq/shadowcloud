@@ -1,12 +1,13 @@
 package com.karasiq.shadowcloud.test.index
 
+import scala.language.postfixOps
+
 import akka.util.ByteString
+import org.scalatest.{FlatSpec, Matchers}
+
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.test.utils.TestUtils
 import com.karasiq.shadowcloud.utils.Utils
-import org.scalatest.{FlatSpec, Matchers}
-
-import scala.language.postfixOps
 
 //noinspection RedundantDefaultArgument
 class HashCodesTest extends FlatSpec with Matchers {
@@ -48,7 +49,7 @@ class HashCodesTest extends FlatSpec with Matchers {
 
   "Folders" should "be compared" in {
     val folder1 = TestUtils.randomFolder()
-    val folder2 = folder1.copy(created = folder1.created + 1, lastModified = folder1.lastModified + 1)
+    val folder2 = folder1.copy(timestamp = folder1.timestamp.copy(lastModified = folder1.timestamp.lastModified + 1))
     val folder3 = folder1.withPath(folder1.path / "test")
     val folder4 = folder1.copy(folders = folder1.folders + TestUtils.randomString)
     val folder5 = folder1.copy(files = folder1.files + TestUtils.randomFile(folder1.path))

@@ -2,21 +2,21 @@ package com.karasiq.shadowcloud.streams
 
 import java.io.FileNotFoundException
 
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+import scala.language.postfixOps
+
 import akka.NotUsed
 import akka.actor.ActorRef
 import akka.stream.FlowShape
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, ZipWith}
 import akka.util.Timeout
+
 import com.karasiq.shadowcloud.actors.RegionDispatcher
 import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.config.ParallelismConfig
+import com.karasiq.shadowcloud.index.{Chunk, File, Path, Timestamp}
 import com.karasiq.shadowcloud.index.diffs.{FileVersions, FolderIndexDiff}
-import com.karasiq.shadowcloud.index.{Chunk, File, Path}
-import com.karasiq.shadowcloud.utils.Utils
-
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-import scala.language.postfixOps
 
 object RegionStreams {
   def apply(regionSupervisor: ActorRef, parallelism: ParallelismConfig)
@@ -67,9 +67,9 @@ final class RegionStreams(val regionSupervisor: ActorRef, val parallelism: Paral
         require(path == path1)
         val newFile = if (files.nonEmpty) {
           val last = FileVersions.mostRecent(files)
-          last.copy(lastModified = Utils.timestamp, checksum = result.checksum, chunks = result.chunks)
+          last.copy(timestamp = last.timestamp.modifiedNow, revision = last.revision.next, checksum = result.checksum, chunks = result.chunks)
         } else {
-          File(path, Utils.timestamp, Utils.timestamp, result.checksum, result.chunks)
+          File(path, Timestamp.now, File.Revision.first, result.checksum, result.chunks)
         }
         if (!files.contains(newFile)) {
           regionSupervisor ! RegionEnvelope(regionId, RegionDispatcher.WriteIndex(FolderIndexDiff.createFiles(newFile)))

@@ -1,11 +1,11 @@
 package com.karasiq.shadowcloud.index.diffs
 
+import scala.language.postfixOps
+
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.utils.{FolderDecider, HasEmpty, HasWithoutData, MergeableDiff}
-import com.karasiq.shadowcloud.utils.MergeUtil.{Decider, SplitDecider}
 import com.karasiq.shadowcloud.utils.Utils
-
-import scala.language.postfixOps
+import com.karasiq.shadowcloud.utils.MergeUtil.{Decider, SplitDecider}
 
 case class IndexDiff(time: Long = Utils.timestamp, folders: FolderIndexDiff = FolderIndexDiff.empty,
                      chunks: ChunkIndexDiff = ChunkIndexDiff.empty)
@@ -85,7 +85,7 @@ object IndexDiff {
     if (folders.isEmpty) {
       empty
     } else {
-      IndexDiff(folders.map(_.lastModified).max, FolderIndexDiff.create(folders:_*))
+      IndexDiff(folders.map(_.timestamp.lastModified).max, FolderIndexDiff.create(folders:_*))
     }
   }
 

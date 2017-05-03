@@ -2,15 +2,22 @@ package com.karasiq.shadowcloud.actors
 
 import java.io.FileNotFoundException
 
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
+import scala.language.postfixOps
+import scala.util.{Failure, Success}
+
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
+
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk => SReadChunk, WriteChunk => SWriteChunk}
 import com.karasiq.shadowcloud.actors.events.{RegionEvents, SCEvents, StorageEvents}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
+import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.providers.ModuleRegistry
@@ -18,11 +25,6 @@ import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.utils.Utils
-
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-import scala.language.postfixOps
-import scala.util.{Failure, Success}
 
 object RegionDispatcher {
   // Messages
@@ -152,6 +154,13 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
       future.onComplete {
         case Success(IndexMerger.State(diffs, pending)) ⇒
           self ! PushDiffs(storageId, diffs, pending)
+
+        case Failure(_: StorageException.NotFound) ⇒
+          val diff = globalIndex.mergedDiff.merge(globalIndex.pending)
+          if (diff.nonEmpty) {
+            log.info("Mirroring index to storage {}: {}", storageId, diff)
+            dispatcher ! IndexDispatcher.AddPending(regionId, diff)
+          }
 
         case Failure(error) ⇒
           log.error(error, "Error fetching index: {}", dispatcher)

@@ -2,24 +2,26 @@ package com.karasiq.shadowcloud.actors
 
 import java.util.concurrent.TimeoutException
 
+import scala.collection.mutable.{Set => MSet}
+import scala.concurrent.duration._
+import scala.language.postfixOps
+
 import akka.NotUsed
 import akka.actor.{ActorLogging, DeadLetterSuppression, PossiblyHarmful, Props, ReceiveTimeout, Status}
 import akka.persistence._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
+
 import com.karasiq.shadowcloud.actors.events.SCEvents
 import com.karasiq.shadowcloud.actors.events.StorageEvents._
 import com.karasiq.shadowcloud.actors.internal.MultiIndexMerger
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.AppConfig
+import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.storage.{CategorizedRepository, StorageIOResult}
-
-import scala.collection.mutable.{Set => MSet}
-import scala.concurrent.duration._
-import scala.language.postfixOps
+import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 
 object IndexDispatcher {
   private type LocalKey = (String, Long)
@@ -53,8 +55,9 @@ object IndexDispatcher {
 
 private final class IndexDispatcher(storageId: String, repository: CategorizedRepository[String, Long])
   extends PersistentActor with ActorLogging {
-  import IndexDispatcher._
   import context.dispatcher
+
+  import IndexDispatcher._
 
   // -----------------------------------------------------------------------
   // Context
@@ -82,7 +85,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
           sender() ! GetIndex.Success(region, IndexMerger.state(index))
 
         case None ⇒
-          sender() ! GetIndex.Failure(region, new NoSuchElementException(region))
+          sender() ! GetIndex.Failure(region, StorageException.NotFound(region))
       }
 
     case AddPending(region, diff) ⇒

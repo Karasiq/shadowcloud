@@ -1,9 +1,13 @@
 package com.karasiq.shadowcloud.actors.internal
 
+import scala.collection.mutable
+import scala.language.{implicitConversions, postfixOps}
+
 import akka.actor.{ActorContext, ActorRef}
 import akka.event.LoggingAdapter
 import akka.util.ByteString
-import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk => SReadChunk, WriteChunk => SWriteChunk}
+
+import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk => SReadChunk, WriteChunk => SWriteChunk}
 import com.karasiq.shadowcloud.actors.RegionDispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors.utils.PendingOperation
 import com.karasiq.shadowcloud.config.StorageConfig
@@ -11,9 +15,6 @@ import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
 import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.utils.Utils
-
-import scala.collection.mutable
-import scala.language.{implicitConversions, postfixOps}
 
 private[actors] object ChunksTracker {
   object Status extends Enumeration {
@@ -182,6 +183,10 @@ private[actors] final class ChunksTracker(regionId: String, config: StorageConfi
   // -----------------------------------------------------------------------
   // Internal functions
   // -----------------------------------------------------------------------
+  private[this] implicit def extractChunkPath(chunk: Chunk): ChunkPath = {
+    ChunkPath(regionId, config.chunkKey(chunk))
+  }
+
   private[this] def getChunk(chunk: Chunk): Option[ChunkStatus] = {
     chunks.get(config.chunkKey(chunk))
   }
@@ -204,7 +209,7 @@ private[actors] final class ChunksTracker(regionId: String, config: StorageConfi
     } else {
       Utils.takeOrAll(availableStorages, config.replicationFactor)
     }
-    selectedStorages.foreach(_ ! SWriteChunk(regionId, status.chunk))
+    selectedStorages.foreach(_ ! SWriteChunk(status.chunk: ChunkPath, status.chunk))
     selectedStorages.toSet
   }
 
@@ -213,7 +218,7 @@ private[actors] final class ChunksTracker(regionId: String, config: StorageConfi
     storages.forRead(status).headOption match {
       case Some(dispatcher) ⇒
         log.debug("Reading chunk from {}: {}", dispatcher, chunk)
-        dispatcher ! SReadChunk(regionId, chunk)
+        dispatcher ! SReadChunk(chunk: ChunkPath, chunk)
 
       case None ⇒
         readingChunks.finish(status.chunk, ReadChunk.Failure(chunk, new IllegalArgumentException("Chunk unavailable")))

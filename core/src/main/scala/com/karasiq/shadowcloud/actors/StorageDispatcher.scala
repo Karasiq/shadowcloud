@@ -1,17 +1,18 @@
 package com.karasiq.shadowcloud.actors
 
+import scala.concurrent.duration._
+import scala.language.postfixOps
+
 import akka.actor.{Actor, ActorLogging, ActorRef, NotInfluenceReceiveTimeout, Props}
 import akka.pattern.pipe
 import akka.util.Timeout
+
 import com.karasiq.shadowcloud.actors.events.{SCEvents, StorageEvents}
 import com.karasiq.shadowcloud.actors.internal.{DiffStats, StorageStatsTracker}
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperation}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
-
-import scala.concurrent.duration._
-import scala.language.postfixOps
 
 object StorageDispatcher {
   // Messages
@@ -65,11 +66,11 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
     // -----------------------------------------------------------------------
     // Chunk responses
     // -----------------------------------------------------------------------
-    case msg @ ChunkIODispatcher.WriteChunk.Success((region, chunk), _) ⇒
+    case msg @ ChunkIODispatcher.WriteChunk.Success((path, chunk), _) ⇒
       log.debug("Chunk written, appending to index: {}", chunk)
-      writingChunks.finish((region, chunk), msg)
-      events.storage.publish(StorageEnvelope(storageId, StorageEvents.ChunkWritten(region, chunk)))
-      index ! IndexDispatcher.AddPending(region, IndexDiff.newChunks(chunk.withoutData))
+      writingChunks.finish((path, chunk), msg)
+      events.storage.publish(StorageEnvelope(storageId, StorageEvents.ChunkWritten(path, chunk)))
+      index ! IndexDispatcher.AddPending(path.region, IndexDiff.newChunks(chunk.withoutData))
 
     case msg @ ChunkIODispatcher.WriteChunk.Failure((region, chunk), error) ⇒
       log.error(error, "Chunk write failure: {}/{}", region, chunk)

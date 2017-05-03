@@ -1,20 +1,22 @@
 package com.karasiq.shadowcloud.actors
 
+import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.language.{higherKinds, postfixOps}
+import scala.util.{Failure, Success}
+
 import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
+
 import com.karasiq.shadowcloud.actors.internal.GarbageCollectUtil
+import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}
 import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
-
-import scala.concurrent.Future
-import scala.concurrent.duration._
-import scala.language.{higherKinds, postfixOps}
-import scala.util.{Failure, Success}
 
 object GarbageCollector {
   // Messages
@@ -29,8 +31,9 @@ object GarbageCollector {
 }
 
 private final class GarbageCollector(index: ActorRef, chunkIO: ActorRef) extends Actor with ActorLogging {
-  import GarbageCollector._
   import context.dispatcher
+
+  import GarbageCollector._
 
   // -----------------------------------------------------------------------
   // Context
@@ -71,7 +74,7 @@ private final class GarbageCollector(index: ActorRef, chunkIO: ActorRef) extends
     val indexes = IndexDispatcher.GetIndexes.unwrapFuture(index ? IndexDispatcher.GetIndexes)
       .map(_.mapValues(IndexMerger.restore(0L, _)))
     val keys = ChunkIODispatcher.GetKeys.unwrapFuture(chunkIO ? ChunkIODispatcher.GetKeys)
-      .map(_.groupBy(_._1).mapValues(_.map(_._2)))
+      .map(_.groupBy(_.region).mapValues(_.map(_.id)))
 
     indexes.zip(keys).map { case (indexes, chunkKeys) ⇒
       val gcUtil = GarbageCollectUtil(config)
@@ -94,8 +97,9 @@ private final class GarbageCollector(index: ActorRef, chunkIO: ActorRef) extends
 
     def deleteChunksFromStorage(chunks: Map[String, Set[ByteString]]): Future[StorageIOResult] = {
       val futures = chunks.map { case (region, chunks) ⇒
+        val paths = chunks.map(ChunkPath(region, _))
         if (log.isDebugEnabled) log.debug("Deleting chunks from storage {}: {}", region, Utils.printHashes(chunks))
-        ChunkIODispatcher.DeleteChunks.unwrapFuture(chunkIO ? ChunkIODispatcher.DeleteChunks(region, chunks))
+        ChunkIODispatcher.DeleteChunks.unwrapFuture(chunkIO ? ChunkIODispatcher.DeleteChunks(paths))
       }
       StorageUtils.foldIOFutures(futures.toSeq: _*)
     }

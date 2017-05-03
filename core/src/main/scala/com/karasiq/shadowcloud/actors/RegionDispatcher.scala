@@ -11,7 +11,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 
-import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ReadChunk => SReadChunk, WriteChunk => SWriteChunk}
+import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk => SReadChunk, WriteChunk => SWriteChunk}
 import com.karasiq.shadowcloud.actors.events.{RegionEvents, SCEvents, StorageEvents}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
@@ -126,19 +126,19 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
     case WriteChunk(chunk) ⇒
       chunks.writeChunk(chunk, sender())
 
-    case SReadChunk.Success((`regionId`, _), chunk) ⇒
+    case SReadChunk.Success((ChunkPath(`regionId`, _), _), chunk) ⇒
       log.debug("Chunk read success: {}", chunk)
       chunks.readSuccess(chunk)
 
-    case SReadChunk.Failure((`regionId`, chunk), error) ⇒
+    case SReadChunk.Failure((ChunkPath(`regionId`, _), chunk), error) ⇒
       log.error(error, "Chunk read failed: {}", chunk)
       chunks.readFailure(chunk, error)
 
-    case SWriteChunk.Success((`regionId`, _), chunk) ⇒
+    case SWriteChunk.Success((ChunkPath(`regionId`, _), _), chunk) ⇒
       log.debug("Chunk write success: {}", chunk)
       // chunks.registerChunk(sender(), chunk)
 
-    case SWriteChunk.Failure((`regionId`, chunk), error) ⇒
+    case SWriteChunk.Failure((ChunkPath(`regionId`, _), chunk), error) ⇒
       log.error(error, "Chunk write failed: {}", chunk)
       chunks.unregisterChunk(sender(), chunk)
       chunks.retryPendingChunks()
@@ -197,7 +197,7 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
         log.debug("Diffs deleted from storage [{}]: {}", storageId, sequenceNrs)
         dropStorageDiffs(storageId, sequenceNrs)
 
-      case StorageEvents.ChunkWritten(`regionId`, chunk) ⇒
+      case StorageEvents.ChunkWritten(ChunkPath(`regionId`, _), chunk) ⇒
         log.debug("Chunk written: {}", chunk)
         chunks.registerChunk(storages.getDispatcher(storageId), chunk)
         events.region.publish(RegionEnvelope(regionId, RegionEvents.ChunkWritten(storageId, chunk)))

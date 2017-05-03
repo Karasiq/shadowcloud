@@ -2,23 +2,25 @@ package com.karasiq.shadowcloud.test.actors
 
 import java.nio.file.Files
 
+import scala.concurrent.duration._
+import scala.language.postfixOps
+
 import akka.pattern.ask
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestActorRef
-import com.karasiq.shadowcloud.actors.RegionDispatcher.{ReadChunk, WriteChunk}
-import com.karasiq.shadowcloud.actors._
-import com.karasiq.shadowcloud.actors.events.{SCEvents, StorageEvents}
-import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
-import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
-import com.karasiq.shadowcloud.storage._
-import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
-import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 import org.scalatest.FlatSpecLike
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
+import com.karasiq.shadowcloud.actors._
+import com.karasiq.shadowcloud.actors.RegionDispatcher.{ReadChunk, WriteChunk}
+import com.karasiq.shadowcloud.actors.events.{SCEvents, StorageEvents}
+import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
+import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
+import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.storage._
+import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 
 // Uses local filesystem
 class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
@@ -47,7 +49,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     // Write chunk
     val result = testRegion ? WriteChunk(chunk)
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
-    expectMsg(StorageEnvelope("testStorage", StorageEvents.ChunkWritten("testRegion", chunk)))
+    expectMsg(StorageEnvelope("testStorage", StorageEvents.ChunkWritten(ChunkPath("testRegion", TestUtils.config.storage.chunkKey(chunk)), chunk)))
 
     // Health update
     val StorageEnvelope("testStorage", StorageEvents.HealthUpdated(health)) = receiveOne(1 second)

@@ -3,26 +3,9 @@ package com.karasiq.shadowcloud.index
 import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasPath, HasWithoutData}
-import com.karasiq.shadowcloud.index.File.Revision
 import com.karasiq.shadowcloud.utils.Utils
 
-object File {
-  case class Revision(revision: Long) extends AnyVal with Comparable[Revision] {
-    def next: Revision = {
-      copy(revision + 1)
-    }
-
-    def compareTo(o: Revision): Int = {
-      (revision - o.revision).toInt
-    }
-  }
-
-  object Revision {
-    val first = Revision(0)
-  }
-}
-
-case class File(path: Path, timestamp: Timestamp = Timestamp.now, revision: Revision = Revision.first,
+case class File(path: Path, timestamp: Timestamp = Timestamp.now, revision: Long = 0,
                 checksum: Checksum = Checksum.empty, chunks: Seq[Chunk] = Nil)
   extends HasPath with HasEmpty with HasWithoutData {
 
@@ -47,6 +30,6 @@ case class File(path: Path, timestamp: Timestamp = Timestamp.now, revision: Revi
   }
 
   override def toString: String = {
-    s"File($path#${revision.revision}, $checksum, chunks: [${Utils.printChunkHashes(chunks)}])"
+    s"File($path#$revision, $checksum, chunks: [${Utils.printChunkHashes(chunks)}])"
   }
 }

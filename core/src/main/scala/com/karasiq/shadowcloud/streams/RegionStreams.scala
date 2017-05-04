@@ -67,9 +67,9 @@ final class RegionStreams(val regionSupervisor: ActorRef, val parallelism: Paral
         require(path == path1)
         val newFile = if (files.nonEmpty) {
           val last = FileVersions.mostRecent(files)
-          last.copy(timestamp = last.timestamp.modifiedNow, revision = last.revision.next, checksum = result.checksum, chunks = result.chunks)
+          last.copy(timestamp = last.timestamp.modifiedNow, revision = last.revision + 1, checksum = result.checksum, chunks = result.chunks)
         } else {
-          File(path, Timestamp.now, File.Revision.first, result.checksum, result.chunks)
+          File(path, Timestamp.now, 0, result.checksum, result.chunks)
         }
         if (!files.contains(newFile)) {
           regionSupervisor ! RegionEnvelope(regionId, RegionDispatcher.WriteIndex(FolderIndexDiff.createFiles(newFile)))

@@ -10,7 +10,7 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk => SReadChunk, WriteChunk => SWriteChunk}
 import com.karasiq.shadowcloud.actors.RegionDispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors.utils.PendingOperation
-import com.karasiq.shadowcloud.config.StorageConfig
+import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
 import com.karasiq.shadowcloud.providers.ModuleRegistry
@@ -24,13 +24,13 @@ private[actors] object ChunksTracker {
   case class ChunkStatus(status: Status.Value, time: Long, chunk: Chunk, writingChunk: Set[ActorRef] = Set.empty,
                          hasChunk: Set[ActorRef] = Set.empty, waitingChunk: Set[ActorRef] = Set.empty)
 
-  def apply(regionId: String, config: StorageConfig, modules: ModuleRegistry, storages: StorageTracker,
+  def apply(regionId: String, config: RegionConfig, modules: ModuleRegistry, storages: StorageTracker,
             log: LoggingAdapter)(implicit context: ActorContext): ChunksTracker = {
     new ChunksTracker(regionId, config, modules, storages, log)
   }
 }
 
-private[actors] final class ChunksTracker(regionId: String, config: StorageConfig,
+private[actors] final class ChunksTracker(regionId: String, config: RegionConfig,
                                           modules: ModuleRegistry, storages: StorageTracker,
                                           log: LoggingAdapter)(implicit context: ActorContext) {
   import ChunksTracker._
@@ -92,7 +92,7 @@ private[actors] final class ChunksTracker(regionId: String, config: StorageConfi
         } else {
           log.debug("Writing chunk to {}: {}", written, chunk)
         }
-        putStatus(status.copy(writingChunk = written))
+        putStatus(status.copy(writingChunk = written.map(_.dispatcher)))
     }
   }
 
@@ -102,7 +102,7 @@ private[actors] final class ChunksTracker(regionId: String, config: StorageConfi
         val written = writeChunkToStorages(status)
         if (written.nonEmpty) {
           log.debug("Retrying chunk write to {}: {}", written, status)
-          putStatus(status.copy(hasChunk = written))
+          putStatus(status.copy(hasChunk = written.map(_.dispatcher)))
         }
       }
     }
@@ -121,7 +121,7 @@ private[actors] final class ChunksTracker(regionId: String, config: StorageConfi
         if (status.status == Status.PENDING) { // Chunk is pending
           val newStatus = status.copy(writingChunk = status.writingChunk - dispatcher,
             hasChunk = status.hasChunk + dispatcher)
-          val needWrites = math.max(0, config.replicationFactor - newStatus.hasChunk.size)
+          val needWrites = math.max(0, config.dataReplicationFactor - newStatus.hasChunk.size)
           if (needWrites == 0) {
             require(status.chunk.data.nonEmpty)
             log.debug("Resolved pending chunk: {}", chunk)
@@ -183,42 +183,42 @@ private[actors] final class ChunksTracker(regionId: String, config: StorageConfi
   // -----------------------------------------------------------------------
   // Internal functions
   // -----------------------------------------------------------------------
-  private[this] implicit def extractChunkPath(chunk: Chunk): ChunkPath = {
-    ChunkPath(regionId, config.chunkKey(chunk))
+  private[this] def getChunkPath(storage: StorageTracker.Storage, chunk: Chunk): ChunkPath = {
+    ChunkPath(regionId, storage.config.chunkKey(chunk))
   }
 
   private[this] def getChunk(chunk: Chunk): Option[ChunkStatus] = {
-    chunks.get(config.chunkKey(chunk))
+    chunks.get(chunk.checksum.hash)
   }
 
   private[this] def putStatus(status: ChunkStatus): ChunkStatus = {
-    chunks += config.chunkKey(status.chunk) → status
+    chunks += status.chunk.checksum.hash → status
     status
   }
 
   private[this] def removeStatus(status: ChunkStatus): Option[ChunkStatus] = {
-    chunks.remove(config.chunkKey(status.chunk))
+    chunks.remove(status.chunk.checksum.hash)
   }
 
-  private[this] def writeChunkToStorages(status: ChunkStatus): Set[ActorRef] = {
+  private[this] def writeChunkToStorages(status: ChunkStatus): Set[StorageTracker.Storage] = {
     require(status.chunk.data.nonEmpty, "Chunks is empty")
     val writingCount = status.writingChunk.size + status.hasChunk.size
     val availableStorages = storages.forWrite(status)
     val selectedStorages = if (writingCount > 0) {
-      availableStorages.take(config.replicationFactor - writingCount)
+      availableStorages.take(config.dataReplicationFactor - writingCount)
     } else {
-      Utils.takeOrAll(availableStorages, config.replicationFactor)
+      Utils.takeOrAll(availableStorages, config.dataReplicationFactor)
     }
-    selectedStorages.foreach(_ ! SWriteChunk(status.chunk: ChunkPath, status.chunk))
+    selectedStorages.foreach(storage ⇒ storage.dispatcher ! SWriteChunk(getChunkPath(storage, status.chunk), status.chunk))
     selectedStorages.toSet
   }
 
   private[this] def readChunkFromStorage(status: ChunkStatus) = {
     val chunk = status.chunk.withoutData
     storages.forRead(status).headOption match {
-      case Some(dispatcher) ⇒
-        log.debug("Reading chunk from {}: {}", dispatcher, chunk)
-        dispatcher ! SReadChunk(chunk: ChunkPath, chunk)
+      case Some(storage) ⇒
+        log.debug("Reading chunk from {}: {}", storage.id, chunk)
+        storage.dispatcher ! SReadChunk(getChunkPath(storage, status.chunk), chunk)
 
       case None ⇒
         readingChunks.finish(status.chunk, ReadChunk.Failure(chunk, new IllegalArgumentException("Chunk unavailable")))

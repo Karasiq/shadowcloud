@@ -35,7 +35,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   val healthProvider = StorageHealthProviders.fromDirectory(chunksDir)
   val initialHealth = healthProvider.health.futureValue
   val storage = TestActorRef(StorageDispatcher.props("testStorage", index, chunkIO, healthProvider), "storage")
-  val testRegion = TestActorRef(RegionDispatcher.props("testRegion"), "testRegion")
+  val testRegion = TestActorRef(RegionDispatcher.props("testRegion", TestUtils.regionConfig("testRegion")), "testRegion")
   val events = SCEvents(system)
 
   "Virtual region" should "register storage" in {
@@ -49,7 +49,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     // Write chunk
     val result = testRegion ? WriteChunk(chunk)
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
-    expectMsg(StorageEnvelope("testStorage", StorageEvents.ChunkWritten(ChunkPath("testRegion", TestUtils.config.storage.chunkKey(chunk)), chunk)))
+    expectMsg(StorageEnvelope("testStorage", StorageEvents.ChunkWritten(ChunkPath("testRegion", TestUtils.storageConfig("testStorage").chunkKey(chunk)), chunk)))
 
     // Health update
     val StorageEnvelope("testStorage", StorageEvents.HealthUpdated(health)) = receiveOne(1 second)

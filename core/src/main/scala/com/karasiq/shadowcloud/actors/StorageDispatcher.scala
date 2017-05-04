@@ -35,7 +35,7 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
   private[this] implicit val timeout = Timeout(10 seconds)
   private[this] val events = SCEvents()
   private[this] val schedule = context.system.scheduler.schedule(Duration.Zero, 30 seconds, self, CheckHealth)
-  private[this] val gcActor = context.actorOf(GarbageCollector.props(index, chunkIO), "garbageCollector")
+  private[this] val gcActor = context.actorOf(GarbageCollector.props(storageId, index, chunkIO), "garbageCollector")
 
   // -----------------------------------------------------------------------
   // State

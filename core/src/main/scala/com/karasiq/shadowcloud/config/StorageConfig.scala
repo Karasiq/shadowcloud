@@ -1,19 +1,28 @@
 package com.karasiq.shadowcloud.config
 
+import scala.concurrent.duration.FiniteDuration
+
+import akka.actor.ActorContext
 
 import com.karasiq.shadowcloud.config.utils.{ChunkKeyExtractor, ConfigImplicits}
-import com.karasiq.shadowcloud.providers.StorageProvider
 
-import scala.language.postfixOps
+case class StorageConfig(syncInterval: FiniteDuration, indexCompactThreshold: Int, chunkKey: ChunkKeyExtractor)
 
-private[shadowcloud] case class StorageConfig(replicationFactor: Int, chunkKey: ChunkKeyExtractor, providers: ProvidersConfig[StorageProvider])
+object StorageConfig extends ConfigImplicits {
+  def fromConfig(storageId: String, rootConfig: Config): StorageConfig = {
+    apply(rootConfig.getConfigOrRef(s"storages.$storageId")
+      .withFallback(rootConfig.getConfig("default-storage")))
+  }
 
-private[shadowcloud] object StorageConfig extends ConfigImplicits {
+  def apply(storageId: String)(implicit ac: ActorContext): StorageConfig = {
+    fromConfig(storageId, actorContextConfig(AppConfig.ROOT_CFG_PATH))
+  }
+
   def apply(config: Config): StorageConfig = {
     StorageConfig(
-      config.getInt("replication-factor"),
-      ChunkKeyExtractor.fromString(config.getString("chunk-key")),
-      ProvidersConfig(config.getConfig("providers"))
+      config.getFiniteDuration("sync-interval"),
+      config.getInt("index-compact-threshold"),
+      ChunkKeyExtractor.fromString(config.getString("chunk-key"))
     )
   }
 }

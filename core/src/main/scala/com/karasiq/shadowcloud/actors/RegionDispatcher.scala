@@ -16,7 +16,7 @@ import com.karasiq.shadowcloud.actors.events.{RegionEvents, SCEvents, StorageEve
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
-import com.karasiq.shadowcloud.config.AppConfig
+import com.karasiq.shadowcloud.config.{AppConfig, RegionConfig}
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
@@ -50,12 +50,12 @@ object RegionDispatcher {
   private case class PushDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)], pending: IndexDiff) extends Message
 
   // Props
-  def props(regionId: String): Props = {
-    Props(classOf[RegionDispatcher], regionId)
+  def props(regionId: String, regionProps: RegionConfig): Props = {
+    Props(classOf[RegionDispatcher], regionId, regionProps)
   }
 }
 
-private final class RegionDispatcher(regionId: String) extends Actor with ActorLogging {
+private final class RegionDispatcher(regionId: String, regionProps: RegionConfig) extends Actor with ActorLogging {
   import RegionDispatcher._
   require(regionId.nonEmpty)
   private[this] implicit val executionContext: ExecutionContext = context.dispatcher
@@ -64,7 +64,7 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
   private[this] val config = AppConfig()
   private[this] val modules = ModuleRegistry(config)
   private[this] val storages = StorageTracker()
-  private[this] val chunks = ChunksTracker(regionId, config.storage, modules, storages, log)
+  private[this] val chunks = ChunksTracker(regionId, regionProps, modules, storages, log)
   private[this] val globalIndex = IndexMerger.region
 
   def receive: Receive = {
@@ -76,7 +76,7 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
         sender() ! WriteIndex.Failure(folders, new IllegalArgumentException("Diff is empty"))
       } else {
         val diff = IndexDiff(Utils.timestamp, folders)
-        val actors = Utils.takeOrAll(storages.forIndexWrite(diff), config.index.replicationFactor)
+        val actors = Utils.takeOrAll(storages.forIndexWrite(diff).map(_.dispatcher), regionProps.indexReplicationFactor)
         if (actors.isEmpty) {
           log.warning("No index storages available on {}", regionId)
           sender() ! WriteIndex.Failure(folders, new IllegalStateException("No storages available"))
@@ -115,7 +115,7 @@ private final class RegionDispatcher(regionId: String) extends Actor with ActorL
 
     case Synchronize ⇒
       log.info("Force synchronizing indexes of virtual region: {}", regionId)
-      storages.available().foreach(_ ! IndexDispatcher.Synchronize)
+      storages.available().foreach(_.dispatcher ! IndexDispatcher.Synchronize)
 
     // -----------------------------------------------------------------------
     // Read/write commands

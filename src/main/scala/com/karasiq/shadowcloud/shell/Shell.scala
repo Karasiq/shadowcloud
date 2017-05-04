@@ -2,12 +2,13 @@ package com.karasiq.shadowcloud.shell
 
 import java.nio.file.Files
 
-import com.karasiq.shadowcloud.actors.RegionSupervisor
-import com.karasiq.shadowcloud.storage.props.StorageProps
-
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.language.postfixOps
+
+import com.karasiq.shadowcloud.actors.RegionSupervisor
+import com.karasiq.shadowcloud.config.RegionConfig
+import com.karasiq.shadowcloud.storage.props.StorageProps
 
 object Shell extends ImplicitConversions {
   private[this] implicit val context = ShellContext()
@@ -18,7 +19,7 @@ object Shell extends ImplicitConversions {
   }
 
   def createRegion(regionId: String): RegionContext = {
-    regionSupervisor ! RegionSupervisor.AddRegion(regionId)
+    regionSupervisor ! RegionSupervisor.AddRegion(regionId, RegionConfig.fromConfig(regionId, actorSystem.settings.config.getConfig("shadowcloud")))
     openRegion(regionId)
   }
 

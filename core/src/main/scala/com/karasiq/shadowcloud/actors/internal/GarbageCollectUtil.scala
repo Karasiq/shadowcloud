@@ -1,9 +1,10 @@
 package com.karasiq.shadowcloud.actors.internal
 
 import akka.util.ByteString
+
 import com.karasiq.shadowcloud.config.StorageConfig
-import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.index.{Chunk, ChunkIndex, FolderIndex}
+import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.utils.Utils
 

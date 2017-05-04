@@ -4,18 +4,28 @@ import scala.language.postfixOps
 import scala.util.Random
 
 import akka.util.ByteString
+import com.typesafe.config.ConfigFactory
 
-import com.karasiq.shadowcloud.config.AppConfig
+import com.karasiq.shadowcloud.config.{AppConfig, RegionConfig, StorageConfig}
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.providers.ModuleRegistry
 
 object TestUtils extends TestImplicits {
-  val config = AppConfig.load()
+  val rootConfig = ConfigFactory.load().getConfig("shadowcloud")
+  val config = AppConfig(rootConfig)
   val modules = ModuleRegistry(config)
   val sha1Hashing = modules.hashingModule(HashingMethod("SHA1"))
   val aesEncryption = modules.encryptionModule(EncryptionMethod("AES/GCM", 256))
+
+  def regionConfig(regionId: String): RegionConfig = {
+    RegionConfig.fromConfig(regionId, rootConfig)
+  }
+
+  def storageConfig(storageId: String): StorageConfig = {
+    StorageConfig.fromConfig(storageId, rootConfig)
+  }
 
   def randomBytes(length: Int): ByteString = {
     val array = new Array[Byte](length)

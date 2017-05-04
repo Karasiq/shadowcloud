@@ -1,16 +1,20 @@
 package com.karasiq.shadowcloud.actors.internal
 
-import akka.actor.{ActorContext, ActorRef}
-import com.karasiq.shadowcloud.actors.events.SCEvents
-import com.karasiq.shadowcloud.actors.internal.ChunksTracker.ChunkStatus
-import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.storage.StorageHealth
-
 import scala.collection.mutable
 import scala.language.postfixOps
 
+import akka.actor.{ActorContext, ActorRef}
+
+import com.karasiq.shadowcloud.actors.events.SCEvents
+import com.karasiq.shadowcloud.actors.internal.ChunksTracker.ChunkStatus
+import com.karasiq.shadowcloud.config.StorageConfig
+import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.storage.StorageHealth
+
 private[actors] object StorageTracker {
-  case class Storage(id: String, dispatcher: ActorRef, health: StorageHealth)
+  case class Storage(id: String, dispatcher: ActorRef, health: StorageHealth) {
+    def config(implicit ac: ActorContext) = StorageConfig(id)
+  }
 
   def apply()(implicit context: ActorContext): StorageTracker = {
     new StorageTracker()
@@ -41,29 +45,28 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
   // -----------------------------------------------------------------------
   // Dispatchers for read/write
   // -----------------------------------------------------------------------
-  def available(toWrite: Long = 0): Seq[ActorRef] = {
+  def available(toWrite: Long = 0): Seq[Storage] = {
     storagesByAR.values.toVector
       .filter(_.health.canWrite > toWrite)
       .sortBy(_.id)
-      .map(_.dispatcher)
   }
 
-  def forIndexWrite(diff: IndexDiff): Seq[ActorRef] = {
+  def forIndexWrite(diff: IndexDiff): Seq[Storage] = {
     available(1024) // At least 1KB
   }
 
-  def forRead(status: ChunkStatus): Seq[ActorRef] = {
-    available().filter(status.hasChunk.contains)
+  def forRead(status: ChunkStatus): Seq[Storage] = {
+    available().filter(s ⇒ status.hasChunk.contains(s.dispatcher))
   }
 
-  def forWrite(chunk: ChunkStatus): Seq[ActorRef] = {
+  def forWrite(chunk: ChunkStatus): Seq[Storage] = {
     def dispatcherCanWrite(dispatcher: ActorRef): Boolean = {
       !chunk.hasChunk.contains(dispatcher) &&
         !chunk.writingChunk.contains(dispatcher) &&
         !chunk.waitingChunk.contains(dispatcher)
     }
     val writeSize = chunk.chunk.checksum.encryptedSize
-    available(writeSize).filter(dispatcherCanWrite)
+    available(writeSize).filter(s ⇒ dispatcherCanWrite(s.dispatcher))
   }
 
   // -----------------------------------------------------------------------

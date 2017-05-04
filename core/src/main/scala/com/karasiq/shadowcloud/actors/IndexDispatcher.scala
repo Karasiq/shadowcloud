@@ -17,7 +17,7 @@ import com.karasiq.shadowcloud.actors.events.StorageEvents._
 import com.karasiq.shadowcloud.actors.internal.MultiIndexMerger
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
-import com.karasiq.shadowcloud.config.AppConfig
+import com.karasiq.shadowcloud.config.StorageConfig
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.{CategorizedRepository, StorageIOResult}
@@ -68,7 +68,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   val events = SCEvents()
   val streams = IndexRepositoryStreams.gzipped(context.system)
   val index = MultiIndexMerger()
-  val config = AppConfig().index
+  val config = StorageConfig(storageId)
   val compactRequested = MSet.empty[String]
 
   // -----------------------------------------------------------------------

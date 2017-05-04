@@ -11,7 +11,7 @@ import akka.util.{ByteString, Timeout}
 
 import com.karasiq.shadowcloud.actors.internal.GarbageCollectUtil
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
-import com.karasiq.shadowcloud.config.AppConfig
+import com.karasiq.shadowcloud.config.StorageConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.StorageIOResult
@@ -25,12 +25,12 @@ object GarbageCollector {
   case class Defer(time: FiniteDuration) extends Message
 
   // Props
-  def props(index: ActorRef, chunkIO: ActorRef): Props = {
-    Props(classOf[GarbageCollector], index, chunkIO)
+  def props(storageId: String, index: ActorRef, chunkIO: ActorRef): Props = {
+    Props(classOf[GarbageCollector], storageId, index, chunkIO)
   }
 }
 
-private final class GarbageCollector(index: ActorRef, chunkIO: ActorRef) extends Actor with ActorLogging {
+private final class GarbageCollector(storageId: String, index: ActorRef, chunkIO: ActorRef) extends Actor with ActorLogging {
   import context.dispatcher
 
   import GarbageCollector._
@@ -39,7 +39,7 @@ private final class GarbageCollector(index: ActorRef, chunkIO: ActorRef) extends
   // Context
   // -----------------------------------------------------------------------
   private[this] implicit val timeout = Timeout(30 seconds)
-  private[this] val config = AppConfig().storage
+  private[this] val config = StorageConfig(storageId)
   private[this] val gcSchedule = context.system.scheduler.schedule(5 minutes, 5 minutes, self, CollectGarbage())
   private[this] var gcDeadline = Deadline.now
 

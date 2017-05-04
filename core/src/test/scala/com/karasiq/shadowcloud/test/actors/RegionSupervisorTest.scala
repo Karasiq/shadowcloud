@@ -1,12 +1,13 @@
 package com.karasiq.shadowcloud.test.actors
 
-import com.karasiq.shadowcloud.actors.RegionSupervisor
-import com.karasiq.shadowcloud.storage.props.StorageProps
-import com.karasiq.shadowcloud.test.utils.ActorSpec
-import org.scalatest.{FlatSpecLike, Matchers}
-
 import scala.concurrent.duration._
 import scala.language.postfixOps
+
+import org.scalatest.{FlatSpecLike, Matchers}
+
+import com.karasiq.shadowcloud.actors.RegionSupervisor
+import com.karasiq.shadowcloud.storage.props.StorageProps
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 
 class RegionSupervisorTest extends ActorSpec with FlatSpecLike with Matchers {
   import RegionSupervisor._
@@ -15,7 +16,7 @@ class RegionSupervisorTest extends ActorSpec with FlatSpecLike with Matchers {
   val supervisor = system.actorOf(props, "supervisor")
 
   "Region supervisor" should "add region" in {
-    supervisor ! AddRegion(testRegion)
+    supervisor ! AddRegion(testRegion, TestUtils.regionConfig("testRegion"))
     val (regions, storages) = requestState
     regions.keySet shouldBe Set(testRegion)
     val region = regions(testRegion)

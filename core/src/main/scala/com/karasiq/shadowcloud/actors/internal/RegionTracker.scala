@@ -1,15 +1,17 @@
 package com.karasiq.shadowcloud.actors.internal
 
-import akka.actor.{ActorContext, ActorRef}
-import com.karasiq.shadowcloud.actors.RegionDispatcher
-import com.karasiq.shadowcloud.storage.StorageHealth
-import com.karasiq.shadowcloud.storage.props.StorageProps
-
 import scala.collection.mutable
 import scala.language.postfixOps
 
+import akka.actor.{ActorContext, ActorRef}
+
+import com.karasiq.shadowcloud.actors.RegionDispatcher
+import com.karasiq.shadowcloud.config.RegionConfig
+import com.karasiq.shadowcloud.storage.StorageHealth
+import com.karasiq.shadowcloud.storage.props.StorageProps
+
 private[actors] object RegionTracker {
-  case class RegionStatus(regionId: String, dispatcher: ActorRef, storages: Set[String] = Set.empty)
+  case class RegionStatus(regionId: String, regionConfig: RegionConfig, dispatcher: ActorRef, storages: Set[String] = Set.empty)
   case class StorageStatus(storageId: String, props: StorageProps, dispatcher: ActorRef, regions: Set[String] = Set.empty)
 
   def apply()(implicit context: ActorContext): RegionTracker = {
@@ -44,9 +46,9 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   // -----------------------------------------------------------------------
   // Add
   // -----------------------------------------------------------------------
-  def addRegion(regionId: String, dispatcher: ActorRef): Unit = {
+  def addRegion(regionId: String, config: RegionConfig, dispatcher: ActorRef): Unit = {
     require(!containsRegion(regionId))
-    regions += regionId → RegionStatus(regionId, dispatcher)
+    regions += regionId → RegionStatus(regionId, config, dispatcher)
   }
 
   def addStorage(storageId: String, props: StorageProps, dispatcher: ActorRef): Unit = {

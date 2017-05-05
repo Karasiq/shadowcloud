@@ -8,11 +8,10 @@ import akka.actor.{ActorLogging, OneForOneStrategy, PossiblyHarmful, Props, Supe
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import akka.util.Timeout
 
-import com.karasiq.shadowcloud.actors.internal.{RegionTracker, StorageInstantiator}
+import com.karasiq.shadowcloud.actors.internal.RegionTracker
 import com.karasiq.shadowcloud.actors.internal.RegionTracker.{RegionStatus, StorageStatus}
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
-import com.karasiq.shadowcloud.config.{AppConfig, RegionConfig}
-import com.karasiq.shadowcloud.providers.ModuleRegistry
+import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
 object RegionSupervisor {
@@ -57,7 +56,6 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
   // -----------------------------------------------------------------------
   private[this] implicit val timeout = Timeout(10 seconds)
   val persistenceId: String = "regions"
-  val instantiator = StorageInstantiator(ModuleRegistry(AppConfig()))
 
   // -----------------------------------------------------------------------
   // Recover
@@ -72,8 +70,9 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
         storages.clear()
         storages ++= snapshot.storages
 
-      case RegionAdded(regionId, regionConfig) if !regions.contains(regionId) ⇒
-        regions += regionId → (regionConfig, Set.empty[String])
+      case RegionAdded(regionId, regionConfig) ⇒
+        val storages = regions.get(regionId).fold(Set.empty[String])(_._2)
+        regions += regionId → (regionConfig, storages)
 
       case RegionDeleted(regionId) ⇒
         regions -= regionId
@@ -109,7 +108,7 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
     // -----------------------------------------------------------------------
     // Regions
     // -----------------------------------------------------------------------
-    case AddRegion(regionId, regionConfig) if !state.containsRegion(regionId) ⇒
+    case AddRegion(regionId, regionConfig) ⇒
       persist(RegionAdded(regionId, regionConfig))(updateState)
 
     case DeleteRegion(regionId) if state.containsRegion(regionId) ⇒
@@ -118,7 +117,7 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
     // -----------------------------------------------------------------------
     // Storages
     // -----------------------------------------------------------------------
-    case AddStorage(storageId, props) if !state.containsStorage(storageId) ⇒
+    case AddStorage(storageId, props) ⇒
       persist(StorageAdded(storageId, props))(updateState)
 
     case DeleteStorage(storageId) if state.containsStorage(storageId) ⇒
@@ -168,8 +167,7 @@ private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
     // -----------------------------------------------------------------------
     case RegionAdded(regionId, regionConfig) ⇒
       log.info("Region added: {}", regionId)
-      val dispatcher = context.actorOf(RegionDispatcher.props(regionId, regionConfig), s"region-$regionId")
-      state.addRegion(regionId, regionConfig, dispatcher)
+      state.addRegion(regionId, regionConfig)
 
     case RegionDeleted(regionId) ⇒
       log.debug("Region deleted: {}", regionId)
@@ -180,8 +178,7 @@ private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
     // -----------------------------------------------------------------------
     case StorageAdded(storageId, props) ⇒
       log.info("Storage added: {} (props = {})", storageId, props)
-      val dispatcher = context.actorOf(StorageSupervisor.props(instantiator, storageId, props), s"storage-$storageId")
-      state.addStorage(storageId, props, dispatcher)
+      state.addStorage(storageId, props)
 
     case StorageDeleted(storageId) ⇒
       log.info("Storage deleted: {}", storageId)

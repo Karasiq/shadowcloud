@@ -5,8 +5,9 @@ import scala.language.postfixOps
 
 import akka.actor.{ActorContext, ActorRef}
 
-import com.karasiq.shadowcloud.actors.RegionDispatcher
-import com.karasiq.shadowcloud.config.RegionConfig
+import com.karasiq.shadowcloud.actors.{RegionDispatcher, StorageSupervisor}
+import com.karasiq.shadowcloud.config.{AppConfig, RegionConfig}
+import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
@@ -25,6 +26,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
+  val instantiator = StorageInstantiator(ModuleRegistry(AppConfig()))
   val regions = mutable.AnyRefMap.empty[String, RegionStatus]
   val storages = mutable.AnyRefMap.empty[String, StorageStatus]
 
@@ -46,13 +48,15 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   // -----------------------------------------------------------------------
   // Add
   // -----------------------------------------------------------------------
-  def addRegion(regionId: String, config: RegionConfig, dispatcher: ActorRef): Unit = {
-    require(!containsRegion(regionId))
+  def addRegion(regionId: String, config: RegionConfig): Unit = {
+    regions.get(regionId).map(_.dispatcher).foreach(context.stop)
+    val dispatcher = context.actorOf(RegionDispatcher.props(regionId, config), s"region-$regionId") // TODO: Actor name conflict
     regions += regionId → RegionStatus(regionId, config, dispatcher)
   }
 
-  def addStorage(storageId: String, props: StorageProps, dispatcher: ActorRef): Unit = {
-    require(!containsStorage(storageId))
+  def addStorage(storageId: String, props: StorageProps): Unit = {
+    storages.get(storageId).map(_.dispatcher).foreach(context.stop)
+    val dispatcher = context.actorOf(StorageSupervisor.props(instantiator, storageId, props), s"storage-$storageId")
     storages += storageId → StorageStatus(storageId, props, dispatcher)
   }
 

@@ -5,7 +5,7 @@ import scala.language.postfixOps
 
 import akka.actor.{ActorContext, ActorRef}
 
-import com.karasiq.shadowcloud.actors.{RegionDispatcher, StorageSupervisor}
+import com.karasiq.shadowcloud.actors.{RegionContainer, RegionDispatcher, StorageContainer}
 import com.karasiq.shadowcloud.config.{AppConfig, RegionConfig}
 import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.storage.StorageHealth
@@ -49,14 +49,16 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   // Add
   // -----------------------------------------------------------------------
   def addRegion(regionId: String, config: RegionConfig): Unit = {
-    regions.get(regionId).map(_.dispatcher).foreach(context.stop)
-    val dispatcher = context.actorOf(RegionDispatcher.props(regionId, config), s"region-$regionId") // TODO: Actor name conflict
+    val dispatcher = regions.get(regionId)
+      .fold(context.actorOf(RegionContainer.props(regionId), s"region-$regionId"))(_.dispatcher)
+    dispatcher ! RegionContainer.SetConfig(config)
     regions += regionId → RegionStatus(regionId, config, dispatcher)
   }
 
   def addStorage(storageId: String, props: StorageProps): Unit = {
-    storages.get(storageId).map(_.dispatcher).foreach(context.stop)
-    val dispatcher = context.actorOf(StorageSupervisor.props(instantiator, storageId, props), s"storage-$storageId")
+    val dispatcher = storages.get(storageId)
+      .fold(context.actorOf(StorageContainer.props(instantiator, storageId), s"storage-$storageId"))(_.dispatcher)
+    dispatcher ! StorageContainer.SetProps(props)
     storages += storageId → StorageStatus(storageId, props, dispatcher)
   }
 

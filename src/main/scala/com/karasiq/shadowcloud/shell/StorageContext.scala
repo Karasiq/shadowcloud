@@ -2,10 +2,6 @@ package com.karasiq.shadowcloud.shell
 
 import scala.language.postfixOps
 
-import com.karasiq.shadowcloud.actors.{GarbageCollector, IndexDispatcher}
-import com.karasiq.shadowcloud.actors.RegionSupervisor.DeleteStorage
-import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
-
 private[shell] object StorageContext {
   def apply(storageId: String)(implicit context: ShellContext): StorageContext = {
     new StorageContext(storageId)
@@ -13,17 +9,17 @@ private[shell] object StorageContext {
 }
 
 private[shell] final class StorageContext(val storageId: String)(implicit context: ShellContext) {
-  import context.sc.actors.regionSupervisor
+  import context.sc.ops.{storage, supervisor}
 
   def sync(): Unit = {
-    regionSupervisor ! StorageEnvelope(storageId, IndexDispatcher.Synchronize)
+    storage.synchronize(storageId)
   }
 
   def collectGarbage(): Unit = {
-    regionSupervisor ! StorageEnvelope(storageId, GarbageCollector.CollectGarbage(force = true))
+    storage.collectGarbage(storageId, force = true)
   }
 
   def terminate(): Unit ={
-    regionSupervisor ! DeleteStorage(storageId)
+    supervisor.deleteStorage(storageId)
   }
 }

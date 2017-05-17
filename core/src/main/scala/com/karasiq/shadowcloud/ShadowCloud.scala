@@ -89,8 +89,8 @@ class ShadowCloudExtension(system: ExtendedActorSystem) extends Extension {
   }
 
   object ops {
-    // TODO: Storage ops
     val supervisor = RegionSupervisorOps(actors.regionSupervisor)
     val region = RegionOps(actors.regionSupervisor)
+    val storage = StorageOps(actors.regionSupervisor)
   }
 }

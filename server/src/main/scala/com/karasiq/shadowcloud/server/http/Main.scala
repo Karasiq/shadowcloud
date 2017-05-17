@@ -43,7 +43,7 @@ object Main extends HttpApp with App with PredefinedToResponseMarshallers {
     } ~
     get {
       (pathPrefix("file") & extractPath) { path ⇒
-        val stream = sc.streams.file.read("testRegion", path)
+        val stream = sc.streams.file.readMostRecent("testRegion", path)
         complete(HttpEntity(ContentTypes.`application/octet-stream`, stream))
       } ~
       getStaticFiles

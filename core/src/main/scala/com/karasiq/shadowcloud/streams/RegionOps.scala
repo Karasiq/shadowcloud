@@ -1,17 +1,18 @@
 package com.karasiq.shadowcloud.streams
 
+import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration._
+import scala.language.{higherKinds, postfixOps}
+
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
+
 import com.karasiq.shadowcloud.actors.RegionDispatcher._
 import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
-import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.index.{Chunk, File, Folder, Path}
-
-import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.{higherKinds, postfixOps}
+import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 
 object RegionOps {
   def apply(regionSupervisor: ActorRef)(implicit ec: ExecutionContext, timeout: Timeout = Timeout(5 minutes)): RegionOps = {
@@ -19,7 +20,7 @@ object RegionOps {
   }
 }
 
-final class RegionOps(val regionSupervisor: ActorRef)(implicit ec: ExecutionContext, timeout: Timeout) {
+final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext, timeout: Timeout) {
   def writeChunk(regionId: String, chunk: Chunk): Future[Chunk] = {
     doAsk(regionId, WriteChunk, WriteChunk(chunk))
   }

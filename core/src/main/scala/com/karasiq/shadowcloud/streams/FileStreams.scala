@@ -18,10 +18,8 @@ object FileStreams {
 }
 
 final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProcessingStreams)(implicit m: Materializer) {
-  def readBy(regionId: String, path: Path, select: Set[File] ⇒ File): Source[ByteString, NotUsed] = {
-    Source.single((regionId, path))
-      .via(regionStreams.findFiles)
-      .map(e ⇒ select(e._2))
+  def read(regionId: String, file: File): Source[ByteString, NotUsed] = { // TODO: Byte ranges
+    Source.single(file)
       .mapConcat(_.chunks.toVector)
       .map((regionId, _))
       .via(regionStreams.readChunks)
@@ -29,7 +27,14 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
       .map(_.data.plain)
   }
 
-  def read(regionId: String, path: Path): Source[ByteString, NotUsed] = { // TODO: Byte ranges
+  def readBy(regionId: String, path: Path, select: Set[File] ⇒ File): Source[ByteString, NotUsed] = {
+    Source.single((regionId, path))
+      .via(regionStreams.findFiles)
+      .map(e ⇒ select(e._2))
+      .flatMapConcat(read(regionId, _))
+  }
+
+  def readMostRecent(regionId: String, path: Path): Source[ByteString, NotUsed] = {
     readBy(regionId, path, FileVersions.mostRecent)
   }
 

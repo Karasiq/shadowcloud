@@ -55,7 +55,7 @@ private[shell] final class RegionContext(val regionId: String)(implicit context:
 
   def download(localPath: FSPath, path: Path): Unit = {
     val options = Set(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
-    val future = sc.streams.file.read(regionId, path).runWith(FileIO.toPath(localPath, options))
+    val future = sc.streams.file.readMostRecent(regionId, path).runWith(FileIO.toPath(localPath, options))
     ShellUtils.printIOResult(future)
   }
 }

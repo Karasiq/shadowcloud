@@ -43,10 +43,12 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
   // -----------------------------------------------------------------------
   // Dispatchers for read/write
   // -----------------------------------------------------------------------
+  def all: Seq[Storage] = {
+    storages.values.toVector
+  }
+
   def available(toWrite: Long = 0): Seq[Storage] = {
-    storagesByAR.values.toVector
-      .filter(_.health.canWrite > toWrite)
-      .sortBy(_.id)
+    all.filter(_.health.canWrite > toWrite)
   }
 
   def forIndexWrite(diff: IndexDiff): Seq[Storage] = {

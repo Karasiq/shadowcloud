@@ -113,7 +113,7 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
 
     case Synchronize ⇒
       log.info("Force synchronizing indexes of virtual region: {}", regionId)
-      storages.available().foreach(_.dispatcher ! IndexDispatcher.Synchronize)
+      storages.all.foreach(_.dispatcher ! IndexDispatcher.Synchronize)
 
     // -----------------------------------------------------------------------
     // Read/write commands

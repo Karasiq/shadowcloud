@@ -8,6 +8,7 @@ import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 
+import com.karasiq.shadowcloud.actors.RegionDispatcher
 import com.karasiq.shadowcloud.actors.RegionDispatcher._
 import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
@@ -55,6 +56,10 @@ final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext,
     getFolder(regionId, path).flatMap { folder ⇒
       writeIndex(regionId, FolderIndexDiff.delete(folder.path)).map(_ ⇒ folder)
     }
+  }
+
+  def synchronize(regionId: String): Unit = {
+    regionSupervisor ! RegionEnvelope(regionId, RegionDispatcher.Synchronize)
   }
 
   private[this] def writeIndex(regionId: String, diff: FolderIndexDiff): Future[IndexDiff] = {

@@ -11,7 +11,6 @@ import akka.http.scaladsl.server.{Directive1, HttpApp, Route}
 import akka.http.scaladsl.settings.ServerSettings
 
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.actors.RegionSupervisor.{AddRegion, AddStorage, RegisterStorage}
 import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
@@ -20,14 +19,15 @@ object Main extends HttpApp with App with PredefinedToResponseMarshallers {
   implicit val actorSystem = ActorSystem("shadowcloud-server")
   val sc = ShadowCloud(actorSystem)
   import sc.implicits._
+  import sc.ops.supervisor
 
   // Test storage
   val tempDirectory = sys.props.get("shadowcloud.temp-storage-dir")
     .map(Paths.get(_))
     .getOrElse(Files.createTempDirectory("scl-temp-storage"))
-  sc.actors.regionSupervisor ! AddRegion("testRegion", sc.regionConfig("testRegion"))
-  sc.actors.regionSupervisor ! AddStorage("testStorage", StorageProps.fromDirectory(tempDirectory))
-  sc.actors.regionSupervisor ! RegisterStorage("testRegion", "testStorage")
+  supervisor.addRegion("testRegion", sc.regionConfig("testRegion"))
+  supervisor.addStorage("testStorage", StorageProps.fromDirectory(tempDirectory))
+  supervisor.register("testRegion", "testStorage")
 
   // -----------------------------------------------------------------------
   // Route

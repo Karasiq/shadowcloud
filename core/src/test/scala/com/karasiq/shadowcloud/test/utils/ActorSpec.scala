@@ -15,7 +15,7 @@ abstract class ActorSpec extends TestKit(ActorSystem("test")) with ImplicitSende
   with Suite with Matchers with ScalaFutures with BeforeAndAfterAll with TestImplicits {
 
   val sc = ShadowCloud(system)
-  implicit val defaultTimeout = Timeout(10 seconds)
+  implicit val defaultTimeout = Timeout(15 seconds)
   implicit val materializer = sc.implicits.materializer
   implicit val executionContext = sc.implicits.executionContext
 

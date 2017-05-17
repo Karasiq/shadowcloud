@@ -1,16 +1,18 @@
 package com.karasiq.shadowcloud
 
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.actor.{ActorContext, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
 import akka.stream.ActorMaterializer
+import akka.util.Timeout
 
 import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.StringEventBus
 import com.karasiq.shadowcloud.config.{AppConfig, RegionConfig, StorageConfig}
 import com.karasiq.shadowcloud.providers.ModuleRegistry
-import com.karasiq.shadowcloud.streams.{ChunkProcessingStreams, FileStreams, RegionOps, RegionStreams}
+import com.karasiq.shadowcloud.streams._
 
 object ShadowCloud extends ExtensionId[ShadowCloudExtension] with ExtensionIdProvider {
   def apply()(implicit context: ActorContext): ShadowCloudExtension = {
@@ -34,6 +36,7 @@ class ShadowCloudExtension(system: ExtendedActorSystem) extends Extension {
     // implicit val actorSystem = system
     implicit val executionContext = system.dispatcher
     implicit val materializer = ActorMaterializer()(system)
+    implicit val defaultTimeout = Timeout(5 seconds)
   }
 
   import implicits._
@@ -86,7 +89,8 @@ class ShadowCloudExtension(system: ExtendedActorSystem) extends Extension {
   }
 
   object ops {
-    // TODO: Region supervisor ops
+    // TODO: Storage ops
+    val supervisor = RegionSupervisorOps(actors.regionSupervisor)
     val region = RegionOps(actors.regionSupervisor)
   }
 }

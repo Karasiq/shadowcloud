@@ -6,7 +6,6 @@ import scala.language.postfixOps
 
 import akka.stream.scaladsl.FileIO
 
-import com.karasiq.shadowcloud.actors.RegionSupervisor.{DeleteRegion, RegisterStorage, UnregisterStorage}
 import com.karasiq.shadowcloud.index.Path
 
 private[shell] object RegionContext {
@@ -17,18 +16,18 @@ private[shell] object RegionContext {
 
 private[shell] final class RegionContext(val regionId: String)(implicit context: ShellContext) {
   import context._
-  import sc.actors.regionSupervisor
+  import sc.ops.supervisor
 
   def register(storage: StorageContext): Unit = {
-    regionSupervisor ! RegisterStorage(regionId, storage.storageId)
+    supervisor.register(regionId, storage.storageId)
   }
 
   def unregister(storage: StorageContext): Unit = {
-    regionSupervisor ! UnregisterStorage(regionId,  storage.storageId)
+    supervisor.unregister(regionId,  storage.storageId)
   }
 
   def terminate(): Unit = {
-    regionSupervisor ! DeleteRegion(regionId)
+    supervisor.deleteRegion(regionId)
   }
 
   def list(path: Path): Unit = {

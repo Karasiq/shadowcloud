@@ -4,7 +4,7 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-import akka.actor.{ActorLogging, OneForOneStrategy, PossiblyHarmful, Props, SupervisorStrategy}
+import akka.actor.{ActorLogging, OneForOneStrategy, Props, SupervisorStrategy}
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import akka.util.Timeout
 
@@ -23,12 +23,9 @@ object RegionSupervisor {
   case class DeleteStorage(storageId: String) extends Message
   case class RegisterStorage(regionId: String, storageId: String) extends Message
   case class UnregisterStorage(regionId: String, storageId: String) extends Message
-  case object GetState {
+  case object GetState extends Message {
     case class Success(regions: Map[String, RegionStatus], storages: Map[String, StorageStatus])
   }
-
-  // Internal messages
-  private sealed trait InternalMessage extends Message with PossiblyHarmful
 
   // Events
   sealed trait Event

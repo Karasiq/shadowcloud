@@ -4,6 +4,7 @@ import scala.language.postfixOps
 
 import akka.actor.{Actor, Props, Stash}
 
+import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.utils.ContainerActor
 import com.karasiq.shadowcloud.actors.RegionContainer.SetConfig
 import com.karasiq.shadowcloud.config.RegionConfig
@@ -18,7 +19,8 @@ object RegionContainer {
 }
 
 class RegionContainer(regionId: String) extends Actor with Stash with ContainerActor {
-  var regionConfig: RegionConfig = RegionConfig(regionId)
+  private[this] val sc = ShadowCloud()
+  var regionConfig: RegionConfig = sc.regionConfig(regionId)
 
   def receiveDefault: Receive = {
     case SetConfig(rc) ⇒

@@ -1,22 +1,23 @@
 package com.karasiq.shadowcloud.test.utils
 
+import scala.concurrent.duration._
+import scala.language.postfixOps
+
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.testkit.{ImplicitSender, TestKit}
 import akka.util.Timeout
 import org.scalatest._
 import org.scalatest.concurrent.ScalaFutures
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-import scala.language.postfixOps
+import com.karasiq.shadowcloud.ShadowCloud
 
 abstract class ActorSpec extends TestKit(ActorSystem("test")) with ImplicitSender
   with Suite with Matchers with ScalaFutures with BeforeAndAfterAll with TestImplicits {
 
-  implicit val actorMaterializer = ActorMaterializer()
-  implicit val executionContext: ExecutionContext = system.dispatcher
+  val sc = ShadowCloud(system)
   implicit val defaultTimeout = Timeout(10 seconds)
+  implicit val materializer = sc.implicits.materializer
+  implicit val executionContext = sc.implicits.executionContext
 
   override protected def afterAll(): Unit = {
     TestKit.shutdownActorSystem(system)

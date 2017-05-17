@@ -1,31 +1,30 @@
 package com.karasiq.shadowcloud.test
 
+import scala.concurrent.{Await, Promise}
+import scala.concurrent.duration._
+import scala.language.postfixOps
+import scala.util.{Failure, Random, Success}
+import scala.util.control.NonFatal
+
+import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.{ByteString, Timeout}
-import akka.{Done, NotUsed}
-import com.karasiq.shadowcloud.config.AppConfig
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
-import com.karasiq.shadowcloud.streams.{ChunkProcessing, ChunkSplitter}
-import com.karasiq.shadowcloud.utils.MemorySize
 
-import scala.concurrent.duration._
-import scala.concurrent.{Await, Promise}
-import scala.language.postfixOps
-import scala.util.control.NonFatal
-import scala.util.{Failure, Random, Success}
+import com.karasiq.shadowcloud.ShadowCloud
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
+import com.karasiq.shadowcloud.streams.ChunkSplitter
+import com.karasiq.shadowcloud.utils.MemorySize
 
 private object Benchmark extends App {
   implicit val actorSystem = ActorSystem("shadowcloud-benchmark")
-  implicit val actorMaterializer = ActorMaterializer()
   implicit val timeout = Timeout(15 seconds)
-  val config = AppConfig(actorSystem)
-  val chunkProcessing = ChunkProcessing(config)(actorSystem.dispatcher)
+  val sc = ShadowCloud(actorSystem)
+  import sc.implicits._
 
   // Start
   printBlock("Default settings benchmark")
-  println(config.crypto)
+  println(sc.config.crypto)
   for (_ ← 1 to 5) runWriteBenchmark()
 
   runProviderBenchmark("bouncycastle", "AES/GCM", 256, "Blake2b")
@@ -47,9 +46,9 @@ private object Benchmark extends App {
     runWriteBenchmark(encMethod, hashMethod, hashMethod) // Double hashing
   }
 
-  private[this] def runWriteBenchmark(encryption: EncryptionMethod = config.crypto.encryption.chunks,
-                                      hashing: HashingMethod = config.crypto.hashing.chunks,
-                                      fileHashing: HashingMethod = config.crypto.hashing.files): Unit = {
+  private[this] def runWriteBenchmark(encryption: EncryptionMethod = sc.config.crypto.encryption.chunks,
+                                      hashing: HashingMethod = sc.config.crypto.hashing.chunks,
+                                      fileHashing: HashingMethod = sc.config.crypto.hashing.files): Unit = {
     val chunkSize = MemorySize.MB
     val chunkCount = 1024
     val mbCount = chunkCount * (chunkSize.toDouble / MemorySize.MB)
@@ -61,10 +60,10 @@ private object Benchmark extends App {
       randomBytesSource(chunkSize)
         .via(ChunkSplitter(chunkSize))
         .take(chunkCount)
-        .via(chunkProcessing.beforeWrite(encryption, hashing, HashingMethod.none))
+        .via(sc.streams.chunk.beforeWrite(encryption, hashing, HashingMethod.none))
         // .log("chunks", _.checksum)
         // .addAttributes(ActorAttributes.logLevels(Logging.InfoLevel))
-        .alsoTo(chunkProcessing.index(fileHashing, HashingMethod.none))
+        .alsoTo(sc.streams.chunk.index(fileHashing, HashingMethod.none))
         .runWith(Sink.onComplete {
           case Success(Done) ⇒
             val elapsed = (System.nanoTime() - startTime).nanos

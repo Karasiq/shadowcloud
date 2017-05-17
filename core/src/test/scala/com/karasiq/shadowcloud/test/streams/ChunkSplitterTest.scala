@@ -1,21 +1,22 @@
 package com.karasiq.shadowcloud.test.streams
 
+import scala.language.postfixOps
+
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
+import org.scalatest.FlatSpecLike
+
 import com.karasiq.shadowcloud.index.{Checksum, Chunk, Data}
 import com.karasiq.shadowcloud.streams._
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
-import org.scalatest.FlatSpecLike
-
-import scala.language.postfixOps
 
 //noinspection ZeroIndexToHead
 class ChunkSplitterTest extends ActorSpec with FlatSpecLike {
   val (sourceBytes, sourceFile) = TestUtils.indexedBytes
   val hashingMethod = sourceFile.checksum.method
   val sourceHashes = sourceFile.chunks.map(_.checksum.hash)
-  val chunkProcessing = ChunkProcessing(TestUtils.config)(system.dispatcher)
+  val chunkProcessing = sc.streams.chunk
 
   "Chunk splitter" should "split text" in {
     val fullOut = Source.single(sourceBytes)

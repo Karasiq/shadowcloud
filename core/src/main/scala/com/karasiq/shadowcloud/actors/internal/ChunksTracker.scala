@@ -7,13 +7,13 @@ import akka.actor.{ActorContext, ActorRef}
 import akka.event.LoggingAdapter
 import akka.util.ByteString
 
+import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk => SReadChunk, WriteChunk => SWriteChunk}
 import com.karasiq.shadowcloud.actors.RegionDispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors.utils.PendingOperation
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
-import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.utils.Utils
 
 private[actors] object ChunksTracker {
@@ -24,14 +24,13 @@ private[actors] object ChunksTracker {
   case class ChunkStatus(status: Status.Value, time: Long, chunk: Chunk, writingChunk: Set[ActorRef] = Set.empty,
                          hasChunk: Set[ActorRef] = Set.empty, waitingChunk: Set[ActorRef] = Set.empty)
 
-  def apply(regionId: String, config: RegionConfig, modules: ModuleRegistry, storages: StorageTracker,
+  def apply(regionId: String, config: RegionConfig, storages: StorageTracker,
             log: LoggingAdapter)(implicit context: ActorContext): ChunksTracker = {
-    new ChunksTracker(regionId, config, modules, storages, log)
+    new ChunksTracker(regionId, config, storages, log)
   }
 }
 
-private[actors] final class ChunksTracker(regionId: String, config: RegionConfig,
-                                          modules: ModuleRegistry, storages: StorageTracker,
+private[actors] final class ChunksTracker(regionId: String, config: RegionConfig, storages: StorageTracker,
                                           log: LoggingAdapter)(implicit context: ActorContext) {
   import ChunksTracker._
 
@@ -39,6 +38,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
   // State
   // -----------------------------------------------------------------------
   private[this] implicit val sender: ActorRef = context.self
+  private[this] val sc = ShadowCloud()
   private[this] val chunks = mutable.AnyRefMap[ByteString, ChunkStatus]()
   private[this] val readingChunks = PendingOperation.withChunk
 
@@ -71,7 +71,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
         val chunkWithData = if (Utils.isSameChunk(stored.chunk, chunk) && chunk.data.encrypted.nonEmpty) {
           chunk
         } else {
-          val encryptor = modules.encryptionModule(stored.chunk.encryption.method)
+          val encryptor = sc.modules.encryptionModule(stored.chunk.encryption.method)
           stored.chunk.copy(data = chunk.data.copy(encrypted = encryptor.encrypt(chunk.data.plain, stored.chunk.encryption)))
         }
         receiver ! WriteChunk.Success(chunkWithData, chunkWithData)

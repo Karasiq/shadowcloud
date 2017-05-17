@@ -5,16 +5,14 @@ import scala.language.postfixOps
 
 import akka.actor.{ActorContext, ActorRef}
 
-import com.karasiq.shadowcloud.actors.events.SCEvents
+import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.internal.ChunksTracker.ChunkStatus
 import com.karasiq.shadowcloud.config.StorageConfig
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.StorageHealth
 
 private[actors] object StorageTracker {
-  case class Storage(id: String, dispatcher: ActorRef, health: StorageHealth) {
-    def config(implicit ac: ActorContext) = StorageConfig(id)
-  }
+  case class Storage(id: String, dispatcher: ActorRef, health: StorageHealth, config: StorageConfig)
 
   def apply()(implicit context: ActorContext): StorageTracker = {
     new StorageTracker()
@@ -27,7 +25,7 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
-  private[this] val events = SCEvents()
+  private[this] val sc = ShadowCloud()
   private[this] val storages = mutable.AnyRefMap[String, Storage]()
   private[this] val storagesByAR = mutable.AnyRefMap[ActorRef, Storage]()
 
@@ -74,17 +72,17 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
   // -----------------------------------------------------------------------
   def register(storageId: String, dispatcher: ActorRef, health: StorageHealth): Unit = {
     context.watch(dispatcher)
-    val storage = Storage(storageId, dispatcher, health)
+    val storage = Storage(storageId, dispatcher, health, sc.storageConfig(storageId))
     storages += storageId → storage
     storagesByAR += dispatcher → storage
-    events.storage.subscribe(context.self, storageId)
+    sc.eventStreams.storage.subscribe(context.self, storageId)
   }
 
   def unregister(dispatcher: ActorRef): Unit = {
     context.unwatch(dispatcher)
     storagesByAR.remove(dispatcher).foreach { storage ⇒
       storages -= storage.id
-      events.storage.unsubscribe(context.self, storage.id)
+      sc.eventStreams.storage.unsubscribe(context.self, storage.id)
     }
   }
 

@@ -1,31 +1,32 @@
 package com.karasiq.shadowcloud.streams
 
+import scala.concurrent.{ExecutionContext, Future}
+import scala.language.postfixOps
+
 import akka.NotUsed
 import akka.stream.FlowShape
 import akka.stream.scaladsl.{Flow, GraphDSL, Sink, ZipWith}
 import akka.util.ByteString
+
 import com.karasiq.shadowcloud.config.{AppConfig, CryptoConfig, ParallelismConfig}
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.utils.MemorySize
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
-
-object ChunkProcessing {
+object ChunkProcessingStreams {
   def apply(modules: ModuleRegistry, crypto: CryptoConfig,
-            parallelism: ParallelismConfig)(implicit ec: ExecutionContext): ChunkProcessing = {
-    new ChunkProcessing(modules, crypto, parallelism)
+            parallelism: ParallelismConfig)(implicit ec: ExecutionContext): ChunkProcessingStreams = {
+    new ChunkProcessingStreams(modules, crypto, parallelism)
   }
 
-  def apply(config: AppConfig)(implicit ec: ExecutionContext): ChunkProcessing = {
+  def apply(config: AppConfig)(implicit ec: ExecutionContext): ChunkProcessingStreams = {
     apply(ModuleRegistry(config), config.crypto, config.parallelism)
   }
 }
 
-final class ChunkProcessing(val modules: ModuleRegistry, val crypto: CryptoConfig,
-                            val parallelism: ParallelismConfig)(implicit ec: ExecutionContext) {
+final class ChunkProcessingStreams(val modules: ModuleRegistry, val crypto: CryptoConfig,
+                                   val parallelism: ParallelismConfig)(implicit ec: ExecutionContext) {
   type ChunkFlow = Flow[Chunk, Chunk, NotUsed]
 
   def split(chunkSize: Int = MemorySize.MB): Flow[ByteString, Chunk, NotUsed] = {

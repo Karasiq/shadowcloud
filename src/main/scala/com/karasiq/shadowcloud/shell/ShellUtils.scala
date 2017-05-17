@@ -1,13 +1,14 @@
 package com.karasiq.shadowcloud.shell
 
-import akka.stream.IOResult
-import com.karasiq.shadowcloud.index.{File, Folder}
-import com.karasiq.shadowcloud.utils.MemorySize
-
 import scala.collection.GenTraversableOnce
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
+
+import akka.stream.IOResult
+
+import com.karasiq.shadowcloud.index.{File, Folder}
+import com.karasiq.shadowcloud.utils.MemorySize
 
 private[shell] object ShellUtils {
   def toString(f: File): String = {
@@ -16,7 +17,7 @@ private[shell] object ShellUtils {
 
   def toStrings(folder: Folder): Seq[String] = {
     Seq("Folders:") ++ folder.folders.toSeq.sorted.map("  - " + _) ++
-    Seq("Files:") ++ folder.files.toSeq.sortBy(f ⇒ (f.path.name, f.lastModified)).map(f ⇒ s"  - ${ShellUtils.toString(f)}")
+    Seq("Files:") ++ folder.files.toSeq.sortBy(f ⇒ (f.path.name, f.timestamp.lastModified)).map(f ⇒ s"  - ${ShellUtils.toString(f)}")
   }
 
   def print[T](future: Future[T])(toStrings: T ⇒ GenTraversableOnce[String])(implicit ec: ExecutionContext): Unit = {

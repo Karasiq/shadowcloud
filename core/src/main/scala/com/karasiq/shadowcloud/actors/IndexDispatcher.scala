@@ -12,12 +12,10 @@ import akka.persistence._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 
-import com.karasiq.shadowcloud.actors.events.SCEvents
+import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.events.StorageEvents._
 import com.karasiq.shadowcloud.actors.internal.MultiIndexMerger
-import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
-import com.karasiq.shadowcloud.config.StorageConfig
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.{CategorizedRepository, StorageIOResult}
@@ -64,12 +62,13 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   // -----------------------------------------------------------------------
   require(storageId.nonEmpty)
   override val persistenceId: String = s"index_$storageId"
-  implicit val actorMaterializer = ActorMaterializer()
-  val events = SCEvents()
-  val streams = IndexRepositoryStreams.gzipped(context.system)
-  val index = MultiIndexMerger()
-  val config = StorageConfig(storageId)
-  val compactRequested = MSet.empty[String]
+
+  private[this] implicit val actorMaterializer = ActorMaterializer()
+  private[this] val sc = ShadowCloud()
+  private[this] val streams = IndexRepositoryStreams.gzipped(context.system)
+  private[this] val index = MultiIndexMerger()
+  private[this] val config = sc.storageConfig(storageId)
+  private[this] val compactRequested = MSet.empty[String]
 
   // -----------------------------------------------------------------------
   // Local operations
@@ -220,7 +219,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   // State
   // -----------------------------------------------------------------------
   private[this] def updateState(event: Event): Unit = {
-    events.storage.publish(StorageEnvelope(storageId, event))
+    sc.eventStreams.publishStorageEvent(storageId, event)
     event match {
       case IndexUpdated(region, sequenceNr, diff, _) ⇒
         index.add(region, sequenceNr, diff)

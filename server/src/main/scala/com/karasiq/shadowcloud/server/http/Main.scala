@@ -2,39 +2,32 @@ package com.karasiq.shadowcloud.server.http
 
 import java.nio.file.{Files, Paths}
 
+import scala.language.postfixOps
+
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.PredefinedToResponseMarshallers
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.http.scaladsl.server.{Directive1, HttpApp, Route}
 import akka.http.scaladsl.settings.ServerSettings
-import akka.stream.ActorMaterializer
-import com.karasiq.shadowcloud.actors.RegionSupervisor
+
+import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.RegionSupervisor.{AddRegion, AddStorage, RegisterStorage}
-import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.storage.props.StorageProps
-import com.karasiq.shadowcloud.streams._
-
-import scala.language.postfixOps
 
 object Main extends HttpApp with App with PredefinedToResponseMarshallers {
   // Actor system
   implicit val actorSystem = ActorSystem("shadowcloud-server")
-  implicit val actorMaterializer = ActorMaterializer()
-  implicit val executionContext = actorSystem.dispatcher
-  val config = AppConfig(actorSystem)
-  val chunkProcessing = ChunkProcessing(config)
+  val sc = ShadowCloud(actorSystem)
+  import sc.implicits._
 
-  // Region supervisor
+  // Test storage
   val tempDirectory = sys.props.get("shadowcloud.temp-storage-dir")
     .map(Paths.get(_))
     .getOrElse(Files.createTempDirectory("scl-temp-storage"))
-  val regionSupervisor = actorSystem.actorOf(RegionSupervisor.props, "regions")
-  regionSupervisor ! AddRegion("testRegion")
-  regionSupervisor ! AddStorage("testStorage", StorageProps.fromDirectory(tempDirectory))
-  regionSupervisor ! RegisterStorage("testRegion", "testStorage")
-  val regionStreams = RegionStreams(regionSupervisor, config.parallelism)
-  val fileStreams = FileStreams(regionStreams, chunkProcessing)
+  sc.actors.regionSupervisor ! AddRegion("testRegion", sc.regionConfig("testRegion"))
+  sc.actors.regionSupervisor ! AddStorage("testStorage", StorageProps.fromDirectory(tempDirectory))
+  sc.actors.regionSupervisor ! RegisterStorage("testRegion", "testStorage")
 
   // -----------------------------------------------------------------------
   // Route
@@ -43,14 +36,14 @@ object Main extends HttpApp with App with PredefinedToResponseMarshallers {
     post {
       (extractRequestEntity & extractPath) { (entity, path) ⇒
         val future = entity.withoutSizeLimit().dataBytes
-          .runWith(fileStreams.write("testRegion", path))
+          .runWith(sc.streams.file.write("testRegion", path))
           .map(_.chunks.mkString("\r\n"))
         complete(future)
       }
     } ~
     get {
       (pathPrefix("file") & extractPath) { path ⇒
-        val stream = fileStreams.read("testRegion", path)
+        val stream = sc.streams.file.read("testRegion", path)
         complete(HttpEntity(ContentTypes.`application/octet-stream`, stream))
       } ~
       getStaticFiles

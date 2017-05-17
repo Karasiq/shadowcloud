@@ -5,9 +5,9 @@ import scala.language.postfixOps
 
 import akka.actor.{ActorContext, ActorRef}
 
+import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.{RegionContainer, RegionDispatcher, StorageContainer}
-import com.karasiq.shadowcloud.config.{AppConfig, RegionConfig}
-import com.karasiq.shadowcloud.providers.ModuleRegistry
+import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
@@ -26,7 +26,8 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
-  val instantiator = StorageInstantiator(ModuleRegistry(AppConfig()))
+  private[this] val sc = ShadowCloud()
+  val instantiator = StorageInstantiator(sc.modules)
   val regions = mutable.AnyRefMap.empty[String, RegionStatus]
   val storages = mutable.AnyRefMap.empty[String, StorageStatus]
 

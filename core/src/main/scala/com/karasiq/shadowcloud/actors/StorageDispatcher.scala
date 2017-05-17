@@ -7,7 +7,8 @@ import akka.actor.{Actor, ActorLogging, ActorRef, NotInfluenceReceiveTimeout, Pr
 import akka.pattern.pipe
 import akka.util.Timeout
 
-import com.karasiq.shadowcloud.actors.events.{SCEvents, StorageEvents}
+import com.karasiq.shadowcloud.ShadowCloud
+import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.internal.{DiffStats, StorageStatsTracker}
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperation}
@@ -33,9 +34,9 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
   // -----------------------------------------------------------------------
   import context.dispatcher
   private[this] implicit val timeout = Timeout(10 seconds)
-  private[this] val events = SCEvents()
   private[this] val schedule = context.system.scheduler.schedule(Duration.Zero, 30 seconds, self, CheckHealth)
   private[this] val gcActor = context.actorOf(GarbageCollector.props(storageId, index, chunkIO), "garbageCollector")
+  private[this] val sc = ShadowCloud()
 
   // -----------------------------------------------------------------------
   // State
@@ -69,7 +70,7 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
     case msg @ ChunkIODispatcher.WriteChunk.Success((path, chunk), _) ⇒
       log.debug("Chunk written, appending to index: {}", chunk)
       writingChunks.finish((path, chunk), msg)
-      events.storage.publish(StorageEnvelope(storageId, StorageEvents.ChunkWritten(path, chunk)))
+      sc.eventStreams.publishStorageEvent(storageId, StorageEvents.ChunkWritten(path, chunk))
       index ! IndexDispatcher.AddPending(path.region, IndexDiff.newChunks(chunk.withoutData))
 
     case msg @ ChunkIODispatcher.WriteChunk.Failure((region, chunk), error) ⇒
@@ -147,11 +148,11 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
     super.preStart()
     context.watch(chunkIO)
     context.watch(index)
-    events.storage.subscribe(self, storageId)
+    sc.eventStreams.storage.subscribe(self, storageId)
   }
 
   override def postStop(): Unit = {
-    events.storage.unsubscribe(self)
+    sc.eventStreams.storage.unsubscribe(self)
     schedule.cancel()
     super.postStop()
   }

@@ -1,22 +1,23 @@
 package com.karasiq.shadowcloud.streams
 
+import scala.concurrent.Future
+import scala.language.postfixOps
+
 import akka.NotUsed
 import akka.stream.Materializer
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.index.diffs.FileVersions
-import com.karasiq.shadowcloud.index.{File, Path}
 
-import scala.concurrent.Future
-import scala.language.postfixOps
+import com.karasiq.shadowcloud.index.{File, Path}
+import com.karasiq.shadowcloud.index.diffs.FileVersions
 
 object FileStreams {
-  def apply(regionStreams: RegionStreams, chunkProcessing: ChunkProcessing)(implicit m: Materializer): FileStreams = {
+  def apply(regionStreams: RegionStreams, chunkProcessing: ChunkProcessingStreams)(implicit m: Materializer): FileStreams = {
     new FileStreams(regionStreams, chunkProcessing)
   }
 }
 
-final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProcessing)(implicit m: Materializer) {
+final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProcessingStreams)(implicit m: Materializer) {
   def readBy(regionId: String, path: Path, select: Set[File] ⇒ File): Source[ByteString, NotUsed] = {
     Source.single((regionId, path))
       .via(regionStreams.findFiles)

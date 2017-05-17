@@ -13,7 +13,7 @@ import org.scalatest.FlatSpecLike
 
 import com.karasiq.shadowcloud.actors._
 import com.karasiq.shadowcloud.actors.RegionDispatcher.{ReadChunk, WriteChunk}
-import com.karasiq.shadowcloud.actors.events.{SCEvents, StorageEvents}
+import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
@@ -36,7 +36,6 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   val initialHealth = healthProvider.health.futureValue
   val storage = TestActorRef(StorageDispatcher.props("testStorage", index, chunkIO, healthProvider), "storage")
   val testRegion = TestActorRef(RegionDispatcher.props("testRegion", TestUtils.regionConfig("testRegion")), "testRegion")
-  val events = SCEvents(system)
 
   "Virtual region" should "register storage" in {
     testRegion ! RegionDispatcher.Register("testStorage", storage, initialHealth)
@@ -179,10 +178,10 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   }
 
   private def storageUnsubscribe() = {
-    events.storage.unsubscribe(testActor)
+    sc.eventStreams.storage.unsubscribe(testActor)
   }
 
   private def storageSubscribe(): Unit = {
-    events.storage.subscribe(testActor, "testStorage")
+    sc.eventStreams.storage.subscribe(testActor, "testStorage")
   }
 }

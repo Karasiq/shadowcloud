@@ -20,11 +20,11 @@ object TestUtils extends TestImplicits {
   val aesEncryption = modules.encryptionModule(EncryptionMethod("AES/GCM", 256))
 
   def regionConfig(regionId: String): RegionConfig = {
-    RegionConfig.fromConfig(regionId, rootConfig)
+    RegionConfig.forId(regionId, rootConfig)
   }
 
   def storageConfig(storageId: String): StorageConfig = {
-    StorageConfig.fromConfig(storageId, rootConfig)
+    StorageConfig.forId(storageId, rootConfig)
   }
 
   def randomBytes(length: Int): ByteString = {

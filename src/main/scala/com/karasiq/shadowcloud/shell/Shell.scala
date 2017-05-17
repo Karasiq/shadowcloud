@@ -13,13 +13,14 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 object Shell extends ImplicitConversions {
   private[this] implicit val context = ShellContext()
   import context._
+  import sc.actors.regionSupervisor
 
   def openRegion(regionId: String): RegionContext = {
     RegionContext(regionId)
   }
 
   def createRegion(regionId: String): RegionContext = {
-    regionSupervisor ! RegionSupervisor.AddRegion(regionId, RegionConfig.fromConfig(regionId, actorSystem.settings.config.getConfig("shadowcloud")))
+    regionSupervisor ! RegionSupervisor.AddRegion(regionId, RegionConfig.forId(regionId, actorSystem.settings.config.getConfig("shadowcloud")))
     openRegion(regionId)
   }
 

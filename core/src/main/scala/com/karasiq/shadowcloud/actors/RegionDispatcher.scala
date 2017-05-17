@@ -11,16 +11,16 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 
+import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk => SReadChunk, WriteChunk => SWriteChunk}
-import com.karasiq.shadowcloud.actors.events.{RegionEvents, SCEvents, StorageEvents}
+import com.karasiq.shadowcloud.actors.events.{RegionEvents, StorageEvents}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
-import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
+import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
-import com.karasiq.shadowcloud.config.{AppConfig, RegionConfig}
+import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
-import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
@@ -60,11 +60,9 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
   require(regionId.nonEmpty)
   private[this] implicit val executionContext: ExecutionContext = context.dispatcher
   private[this] implicit val timeout = Timeout(10 seconds)
-  private[this] val events = SCEvents()
-  private[this] val config = AppConfig()
-  private[this] val modules = ModuleRegistry(config)
+  private[this] val sc = ShadowCloud()
   private[this] val storages = StorageTracker()
-  private[this] val chunks = ChunksTracker(regionId, regionProps, modules, storages, log)
+  private[this] val chunks = ChunksTracker(regionId, regionProps, storages, log)
   private[this] val globalIndex = IndexMerger.region
 
   def receive: Receive = {
@@ -200,7 +198,7 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
       case StorageEvents.ChunkWritten(ChunkPath(`regionId`, _), chunk) ⇒
         log.debug("Chunk written: {}", chunk)
         chunks.registerChunk(storages.getDispatcher(storageId), chunk)
-        events.region.publish(RegionEnvelope(regionId, RegionEvents.ChunkWritten(storageId, chunk)))
+        sc.eventStreams.publishRegionEvent(regionId, RegionEvents.ChunkWritten(storageId, chunk))
 
       case StorageEvents.HealthUpdated(health) ⇒
         log.debug("Storage [{}] health report: {}", storageId, health)
@@ -228,7 +226,7 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
       val regionKey = RegionKey(diff.time, storageId, sequenceNr)
       globalIndex.add(regionKey, diff)
       log.debug("Virtual region [{}] index updated: {} -> {}", regionId, regionKey, diff)
-      events.region.publish(RegionEnvelope(regionId, RegionEvents.IndexUpdated(regionKey, diff)))
+      sc.eventStreams.publishRegionEvent(regionId, RegionEvents.IndexUpdated(regionKey, diff))
     }
   }
 
@@ -246,7 +244,7 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
     val deleted = globalIndex.chunks.diff(preDel).deletedChunks
     val dispatcher = storages.getDispatcher(storageId)
     deleted.foreach(chunks.unregisterChunk(dispatcher, _))
-    events.region.publish(RegionEnvelope(regionId, RegionEvents.IndexDeleted(regionKeys)))
+    sc.eventStreams.publishRegionEvent(regionId, RegionEvents.IndexDeleted(regionKeys))
   }
 
   private[this] def dropStorageDiffs(storageId: String): Unit = {
@@ -258,7 +256,7 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
   }
 
   override def postStop(): Unit = {
-    events.storage.unsubscribe(self)
+    sc.eventStreams.storage.unsubscribe(self)
     super.postStop()
   }
 }

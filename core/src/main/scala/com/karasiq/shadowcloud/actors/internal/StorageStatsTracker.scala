@@ -7,9 +7,8 @@ import scala.language.postfixOps
 import akka.actor.ActorContext
 import akka.event.Logging
 
-import com.karasiq.shadowcloud.actors.events.{SCEvents, StorageEvents}
-import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
-import com.karasiq.shadowcloud.config.StorageConfig
+import com.karasiq.shadowcloud.ShadowCloud
+import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
 
 private[actors] object StorageStatsTracker {
@@ -22,8 +21,8 @@ private[actors] final class StorageStatsTracker(storageId: String, healthProvide
                                                (implicit context: ActorContext) {
 
   private[this] val log = Logging(context.system, context.self)
-  private[this] val config = StorageConfig(storageId)
-  private[this] val events = SCEvents()
+  private[this] val sc = ShadowCloud()
+  private[this] val config = sc.storageConfig(storageId)
   private[this] var health = StorageHealth.empty
   private[this] var stats = mutable.AnyRefMap.empty[String, DiffStats]
     .withDefaultValue(DiffStats.empty)
@@ -31,7 +30,7 @@ private[actors] final class StorageStatsTracker(storageId: String, healthProvide
   def updateHealth(func: StorageHealth ⇒ StorageHealth): Unit = {
     this.health = func(this.health)
     log.debug("Storage [{}] health updated: {}", storageId, health)
-    events.storage.publish(StorageEnvelope(storageId, StorageEvents.HealthUpdated(health)))
+    sc.eventStreams.publishStorageEvent(storageId, StorageEvents.HealthUpdated(health))
   }
 
   def updateStats(region: String, stats: DiffStats): Unit = {

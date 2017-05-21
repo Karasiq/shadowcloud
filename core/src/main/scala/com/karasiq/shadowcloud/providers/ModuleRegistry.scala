@@ -2,13 +2,13 @@ package com.karasiq.shadowcloud.providers
 
 import java.security.NoSuchAlgorithmException
 
+import scala.collection.mutable
+import scala.language.postfixOps
+
 import com.karasiq.shadowcloud.config.AppConfig
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.storage.StoragePlugin
 import com.karasiq.shadowcloud.storage.props.StorageProps
-
-import scala.collection.mutable
-import scala.language.postfixOps
 
 private[shadowcloud] object ModuleRegistry {
   def empty: ModuleRegistry = {
@@ -72,6 +72,7 @@ private[shadowcloud] sealed trait CryptoModuleRegistry {
   private[this] val cryptoProviders = mutable.AnyRefMap.empty[String, CryptoProvider]
   private[this] var hashModules = PartialFunction.empty[HashingMethod, HashingModule]
   private[this] var encModules = PartialFunction.empty[EncryptionMethod, EncryptionModule]
+  private[this] var signModules = PartialFunction.empty[SignMethod, SignModule]
 
   private[providers] def register(providerName: String, provider: CryptoProvider): Unit = {
     require(providerName.nonEmpty, "Provider name is empty")
@@ -79,6 +80,7 @@ private[shadowcloud] sealed trait CryptoModuleRegistry {
 
     if (provider.hashing != PartialFunction.empty) hashModules = provider.hashing.orElse(hashModules)
     if (provider.encryption != PartialFunction.empty) encModules = provider.encryption.orElse(encModules)
+    if (provider.sign != PartialFunction.empty) signModules = provider.sign.orElse(signModules)
   }
 
   private[providers] def register(provider: CryptoProvider): Unit = {
@@ -123,6 +125,24 @@ private[shadowcloud] sealed trait CryptoModuleRegistry {
     }
   }
 
+  def signModule(method: SignMethod): SignModule = {
+    val pf = if (method.provider.isEmpty) {
+      signModules
+    } else {
+      cryptoProviders(method.provider).sign
+    }
+    moduleFromPF(pf, method)
+  }
+
+  def streamSignModule(method: SignMethod): StreamSignModule = {
+    signModule(method.copy(stream = true)) match {
+      case m: StreamSignModule ⇒
+        m
+
+      case _ ⇒
+        throw new IllegalArgumentException("Stream signature module required")
+    }
+  }
 
   def hashingAlgorithms: Set[String] = {
     cryptoProviders.values.flatMap(_.hashingAlgorithms).toSet
@@ -130,6 +150,10 @@ private[shadowcloud] sealed trait CryptoModuleRegistry {
 
   def encryptionAlgorithms: Set[String] = {
     cryptoProviders.values.flatMap(_.encryptionAlgorithms).toSet
+  }
+
+  def signAlgorithms: Set[String] = {
+    cryptoProviders.values.flatMap(_.signAlgorithms).toSet
   }
 
   @inline 

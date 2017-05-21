@@ -1,9 +1,9 @@
 package com.karasiq.shadowcloud.crypto
 
-import com.karasiq.shadowcloud.crypto.internal.{NoOpEncryptionModule, NoOpHashingModule}
-import com.karasiq.shadowcloud.providers.CryptoProvider
-
 import scala.language.postfixOps
+
+import com.karasiq.shadowcloud.crypto.internal.{NoOpEncryptionModule, NoOpHashingModule, NoOpSignModule}
+import com.karasiq.shadowcloud.providers.CryptoProvider
 
 private[crypto] final class NoOpCryptoProvider extends CryptoProvider {
   override def hashing: HashingPF = {
@@ -12,5 +12,9 @@ private[crypto] final class NoOpCryptoProvider extends CryptoProvider {
 
   override def encryption: EncryptionPF = {
     case m if m.algorithm.isEmpty ⇒ new NoOpEncryptionModule
+  }
+
+  override def sign: SignPF = {
+    case m if m.algorithm.isEmpty ⇒ new NoOpSignModule
   }
 }

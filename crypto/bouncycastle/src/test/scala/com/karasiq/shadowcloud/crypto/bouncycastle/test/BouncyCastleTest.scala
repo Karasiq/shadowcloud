@@ -2,16 +2,18 @@ package com.karasiq.shadowcloud.crypto.bouncycastle.test
 
 import java.security.NoSuchAlgorithmException
 
+import scala.language.postfixOps
+
 import akka.util.ByteString
-import com.karasiq.shadowcloud.config.ConfigProps
-import com.karasiq.shadowcloud.crypto.bouncycastle.BouncyCastleCryptoProvider
-import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigests, MessageDigestModule}
-import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, StreamCipherModule}
-import com.karasiq.shadowcloud.crypto.{EncryptionModule, HashingMethod, HashingModule}
-import com.karasiq.shadowcloud.utils.HexString
 import org.scalatest.{FlatSpec, Matchers}
 
-import scala.language.postfixOps
+import com.karasiq.shadowcloud.config.ConfigProps
+import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.crypto.bouncycastle.BouncyCastleCryptoProvider
+import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigests, MessageDigestModule}
+import com.karasiq.shadowcloud.crypto.bouncycastle.sign.RSASignModule
+import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, StreamCipherModule}
+import com.karasiq.shadowcloud.utils.HexString
 
 class BouncyCastleTest extends FlatSpec with Matchers {
   val provider = new BouncyCastleCryptoProvider
@@ -66,6 +68,11 @@ class BouncyCastleTest extends FlatSpec with Matchers {
       "1ca87d19a09bc168cc5845bc3235050f8dd59c8f8ec302bbdff4508b16c1c7cef694e1a4c84c250132d445637e0a84772196162a5815c38e45ff3dac4374f567")
 
   // -----------------------------------------------------------------------
+  // Signatures
+  // -----------------------------------------------------------------------
+  testSignature("RSA", RSASignModule(SignMethod("RSA", HashingMethod("SHA-512"), 1024)))
+
+  // -----------------------------------------------------------------------
   // Tests specification
   // -----------------------------------------------------------------------
   private[this] def testEncryption(name: String, module: EncryptionModule, keySize: Int, nonceSize: Int): Unit = {
@@ -93,6 +100,19 @@ class BouncyCastleTest extends FlatSpec with Matchers {
     } catch {
       case _: NoSuchAlgorithmException ⇒
         println(s"No such algorithm: $name")
+    }
+  }
+
+  private[this] def testSignature(name: String, module: SignModule): Unit = {
+    s"$name module" should "generate key" in {
+      val parameters = module.createParameters()
+      parameters.privateKey should not be empty
+    }
+
+    it should "sign data" in {
+      val parameters = module.createParameters()
+      val signature = module.sign(testData, parameters)
+      module.verify(testData, signature, parameters) shouldBe true
     }
   }
 

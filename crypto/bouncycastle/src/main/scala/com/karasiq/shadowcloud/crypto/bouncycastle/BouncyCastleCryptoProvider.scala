@@ -1,12 +1,13 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle
 
+import scala.language.postfixOps
+
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigests, MessageDigestModule}
+import com.karasiq.shadowcloud.crypto.bouncycastle.sign.RSASignModule
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, StreamCipherModule}
 import com.karasiq.shadowcloud.providers.CryptoProvider
-
-import scala.language.postfixOps
 
 final class BouncyCastleCryptoProvider extends CryptoProvider with ConfigImplicits {
   override val hashingAlgorithms: Set[String] = {
@@ -35,5 +36,14 @@ final class BouncyCastleCryptoProvider extends CryptoProvider with ConfigImplici
 
     case method @ EncryptionMethod("ChaCha20", 128 | 256, _, _, _) ⇒
       StreamCipherModule.ChaCha20(method)
+  }
+
+  override def signAlgorithms: Set[String] = {
+    Set("RSA")
+  }
+
+  override def sign: SignPF = {
+    case method if method.algorithm == "RSA" ⇒
+      new RSASignModule(method)
   }
 }

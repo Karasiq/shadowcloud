@@ -2,13 +2,14 @@ package com.karasiq.shadowcloud.crypto.bouncycastle.hashing
 
 import java.security.MessageDigest
 
+import scala.language.postfixOps
+
 import akka.util.ByteString
+
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCUtils
 import com.karasiq.shadowcloud.crypto.{HashingMethod, StreamHashingModule}
-
-import scala.language.postfixOps
+import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCUtils
 
 private[bouncycastle] object MessageDigestModule extends ConfigImplicits {
   def apply(method: HashingMethod): MessageDigestModule = {
@@ -43,7 +44,7 @@ private[bouncycastle] object MessageDigestModule extends ConfigImplicits {
   }
 }
 
-private[bouncycastle] final class MessageDigestModule(val method: HashingMethod, messageDigest: MessageDigest)
+private[bouncycastle] final class MessageDigestModule(val method: HashingMethod, val messageDigest: MessageDigest)
   extends StreamHashingModule {
 
   def update(data: ByteString): Unit = {

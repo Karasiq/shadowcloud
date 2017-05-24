@@ -2,16 +2,17 @@ package com.karasiq.shadowcloud.crypto.bouncycastle.symmetric
 
 import java.nio.ByteBuffer
 
+import scala.language.postfixOps
+
 import akka.util.ByteString
-import com.karasiq.shadowcloud.config.ConfigProps
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto._
-import com.karasiq.shadowcloud.crypto.bouncycastle.internal.RandomKeys
 import org.bouncycastle.crypto.engines.AESEngine
 import org.bouncycastle.crypto.modes.{AEADBlockCipher, GCMBlockCipher}
 import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
 
-import scala.language.postfixOps
+import com.karasiq.shadowcloud.config.ConfigProps
+import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCSymmetricKeys
 
 private[bouncycastle] object AEADBlockCipherModule extends ConfigImplicits {
   def AES_GCM(method: EncryptionMethod = EncryptionMethod("AES/GCM", 256)): AEADBlockCipherModule = {
@@ -24,7 +25,7 @@ private[bouncycastle] object AEADBlockCipherModule extends ConfigImplicits {
 private[bouncycastle] final class AEADBlockCipherModule(private[this] val cipher: AEADBlockCipher,
                                                         protected val nonceSize: Int,
                                                         protected val method: EncryptionMethod)
-  extends StreamEncryptionModule with RandomKeys {
+  extends StreamEncryptionModule with BCSymmetricKeys {
 
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
     val symParameters = parameters.symmetric

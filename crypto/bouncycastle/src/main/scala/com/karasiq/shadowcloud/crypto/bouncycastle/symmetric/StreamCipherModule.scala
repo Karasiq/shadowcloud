@@ -1,13 +1,14 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.symmetric
 
+import scala.language.postfixOps
+
 import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.bouncycastle.internal.RandomKeys
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, StreamEncryptionModule}
 import org.bouncycastle.crypto.StreamCipher
 import org.bouncycastle.crypto.engines.{ChaChaEngine, Salsa20Engine, XSalsa20Engine}
 import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
 
-import scala.language.postfixOps
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, StreamEncryptionModule}
+import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCSymmetricKeys
 
 private[bouncycastle] object StreamCipherModule {
   def Salsa20(method: EncryptionMethod = EncryptionMethod("Salsa20", 256)): StreamCipherModule = {
@@ -26,7 +27,7 @@ private[bouncycastle] object StreamCipherModule {
 private[bouncycastle] final class StreamCipherModule(protected val method: EncryptionMethod,
                                                      private[this] val cipher: StreamCipher,
                                                      protected val nonceSize: Int)
-  extends StreamEncryptionModule with RandomKeys {
+  extends StreamEncryptionModule with BCSymmetricKeys {
 
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
     val parameters1 = parameters.symmetric

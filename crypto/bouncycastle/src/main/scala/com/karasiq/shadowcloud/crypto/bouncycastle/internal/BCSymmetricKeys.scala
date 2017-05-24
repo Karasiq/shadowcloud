@@ -2,12 +2,13 @@ package com.karasiq.shadowcloud.crypto.bouncycastle.internal
 
 import java.security.SecureRandom
 
-import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule, EncryptionParameters, SymmetricEncryptionParameters}
-
 import scala.language.postfixOps
 
-private[bouncycastle] trait RandomKeys { self: EncryptionModule ⇒
+import akka.util.ByteString
+
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule, EncryptionParameters, SymmetricEncryptionParameters}
+
+private[bouncycastle] trait BCSymmetricKeys { self: EncryptionModule ⇒
   private[this] val secureRandom = new SecureRandom()
 
   protected def method: EncryptionMethod

@@ -10,8 +10,9 @@ import org.scalatest.{FlatSpec, Matchers}
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.BouncyCastleCryptoProvider
+import com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric.RSACipherModule
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigests, MessageDigestModule}
-import com.karasiq.shadowcloud.crypto.bouncycastle.sign.RSASignModule
+import com.karasiq.shadowcloud.crypto.bouncycastle.sign.{ECDSASignModule, RSASignModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, StreamCipherModule}
 import com.karasiq.shadowcloud.utils.HexString
 
@@ -22,10 +23,12 @@ class BouncyCastleTest extends FlatSpec with Matchers {
   // -----------------------------------------------------------------------
   // Encryption
   // -----------------------------------------------------------------------
-  testEncryption("AES/GCM", AEADBlockCipherModule.AES_GCM(), 32, 12)
-  testEncryption("Salsa20", StreamCipherModule.Salsa20(), 32, 8)
-  testEncryption("XSalsa20", StreamCipherModule.XSalsa20(), 32, 24)
-  testEncryption("ChaCha20", StreamCipherModule.ChaCha20(), 32, 8)
+  testSymmetricEncryption("AES/GCM", AEADBlockCipherModule.AES_GCM(), 32, 12)
+  testSymmetricEncryption("Salsa20", StreamCipherModule.Salsa20(), 32, 8)
+  testSymmetricEncryption("XSalsa20", StreamCipherModule.XSalsa20(), 32, 24)
+  testSymmetricEncryption("ChaCha20", StreamCipherModule.ChaCha20(), 32, 8)
+
+  testAsymmetricEncryption("RSA", RSACipherModule(EncryptionMethod("RSA", 1024)))
 
   // -----------------------------------------------------------------------
   // Hashes
@@ -71,11 +74,13 @@ class BouncyCastleTest extends FlatSpec with Matchers {
   // Signatures
   // -----------------------------------------------------------------------
   testSignature("RSA", RSASignModule(SignMethod("RSA", HashingMethod("SHA-512"), 1024)))
+  testSignature("ECDSA", ECDSASignModule(SignMethod("ECDSA", HashingMethod("SHA-512"), 521)))
+  testSignature("ECDSA (25519)", ECDSASignModule(SignMethod("ECDSA", HashingMethod("SHA-512"), 128, config = ConfigProps("curve" → "curve25519"))))
 
   // -----------------------------------------------------------------------
   // Tests specification
   // -----------------------------------------------------------------------
-  private[this] def testEncryption(name: String, module: EncryptionModule, keySize: Int, nonceSize: Int): Unit = {
+  private[this] def testSymmetricEncryption(name: String, module: EncryptionModule, keySize: Int, nonceSize: Int): Unit = {
     s"$name module" should "generate key" in {
       val parameters = module.createParameters()
       parameters.symmetric.key.length shouldBe keySize
@@ -103,8 +108,25 @@ class BouncyCastleTest extends FlatSpec with Matchers {
     }
   }
 
-  private[this] def testSignature(name: String, module: SignModule): Unit = {
+  private[this] def testAsymmetricEncryption(name: String, module: EncryptionModule): Unit = {
     s"$name module" should "generate key" in {
+      val parameters = module.createParameters()
+      parameters.isSymmetric shouldBe false
+      val parameters1 = module.updateParameters(parameters)
+      parameters1 shouldBe parameters
+    }
+
+    it should "encrypt data" in {
+      val parameters = module.createParameters()
+      val encrypted = module.encrypt(testData, parameters)
+      encrypted.length should be >= testData.length
+      val decrypted = module.decrypt(encrypted, parameters)
+      decrypted shouldBe testData
+    }
+  }
+
+  private[this] def testSignature(name: String, module: SignModule): Unit = {
+    s"$name sign module" should "generate key" in {
       val parameters = module.createParameters()
       parameters.privateKey should not be empty
     }

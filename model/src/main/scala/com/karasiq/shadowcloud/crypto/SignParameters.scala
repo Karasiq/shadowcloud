@@ -6,7 +6,7 @@ import akka.util.ByteString
 
 case class SignParameters(method: SignMethod, publicKey: ByteString, privateKey: ByteString) {
   override def toString: String = {
-    s"SignParameters($method)"
+    s"SignParameters($method, public: ${publicKey.length * 8} bits, private: ${privateKey.length * 8} bits)"
   }
 }
 

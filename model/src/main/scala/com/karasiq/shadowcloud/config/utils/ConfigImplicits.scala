@@ -10,9 +10,9 @@ import com.karasiq.shadowcloud.utils.Utils
 object ConfigImplicits extends ConfigImplicits
 
 trait ConfigImplicits {
-  protected type Config = com.typesafe.config.Config
+  type Config = com.typesafe.config.Config
 
-  protected implicit class ConfigOps(config: Config) {
+  implicit class ConfigOps(config: Config) {
     def getFiniteDuration(path: String): FiniteDuration = {
       Utils.toScalaDuration(config.getDuration(path))
     }

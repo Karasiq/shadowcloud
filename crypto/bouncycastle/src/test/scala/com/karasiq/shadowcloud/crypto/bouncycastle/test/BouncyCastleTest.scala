@@ -10,7 +10,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.BouncyCastleCryptoProvider
-import com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric.RSACipherModule
+import com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric.{ECIESCipherModule, RSACipherModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigests, MessageDigestModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.{ECDSASignModule, RSASignModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, StreamCipherModule}
@@ -29,6 +29,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
   testSymmetricEncryption("ChaCha20", StreamCipherModule.ChaCha20(), 32, 8)
 
   testAsymmetricEncryption("RSA", RSACipherModule(EncryptionMethod("RSA", 1024)))
+  testAsymmetricEncryption("ECIES", ECIESCipherModule(EncryptionMethod("ECIES", 521)))
 
   // -----------------------------------------------------------------------
   // Hashes
@@ -114,6 +115,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
       parameters.isSymmetric shouldBe false
       val parameters1 = module.updateParameters(parameters)
       parameters1 shouldBe parameters
+      println(parameters)
     }
 
     it should "encrypt data" in {
@@ -129,6 +131,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
     s"$name sign module" should "generate key" in {
       val parameters = module.createParameters()
       parameters.privateKey should not be empty
+      println(parameters)
     }
 
     it should "sign data" in {

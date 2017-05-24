@@ -14,7 +14,7 @@ private[bouncycastle] object RSACipherModule {
   }
 }
 
-private[bouncycastle] final class RSACipherModule(protected val method: EncryptionMethod) extends BCAsymmetricCipherModule {
+private[bouncycastle] final class RSACipherModule(val method: EncryptionMethod) extends BCAsymmetricCipherModule {
   protected val cipher = new OAEPEncoding(new RSAEngine)
   protected val keyPairGenerator = KeyUtils.rsaKeyGenerator(method.keySize)
 

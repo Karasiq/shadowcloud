@@ -18,6 +18,7 @@ import org.bouncycastle.crypto.util.DigestFactory
 
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, StreamEncryptionModule}
+import com.karasiq.shadowcloud.crypto.bouncycastle.internal.ECUtils
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.BCECKeys
 import com.karasiq.shadowcloud.utils.HexString
 
@@ -27,7 +28,7 @@ private[bouncycastle] object ECIESCipherModule {
   }
 }
 
-private[bouncycastle] final class ECIESCipherModule(protected val method: EncryptionMethod) extends StreamEncryptionModule with BCAsymmetricCipherKeys with BCECKeys {
+private[bouncycastle] final class ECIESCipherModule(val method: EncryptionMethod) extends StreamEncryptionModule with BCAsymmetricCipherKeys with BCECKeys {
   // TODO: Block cipher mode
   private[this] val cipher = new IESEngine(
     new ECDHBasicAgreement(),
@@ -73,7 +74,7 @@ private[bouncycastle] final class ECIESCipherModule(protected val method: Encryp
     if (encrypt) {
       cipher.init(publicKey, params, ephKeyGen)
     } else {
-      cipher.init(publicKey, params, new ECIESPublicKeyParser(getCurveDomainParameters(method)))
+      cipher.init(publicKey, params, new ECIESPublicKeyParser(ECUtils.getCurveDomainParameters(method)))
     }
   }
 

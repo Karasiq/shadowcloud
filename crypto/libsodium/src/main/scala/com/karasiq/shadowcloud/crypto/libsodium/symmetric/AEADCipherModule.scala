@@ -1,10 +1,11 @@
 package com.karasiq.shadowcloud.crypto.libsodium.symmetric
 
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.config.{ConfigProps, SerializedProps}
-import com.karasiq.shadowcloud.crypto._
 import org.abstractj.kalium.NaCl.Sodium
 import org.abstractj.kalium.crypto.Aead
+
+import com.karasiq.shadowcloud.config.{ConfigProps, SerializedProps}
+import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.shadowcloud.crypto._
 
 private[libsodium] object AEADCipherModule extends ConfigImplicits {
   val AES_KEY_BYTES = Sodium.CRYPTO_AEAD_AES256GCM_KEYBYTES
@@ -26,7 +27,7 @@ private[libsodium] object AEADCipherModule extends ConfigImplicits {
   }
 }
 
-private[libsodium] final class AEADCipherModule(protected val method: EncryptionMethod, useAes: Boolean = false,
+private[libsodium] final class AEADCipherModule(val method: EncryptionMethod, useAes: Boolean = false,
                                                 additionalDataSize: Int = 0) extends SymmetricCipherModule {
   import AEADCipherModule._
   protected val keySize = if (useAes) AES_KEY_BYTES else KEY_BYTES

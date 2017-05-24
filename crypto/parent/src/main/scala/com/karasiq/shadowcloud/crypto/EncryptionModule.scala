@@ -1,10 +1,11 @@
 package com.karasiq.shadowcloud.crypto
 
-import akka.util.ByteString
-
 import scala.language.postfixOps
 
-trait EncryptionModule {
+import akka.util.ByteString
+
+trait EncryptionModule extends CryptoModule {
+  def method: EncryptionMethod
   def createParameters(): EncryptionParameters
   def updateParameters(parameters: EncryptionParameters): EncryptionParameters
   def encrypt(data: ByteString, parameters: EncryptionParameters): ByteString

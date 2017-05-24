@@ -18,13 +18,13 @@ private[bouncycastle] object AEADBlockCipherModule extends ConfigImplicits {
   def AES_GCM(method: EncryptionMethod = EncryptionMethod("AES/GCM", 256)): AEADBlockCipherModule = {
     val config = ConfigProps.toConfig(method.config)
     val ivSize = config.withDefault(12, _.getInt("iv-size"))
-    new AEADBlockCipherModule(new GCMBlockCipher(new AESEngine), ivSize, method)
+    new AEADBlockCipherModule(method, new GCMBlockCipher(new AESEngine), ivSize)
   }
 }
 
-private[bouncycastle] final class AEADBlockCipherModule(private[this] val cipher: AEADBlockCipher,
-                                                        protected val nonceSize: Int,
-                                                        protected val method: EncryptionMethod)
+private[bouncycastle] final class AEADBlockCipherModule(val method: EncryptionMethod,
+                                                        private[this] val cipher: AEADBlockCipher,
+                                                        protected val nonceSize: Int)
   extends StreamEncryptionModule with BCSymmetricKeys {
 
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {

@@ -14,7 +14,7 @@ private[bouncycastle] object RSASignModule {
   }
 }
 
-private[bouncycastle] final class RSASignModule(protected val method: SignMethod) extends BCSignerModule {
+private[bouncycastle] final class RSASignModule(val method: SignMethod) extends BCSignerModule {
   protected var signer: RSADigestSigner = _
   protected val keyPairGenerator = KeyUtils.rsaKeyGenerator(method.keySize)
 

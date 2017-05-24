@@ -12,6 +12,6 @@ private[bouncycastle] object ECDSASignModule {
   }
 }
 
-private[bouncycastle] final class ECDSASignModule(protected val method: SignMethod) extends BCDSAModule with BCECKeys {
+private[bouncycastle] final class ECDSASignModule(val method: SignMethod) extends BCDSAModule with BCECKeys {
   protected val dsaSigner = new ECDSASigner()
 }

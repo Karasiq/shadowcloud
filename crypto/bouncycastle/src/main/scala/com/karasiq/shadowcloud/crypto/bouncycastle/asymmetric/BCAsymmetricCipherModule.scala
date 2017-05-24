@@ -8,7 +8,6 @@ import org.bouncycastle.crypto.AsymmetricBlockCipher
 import com.karasiq.shadowcloud.crypto._
 
 private[bouncycastle] trait BCAsymmetricCipherModule extends StreamEncryptionModule with BCAsymmetricCipherKeys {
-  protected def method: EncryptionMethod
   protected def cipher: AsymmetricBlockCipher
 
   def process(data: ByteString): ByteString = {

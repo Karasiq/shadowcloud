@@ -24,7 +24,7 @@ private[bouncycastle] object StreamCipherModule {
   }
 }
 
-private[bouncycastle] final class StreamCipherModule(protected val method: EncryptionMethod,
+private[bouncycastle] final class StreamCipherModule(val method: EncryptionMethod,
                                                      private[this] val cipher: StreamCipher,
                                                      protected val nonceSize: Int)
   extends StreamEncryptionModule with BCSymmetricKeys {

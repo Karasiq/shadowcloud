@@ -4,7 +4,8 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 
-trait SignModule {
+trait SignModule extends CryptoModule {
+  def method: SignMethod
   def createParameters(): SignParameters
   def sign(data: ByteString, parameters: SignParameters): ByteString
   def verify(data: ByteString, signature: ByteString, parameters: SignParameters): Boolean

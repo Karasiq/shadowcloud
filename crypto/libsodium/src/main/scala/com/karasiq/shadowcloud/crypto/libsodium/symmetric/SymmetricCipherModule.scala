@@ -1,18 +1,18 @@
 package com.karasiq.shadowcloud.crypto.libsodium.symmetric
 
+import scala.language.postfixOps
+
 import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, StreamEncryptionModule, SymmetricEncryptionParameters}
 import org.abstractj.kalium.NaCl
 import org.abstractj.kalium.NaCl.Sodium
 import org.abstractj.kalium.crypto.{Random => LSRandom}
 
-import scala.language.postfixOps
+import com.karasiq.shadowcloud.crypto.{EncryptionParameters, StreamEncryptionModule, SymmetricEncryptionParameters}
 
 private[libsodium] trait SymmetricCipherModule extends StreamEncryptionModule {
   protected final val sodium: Sodium = NaCl.sodium()
   protected final val random: LSRandom = new LSRandom
 
-  protected val method: EncryptionMethod
   protected val keySize: Int
   protected val nonceSize: Int
   protected def init(encrypt: Boolean, key: Array[Byte], nonce: Array[Byte]): Unit

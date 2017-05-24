@@ -1,10 +1,10 @@
 package com.karasiq.shadowcloud.crypto
 
-import akka.util.ByteString
-
 import scala.language.postfixOps
 
-trait HashingModule {
+import akka.util.ByteString
+
+trait HashingModule extends CryptoModule {
   def method: HashingMethod
   def createHash(data: ByteString): ByteString
 }

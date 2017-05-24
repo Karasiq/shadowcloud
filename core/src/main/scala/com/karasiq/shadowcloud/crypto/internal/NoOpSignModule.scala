@@ -4,9 +4,10 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.crypto.{SignParameters, StreamSignModule}
+import com.karasiq.shadowcloud.crypto.{SignMethod, SignParameters, StreamSignModule}
 
 private[crypto] final class NoOpSignModule extends StreamSignModule {
+  def method: SignMethod = SignMethod.none
   def init(sign: Boolean, parameters: SignParameters): Unit = ()
   def process(data: ByteString): Unit = ()
   def finishVerify(signature: ByteString): Boolean = true

@@ -1,8 +1,9 @@
 package com.karasiq.shadowcloud.crypto.libsodium.symmetric
 
-import com.karasiq.shadowcloud.crypto._
 import org.abstractj.kalium.NaCl.Sodium
 import org.abstractj.kalium.crypto.SecretBox
+
+import com.karasiq.shadowcloud.crypto._
 
 private[libsodium] object SecretBoxModule {
   val KEY_BYTES = Sodium.CRYPTO_SECRETBOX_KEYBYTES
@@ -13,7 +14,7 @@ private[libsodium] object SecretBoxModule {
   }
 }
 
-private[libsodium] final class SecretBoxModule(protected val method: EncryptionMethod) extends SymmetricCipherModule {
+private[libsodium] final class SecretBoxModule(val method: EncryptionMethod) extends SymmetricCipherModule {
   protected val keySize = SecretBoxModule.KEY_BYTES
   protected val nonceSize = SecretBoxModule.NONCE_BYTES
   private[this] var encryptMode = true

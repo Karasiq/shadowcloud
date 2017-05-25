@@ -17,7 +17,7 @@ import org.bouncycastle.crypto.parsers.ECIESPublicKeyParser
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.{AsymmetricEncryptionParameters, EncryptionMethod, EncryptionParameters, StreamEncryptionModule}
-import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{DigestWrapper, MessageDigestModule}
+import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.BCDigests
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.ECUtils
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.BCECKeys
 import com.karasiq.shadowcloud.utils.HexString
@@ -30,8 +30,8 @@ private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
   }
 
   private def getDigest(method: EncryptionMethod): Digest = {
-    val digestName = ConfigProps.toConfig(method.config).withDefault("SHA1", _.getString("ies-digest"))
-    DigestWrapper(MessageDigestModule(digestName).messageDigest)
+    val digest = ConfigProps.toConfig(method.config).withDefault("SHA1", _.getString("ies-digest"))
+    BCDigests.createDigest(digest)
   }
 
   private def getIesParameters(method: EncryptionMethod): IESParameters = {
@@ -62,7 +62,7 @@ private[bouncycastle] final class ECIESCipherModule(val method: EncryptionMethod
   )
 
   //noinspection ConvertExpressionToSAM
-  private[this] val ephKeyGen = new EphemeralKeyPairGenerator(keyPairGenerator, new KeyEncoder {
+  private[this] val ephKPG = new EphemeralKeyPairGenerator(keyPairGenerator, new KeyEncoder {
     def getEncoded(keyParameter: AsymmetricKeyParameter): Array[Byte] = {
       keyParameter.asInstanceOf[ECPublicKeyParameters].getQ.getEncoded(false)
     }
@@ -74,12 +74,12 @@ private[bouncycastle] final class ECIESCipherModule(val method: EncryptionMethod
   }
 
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
-    val params = ECIESCipherModule.getIesParameters(parameters.method)
+    val iesParameters = ECIESCipherModule.getIesParameters(parameters.method)
     val publicKey = getCipherKey(parameters, encrypt)
     if (encrypt) {
-      cipher.init(publicKey, params, ephKeyGen)
+      cipher.init(publicKey, iesParameters, ephKPG)
     } else {
-      cipher.init(publicKey, params, new ECIESPublicKeyParser(ECUtils.getCurveDomainParameters(method)))
+      cipher.init(publicKey, iesParameters, new ECIESPublicKeyParser(ECUtils.getCurveDomainParameters(method)))
     }
   }
 

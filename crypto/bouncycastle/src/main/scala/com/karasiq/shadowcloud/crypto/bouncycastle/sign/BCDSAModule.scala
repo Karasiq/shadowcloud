@@ -6,7 +6,7 @@ import org.bouncycastle.crypto.{DSA, Signer}
 import org.bouncycastle.crypto.signers.DSADigestSigner
 
 import com.karasiq.shadowcloud.crypto.SignParameters
-import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{DigestWrapper, MessageDigestModule}
+import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.BCDigests
 
 private[bouncycastle] trait BCDSAModule extends BCSignerModule {
   protected var signer: Signer = _
@@ -14,8 +14,7 @@ private[bouncycastle] trait BCDSAModule extends BCSignerModule {
 
   override def init(sign: Boolean, parameters: SignParameters): Unit = {
     require(dsaSigner.ne(null), "No DSA signer")
-    val digest = DigestWrapper(MessageDigestModule(parameters.method.hashingMethod).messageDigest)
-    this.signer = new DSADigestSigner(dsaSigner, digest)
+    this.signer = new DSADigestSigner(dsaSigner, BCDigests.createDigest(parameters.method.hashingMethod))
     super.init(sign, parameters)
   }
 }

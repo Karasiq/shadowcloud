@@ -5,7 +5,7 @@ import scala.language.postfixOps
 import org.bouncycastle.crypto.signers.RSADigestSigner
 
 import com.karasiq.shadowcloud.crypto.{HashingMethod, SignMethod, SignParameters}
-import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{DigestWrapper, MessageDigestModule}
+import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.BCDigests
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.KeyUtils
 
 private[bouncycastle] object RSASignModule {
@@ -19,8 +19,7 @@ private[bouncycastle] final class RSASignModule(val method: SignMethod) extends 
   protected val keyPairGenerator = KeyUtils.rsaKeyGenerator(method.keySize)
 
   override def init(sign: Boolean, parameters: SignParameters): Unit = {
-    val digest = DigestWrapper(MessageDigestModule(method.hashingMethod).messageDigest)
-    this.signer = new RSADigestSigner(digest)
+    this.signer = new RSADigestSigner(BCDigests.createDigest(method.hashingMethod))
     super.init(sign, parameters)
   }
 }

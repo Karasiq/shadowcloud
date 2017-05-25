@@ -2,11 +2,9 @@ package com.karasiq.shadowcloud.crypto.bouncycastle.hashing
 
 import java.security.MessageDigest
 
-import scala.language.postfixOps
-
 import org.bouncycastle.crypto.Digest
 
-private[bouncycastle] object DigestWrapper {
+private[hashing] object BCDigestWrapper {
   final class MDDigest(md: MessageDigest) extends Digest {
     def getDigestSize: Int = {
       md.getDigestLength
@@ -21,7 +19,7 @@ private[bouncycastle] object DigestWrapper {
     }
 
     def doFinal(out: Array[Byte], outOff: Int): Int = {
-      md.digest(out, outOff, out.length)
+      md.digest(out, outOff, out.length - outOff)
     }
 
     def getAlgorithmName: String = {

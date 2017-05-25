@@ -65,9 +65,9 @@ class BouncyCastleTest extends FlatSpec with Matchers {
     testHashing(alg, hash)
   }
 
-  testHashing(MessageDigestModule.forMDWithSize("Blake2b", HashingMethod("Blake2b-512", config = ConfigProps("digest-size" → 512))),
+  testHashing("Blake2-512", MessageDigestModule(HashingMethod("Blake2b", config = ConfigProps("digest-size" → 512))),
     "9f84251be0c325ad771696302e9ed3cd174f84ffdd0b8de49664e9a3ea934b89a4d008581cd5803b80b3284116174b3c4a79a5029996eb59edc1fbacfd18204e")
-  testHashing(MessageDigestModule.forMDWithTwoSizes("Skein", HashingMethod("Skein-1024-1024", config = ConfigProps("state-size" → 1024, "digest-size" → 1024))),
+  testHashing("Skein-1024-1024", MessageDigestModule(HashingMethod("Skein", config = ConfigProps("state-size" → 1024, "digest-size" → 1024))),
     "66588dbe2beb3b9cea762f42e3abaa9dc406bfa005fed3579089d8d2c5807453aa6cb0f8e69134ad47405c843e9a08c51da931827957f06ca58b3e8fe658993e" +
       "1ca87d19a09bc168cc5845bc3235050f8dd59c8f8ec302bbdff4508b16c1c7cef694e1a4c84c250132d445637e0a84772196162a5815c38e45ff3dac4374f567")
 
@@ -102,7 +102,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
   private[this] def testHashing(name: String, testHash: String): Unit = {
     try {
       val module = provider.hashing(HashingMethod(name))
-      testHashing(module, testHash)
+      testHashing(module.method.algorithm, module, testHash)
     } catch {
       case _: NoSuchAlgorithmException ⇒
         println(s"No such algorithm: $name")
@@ -141,8 +141,8 @@ class BouncyCastleTest extends FlatSpec with Matchers {
     }
   }
 
-  private[this] def testHashing(module: HashingModule, testHash: String): Unit = {
-    s"${module.method.algorithm} module" should "generate hash" in {
+  private[this] def testHashing(name: String, module: HashingModule, testHash: String): Unit = {
+    s"$name module" should "generate hash" in {
       val hash = HexString.encode(module.createHash(testData))
       // println('"' + hash + '"' + ",")
       hash shouldBe testHash

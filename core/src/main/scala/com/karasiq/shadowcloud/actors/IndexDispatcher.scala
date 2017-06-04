@@ -10,13 +10,14 @@ import akka.NotUsed
 import akka.actor.{ActorLogging, DeadLetterSuppression, PossiblyHarmful, Props, ReceiveTimeout, Status}
 import akka.persistence._
 import akka.stream.ActorMaterializer
-import akka.stream.scaladsl.{Sink, Source}
+import akka.stream.scaladsl.{Flow, Sink, Source}
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.events.StorageEvents._
 import com.karasiq.shadowcloud.actors.internal.MultiIndexMerger
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.exceptions.StorageException
+import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.{CategorizedRepository, StorageIOResult}
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
@@ -65,9 +66,9 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
 
   private[this] implicit val actorMaterializer = ActorMaterializer()
   private[this] val sc = ShadowCloud()
-  private[this] val streams = IndexRepositoryStreams.gzipped(context.system)
   private[this] val index = MultiIndexMerger()
   private[this] val config = sc.storageConfig(storageId)
+  private[this] val streams = IndexRepositoryStreams(config)
   private[this] val compactRequested = MSet.empty[String]
 
   // -----------------------------------------------------------------------
@@ -129,15 +130,18 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   // Read state
   // -----------------------------------------------------------------------
   def receiveRead: Receive = {
-    case ReadSuccess(IndexIOResult((region, sequenceNr), diff, ioResult)) ⇒ ioResult match {
-      case StorageIOResult.Success(path, _) ⇒
-        log.info("Remote diff {}/{} received from {}: {}", region, sequenceNr, path, diff)
-        persist(IndexUpdated(region, sequenceNr, diff, remote = true))(updateState)
+    case ReadSuccess(IndexIOResult((region, sequenceNr), data, ioResult)) ⇒
+      require(data.region == region && data.sequenceNr == sequenceNr, "Diff region or sequenceNr not match")
+      val diff = data.diff
+      ioResult match {
+        case StorageIOResult.Success(path, _) ⇒
+          log.info("Remote diff {}/{} received from {}: {}", region, sequenceNr, path, diff)
+          persist(IndexUpdated(region, sequenceNr, diff, remote = true))(updateState)
 
-      case StorageIOResult.Failure(path, error) ⇒
-        log.error(error, "Diff {}/{} read failed from {}", region, sequenceNr, path)
-        throw error
-    }
+        case StorageIOResult.Failure(path, error) ⇒
+          log.error(error, "Diff {}/{} read failed from {}", region, sequenceNr, path)
+          throw error
+      }
 
     case Status.Failure(error) ⇒
       log.error(error, "Diff read failed")
@@ -152,7 +156,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   // Write state
   // -----------------------------------------------------------------------
   def receiveWrite: Receive = {
-    case WriteSuccess(IndexIOResult((region, sequenceNr), diff, ioResult)) ⇒ ioResult match {
+    case WriteSuccess(IndexIOResult((region, sequenceNr), IndexData(_, _, diff), ioResult)) ⇒ ioResult match {
       case StorageIOResult.Success(path, _) ⇒
         log.debug("Diff {}/{} written to {}: {}", region, sequenceNr, path, diff)
         persist(IndexUpdated(region, sequenceNr, diff, remote = false))(updateState)
@@ -176,12 +180,13 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   def receiveCompact: Receive = {
     case CompactSuccess(deleted, result) ⇒
       log.info("Compact success: deleted = {}, new = {}", deleted, result)
-      if (result.diff.isEmpty) {
+      val diff = result.diff.diff
+      if (diff.isEmpty) {
         persist(IndexDeleted(result.key._1, deleted))(updateState)
       } else {
         persistAll(List(
           IndexDeleted(result.key._1, deleted),
-          IndexUpdated(result.key._1, result.key._2, result.diff, remote = false)
+          IndexUpdated(result.key._1, result.key._2, diff, remote = false)
         ))(updateState)
       }
 
@@ -284,6 +289,9 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
     deferAsync(Unit)(_ ⇒ becomeRead(keys))
   }
 
+  private[this] def toIndexDataWithKey = Flow[(LocalKey, IndexDiff)]
+    .map { case (k @ (region, sequenceNr), diff) ⇒ (k, IndexData(region, sequenceNr, diff)) }
+
   private[this] def startWrite(): Unit = {
     def becomeWrite(diffs: Seq[(LocalKey, IndexDiff)]): Unit = {
       log.debug("Writing pending diffs: {}", diffs)
@@ -291,6 +299,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
         .alsoTo(Sink.foreach { case ((region, sequenceNr), diff) ⇒
           log.info("Writing diff {}/{}: {}", region, sequenceNr, diff)
         })
+        .via(toIndexDataWithKey)
         .via(streams.write(repository))
         .map(WriteSuccess)
         .runWith(Sink.actorRef(self, StreamCompleted))
@@ -315,10 +324,11 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
         log.debug("Writing compacted diff: {}/{} -> {}", region, newSequenceNr, newDiff)
         val writeResult = if (newDiff.isEmpty) {
           // Skip write
-          val empty = IndexIOResult((region, newSequenceNr), IndexDiff.empty, StorageIOResult.Success("", 0))
+          val empty = IndexIOResult((region, newSequenceNr), IndexData.empty, StorageIOResult.Success("", 0))
           Source.single(empty)
         } else {
           Source.single((region, newSequenceNr) → newDiff)
+            .via(toIndexDataWithKey)
             .via(streams.write(repository))
             .log("compact-write")
         }

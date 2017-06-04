@@ -2,15 +2,16 @@ package com.karasiq.shadowcloud.test.streams
 
 import java.nio.file.Files
 
+import scala.language.postfixOps
+
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
-import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import org.scalatest.FlatSpecLike
+
+import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
-import org.scalatest.FlatSpecLike
-
-import scala.language.postfixOps
 
 class IndexRepositoryStreamsTest extends ActorSpec with FlatSpecLike {
   "In-memory repository" should "store diff" in {
@@ -30,14 +31,14 @@ class IndexRepositoryStreamsTest extends ActorSpec with FlatSpecLike {
     val testRepository = RepositoryKeys.toLong(repository)
 
     // Write diff
-    val streams = IndexRepositoryStreams.gzipped
-    val (write, writeResult) = TestSource.probe[(Long, IndexDiff)]
+    val streams = IndexRepositoryStreams(TestUtils.storageConfig("testStorage"), system)
+    val (write, writeResult) = TestSource.probe[(Long, IndexData)]
       .via(streams.write(testRepository))
       .toMat(TestSink.probe)(Keep.both)
       .run()
-    write.sendNext((diff.time, diff))
+    write.sendNext((diff.time, IndexData("testRegion", diff.time, diff)))
     writeResult.request(2)
-    val IndexIOResult(diff.time, `diff`, StorageIOResult.Success(_, _)) = writeResult.expectNext()
+    val IndexIOResult(diff.time, IndexData("testRegion", diff.time, `diff`), StorageIOResult.Success(_, _)) = writeResult.expectNext()
     write.sendComplete()
     writeResult.expectComplete()
 
@@ -53,7 +54,7 @@ class IndexRepositoryStreamsTest extends ActorSpec with FlatSpecLike {
       .toMat(TestSink.probe)(Keep.both)
       .run()
     read.sendNext(diff.time)
-    val IndexIOResult(diff.time, `diff`, StorageIOResult.Success(_, diffBytes)) = readResult.requestNext()
+    val IndexIOResult(diff.time, IndexData("testRegion", diff.time, `diff`), StorageIOResult.Success(_, diffBytes)) = readResult.requestNext()
     diffBytes should not be 0
     read.sendComplete()
     readResult.expectComplete()

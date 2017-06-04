@@ -1,11 +1,12 @@
 package com.karasiq.shadowcloud.crypto
 
-import akka.util.ByteString
-import com.karasiq.shadowcloud.index.utils.HasEmpty
-
 import scala.language.postfixOps
 
-sealed trait EncryptionParameters extends HasEmpty with EncryptionParametersConversions {
+import akka.util.ByteString
+
+import com.karasiq.shadowcloud.index.utils.HasEmpty
+
+sealed trait EncryptionParameters extends Serializable with HasEmpty with EncryptionParametersConversions {
   def method: EncryptionMethod
   def isSymmetric: Boolean
 }

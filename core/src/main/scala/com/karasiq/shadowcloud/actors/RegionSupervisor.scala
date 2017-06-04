@@ -166,7 +166,7 @@ private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
       log.info("Region added: {}", regionId)
       state.addRegion(regionId, regionConfig)
 
-    case RegionDeleted(regionId) ⇒
+    case RegionDeleted(regionId) if state.containsRegion(regionId) ⇒
       log.debug("Region deleted: {}", regionId)
       state.deleteRegion(regionId)
 
@@ -177,18 +177,18 @@ private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
       log.info("Storage added: {} (props = {})", storageId, props)
       state.addStorage(storageId, props)
 
-    case StorageDeleted(storageId) ⇒
+    case StorageDeleted(storageId) if state.containsStorage(storageId) ⇒
       log.info("Storage deleted: {}", storageId)
       state.deleteStorage(storageId)
 
     // -----------------------------------------------------------------------
     // Storage registration
     // -----------------------------------------------------------------------
-    case StorageRegistered(regionId, storageId) ⇒
+    case StorageRegistered(regionId, storageId) if state.containsRegionAndStorage(regionId, storageId) ⇒
       log.info("Storage {} registered in {}", storageId, regionId)
       state.registerStorage(regionId, storageId)
 
-    case StorageUnregistered(regionId, storageId) ⇒
+    case StorageUnregistered(regionId, storageId) if state.containsRegionAndStorage(regionId, storageId) ⇒
       log.info("Storage {} unregistered from {}", storageId, regionId)
       state.unregisterStorage(regionId, storageId)
 

@@ -16,6 +16,7 @@ import com.karasiq.shadowcloud.actors.RegionDispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
+import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
@@ -109,18 +110,18 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   }
 
   it should "read index" in {
-    val streams = IndexRepositoryStreams.gzipped
+    val streams = IndexRepositoryStreams(TestUtils.storageConfig("testStorage"), system)
     val regionRepo = indexRepository.subRepository("testRegion")
 
     // Write #2
     val remoteDiff = TestUtils.randomDiff
-    val (sideWrite, sideWriteResult) = TestSource.probe[(Long, IndexDiff)]
+    val (sideWrite, sideWriteResult) = TestSource.probe[(Long, IndexData)]
       .via(streams.write(regionRepo))
       .toMat(TestSink.probe)(Keep.both)
       .run()
-    sideWrite.sendNext((2, remoteDiff))
+    sideWrite.sendNext((2, IndexData("testRegion", 2, remoteDiff)))
     sideWrite.sendComplete()
-    val IndexIOResult(2, `remoteDiff`, StorageIOResult.Success(_, _)) = sideWriteResult.requestNext()
+    val IndexIOResult(2, IndexData("testRegion", 2, `remoteDiff`), StorageIOResult.Success(_, _)) = sideWriteResult.requestNext()
     sideWriteResult.expectComplete()
 
     // Synchronize

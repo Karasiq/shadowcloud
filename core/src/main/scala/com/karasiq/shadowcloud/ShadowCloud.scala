@@ -1,5 +1,7 @@
 package com.karasiq.shadowcloud
 
+import java.util.UUID
+
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -11,6 +13,7 @@ import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.StringEventBus
 import com.karasiq.shadowcloud.config.{AppConfig, RegionConfig, StorageConfig}
+import com.karasiq.shadowcloud.config.keys.KeySet
 import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.streams._
 
@@ -56,6 +59,14 @@ class ShadowCloudExtension(system: ExtendedActorSystem) extends Extension {
     StorageConfig.forId(storageId, rootConfig)
   }
 
+  object keys {
+    val keySet = {  // TODO: Load keys
+      val enc = modules.encryptionModule(config.crypto.encryption.keys).createParameters()
+      val sign = modules.signModule(config.crypto.signing.index).createParameters()
+      KeySet(UUID.randomUUID(), sign, enc)
+    }
+  }
+
   // -----------------------------------------------------------------------
   // Actors
   // -----------------------------------------------------------------------
@@ -84,6 +95,7 @@ class ShadowCloudExtension(system: ExtendedActorSystem) extends Extension {
   // -----------------------------------------------------------------------
   object streams {
     val chunk = ChunkProcessingStreams(config)
+    val index = IndexProcessingStreams(modules, config, keys.keySet)(system)
     val region = RegionStreams(actors.regionSupervisor, config.parallelism)
     val file = FileStreams(region, chunk)
   }

@@ -1,5 +1,9 @@
 logLevel := Level.Warn
 
+addSbtPlugin("com.thesamet" % "sbt-protoc" % "0.99.8")
+
+libraryDependencies += "com.trueaccord.scalapb" %% "compilerplugin" % "0.6.0-pre4"
+
 addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.1.1")
 
 addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.14")

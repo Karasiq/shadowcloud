@@ -1,0 +1,25 @@
+// Index wrappers
+syntax = "proto3";
+option java_package = "com.karasiq.shadowcloud.serialization.protobuf";
+import "scalapb/scalapb.proto";
+
+option (scalapb.options) = {
+  import: "com.karasiq.shadowcloud.utils.ProtobufUtils._"
+};
+
+message EncryptedIndexData {
+    bytes keysId = 1 [(scalapb.field).type = "java.util.UUID"];
+    bytes header = 2 [(scalapb.field).type = "akka.util.ByteString"];
+    bytes data = 3 [(scalapb.field).type = "akka.util.ByteString"];
+    bytes signature = 4 [(scalapb.field).type = "akka.util.ByteString"];
+}
+
+message SerializedIndexData {
+    enum Compression {
+        NONE = 0;
+        GZIP = 1;
+    }
+
+    Compression compression = 1;
+    bytes data = 16 [(scalapb.field).type = "akka.util.ByteString"];
+}

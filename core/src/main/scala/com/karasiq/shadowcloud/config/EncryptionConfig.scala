@@ -1,16 +1,21 @@
 package com.karasiq.shadowcloud.config
 
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto.EncryptionMethod
-import com.typesafe.config.ConfigException
-
 import scala.language.postfixOps
 
-private[shadowcloud] case class EncryptionConfig(chunks: EncryptionMethod)
+import com.typesafe.config.ConfigException
+
+import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.shadowcloud.crypto.EncryptionMethod
+
+private[shadowcloud] case class EncryptionConfig(chunks: EncryptionMethod, index: EncryptionMethod, keys: EncryptionMethod)
 
 private[shadowcloud] object EncryptionConfig extends ConfigImplicits {
   def apply(config: Config): EncryptionConfig = {
-    EncryptionConfig(getEncryptionMethod(config, "chunks"))
+    EncryptionConfig(
+      getEncryptionMethod(config, "chunks"),
+      getEncryptionMethod(config, "index"),
+      getEncryptionMethod(config, "keys")
+    )
   }
 
   private[this] def getEncryptionMethod(config: Config, path: String): EncryptionMethod = {

@@ -13,6 +13,18 @@ val commonSettings = Seq(
 lazy val model = crossProject
   .crossType(CrossType.Pure)
   .settings(commonSettings)
+  .settings(
+    PB.targets in Compile := Seq(
+      scalapb.gen() → (sourceManaged in Compile).value
+    ),
+    PB.protoSources in Compile := Seq(
+      (baseDirectory in Compile).value.getParentFile / "src" / "main" / "protobuf"
+    ),
+    libraryDependencies ++= Seq(
+      "com.trueaccord.scalapb" %% "scalapb-runtime" % com.trueaccord.scalapb.compiler.Version.scalapbVersion,
+      "com.trueaccord.scalapb" %% "scalapb-runtime" % com.trueaccord.scalapb.compiler.Version.scalapbVersion % "protobuf"
+    )
+  )
   .jvmSettings(libraryDependencies ++= ProjectDeps.akka.actors)
   .jsSettings(ScalaJSDeps.akka.actors)
 

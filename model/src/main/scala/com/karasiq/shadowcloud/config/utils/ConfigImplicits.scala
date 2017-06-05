@@ -39,6 +39,10 @@ trait ConfigImplicits {
       }
     }
 
+    def getClass[T](path: String): Class[T] = {
+      Class.forName(config.getString(path)).asInstanceOf[Class[T]]
+    }
+
     @inline 
     def withDefault[T](default: T, value: Config ⇒ T): T = {
       try {

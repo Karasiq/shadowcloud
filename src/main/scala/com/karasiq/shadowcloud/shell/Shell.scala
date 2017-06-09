@@ -15,6 +15,12 @@ object Shell extends ImplicitConversions {
   import context._
   import sc.actors.regionSupervisor
 
+  def init(): Unit = {
+    // Request password
+    sc.password.masterPassword
+    println(sc.keys.provider.forEncryption())
+  }
+
   def openRegion(regionId: String): RegionContext = {
     RegionContext(regionId)
   }

@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.actors
 
 import scala.language.postfixOps
 
-import akka.actor.{Actor, Props, Stash}
+import akka.actor.{Actor, Props, Stash, Terminated}
 
 import com.karasiq.shadowcloud.actors.utils.ContainerActor
 import com.karasiq.shadowcloud.actors.StorageContainer.SetProps
@@ -28,7 +28,21 @@ class StorageContainer(instantiator: StorageInstantiator, storageId: String) ext
   }
 
   def startActor(): Unit = {
-    val actor = instantiator.createStorage(storageId, storageProps)
+    val actor = context.actorOf(Props(new Actor {
+      val storage = instantiator.createStorage(storageId, storageProps)
+      context.watch(storage)
+
+      def receive: Receive = {
+        case Terminated(`storage`) ⇒
+          context.stop(self)
+
+        case msg if sender() == storage ⇒
+          context.parent ! msg
+
+        case msg ⇒
+          storage.forward(msg)
+      }
+    }))
     afterStart(actor)
   }
 }

@@ -1,5 +1,7 @@
 package com.karasiq.shadowcloud
 
+import java.util.UUID
+
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -11,8 +13,11 @@ import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.StringEventBus
 import com.karasiq.shadowcloud.config.{AppConfig, RegionConfig, StorageConfig}
+import com.karasiq.shadowcloud.config.keys.KeySet
 import com.karasiq.shadowcloud.providers.ModuleRegistry
+import com.karasiq.shadowcloud.serialization.SerializationModules
 import com.karasiq.shadowcloud.streams._
+import com.karasiq.shadowcloud.utils.AppPasswordProvider
 
 object ShadowCloud extends ExtensionId[ShadowCloudExtension] with ExtensionIdProvider {
   def apply()(implicit context: ActorContext): ShadowCloudExtension = {
@@ -33,7 +38,7 @@ class ShadowCloudExtension(system: ExtendedActorSystem) extends Extension {
   // Context
   // -----------------------------------------------------------------------
   object implicits {
-    // implicit val actorSystem = system
+    implicit val actorSystem = system
     implicit val executionContext = system.dispatcher
     implicit val materializer = ActorMaterializer()(system)
     implicit val defaultTimeout = Timeout(5 seconds)
@@ -47,6 +52,8 @@ class ShadowCloudExtension(system: ExtendedActorSystem) extends Extension {
   val rootConfig = system.settings.config.getConfig("shadowcloud")
   val config = AppConfig(rootConfig)
   val modules = ModuleRegistry(config)
+  val serialization = SerializationModules.fromActorSystem(system)
+  val password = new AppPasswordProvider(rootConfig)
 
   def regionConfig(regionId: String): RegionConfig = {
     RegionConfig.forId(regionId, rootConfig)
@@ -57,6 +64,12 @@ class ShadowCloudExtension(system: ExtendedActorSystem) extends Extension {
   }
 
   object keys {
+    def generateKeySet(): KeySet = {
+      val enc = modules.encryptionModule(config.crypto.encryption.keys).createParameters()
+      val sign = modules.signModule(config.crypto.signing.index).createParameters()
+      KeySet(UUID.randomUUID(), sign, enc)
+    }
+
     val provider = config.crypto.keyProvider.getConstructor(classOf[ShadowCloudExtension]).newInstance(ShadowCloudExtension.this)
   }
 

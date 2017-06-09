@@ -1,5 +1,5 @@
-import sbt.Keys.libraryDependencies
 import sbt._
+import sbt.Keys.libraryDependencies
 
 object ProjectDeps {
   type Deps = Seq[ModuleID]
@@ -54,5 +54,10 @@ object ProjectDeps {
 
   def libSodiumJni: Deps = Seq(
     "com.github.karasiq" % "kalium-fork" % "0.6.2" % "compile"
+  )
+
+  def h2: Deps = Seq(
+    "com.h2database" % "h2" % "1.4.192",
+    "io.getquill" %% "quill-jdbc" % "1.2.1"
   )
 }

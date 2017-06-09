@@ -4,5 +4,5 @@ import java.util.UUID
 
 trait KeyProvider {
   def forEncryption(): KeySet
-  def forId(keyId: UUID): KeySet
+  def forDecryption(keyId: UUID): KeySet
 }

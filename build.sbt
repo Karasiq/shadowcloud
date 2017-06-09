@@ -1,3 +1,5 @@
+import com.github.sbtliquibase.SbtLiquibase
+
 val commonSettings = Seq(
   organization := "com.github.karasiq",
   version := "1.0.0-SNAPSHOT",
@@ -38,6 +40,13 @@ lazy val modelJS = model.js
 lazy val core = project
   .settings(commonSettings)
   .dependsOn(modelJVM, storageParent, cryptoParent, bouncyCastleCrypto, libSodiumCrypto)
+
+lazy val persistence = project
+  .settings(commonSettings)
+  .settings(
+    libraryDependencies ++= ProjectDeps.akka.persistence ++ ProjectDeps.h2
+  )
+  .dependsOn(core)
 
 // -----------------------------------------------------------------------
 // Plugins
@@ -95,6 +104,15 @@ lazy val shell = (project in file("."))
   .settings(
     name := "shadowcloud-shell",
     mainClass in Compile := Some("com.karasiq.shadowcloud.test.Benchmark"),
-    initialCommands in console := """import com.karasiq.shadowcloud.shell.Shell._"""
+    initialCommands in console :=
+      """import com.karasiq.shadowcloud.shell.Shell._
+        |init()
+        |""".stripMargin,
+    liquibaseUsername := "sa",
+    liquibasePassword := s"${sys.props("shadowcloud.master-password").ensuring(_.ne(null), "No password").replace(' ', '_')} sa",
+    liquibaseDriver   := "org.h2.Driver",
+    liquibaseUrl      := s"jdbc:h2:file:${sys.props.getOrElse("shadowcloud.persistence.h2.path", s"${sys.props("user.home")}/.shadowcloud/shadowcloud")};CIPHER=${sys.props.getOrElse("shadowcloud.persistence.h2.cipher", "AES")}",
+    liquibaseChangelog := file("src/main/migrations/changelog.sql")
   )
-  .dependsOn(core)
+  .dependsOn(core, persistence)
+  .enablePlugins(SbtLiquibase)

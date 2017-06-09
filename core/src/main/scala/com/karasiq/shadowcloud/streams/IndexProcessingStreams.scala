@@ -107,7 +107,7 @@ final class IndexProcessingStreams(val modules: ModuleRegistry, val config: AppC
 
       def onPush(): Unit = {
         val element = grab(inlet)
-        push(outlet, encryption.decrypt(element, keyProvider.forId(element.keysId)))
+        push(outlet, encryption.decrypt(element, keyProvider.forDecryption(element.keysId)))
       }
 
       setHandlers(inlet, outlet, this)

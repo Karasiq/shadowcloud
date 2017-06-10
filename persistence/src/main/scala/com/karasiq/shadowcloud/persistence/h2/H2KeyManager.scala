@@ -1,6 +1,5 @@
 package com.karasiq.shadowcloud.persistence.h2
 
-import java.nio.ByteBuffer
 import java.util.UUID
 
 import scala.language.postfixOps
@@ -9,33 +8,22 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.persistence.KeyManager
-import com.karasiq.shadowcloud.persistence.model.DBKey
+import com.karasiq.shadowcloud.persistence.utils.SCQuillEncoders
 
 class H2KeyManager(h2: H2DBExtension) extends KeyManager {
   import h2.sc
   import h2.context.db
   import db._
 
-  private[this] object encoders {
-    private[this] def uuidToBytes(uuid: UUID): Array[Byte] = {
-      val bb = ByteBuffer.allocate(16)
-      bb.putLong(uuid.getMostSignificantBits)
-      bb.putLong(uuid.getLeastSignificantBits)
-      bb.flip()
-      bb.array()
-    }
+  private[this] object schema extends SCQuillEncoders {
+    case class DBKey(id: UUID, forEncryption: Boolean, forDecryption: Boolean, key: ByteString)
 
-    private[this] def bytesToUuid(bytes: Array[Byte]): UUID = {
-      val bb = ByteBuffer.wrap(bytes, 0, 16)
-      new UUID(bb.getLong, bb.getLong)
-    }
-
-    //implicit val encodeUUID = MappedEncoding[UUID, Array[Byte]](uuidToBytes)
-    //implicit val decodeUUID = MappedEncoding[Array[Byte], UUID](bytesToUuid)
-
-    implicit val encodeByteString = MappedEncoding[ByteString, Array[Byte]](_.toArray)
-    implicit val decodeByteString = MappedEncoding[Array[Byte], ByteString](ByteString.fromArray)
+    implicit val keySchemaMeta = schemaMeta[DBKey]("sc_keys", _.id → "key_id",
+      _.forEncryption → "for_encryption", _.forDecryption → "for_decryption",
+      _.key → "serialized_key")
   }
+
+  import schema._
 
   //noinspection TypeAnnotation
   private[this] object queries {

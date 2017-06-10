@@ -18,6 +18,6 @@ private object H2Context {
   }
 }
 
-final class H2Context(config: Config, password: String) extends H2Tables {
+final class H2Context(config: Config, password: String) {
   lazy val db = new H2JdbcContext[SnakeCase](H2Context.createJdbcConfig(config, password))
 }

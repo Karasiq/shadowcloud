@@ -53,11 +53,12 @@ object Shell extends ImplicitConversions {
       .get("shadowcloud.temp-storage-dir")
       .fold(Files.createTempDirectory("sc-shell"))(toFSPath)
   }
-  val testRegion = createRegion("test")
-  val testStorage = createStorage("test", StorageProps.fromDirectory(tempDirectory))
-  testRegion.register(testStorage)
 
   def test(): Unit = {
+    val testRegion = createRegion("test")
+    val testStorage = createStorage("test", StorageProps.fromDirectory(tempDirectory))
+    testRegion.register(testStorage)
+
     testRegion.upload("LICENSE", "LICENSE")
     Thread.sleep(5000)
     Files.deleteIfExists("LICENSE_remote")

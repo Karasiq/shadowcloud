@@ -13,8 +13,10 @@ create table sc_akka_journal (
   ordering BIGINT AUTO_INCREMENT NOT NULL,
   persistence_id VARCHAR(255) NOT NULL,
   sequence_nr BIGINT NOT NULL,
-  deleted BOOLEAN NOT NULL,
+  deleted BOOLEAN NOT NULL DEFAULT FALSE,
   tags ARRAY NOT NULL,
   message VARBINARY NOT NULL,
   PRIMARY KEY (ordering, persistence_id, sequence_nr)
 );
+
+CREATE INDEX message_index ON sc_akka_journal (persistence_id, sequence_nr ASC, deleted);

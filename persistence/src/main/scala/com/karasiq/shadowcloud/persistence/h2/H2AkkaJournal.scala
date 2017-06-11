@@ -56,23 +56,19 @@ class H2AkkaJournal extends AsyncWriteJournal {
         .update(_.deleted → true)
     }
 
-    def lastForPersistenceId(persistenceId: String) = quote {
-      query[JournalRow]
-        .filter(jr ⇒ jr.persistenceId == lift(persistenceId) && !jr.deleted)
-        .sortBy(_.sequenceNr)(Ord.desc)
-    }
-
     def messagesForPersistenceId(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Int) = quote {
       query[JournalRow]
         .filter(jr ⇒ jr.persistenceId == lift(persistenceId) && jr.sequenceNr >= lift(fromSequenceNr) && jr.sequenceNr <= lift(toSequenceNr) && !jr.deleted)
         .sortBy(_.sequenceNr)(Ord.asc)
+        .map(_.message)
         .take(lift(max))
     }
 
     def highestSequenceNr(persistenceId: String) = quote {
-      lastForPersistenceId(persistenceId)
+      query[JournalRow]
+        .filter(jr ⇒ jr.persistenceId == lift(persistenceId) && !jr.deleted)
         .map(_.sequenceNr)
-        .take(1)
+        .max
     }
   }
 
@@ -97,23 +93,27 @@ class H2AkkaJournal extends AsyncWriteJournal {
   }
 
   def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long): Future[Unit] = {
-    Future.fromTry(Try(db.run(queries.markAsDeleted(persistenceId, toSequenceNr))))
+    val query = queries.markAsDeleted(persistenceId, toSequenceNr)
+    Future.fromTry(Try(db.run(query)))
   }
 
   def asyncReplayMessages(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Long)
                          (recoveryCallback: (PersistentRepr) => Unit): Future[Unit] = {
-    def toPersistentRepr(jr: JournalRow): PersistentRepr = {
-      serializer.fromBinary(jr.message.toArray, classOf[PersistentRepr]).asInstanceOf[PersistentRepr]
+    def deserialize(message: ByteString): PersistentRepr = {
+      serializer.fromBinary(message.toArray, classOf[PersistentRepr]).asInstanceOf[PersistentRepr]
     }
+    val maxInt = Math.min(max, Int.MaxValue).toInt
+    val query = queries.messagesForPersistenceId(persistenceId, fromSequenceNr, toSequenceNr, maxInt)
     Source
-      .fromFuture(Future.fromTry(Try(db.run(queries.messagesForPersistenceId(persistenceId, fromSequenceNr, toSequenceNr, Math.min(max, Int.MaxValue).toInt)))))
+      .fromFuture(Future.fromTry(Try(db.run(query))))
       .mapConcat(identity)
-      .map(toPersistentRepr)
+      .map(deserialize)
       .runForeach(recoveryCallback)
       .map(_ ⇒ ())
   }
 
   def asyncReadHighestSequenceNr(persistenceId: String, fromSequenceNr: Long): Future[Long] = {
-    Future.fromTry(Try(db.run(queries.highestSequenceNr(persistenceId)).headOption.getOrElse(0)))
+    val query = queries.highestSequenceNr(persistenceId)
+    Future.fromTry(Try(db.run(query).getOrElse(0L)))
   }
 }

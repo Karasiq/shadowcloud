@@ -7,22 +7,19 @@ import scala.util.Try
 import akka.persistence.{AtomicWrite, PersistentRepr}
 import akka.persistence.journal.{AsyncWriteJournal, Tagged}
 import akka.serialization.SerializationExtension
-import akka.stream.ActorAttributes
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.persistence.utils.SCQuillEncoders
 
-class H2AkkaJournal extends AsyncWriteJournal {
+final class H2AkkaJournal extends AsyncWriteJournal {
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
   private[this] val h2DB = H2DB(context.system)
-  private[this] val serializer = SerializationExtension(context.system).serializerFor(classOf[PersistentRepr])
 
   import context.dispatcher
-  import h2DB.context.db
-  import db._
+  import h2DB.context.db.{run => runQuery, _}
   import h2DB.sc.implicits.materializer
 
   // -----------------------------------------------------------------------
@@ -56,12 +53,10 @@ class H2AkkaJournal extends AsyncWriteJournal {
         .update(_.deleted → true)
     }
 
-    def messagesForPersistenceId(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Int) = quote {
+    def messagesForPersistenceId(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long) = quote {
       query[JournalRow]
         .filter(jr ⇒ jr.persistenceId == lift(persistenceId) && jr.sequenceNr >= lift(fromSequenceNr) && jr.sequenceNr <= lift(toSequenceNr) && !jr.deleted)
         .sortBy(_.sequenceNr)(Ord.asc)
-        .map(_.message)
-        .take(lift(max))
     }
 
     def highestSequenceNr(persistenceId: String) = quote {
@@ -73,47 +68,64 @@ class H2AkkaJournal extends AsyncWriteJournal {
   }
 
   // -----------------------------------------------------------------------
+  // Conversions
+  // -----------------------------------------------------------------------
+  private[this] object conversions {
+    private[this] val serializer = SerializationExtension(context.system).serializerFor(classOf[PersistentRepr])
+
+    def deserialize(message: ByteString): PersistentRepr = {
+      serializer.fromBinary(message.toArray, classOf[PersistentRepr]).asInstanceOf[PersistentRepr]
+    }
+
+    def serialize(pr: PersistentRepr): ByteString = {
+      ByteString(serializer.toBinary(pr))
+    }
+
+    def toJournalRow(pr: PersistentRepr): JournalRow = {
+      val (serialized, tags) = pr.payload match {
+        case Tagged(payload, tags) ⇒
+          serialize(pr.withPayload(payload)) → tags
+
+        case _ ⇒
+          serialize(pr) → Set.empty[String]
+      }
+      JournalRow(0L, pr.persistenceId, pr.sequenceNr, pr.deleted, tags, serialized)
+    }
+  }
+
+  // -----------------------------------------------------------------------
   // Write functions
   // -----------------------------------------------------------------------
   def asyncWriteMessages(messages: immutable.Seq[AtomicWrite]): Future[immutable.Seq[Try[Unit]]] = {
-    def toJournalRow(pr: PersistentRepr, tags: Set[String]): JournalRow = {
-      JournalRow(Long.MinValue, pr.persistenceId, pr.sequenceNr, pr.deleted, tags, ByteString(serializer.toBinary(pr)))
-    }
     Source(messages)
-      .map(_.payload.map(pr ⇒ pr.payload match {
-        case Tagged(payload, tags) ⇒
-          toJournalRow(pr.withPayload(payload), tags)
-
-        case _ ⇒
-          toJournalRow(pr, Set.empty)
-      }))
-      .map(rows ⇒ Try(db.run(queries.write(rows.toList))).map(_ ⇒ ()))
-      .addAttributes(ActorAttributes.dispatcher("shadowcloud.persistence.h2.dispatcher"))
+      .map(_.payload.map(conversions.toJournalRow))
+      .mapAsync(1)(rows ⇒ Future(Try[Unit](runQuery(queries.write(rows.toList)))))
       .runWith(Sink.seq)
   }
 
   def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long): Future[Unit] = {
     val query = queries.markAsDeleted(persistenceId, toSequenceNr)
-    Future.fromTry(Try(db.run(query)))
+    Future.fromTry(Try(runQuery(query)))
   }
 
   def asyncReplayMessages(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Long)
-                         (recoveryCallback: (PersistentRepr) => Unit): Future[Unit] = {
-    def deserialize(message: ByteString): PersistentRepr = {
-      serializer.fromBinary(message.toArray, classOf[PersistentRepr]).asInstanceOf[PersistentRepr]
-    }
+                         (recoveryCallback: (PersistentRepr) ⇒ Unit): Future[Unit] = {
     val maxInt = Math.min(max, Int.MaxValue).toInt
-    val query = queries.messagesForPersistenceId(persistenceId, fromSequenceNr, toSequenceNr, maxInt)
+    val query = quote {
+      queries.messagesForPersistenceId(persistenceId, fromSequenceNr, toSequenceNr)
+        .take(lift(maxInt))
+        .map(_.message)
+    }
     Source
-      .fromFuture(Future.fromTry(Try(db.run(query))))
+      .fromFuture(Future.fromTry(Try(runQuery(query))))
       .mapConcat(identity)
-      .map(deserialize)
+      .map(conversions.deserialize)
       .runForeach(recoveryCallback)
       .map(_ ⇒ ())
   }
 
   def asyncReadHighestSequenceNr(persistenceId: String, fromSequenceNr: Long): Future[Long] = {
     val query = queries.highestSequenceNr(persistenceId)
-    Future.fromTry(Try(db.run(query).getOrElse(0L)))
+    Future.fromTry(Try(runQuery(query).getOrElse(0L)))
   }
 }

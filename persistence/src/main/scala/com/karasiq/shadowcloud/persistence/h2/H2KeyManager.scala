@@ -10,7 +10,7 @@ import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.persistence.KeyManager
 import com.karasiq.shadowcloud.persistence.utils.SCQuillEncoders
 
-class H2KeyManager(h2: H2DBExtension) extends KeyManager {
+final class H2KeyManager(h2: H2DBExtension) extends KeyManager {
   import h2.sc
   import h2.context.db
   import db._

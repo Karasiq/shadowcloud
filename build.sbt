@@ -104,9 +104,13 @@ lazy val shell = (project in file("."))
   .settings(
     name := "shadowcloud-shell",
     mainClass in Compile := Some("com.karasiq.shadowcloud.test.Benchmark"),
+    libraryDependencies ++= Seq(
+      "org.slf4j" % "slf4j-simple" % "1.7.5"
+    ),
     initialCommands in console :=
       """import com.karasiq.shadowcloud.shell.Shell._
         |init()
+        |test()
         |""".stripMargin,
     liquibaseUsername := "sa",
     liquibasePassword := s"${sys.props("shadowcloud.master-password").ensuring(_.ne(null), "No password").replace(' ', '_')} sa",

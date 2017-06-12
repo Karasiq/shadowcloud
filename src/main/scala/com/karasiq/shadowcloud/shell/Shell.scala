@@ -16,8 +16,17 @@ object Shell extends ImplicitConversions {
   import sc.actors.regionSupervisor
 
   def init(): Unit = {
-    // Request password
-    sc.password.masterPassword
+    // TODO: sc.start() function
+    sc.password.masterPassword // Request password
+    sc.actors.regionSupervisor // Start actor
+
+    val state = Await.result(sc.ops.supervisor.getState(), Duration.Inf)
+    if (!state.regions.contains("test") && !state.storages.contains("test")) {
+      val testRegion = createRegion("test")
+      val testStorage = createStorage("test", StorageProps.fromDirectory(tempDirectory))
+      testRegion.register(testStorage)
+    }
+
     println(sc.keys.provider.forEncryption())
   }
 
@@ -55,15 +64,16 @@ object Shell extends ImplicitConversions {
   }
 
   def test(): Unit = {
-    val testRegion = createRegion("test")
-    val testStorage = createStorage("test", StorageProps.fromDirectory(tempDirectory))
-    testRegion.register(testStorage)
-
+    val testRegion = openRegion("test")
+    val testStorage = openStorage("test")
+    
     testRegion.upload("LICENSE", "LICENSE")
     Thread.sleep(5000)
     Files.deleteIfExists("LICENSE_remote")
     testRegion.download("LICENSE_remote", "LICENSE")
     Thread.sleep(5000)
-    testRegion.deleteFile("LICENSE")
+    // testRegion.deleteFile("LICENSE")
+    testStorage.collectGarbage()
+    testStorage.compactIndex(testRegion.regionId)
   }
 }

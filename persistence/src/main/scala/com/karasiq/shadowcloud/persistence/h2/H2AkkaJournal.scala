@@ -26,7 +26,7 @@ final class H2AkkaJournal extends AsyncWriteJournal {
   // Schema
   // -----------------------------------------------------------------------
   private[this] object schema extends SCQuillEncoders {
-    case class JournalRow(ordering: Long, persistenceId: String, sequenceNr: Long, deleted: Boolean, tags: Set[String], message: ByteString)
+    case class DBMessage(ordering: Long, persistenceId: String, sequenceNr: Long, tags: Set[String], message: ByteString)
 
     implicit val tagsEncoder: Encoder[Set[String]] = encoder(java.sql.Types.ARRAY, (index, value, row) ⇒
       row.setObject(index, value.toArray, java.sql.Types.ARRAY))
@@ -35,33 +35,33 @@ final class H2AkkaJournal extends AsyncWriteJournal {
       row.getArray(index).getArray().asInstanceOf[Array[java.lang.Object]].toSet.asInstanceOf[Set[String]]
     )
 
-    implicit val journalRowSchemaMeta = schemaMeta[JournalRow]("sc_akka_journal")
+    implicit val journalRowSchemaMeta = schemaMeta[DBMessage]("sc_akka_journal")
   }
 
   import schema._
 
   //noinspection TypeAnnotation
   private[this] object queries {
-    def write(messages: List[JournalRow]) = quote {
+    def saveMessages(messages: List[DBMessage]) = quote {
       liftQuery(messages)
-        .foreach(jr ⇒ query[JournalRow].insert(jr).returning(_.ordering))
+        .foreach(jr ⇒ query[DBMessage].insert(jr).returning(_.ordering))
     }
 
-    def markAsDeleted(persistenceId: String, toSequenceNr: Long) = quote {
-      query[JournalRow]
+    def deleteMessages(persistenceId: String, toSequenceNr: Long) = quote {
+      query[DBMessage]
         .filter(jr ⇒ jr.persistenceId == lift(persistenceId) && jr.sequenceNr <= lift(toSequenceNr))
-        .update(_.deleted → true)
+        .delete
     }
 
     def messagesForPersistenceId(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long) = quote {
-      query[JournalRow]
-        .filter(jr ⇒ jr.persistenceId == lift(persistenceId) && jr.sequenceNr >= lift(fromSequenceNr) && jr.sequenceNr <= lift(toSequenceNr) && !jr.deleted)
+      query[DBMessage]
+        .filter(jr ⇒ jr.persistenceId == lift(persistenceId) && jr.sequenceNr >= lift(fromSequenceNr) && jr.sequenceNr <= lift(toSequenceNr))
         .sortBy(_.sequenceNr)(Ord.asc)
     }
 
     def highestSequenceNr(persistenceId: String) = quote {
-      query[JournalRow]
-        .filter(jr ⇒ jr.persistenceId == lift(persistenceId) && !jr.deleted)
+      query[DBMessage]
+        .filter(jr ⇒ jr.persistenceId == lift(persistenceId))
         .map(_.sequenceNr)
         .max
     }
@@ -81,7 +81,7 @@ final class H2AkkaJournal extends AsyncWriteJournal {
       ByteString(serializer.toBinary(pr))
     }
 
-    def toJournalRow(pr: PersistentRepr): JournalRow = {
+    def toJournalRow(pr: PersistentRepr): DBMessage = {
       val (serialized, tags) = pr.payload match {
         case Tagged(payload, tags) ⇒
           serialize(pr.withPayload(payload)) → tags
@@ -89,7 +89,7 @@ final class H2AkkaJournal extends AsyncWriteJournal {
         case _ ⇒
           serialize(pr) → Set.empty[String]
       }
-      JournalRow(0L, pr.persistenceId, pr.sequenceNr, pr.deleted, tags, serialized)
+      DBMessage(0L, pr.persistenceId, pr.sequenceNr, tags, serialized)
     }
   }
 
@@ -98,13 +98,13 @@ final class H2AkkaJournal extends AsyncWriteJournal {
   // -----------------------------------------------------------------------
   def asyncWriteMessages(messages: immutable.Seq[AtomicWrite]): Future[immutable.Seq[Try[Unit]]] = {
     Source(messages)
-      .map(_.payload.map(conversions.toJournalRow))
-      .mapAsync(1)(rows ⇒ Future(Try[Unit](runQuery(queries.write(rows.toList)))))
+      .map(_.payload.filterNot(_.deleted).map(conversions.toJournalRow))
+      .mapAsync(1)(rows ⇒ Future(Try[Unit](runQuery(queries.saveMessages(rows.toList)))))
       .runWith(Sink.seq)
   }
 
   def asyncDeleteMessagesTo(persistenceId: String, toSequenceNr: Long): Future[Unit] = {
-    val query = queries.markAsDeleted(persistenceId, toSequenceNr)
+    val query = queries.deleteMessages(persistenceId, toSequenceNr)
     Future.fromTry(Try(runQuery(query)))
   }
 

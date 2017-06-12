@@ -19,6 +19,10 @@ private[shell] final class StorageContext(val storageId: String)(implicit contex
     storage.collectGarbage(storageId, force = true)
   }
 
+  def compactIndex(region: String): Unit = {
+    storage.compactIndex(storageId, region)
+  }
+
   def terminate(): Unit ={
     supervisor.deleteStorage(storageId)
   }

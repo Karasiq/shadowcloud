@@ -58,7 +58,7 @@ final class H2AkkaSnapshotStore extends SnapshotStore {
       ByteString(serializer.toBinary(Snapshot(data)))
     }
 
-    private[this] def deserializeSnapshot(data: ByteString) = {
+    private[this] def deserializeSnapshot(data: ByteString): Any = {
       serializer.fromBinary(data.toArray, classOf[Snapshot]).asInstanceOf[Snapshot].data
     }
 

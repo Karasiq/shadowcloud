@@ -204,7 +204,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   // Default receive
   // -----------------------------------------------------------------------
   override def receiveRecover: Receive = {
-    case SnapshotOffer(metadata, Snapshot(diffs)) ⇒ // TODO: Save snapshots
+    case SnapshotOffer(metadata, Snapshot(diffs)) ⇒
       log.debug("Loading snapshot: {}", metadata)
       updateState(IndexLoaded(diffs))
 

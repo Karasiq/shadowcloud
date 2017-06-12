@@ -66,9 +66,19 @@ object Shell extends ImplicitConversions {
   def test(): Unit = {
     val testRegion = openRegion("test")
     val testStorage = openStorage("test")
-    
-    testRegion.upload("LICENSE", "LICENSE")
+
+    testStorage.sync()
     Thread.sleep(5000)
+
+    val root = Await.result(testRegion.getDir("/"), Duration.Inf)
+    if (!root.files.exists(_.path.name == "LICENSE")) {
+      println("Uploading file")
+      testRegion.upload("LICENSE", "LICENSE")
+      testStorage.sync()
+      Thread.sleep(5000)
+    }
+
+    println("Downloading file")
     Files.deleteIfExists("LICENSE_remote")
     testRegion.download("LICENSE_remote", "LICENSE")
     Thread.sleep(5000)

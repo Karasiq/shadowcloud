@@ -1,10 +1,12 @@
 package com.karasiq.shadowcloud.streams
 
 import scala.language.postfixOps
+import scala.util.control.NonFatal
 
 import akka.NotUsed
 import akka.actor.ActorSystem
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+import akka.event.Logging
+import akka.stream._
 import akka.stream.scaladsl.{Compression, Flow, Source}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
@@ -12,6 +14,7 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.config.{AppConfig, CryptoConfig, StorageConfig}
 import com.karasiq.shadowcloud.config.keys.{KeyProvider, KeySet}
 import com.karasiq.shadowcloud.crypto.index.IndexEncryption
+import com.karasiq.shadowcloud.exceptions.IndexException
 import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.providers.ModuleRegistry
 import com.karasiq.shadowcloud.serialization.{SerializationModules, StreamSerialization}
@@ -66,6 +69,7 @@ final class IndexProcessingStreams(val modules: ModuleRegistry, val config: AppC
     .map(bs ⇒ EncryptedIndexData.parseFrom(bs.toArray))
     .via(decrypt)
     .via(deserialize)
+    .addAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
 
   private final class IndexEncryptStage(modules: ModuleRegistry, config: CryptoConfig, keys: KeySet)
     extends GraphStage[FlowShape[ByteString, EncryptedIndexData]] {
@@ -98,8 +102,18 @@ final class IndexProcessingStreams(val modules: ModuleRegistry, val config: AppC
     val shape = FlowShape(inlet, outlet)
 
     def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
+      private[this] val log = Logging(as, "IndexDecryptStage")
       private[this] val encryption = new IndexEncryption(modules, config.encryption.keys,
         config.signing.index, serializationModule)
+
+      private[this] def decrypt(data: EncryptedIndexData): ByteString = {
+        val key = try {
+          keyProvider.forDecryption(data.keysId)
+        } catch { case NonFatal(exc) ⇒
+          throw IndexException.KeyMissing(data.keysId, exc)
+        }
+        encryption.decrypt(data, key)
+      }
 
       def onPull(): Unit = {
         tryPull(inlet)
@@ -107,7 +121,12 @@ final class IndexProcessingStreams(val modules: ModuleRegistry, val config: AppC
 
       def onPush(): Unit = {
         val element = grab(inlet)
-        push(outlet, encryption.decrypt(element, keyProvider.forDecryption(element.keysId)))
+        try {
+          val result = decrypt(element)
+          push(outlet, result)
+        } catch { case NonFatal(exc) ⇒
+          log.error(exc, "Index file decrypt error")
+        }
       }
 
       setHandlers(inlet, outlet, this)

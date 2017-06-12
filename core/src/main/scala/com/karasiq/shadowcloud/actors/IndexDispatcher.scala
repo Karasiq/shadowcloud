@@ -61,7 +61,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
-  require(storageId.nonEmpty)
+  require(storageId.nonEmpty, "Invalid storage identifier")
   override val persistenceId: String = s"index_$storageId"
 
   private[this] implicit val actorMaterializer = ActorMaterializer()
@@ -76,21 +76,25 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   // -----------------------------------------------------------------------
   def receiveDefault: Receive = {
     case GetIndexes ⇒
-      val states = index.subIndexes.mapValues(IndexMerger.state)
-      sender() ! GetIndexes.Success(storageId, states)
+      deferAsync(()) { _ ⇒
+        val states = index.subIndexes.mapValues(IndexMerger.state)
+        sender() ! GetIndexes.Success(storageId, states)
+      }
 
     case GetIndex(region) ⇒
-      index.subIndexes.get(region) match {
-        case Some(index) ⇒
-          sender() ! GetIndex.Success(region, IndexMerger.state(index))
+      deferAsync(()) { _ ⇒
+        index.subIndexes.get(region) match {
+          case Some(index) ⇒
+            sender() ! GetIndex.Success(region, IndexMerger.state(index))
 
-        case None ⇒
-          sender() ! GetIndex.Failure(region, StorageException.NotFound(region))
+          case None ⇒
+            sender() ! GetIndex.Failure(region, StorageException.NotFound(region))
+        }
       }
 
     case AddPending(region, diff) ⇒
       log.debug("Pending diff added: {}", diff)
-      persist(PendingIndexUpdated(region, diff))(updateState)
+      persistAsync(PendingIndexUpdated(region, diff))(updateState)
 
     case CompactIndex(region) ⇒
       if (!compactRequested.contains(region)) {
@@ -108,7 +112,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   def receiveWait: Receive = {
     case Synchronize ⇒
       log.debug("Starting synchronization")
-      deferAsync(NotUsed)(_ ⇒ startSync())
+      deferAsync(NotUsed)(_ ⇒ startPreRead())
   }
 
   // -----------------------------------------------------------------------
@@ -136,7 +140,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
       ioResult match {
         case StorageIOResult.Success(path, _) ⇒
           log.info("Remote diff {}/{} received from {}: {}", region, sequenceNr, path, diff)
-          persist(IndexUpdated(region, sequenceNr, diff, remote = true))(updateState)
+          persistAsync(IndexUpdated(region, sequenceNr, diff, remote = true))(updateState)
 
         case StorageIOResult.Failure(path, error) ⇒
           log.error(error, "Diff {}/{} read failed from {}", region, sequenceNr, path)
@@ -149,7 +153,18 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
 
     case StreamCompleted ⇒
       log.debug("Synchronization read completed")
-      deferAsync(NotUsed)(_ ⇒ startWrite())
+      deferAsync(NotUsed)(_ ⇒ startPreWrite())
+  }
+
+  // -----------------------------------------------------------------------
+  // Pre-write state
+  // -----------------------------------------------------------------------
+  def receivePreWrite(loadedKeys: Set[LocalKey] = Set.empty): Receive = {
+    case KeysLoaded(keys) ⇒
+      become(receivePreWrite(loadedKeys ++ keys))
+
+    case StreamCompleted ⇒
+      deferAsync(NotUsed)(_ ⇒ startWrite(loadedKeys))
   }
 
   // -----------------------------------------------------------------------
@@ -159,7 +174,7 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
     case WriteSuccess(IndexIOResult((region, sequenceNr), IndexData(_, _, diff), ioResult)) ⇒ ioResult match {
       case StorageIOResult.Success(path, _) ⇒
         log.debug("Diff {}/{} written to {}: {}", region, sequenceNr, path, diff)
-        persist(IndexUpdated(region, sequenceNr, diff, remote = false))(updateState)
+        persistAsync(IndexUpdated(region, sequenceNr, diff, remote = false))(updateState)
 
       case StorageIOResult.Failure(path, error) ⇒
         log.error(error, "Diff {}/{} write error to {}: {}", region, sequenceNr, path, diff)
@@ -182,9 +197,9 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
       log.info("Compact success: deleted = {}, new = {}", deleted, result)
       val diff = result.diff.diff
       if (diff.isEmpty) {
-        persist(IndexDeleted(result.key._1, deleted))(updateState)
+        persistAsync(IndexDeleted(result.key._1, deleted))(updateState)
       } else {
-        persistAll(List(
+        persistAllAsync(List(
           IndexDeleted(result.key._1, deleted),
           IndexUpdated(result.key._1, result.key._2, diff, remote = false)
         ))(updateState)
@@ -250,11 +265,15 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
   // -----------------------------------------------------------------------
   // Synchronization
   // -----------------------------------------------------------------------
-  private[this] def startSync(): Unit = {
+  private[this] def loadRepositoryKeys(): Unit = {
     repository.keys
-      .fold(Set.empty[(String, Long)])(_ + _)
+      .fold(Set.empty[LocalKey])(_ + _)
       .map(KeysLoaded)
       .runWith(Sink.actorRef(self, StreamCompleted))
+  }
+
+  private[this] def startPreRead(): Unit = {
+    loadRepositoryKeys()
     become(receivePreRead())
   }
 
@@ -289,10 +308,15 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
     deferAsync(Unit)(_ ⇒ becomeRead(keys))
   }
 
+  private[this] def startPreWrite(): Unit = {
+    loadRepositoryKeys()
+    become(receivePreWrite())
+  }
+
   private[this] def toIndexDataWithKey = Flow[(LocalKey, IndexDiff)]
     .map { case (k @ (region, sequenceNr), diff) ⇒ (k, IndexData(region, sequenceNr, diff)) }
 
-  private[this] def startWrite(): Unit = {
+  private[this] def startWrite(keys: Set[LocalKey]): Unit = {
     def becomeWrite(diffs: Seq[(LocalKey, IndexDiff)]): Unit = {
       log.debug("Writing pending diffs: {}", diffs)
       Source(diffs.toVector)
@@ -305,8 +329,9 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
         .runWith(Sink.actorRef(self, StreamCompleted))
       become(receiveWrite)
     }
+    val maxKey = keys.groupBy(_._1).mapValues(_.map(_._2).max).withDefaultValue(0L)
     val pending = for ((region, index) ← index.subIndexes.toVector if index.pending.nonEmpty)
-      yield ((region, index.lastSequenceNr + 1), index.pending)
+      yield ((region, math.max(index.lastSequenceNr, maxKey(region)) + 1), index.pending)
     if (pending.nonEmpty) {
       becomeWrite(pending)
     } else {

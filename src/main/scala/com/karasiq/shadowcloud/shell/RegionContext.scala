@@ -2,11 +2,12 @@ package com.karasiq.shadowcloud.shell
 
 import java.nio.file.{StandardOpenOption, Path => FSPath}
 
+import scala.concurrent.Future
 import scala.language.postfixOps
 
 import akka.stream.scaladsl.FileIO
 
-import com.karasiq.shadowcloud.index.Path
+import com.karasiq.shadowcloud.index.{Folder, Path}
 
 private[shell] object RegionContext {
   def apply(region: String)(implicit context: ShellContext): RegionContext = {
@@ -30,8 +31,12 @@ private[shell] final class RegionContext(val regionId: String)(implicit context:
     supervisor.deleteRegion(regionId)
   }
 
-  def list(path: Path): Unit = {
-    ShellUtils.print(sc.ops.region.getFolder(regionId, path))(ShellUtils.toStrings)
+  def getDir(path: Path): Future[Folder] = {
+    sc.ops.region.getFolder(regionId, path)
+  }
+
+  def listDir(path: Path): Unit = {
+    ShellUtils.print(getDir(path))(ShellUtils.toStrings)
   }
 
   def createDir(path: Path): Unit = {
@@ -40,7 +45,7 @@ private[shell] final class RegionContext(val regionId: String)(implicit context:
     }
   }
 
-  def deleteFolder(path: Path): Unit = {
+  def deleteDir(path: Path): Unit = {
     ShellUtils.print(sc.ops.region.deleteFolder(regionId, path))(ShellUtils.toStrings)
   }
 

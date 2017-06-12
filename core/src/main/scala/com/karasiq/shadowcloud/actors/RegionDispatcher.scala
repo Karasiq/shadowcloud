@@ -57,7 +57,7 @@ object RegionDispatcher {
 
 private final class RegionDispatcher(regionId: String, regionProps: RegionConfig) extends Actor with ActorLogging {
   import RegionDispatcher._
-  require(regionId.nonEmpty)
+  require(regionId.nonEmpty, "Invalid region identifier")
   private[this] implicit val executionContext: ExecutionContext = context.dispatcher
   private[this] implicit val timeout = Timeout(10 seconds)
   private[this] val sc = ShadowCloud()

@@ -114,8 +114,13 @@ lazy val shell = (project in file("."))
         |""".stripMargin,
     liquibaseUsername := "sa",
     liquibasePassword := s"${sys.props("shadowcloud.master-password").ensuring(_.ne(null), "No password").replace(' ', '_')} sa",
-    liquibaseDriver   := "org.h2.Driver",
-    liquibaseUrl      := s"jdbc:h2:file:${sys.props.getOrElse("shadowcloud.persistence.h2.path", s"${sys.props("user.home")}/.shadowcloud/shadowcloud")};CIPHER=${sys.props.getOrElse("shadowcloud.persistence.h2.cipher", "AES")}",
+    liquibaseDriver := "org.h2.Driver",
+    liquibaseUrl := {
+      val path = sys.props.getOrElse("shadowcloud.persistence.h2.path", s"${sys.props("user.home")}/.shadowcloud/shadowcloud")
+      val cipher = sys.props.getOrElse("shadowcloud.persistence.h2.cipher", "AES")
+      val compress = sys.props.getOrElse("shadowcloud.persistence.h2.compress", true)
+      s"jdbc:h2:file:$path;CIPHER=$cipher;COMPRESS=$compress"
+    },
     liquibaseChangelog := file("src/main/migrations/changelog.sql")
   )
   .dependsOn(core, persistence)

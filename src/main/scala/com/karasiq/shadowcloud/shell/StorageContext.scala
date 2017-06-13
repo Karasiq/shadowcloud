@@ -15,15 +15,15 @@ private[shell] final class StorageContext(val storageId: String)(implicit contex
     storage.synchronize(storageId)
   }
 
-  def collectGarbage(): Unit = {
-    storage.collectGarbage(storageId, force = true)
+  def collectGarbage(delete: Boolean = false): Unit = {
+    storage.collectGarbage(storageId, startNow = true, delete)
   }
 
   def compactIndex(region: String): Unit = {
     storage.compactIndex(storageId, region)
   }
 
-  def terminate(): Unit ={
+  def terminate(): Unit = {
     supervisor.deleteStorage(storageId)
   }
 }

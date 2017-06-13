@@ -23,8 +23,8 @@ final class StorageOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext
     regionSupervisor ! StorageEnvelope(storageId, Synchronize)
   }
 
-  def collectGarbage(storageId: String, force: Boolean = false): Unit = {
-    regionSupervisor ! StorageEnvelope(storageId, CollectGarbage(force))
+  def collectGarbage(storageId: String, startNow: Boolean = false, delete: Boolean = false): Unit = {
+    regionSupervisor ! StorageEnvelope(storageId, CollectGarbage(startNow, delete))
   }
 
   def compactIndex(storageId: String, region: String): Unit = {

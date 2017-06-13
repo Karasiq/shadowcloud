@@ -12,10 +12,17 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 
 object Shell extends ImplicitConversions {
   private[this] implicit val context = ShellContext()
+
   import context._
   import sc.actors.regionSupervisor
 
   def init(): Unit = {
+    val testDirectory = {
+      sys.props
+        .get("shadowcloud.temp-storage-dir")
+        .fold(Files.createTempDirectory("sc-shell"))(toFSPath)
+    }
+
     // TODO: sc.start() function
     sc.password.masterPassword // Request password
     sc.actors.regionSupervisor // Start actor
@@ -23,7 +30,7 @@ object Shell extends ImplicitConversions {
     val state = Await.result(sc.ops.supervisor.getState(), Duration.Inf)
     if (!state.regions.contains("test") && !state.storages.contains("test")) {
       val testRegion = createRegion("test")
-      val testStorage = createStorage("test", StorageProps.fromDirectory(tempDirectory))
+      val testStorage = createStorage("test", StorageProps.fromDirectory(testDirectory))
       testRegion.register(testStorage)
     }
 
@@ -52,17 +59,6 @@ object Shell extends ImplicitConversions {
     createStorage(storageId, StorageProps.fromDirectory(Files.createTempDirectory("sc-shell")))
   }
 
-  def quit(): Unit = {
-    Await.result(actorSystem.terminate(), Duration.Inf)
-    sys.exit()
-  }
-
-  private[this] val tempDirectory = {
-    sys.props
-      .get("shadowcloud.temp-storage-dir")
-      .fold(Files.createTempDirectory("sc-shell"))(toFSPath)
-  }
-
   def test(): Unit = {
     val testRegion = openRegion("test")
     val testStorage = openStorage("test")
@@ -70,20 +66,27 @@ object Shell extends ImplicitConversions {
     testStorage.sync()
     Thread.sleep(5000)
 
-    val root = Await.result(testRegion.getDir("/"), Duration.Inf)
-    if (!root.files.exists(_.path.name == "LICENSE")) {
-      println("Uploading file")
-      testRegion.upload("LICENSE", "LICENSE")
-      testStorage.sync()
-      Thread.sleep(5000)
-    }
+    println("Uploading file")
+    val testFile = "LICENSE"
+    testRegion.upload(testFile, testFile)
+    testStorage.compactIndex(testRegion.regionId)
+    testStorage.sync()
+    Thread.sleep(5000)
 
     println("Downloading file")
-    Files.deleteIfExists("LICENSE_remote")
-    testRegion.download("LICENSE_remote", "LICENSE")
+    Files.deleteIfExists(testFile + "_remote")
+    testRegion.download(testFile + "_remote", testFile)
+
+    println("Deleting file")
+    testRegion.deleteFile(testFile)
+    testStorage.sync()
     Thread.sleep(5000)
-    // testRegion.deleteFile("LICENSE")
-    testStorage.collectGarbage()
-    testStorage.compactIndex(testRegion.regionId)
+
+    testStorage.collectGarbage(delete = true)
+  }
+
+  def quit(): Unit = {
+    Await.result(actorSystem.terminate(), Duration.Inf)
+    sys.exit()
   }
 }

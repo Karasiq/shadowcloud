@@ -2,12 +2,13 @@ package com.karasiq.shadowcloud.streams
 
 import java.io.FileNotFoundException
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.NotUsed
 import akka.actor.ActorRef
+import akka.pattern.ask
 import akka.stream.FlowShape
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, ZipWith}
 import akka.util.Timeout
@@ -26,7 +27,7 @@ object RegionStreams {
 }
 
 final class RegionStreams(val regionSupervisor: ActorRef, val parallelism: ParallelismConfig)
-                   (implicit ec: ExecutionContext, timeout: Timeout) {
+                         (implicit ec: ExecutionContext, timeout: Timeout) {
   private[this] val regionOps = RegionOps(regionSupervisor)
 
   val writeChunks = Flow[(String, Chunk)].mapAsync(parallelism.write) { case (regionId, chunk) ⇒
@@ -63,18 +64,24 @@ final class RegionStreams(val regionSupervisor: ActorRef, val parallelism: Paral
 
     Flow[(String, Path, FileIndexer.Result)]
       .via(graph)
-      .map { case ((regionId, path, result), (path1, files)) ⇒
+      .mapAsync(1) { case ((regionId, path, result), (path1, files)) ⇒
         require(path == path1)
         val newFile = if (files.nonEmpty) {
           val last = FileVersions.mostRecent(files)
-          last.copy(timestamp = last.timestamp.modifiedNow, revision = last.revision + 1, checksum = result.checksum, chunks = result.chunks)
+          if (last.checksum == result.checksum && last.chunks == result.chunks) {
+            last
+          } else {
+            last.copy(timestamp = last.timestamp.modifiedNow, revision = last.revision + 1, checksum = result.checksum, chunks = result.chunks)
+          }
         } else {
           File(path, Timestamp.now, 0, result.checksum, result.chunks)
         }
         if (!files.contains(newFile)) {
-          regionSupervisor ! RegionEnvelope(regionId, RegionDispatcher.WriteIndex(FolderIndexDiff.createFiles(newFile)))
+          val future = regionSupervisor ? RegionEnvelope(regionId, RegionDispatcher.WriteIndex(FolderIndexDiff.createFiles(newFile)))
+          RegionDispatcher.WriteIndex.unwrapFuture(future).map(_ ⇒ newFile)
+        } else {
+          Future.successful(newFile)
         }
-        newFile
       }
   }
 }

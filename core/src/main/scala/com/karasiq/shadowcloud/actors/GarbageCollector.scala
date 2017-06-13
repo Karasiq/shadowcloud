@@ -13,15 +13,16 @@ import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.internal.GarbageCollectUtil
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.index.Chunk
-import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}
+import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
 
 object GarbageCollector {
   // Messages
   sealed trait Message
-  case class CollectGarbage(force: Boolean = false) extends Message
+  case class CollectGarbage(startNow: Boolean = false, delete: Boolean = false) extends Message
   case class Defer(time: FiniteDuration) extends Message
 
   // Props
@@ -48,10 +49,10 @@ private final class GarbageCollector(storageId: String, index: ActorRef, chunkIO
   // Receive
   // -----------------------------------------------------------------------
   override def receive: Receive = {
-    case CollectGarbage(force) ⇒
-      if (force || gcDeadline.isOverdue()) {
+    case CollectGarbage(startNow, delete) ⇒
+      if (startNow || gcDeadline.isOverdue()) {
         log.debug("Starting garbage collection")
-        deleteOrphanedChunks()
+        runGarbageCollection(delete || config.gcAutoDelete)
       } else {
         log.debug("Garbage collection will be started in {} minutes", gcDeadline.timeLeft.toMinutes)
       }
@@ -71,24 +72,30 @@ private final class GarbageCollector(storageId: String, index: ActorRef, chunkIO
   // -----------------------------------------------------------------------
   // Orphaned chunks deletion
   // -----------------------------------------------------------------------
-  private[this] def collectOrphanedChunks(): Future[Map[String, GarbageCollectUtil.State]] = {
-    val indexes = IndexDispatcher.GetIndexes.unwrapFuture(index ? IndexDispatcher.GetIndexes)
-      .map(_.mapValues(IndexMerger.restore(0L, _)))
-    val keys = ChunkIODispatcher.GetKeys.unwrapFuture(chunkIO ? ChunkIODispatcher.GetKeys)
-      .map(_.groupBy(_.region).mapValues(_.map(_.id)))
+  private[this] def runGarbageCollection(delete: Boolean): Unit = {
+    def collectOrphanedChunks(): Future[Map[String, GarbageCollectUtil.State]] = {
+      def getChunkKeys: Future[Set[ChunkPath]] = {
+        ChunkIODispatcher.GetKeys.unwrapFuture(chunkIO ? ChunkIODispatcher.GetKeys)
+      }
 
-    indexes.zip(keys).map { case (indexes, chunkKeys) ⇒
-      val gcUtil = GarbageCollectUtil(config)
-      indexes.map { case (region, index) ⇒
-        val storageChunks = chunkKeys.getOrElse(region, Set.empty)
-        region → gcUtil.collect(index, storageChunks)
-      }.filter(_._2.nonEmpty)
+      val keys = getChunkKeys.map(_.groupBy(_.region).mapValues(_.map(_.id)))
+      val regionIndexes = keys.flatMap { keysByRegion ⇒
+        Future.sequence(keysByRegion.toList.map { case (region, keys) ⇒
+          sc.ops.region.getIndex(region).map((region, keys, _))
+        })
+      }
+
+      regionIndexes.map { indexes ⇒
+        val gcUtil = GarbageCollectUtil(config)
+        indexes.map { case (region, keys, state) ⇒
+          region → gcUtil.collect(IndexMerger.restore(RegionKey.zero, state), keys)
+        }.filter(_._2.nonEmpty).toMap
+      }
     }
-  }
 
-  private[this] def deleteOrphanedChunks(): Unit = {
     def toDeleteFromStorage(state: GarbageCollectUtil.State): Set[ByteString] = {
       @inline def keys(chunks: Set[Chunk]): Set[ByteString] = chunks.map(config.chunkKey)
+
       keys(state.orphaned) ++ state.notIndexed
     }
 
@@ -99,7 +106,7 @@ private final class GarbageCollector(storageId: String, index: ActorRef, chunkIO
     def deleteChunksFromStorage(chunks: Map[String, Set[ByteString]]): Future[StorageIOResult] = {
       val futures = chunks.map { case (region, chunks) ⇒
         val paths = chunks.map(ChunkPath(region, _))
-        if (log.isDebugEnabled) log.debug("Deleting chunks from storage {}: {}", region, Utils.printHashes(chunks))
+        if (log.isDebugEnabled) log.debug("Deleting chunks from storage {}: [{}]", region, Utils.printHashes(chunks))
         ChunkIODispatcher.DeleteChunks.unwrapFuture(chunkIO ? ChunkIODispatcher.DeleteChunks(paths))
       }
       StorageUtils.foldIOFutures(futures.toSeq: _*)
@@ -107,23 +114,33 @@ private final class GarbageCollector(storageId: String, index: ActorRef, chunkIO
 
     def deleteChunksFromIndex(chunks: Map[String, Set[Chunk]]): Unit = {
       chunks.foreach { case (region, chunks) ⇒
-        if (log.isDebugEnabled) log.debug("Deleting chunks from index {}: {}", region, Utils.printChunkHashes(chunks))
-        index ! IndexDispatcher.AddPending(region, IndexDiff(chunks = ChunkIndexDiff(deletedChunks = chunks)))
+        if (log.isDebugEnabled) log.debug("Deleting chunks from index {}: [{}]", region, Utils.printChunkHashes(chunks))
+        index ! IndexDispatcher.AddPending(region, IndexDiff.deleteChunks(chunks.toSeq: _*))
       }
     }
 
     collectOrphanedChunks().onComplete {
       case Success(gcStates) ⇒
         if (gcStates.nonEmpty) {
-          log.warning("Deleting orphaned chunks: {}", gcStates)
-          deleteChunksFromStorage(gcStates.mapValues(toDeleteFromStorage)).onComplete {
-            case Success(result) ⇒
-              deleteChunksFromIndex(gcStates.mapValues(toDeleteFromIndex))
-              self ! Defer(20 minutes)
-              if (log.isInfoEnabled) log.info("Orphaned chunks deleted: {}", MemorySize.toString(result.count))
+          val toDelete = gcStates.mapValues(toDeleteFromStorage)
+          val toUnIndex = gcStates.mapValues(toDeleteFromIndex).filter(_._2.nonEmpty)
+          if (delete) {
+            log.warning("Deleting orphaned chunks: {}", gcStates)
+            deleteChunksFromStorage(toDelete).onComplete {
+              case Success(result) ⇒
+                deleteChunksFromIndex(toUnIndex)
+                self ! Defer(20 minutes)
+                if (log.isInfoEnabled) log.info("Orphaned chunks deleted: {}", MemorySize.toString(result.count))
 
-            case Failure(error) ⇒
-              log.error(error, "Error deleting orphaned chunks")
+              case Failure(error) ⇒
+                log.error(error, "Error deleting orphaned chunks")
+            }
+          } else if (log.isWarningEnabled) {
+            /* val hashes = toDelete.values.flatten ++ toUnIndex.values.flatten.map(config.chunkKey)
+            if (hashes.nonEmpty) log.warning("Chunks to delete: [{}]", Utils.printHashes(hashes.toSet, 50)) */
+            val toDeleteCount = toDelete.values.flatten.size
+            val toUnIndexCount = toUnIndex.values.flatten.size
+            log.info("Found {} chunks to delete, {} to un-index", toDeleteCount, toUnIndexCount)
           }
         } else {
           self ! Defer(1 hour)

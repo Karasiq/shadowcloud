@@ -26,12 +26,8 @@ private[bouncycastle] object BCDigests extends ConfigImplicits {
     "Skein"
   )
 
-  def hasSize(algorithm: String): Boolean = {
-    digestsWithSize.contains(algorithm)
-  }
-
-  def hasTwoSizes(algorithm: String): Boolean = {
-    digestsWithTwoSizes.contains(algorithm)
+  def createDigest(method: HashingMethod): Digest = {
+    BCDigestWrapper(createMessageDigest(method))
   }
 
   def createMessageDigest(method: HashingMethod): MessageDigest = {
@@ -44,8 +40,12 @@ private[bouncycastle] object BCDigests extends ConfigImplicits {
     }
   }
 
-  def createMessageDigest(algorithm: String): MessageDigest = {
-    createMessageDigest(HashingMethod(algorithm))
+  def hasSize(algorithm: String): Boolean = {
+    digestsWithSize.contains(algorithm)
+  }
+
+  def hasTwoSizes(algorithm: String): Boolean = {
+    digestsWithTwoSizes.contains(algorithm)
   }
 
   def createMDWithSize(algorithm: String, method: HashingMethod, defaultSize: Int = 256): MessageDigest = {
@@ -54,22 +54,22 @@ private[bouncycastle] object BCDigests extends ConfigImplicits {
     getMDInstance(s"$algorithm-$digestSize")
   }
 
+  private[this] def getMDInstance(algorithm: String): MessageDigest = {
+    MessageDigest.getInstance(algorithm, BCUtils.provider)
+  }
+
   def createMDWithTwoSizes(alg: String, method: HashingMethod, defaultStateSize: Int = 256): MessageDigest = {
     val config = ConfigProps.toConfig(method.config)
     val stateSize = config.withDefault(defaultStateSize, _.getInt("state-size"))
     val digestSize = config.withDefault(stateSize, _.getInt("digest-size"))
     getMDInstance(s"$alg-$stateSize-$digestSize")
   }
-  
-  def createDigest(method: HashingMethod): Digest = {
-    BCDigestWrapper(createMessageDigest(method))
-  }
 
   def createDigest(algorithm: String): Digest = {
     BCDigestWrapper(createMessageDigest(algorithm))
   }
 
-  private[this] def getMDInstance(algorithm: String): MessageDigest = {
-    MessageDigest.getInstance(algorithm, BCUtils.provider)
+  def createMessageDigest(algorithm: String): MessageDigest = {
+    createMessageDigest(HashingMethod(algorithm))
   }
 }

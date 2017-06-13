@@ -14,6 +14,8 @@ import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.index.{Chunk, File, Folder, Path}
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.storage.utils.IndexMerger
+import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 
 object RegionOps {
   def apply(regionSupervisor: ActorRef)(implicit ec: ExecutionContext, timeout: Timeout = Timeout(5 minutes)): RegionOps = {
@@ -30,6 +32,10 @@ final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext,
     doAsk(regionId, ReadChunk, ReadChunk(chunk))
   }
 
+  def getIndex(regionId: String): Future[IndexMerger.State[RegionKey]] = {
+    doAsk(regionId, GetIndex, GetIndex)
+  }
+
   def getFiles(regionId: String, path: Path): Future[Set[File]] = {
     doAsk(regionId, GetFiles, GetFiles(path))
   }
@@ -43,12 +49,12 @@ final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext,
   }
 
   def deleteFiles(regionId: String, files: File*): Future[IndexDiff] = {
-    writeIndex(regionId, FolderIndexDiff.deleteFiles(files:_*))
+    writeIndex(regionId, FolderIndexDiff.deleteFiles(files: _*))
   }
 
   def deleteFiles(regionId: String, path: Path): Future[Set[File]] = {
     getFiles(regionId, path).flatMap { files ⇒
-      writeIndex(regionId, FolderIndexDiff.deleteFiles(files.toSeq:_*)).map(_ ⇒ files)
+      writeIndex(regionId, FolderIndexDiff.deleteFiles(files.toSeq: _*)).map(_ ⇒ files)
     }
   }
 

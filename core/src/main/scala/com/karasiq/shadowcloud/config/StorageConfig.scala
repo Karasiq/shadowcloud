@@ -5,7 +5,9 @@ import scala.concurrent.duration.FiniteDuration
 import com.karasiq.shadowcloud.config.utils.{ChunkKeyExtractor, ConfigImplicits}
 import com.karasiq.shadowcloud.serialization.protobuf.index.SerializedIndexData
 
-case class StorageConfig(syncInterval: FiniteDuration, indexCompactThreshold: Int, indexCompression: SerializedIndexData.Compression, chunkKey: ChunkKeyExtractor)
+case class StorageConfig(syncInterval: FiniteDuration, indexCompactThreshold: Int,
+                         indexCompression: SerializedIndexData.Compression,
+                         gcAutoDelete: Boolean, chunkKey: ChunkKeyExtractor)
 
 object StorageConfig extends ConfigImplicits {
   def forId(storageId: String, rootConfig: Config): StorageConfig = {
@@ -18,6 +20,7 @@ object StorageConfig extends ConfigImplicits {
       config.getFiniteDuration("sync-interval"),
       config.getInt("index-compact-threshold"),
       toCompressionType(config.getString("index-compression")),
+      config.getBoolean("gc-auto-delete"),
       ChunkKeyExtractor.fromString(config.getString("chunk-key"))
     )
   }

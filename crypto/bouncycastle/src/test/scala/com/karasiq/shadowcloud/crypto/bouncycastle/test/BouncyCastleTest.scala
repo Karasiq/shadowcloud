@@ -74,9 +74,10 @@ class BouncyCastleTest extends FlatSpec with Matchers {
   // -----------------------------------------------------------------------
   // Signatures
   // -----------------------------------------------------------------------
-  testSignature("RSA", RSASignModule(SignMethod("RSA", HashingMethod("SHA-512"), 1024)))
-  testSignature("ECDSA", ECDSASignModule(SignMethod("ECDSA", HashingMethod("SHA-512"), 521)))
-  testSignature("ECDSA (25519)", ECDSASignModule(SignMethod("ECDSA", HashingMethod("SHA-512"), 128, config = ConfigProps("curve" → "curve25519"))))
+  val signHashing = HashingMethod("SHA3")
+  testSignature("RSA", RSASignModule(SignMethod("RSA", signHashing, 1024)))
+  testSignature("ECDSA", ECDSASignModule(SignMethod("ECDSA", signHashing, 521)))
+  testSignature("ECDSA (25519)", ECDSASignModule(SignMethod("ECDSA", signHashing, 128, config = ConfigProps("curve" → "curve25519"))))
 
   // -----------------------------------------------------------------------
   // Tests specification

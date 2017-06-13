@@ -8,10 +8,11 @@ private object H2Context {
     import scala.collection.JavaConverters._
     val path = config.getString("path")
     val cipher = config.getString("cipher")
+    val compress = config.getBoolean("compress")
 
     ConfigFactory.parseMap(Map(
       "dataSourceClassName" → "org.h2.jdbcx.JdbcDataSource",
-      "dataSource.url" → s"jdbc:h2:file:$path;CIPHER=$cipher",
+      "dataSource.url" → s"jdbc:h2:file:$path;CIPHER=$cipher;COMPRESS=$compress",
       "dataSource.user" → "sa",
       "dataSource.password" → s"$password sa"
     ).asJava)

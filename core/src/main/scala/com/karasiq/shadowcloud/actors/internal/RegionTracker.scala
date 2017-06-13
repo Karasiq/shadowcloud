@@ -1,9 +1,11 @@
 package com.karasiq.shadowcloud.actors.internal
 
 import scala.collection.mutable
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.actor.{ActorContext, ActorRef}
+import akka.pattern.BackoffSupervisor
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.{RegionContainer, RegionDispatcher, StorageContainer}
@@ -12,7 +14,9 @@ import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
 private[actors] object RegionTracker {
+
   case class RegionStatus(regionId: String, regionConfig: RegionConfig, dispatcher: ActorRef, storages: Set[String] = Set.empty)
+
   case class StorageStatus(storageId: String, props: StorageProps, dispatcher: ActorRef, regions: Set[String] = Set.empty)
 
   def apply()(implicit context: ActorContext): RegionTracker = {
@@ -21,6 +25,7 @@ private[actors] object RegionTracker {
 }
 
 private[actors] final class RegionTracker(implicit context: ActorContext) {
+
   import RegionTracker._
 
   // -----------------------------------------------------------------------
@@ -57,8 +62,9 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   }
 
   def addStorage(storageId: String, props: StorageProps): Unit = {
-    val dispatcher = storages.get(storageId)
-      .fold(context.actorOf(StorageContainer.props(instantiator, storageId), s"storage-$storageId"))(_.dispatcher)
+    val dispatcherProps = StorageContainer.props(instantiator, storageId)
+    val supervisorProps = BackoffSupervisor.props(dispatcherProps, storageId, 1 second, 1 minute, 0.2)
+    val dispatcher = storages.get(storageId).fold(context.actorOf(supervisorProps, s"$storageId-supervisor"))(_.dispatcher)
     dispatcher ! StorageContainer.SetProps(props)
     storages += storageId → StorageStatus(storageId, props, dispatcher)
   }

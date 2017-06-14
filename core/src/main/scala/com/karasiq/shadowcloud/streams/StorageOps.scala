@@ -8,7 +8,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
-import com.karasiq.shadowcloud.actors.utils.MessageStatus
+import com.karasiq.shadowcloud.actors.utils.{GCState, MessageStatus}
 import com.karasiq.shadowcloud.actors.GarbageCollector.CollectGarbage
 import com.karasiq.shadowcloud.actors.IndexDispatcher.{CompactIndex, Synchronize}
 
@@ -23,8 +23,8 @@ final class StorageOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext
     regionSupervisor ! StorageEnvelope(storageId, Synchronize)
   }
 
-  def collectGarbage(storageId: String, startNow: Boolean = false, delete: Boolean = false): Unit = {
-    regionSupervisor ! StorageEnvelope(storageId, CollectGarbage(startNow, delete))
+  def collectGarbage(storageId: String, startNow: Boolean = false, delete: Boolean = false): Future[Map[String, GCState]] = {
+    doAsk(storageId, CollectGarbage, CollectGarbage(startNow, Some(delete)))
   }
 
   def compactIndex(storageId: String, region: String): Unit = {

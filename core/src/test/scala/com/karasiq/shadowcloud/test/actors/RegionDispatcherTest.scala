@@ -80,7 +80,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
 
   it should "deduplicate chunk" in {
     val wrongChunk = chunk.copy(encryption = TestUtils.aesEncryption.createParameters(), data = chunk.data.copy(encrypted = TestUtils.randomBytes(chunk.data.plain.length)))
-    wrongChunk shouldNot be (chunk)
+    wrongChunk shouldNot be(chunk)
     val result = testRegion ? WriteChunk(wrongChunk)
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
   }
@@ -89,7 +89,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     val diff = FolderIndexDiff.create(folder)
     testRegion ! RegionDispatcher.WriteIndex(diff)
     val RegionDispatcher.WriteIndex.Success(`diff`, result) = receiveOne(1 second)
-    result.time shouldBe > (TestUtils.testTimestamp)
+    result.time shouldBe >(TestUtils.testTimestamp)
     result.folders shouldBe folderDiff
     result.chunks.newChunks shouldBe Set(chunk)
     result.chunks.deletedChunks shouldBe empty
@@ -100,7 +100,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     testRegion ! RegionDispatcher.Synchronize
     val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", sequenceNr, diff, remote)) = receiveOne(5 seconds)
     sequenceNr shouldBe 1
-    diff.time shouldBe > (TestUtils.testTimestamp)
+    diff.time shouldBe >(TestUtils.testTimestamp)
     diff.folders shouldBe folderDiff
     diff.chunks.newChunks shouldBe Set(chunk)
     diff.chunks.deletedChunks shouldBe empty
@@ -129,7 +129,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     testRegion ! RegionDispatcher.Synchronize
     val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", 2, `remoteDiff`, true)) = receiveOne(5 seconds)
     expectNoMsg(1 second)
-    
+
     // Verify
     storage ! IndexDispatcher.GetIndex("testRegion")
     val IndexDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((1, firstDiff), (2, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)

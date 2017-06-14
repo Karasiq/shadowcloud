@@ -19,14 +19,14 @@ final class H2AkkaJournal extends AsyncWriteJournal {
   private[this] val h2DB = H2DB(context.system)
 
   import context.dispatcher
-  import h2DB.context.db.{run => runQuery, _}
+  import h2DB.context.db.{run ⇒ runQuery, _}
   import h2DB.sc.implicits.materializer
 
   // -----------------------------------------------------------------------
   // Schema
   // -----------------------------------------------------------------------
   private[this] object schema extends SCQuillEncoders {
-    case class DBMessage(ordering: Long, persistenceId: String, sequenceNr: Long, tags: Set[String], message: ByteString)
+    case class DBMessage(persistenceId: String, sequenceNr: Long, ordering: Long, tags: Set[String], message: ByteString)
 
     implicit val tagsEncoder: Encoder[Set[String]] = encoder(java.sql.Types.ARRAY, (index, value, row) ⇒
       row.setObject(index, value.toArray, java.sql.Types.ARRAY))
@@ -89,7 +89,7 @@ final class H2AkkaJournal extends AsyncWriteJournal {
         case _ ⇒
           serialize(pr) → Set.empty[String]
       }
-      DBMessage(0L, pr.persistenceId, pr.sequenceNr, tags, serialized)
+      DBMessage(pr.persistenceId, pr.sequenceNr, 0L, tags, serialized)
     }
   }
 

@@ -1,17 +1,20 @@
 package com.karasiq.shadowcloud.actors
 
+import java.util.concurrent.TimeoutException
+
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.{higherKinds, postfixOps}
 import scala.util.{Failure, Success}
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props}
-import akka.pattern.ask
+import akka.actor.{Actor, ActorLogging, ActorRef, NotInfluenceReceiveTimeout, Props, ReceiveTimeout}
+import akka.pattern.{ask, pipe}
 import akka.util.{ByteString, Timeout}
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.internal.GarbageCollectUtil
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
+import com.karasiq.shadowcloud.actors.utils.{GCState, MessageStatus}
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.StorageIOResult
@@ -22,8 +25,9 @@ import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
 object GarbageCollector {
   // Messages
   sealed trait Message
-  case class CollectGarbage(startNow: Boolean = false, delete: Boolean = false) extends Message
-  case class Defer(time: FiniteDuration) extends Message
+  case class CollectGarbage(startNow: Boolean = false, delete: Option[Boolean] = None) extends Message with NotInfluenceReceiveTimeout
+  object CollectGarbage extends MessageStatus[String, Map[String, GCState]]
+  case class Defer(time: FiniteDuration) extends Message with NotInfluenceReceiveTimeout
 
   // Props
   def props(storageId: String, index: ActorRef, chunkIO: ActorRef): Props = {
@@ -48,11 +52,16 @@ private final class GarbageCollector(storageId: String, index: ActorRef, chunkIO
   // -----------------------------------------------------------------------
   // Receive
   // -----------------------------------------------------------------------
-  override def receive: Receive = {
+  def receiveIdle: Receive = {
     case CollectGarbage(startNow, delete) ⇒
       if (startNow || gcDeadline.isOverdue()) {
         log.debug("Starting garbage collection")
-        runGarbageCollection(delete || config.gcAutoDelete)
+
+        context.setReceiveTimeout(10 minutes)
+        context.become(receiveCollecting(Set(sender()) - self - Actor.noSender))
+
+        val future = runGarbageCollection(delete.getOrElse(config.gcAutoDelete))
+        CollectGarbage.wrapFuture(storageId, future).pipeTo(self)
       } else {
         log.debug("Garbage collection will be started in {} minutes", gcDeadline.timeLeft.toMinutes)
       }
@@ -64,6 +73,25 @@ private final class GarbageCollector(storageId: String, index: ActorRef, chunkIO
       }
   }
 
+  def receiveCollecting(receivers: Set[ActorRef]): Receive = {
+    case CollectGarbage(_, _) ⇒
+      val ref = sender()
+      if (ref != self && ref != Actor.noSender) {
+        context.become(receiveCollecting(receivers + ref))
+      }
+
+    case s: CollectGarbage.Status ⇒
+      receivers.foreach(_ ! s)
+      context.setReceiveTimeout(Duration.Undefined)
+      context.become(receiveIdle)
+      self ! Defer(30 minutes)
+
+    case ReceiveTimeout ⇒
+      throw new TimeoutException("GC timeout")
+  }
+
+  override def receive: Receive = receiveIdle
+
   override def postStop(): Unit = {
     gcSchedule.cancel()
     super.postStop()
@@ -72,8 +100,8 @@ private final class GarbageCollector(storageId: String, index: ActorRef, chunkIO
   // -----------------------------------------------------------------------
   // Orphaned chunks deletion
   // -----------------------------------------------------------------------
-  private[this] def runGarbageCollection(delete: Boolean): Unit = {
-    def collectOrphanedChunks(): Future[Map[String, GarbageCollectUtil.State]] = {
+  private[this] def runGarbageCollection(delete: Boolean): Future[Map[String, GCState]] = {
+    def collectOrphanedChunks(): Future[Map[String, GCState]] = {
       def getChunkKeys: Future[Set[ChunkPath]] = {
         ChunkIODispatcher.GetKeys.unwrapFuture(chunkIO ? ChunkIODispatcher.GetKeys)
       }
@@ -93,13 +121,13 @@ private final class GarbageCollector(storageId: String, index: ActorRef, chunkIO
       }
     }
 
-    def toDeleteFromStorage(state: GarbageCollectUtil.State): Set[ByteString] = {
+    def toDeleteFromStorage(state: GCState): Set[ByteString] = {
       @inline def keys(chunks: Set[Chunk]): Set[ByteString] = chunks.map(config.chunkKey)
 
       keys(state.orphaned) ++ state.notIndexed
     }
 
-    def toDeleteFromIndex(state: GarbageCollectUtil.State): Set[Chunk] = {
+    def toDeleteFromIndex(state: GCState): Set[Chunk] = {
       state.orphaned ++ state.notExisting
     }
 
@@ -119,7 +147,8 @@ private final class GarbageCollector(storageId: String, index: ActorRef, chunkIO
       }
     }
 
-    collectOrphanedChunks().onComplete {
+    val future = collectOrphanedChunks()
+    future.onComplete {
       case Success(gcStates) ⇒
         if (gcStates.nonEmpty) {
           val toDelete = gcStates.mapValues(toDeleteFromStorage)
@@ -129,25 +158,25 @@ private final class GarbageCollector(storageId: String, index: ActorRef, chunkIO
             deleteChunksFromStorage(toDelete).onComplete {
               case Success(result) ⇒
                 deleteChunksFromIndex(toUnIndex)
-                self ! Defer(20 minutes)
                 if (log.isInfoEnabled) log.info("Orphaned chunks deleted: {}", MemorySize.toString(result.count))
 
               case Failure(error) ⇒
                 log.error(error, "Error deleting orphaned chunks")
             }
-          } else if (log.isWarningEnabled) {
-            /* val hashes = toDelete.values.flatten ++ toUnIndex.values.flatten.map(config.chunkKey)
-            if (hashes.nonEmpty) log.warning("Chunks to delete: [{}]", Utils.printHashes(hashes.toSet, 50)) */
-            val toDeleteCount = toDelete.values.flatten.size
-            val toUnIndexCount = toUnIndex.values.flatten.size
-            log.info("Found {} chunks to delete, {} to un-index", toDeleteCount, toUnIndexCount)
+          } else {
+            if (log.isWarningEnabled) {
+              // val hashes = toDelete.values.flatten ++ toUnIndex.values.flatten.map(config.chunkKey)
+              // if (hashes.nonEmpty) log.warning("Chunks to delete: [{}]", Utils.printHashes(hashes.toSet, 50))
+              val toDeleteCount = toDelete.values.flatten.size
+              val toUnIndexCount = toUnIndex.values.flatten.size
+              log.info("Found {} chunks to delete, {} to un-index", toDeleteCount, toUnIndexCount)
+            }
           }
-        } else {
-          self ! Defer(1 hour)
         }
 
       case Failure(error) ⇒
         log.error(error, "Garbage collection failed")
     }
+    future
   }
 }

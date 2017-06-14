@@ -1,6 +1,10 @@
 package com.karasiq.shadowcloud.shell
 
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 import scala.language.postfixOps
+
+import com.karasiq.shadowcloud.actors.utils.GCState
 
 private[shell] object StorageContext {
   def apply(storageId: String)(implicit context: ShellContext): StorageContext = {
@@ -15,8 +19,9 @@ private[shell] final class StorageContext(val storageId: String)(implicit contex
     storage.synchronize(storageId)
   }
 
-  def collectGarbage(delete: Boolean = false): Unit = {
-    storage.collectGarbage(storageId, startNow = true, delete)
+  def collectGarbage(delete: Boolean = false): Map[String, GCState] = {
+    val future = storage.collectGarbage(storageId, startNow = true, delete)
+    Await.result(future, Duration.Inf)
   }
 
   def compactIndex(region: String): Unit = {

@@ -69,7 +69,6 @@ object Shell extends ImplicitConversions {
     println("Uploading file")
     val testFile = "LICENSE"
     testRegion.upload(testFile, testFile)
-    testStorage.compactIndex(testRegion.regionId)
     testStorage.sync()
     Thread.sleep(5000)
 
@@ -83,6 +82,8 @@ object Shell extends ImplicitConversions {
     Thread.sleep(5000)
 
     testStorage.collectGarbage(delete = true)
+    testStorage.compactIndex(testRegion.regionId)
+    testStorage.sync()
   }
 
   def quit(): Unit = {

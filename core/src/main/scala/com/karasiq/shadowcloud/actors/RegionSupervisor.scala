@@ -4,6 +4,7 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
+import akka.NotUsed
 import akka.actor.{ActorLogging, OneForOneStrategy, Props, SupervisorStrategy}
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import akka.util.Timeout
@@ -11,10 +12,14 @@ import akka.util.Timeout
 import com.karasiq.shadowcloud.actors.internal.RegionTracker
 import com.karasiq.shadowcloud.actors.internal.RegionTracker.{RegionStatus, StorageStatus}
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
+import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
 object RegionSupervisor {
+  // Aliases
+  type State = (Map[String, RegionStatus], Map[String, StorageStatus])
+
   // Messages
   sealed trait Message
   case class AddRegion(regionId: String, regionConfig: RegionConfig) extends Message
@@ -23,9 +28,7 @@ object RegionSupervisor {
   case class DeleteStorage(storageId: String) extends Message
   case class RegisterStorage(regionId: String, storageId: String) extends Message
   case class UnregisterStorage(regionId: String, storageId: String) extends Message
-  case object GetState extends Message {
-    case class Success(regions: Map[String, RegionStatus], storages: Map[String, StorageStatus])
-  }
+  case object GetState extends Message with MessageStatus[NotUsed, State]
 
   // Events
   sealed trait Event
@@ -57,7 +60,7 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
   // -----------------------------------------------------------------------
   // Recover
   // -----------------------------------------------------------------------
-  def receiveRecover: Receive = { // TODO: Snapshots
+  def receiveRecover: Receive = { // TODO: Create snapshots
     val storages = mutable.AnyRefMap.empty[String, StorageProps]
     val regions = mutable.AnyRefMap.empty[String, (RegionConfig, Set[String])]
     val recoverFunc: Receive = {
@@ -133,7 +136,7 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
     // State actions
     // -----------------------------------------------------------------------
     case GetState ⇒
-      sender() ! GetState.Success(state.regions.toMap, state.storages.toMap)
+      sender() ! GetState.Success(NotUsed, (state.regions.toMap, state.storages.toMap))
 
     // -----------------------------------------------------------------------
     // Envelopes
@@ -156,6 +159,7 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
 
 private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
   import RegionSupervisor._
+
   val state = RegionTracker()
 
   def updateState(event: Event): Unit = event match {

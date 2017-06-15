@@ -11,6 +11,7 @@ import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 
 class RegionSupervisorTest extends ActorSpec with FlatSpecLike with Matchers {
   import RegionSupervisor._
+
   val testRegion = "testRegion"
   val testStorage = "testStorage"
   val supervisor = system.actorOf(props, "supervisor")
@@ -76,7 +77,7 @@ class RegionSupervisorTest extends ActorSpec with FlatSpecLike with Matchers {
 
   private[this] def requestState = {
     supervisor ! GetState
-    val GetState.Success(regions, storages) = receiveOne(1 second)
+    val GetState.Success(_, (regions, storages)) = receiveOne(1 second)
     (regions, storages)
   }
 }

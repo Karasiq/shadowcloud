@@ -1,8 +1,11 @@
 package com.karasiq.shadowcloud.actors.utils
 
+import java.util.concurrent.TimeoutException
+
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
-import akka.actor.{Actor, ActorRef, Stash, Terminated}
+import akka.actor.{Actor, ActorRef, ReceiveTimeout, Stash, Terminated}
 
 object ContainerActor {
   sealed trait Message
@@ -12,12 +15,13 @@ object ContainerActor {
 trait ContainerActor { self: Actor with Stash ⇒
   import ContainerActor._
 
-  var actorRef: Option[ActorRef] = None
-  def receiveDefault: Receive
+  protected var actorRef: Option[ActorRef] = None
+
   def startActor(): Unit
 
   def stopActor(): Unit = {
     actorRef.foreach(context.stop)
+    context.setReceiveTimeout(30 seconds)
   }
 
   def restartActor(): Unit = {
@@ -31,6 +35,7 @@ trait ContainerActor { self: Actor with Stash ⇒
   def afterStart(actor: ActorRef): Unit = {
     actorRef = Some(actor)
     context.watch(actor)
+    context.setReceiveTimeout(Duration.Inf)
     unstashAll()
   }
 
@@ -39,13 +44,16 @@ trait ContainerActor { self: Actor with Stash ⇒
     context.unwatch(actor)
   }
 
-  def receiveContainer: Receive = {
+  override def unhandled(message: Any): Unit = message match {
     case Restart ⇒
       stopActor()
 
     case Terminated(actor) if actorRef.contains(actor) ⇒
       afterStop(actor)
       startActor()
+
+    case ReceiveTimeout ⇒
+      throw new TimeoutException("Actor restart timeout")
 
     case message if actorRef.contains(sender()) ⇒
       context.parent ! message
@@ -57,6 +65,4 @@ trait ContainerActor { self: Actor with Stash ⇒
         stash()
       }
   }
-
-  override def receive: Receive = receiveDefault.orElse(receiveContainer)
 }

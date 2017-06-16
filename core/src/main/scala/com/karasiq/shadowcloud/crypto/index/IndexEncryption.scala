@@ -6,11 +6,11 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.keys.KeySet
 import com.karasiq.shadowcloud.crypto._
-import com.karasiq.shadowcloud.providers.ModuleRegistry
+import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.serialization.SerializationModule
 import com.karasiq.shadowcloud.serialization.protobuf.index.EncryptedIndexData
 
-private[shadowcloud] final class IndexEncryption(modules: ModuleRegistry, keyEncryption: EncryptionMethod,
+private[shadowcloud] final class IndexEncryption(modules: SCModules, keyEncryption: EncryptionMethod,
                                                  sign: SignMethod, serialization: SerializationModule) {
   private[this] val keyEncryptionModule = modules.encryptionModule(keyEncryption)
   private[this] val signModule = modules.signModule(sign)

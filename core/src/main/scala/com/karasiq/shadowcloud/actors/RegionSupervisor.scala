@@ -17,8 +17,8 @@ import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
 object RegionSupervisor {
-  // Aliases
-  type State = (Map[String, RegionStatus], Map[String, StorageStatus])
+  // Types
+  case class State(regions: Map[String, RegionStatus], storages: Map[String, StorageStatus])
 
   // Messages
   sealed trait Message
@@ -136,7 +136,7 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
     // State actions
     // -----------------------------------------------------------------------
     case GetState ⇒
-      sender() ! GetState.Success(NotUsed, (state.regions.toMap, state.storages.toMap))
+      sender() ! GetState.Success(NotUsed, State(state.regions.toMap, state.storages.toMap))
 
     // -----------------------------------------------------------------------
     // Envelopes

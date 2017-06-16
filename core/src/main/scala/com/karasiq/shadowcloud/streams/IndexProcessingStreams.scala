@@ -11,32 +11,32 @@ import akka.stream.scaladsl.{Compression, Flow, Source}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.config.{AppConfig, CryptoConfig, StorageConfig}
+import com.karasiq.shadowcloud.config.{CryptoConfig, SCConfig, StorageConfig}
 import com.karasiq.shadowcloud.config.keys.{KeyProvider, KeySet}
 import com.karasiq.shadowcloud.crypto.index.IndexEncryption
 import com.karasiq.shadowcloud.exceptions.IndexException
 import com.karasiq.shadowcloud.index.IndexData
-import com.karasiq.shadowcloud.providers.ModuleRegistry
+import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.serialization.{SerializationModules, StreamSerialization}
 import com.karasiq.shadowcloud.serialization.protobuf.index.{EncryptedIndexData, SerializedIndexData}
 
 object IndexProcessingStreams {
-  def apply(modules: ModuleRegistry, config: AppConfig, keyProvider: KeyProvider)
+  def apply(modules: SCModules, config: SCConfig, keyProvider: KeyProvider)
            (implicit as: ActorSystem): IndexProcessingStreams = {
     new IndexProcessingStreams(modules, config, keyProvider)
   }
 }
 
-final class IndexProcessingStreams(val modules: ModuleRegistry, val config: AppConfig,
+final class IndexProcessingStreams(val modules: SCModules, val config: SCConfig,
                                    val keyProvider: KeyProvider)(implicit as: ActorSystem) {
-  
-  private[this] val serializationModule = SerializationModules.fromActorSystem
+
+  private[this] val serializer = SerializationModules.forActorSystem(as)
 
   def serialize(storageConfig: StorageConfig): Flow[IndexData, ByteString, NotUsed] = {
     Flow[IndexData]
       .flatMapConcat { indexData ⇒
         val dataSrc = Source.single(indexData)
-          .via(StreamSerialization(serializationModule).toBytes)
+          .via(StreamSerialization(serializer).toBytes)
         compress(storageConfig.indexCompression, dataSrc)
           .via(ByteStringConcat())
           .map(data ⇒ SerializedIndexData(storageConfig.indexCompression, data))
@@ -49,7 +49,7 @@ final class IndexProcessingStreams(val modules: ModuleRegistry, val config: AppC
     .flatMapConcat { data ⇒
       decompress(data.compression, Source.single(data.data))
         .via(ByteStringConcat())
-        .via(StreamSerialization(serializationModule).fromBytes[IndexData])
+        .via(StreamSerialization(serializer).fromBytes[IndexData])
     }
 
   val encrypt = Flow[ByteString]
@@ -71,7 +71,7 @@ final class IndexProcessingStreams(val modules: ModuleRegistry, val config: AppC
     .via(deserialize)
     .addAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
 
-  private final class IndexEncryptStage(modules: ModuleRegistry, config: CryptoConfig, keys: KeySet)
+  private final class IndexEncryptStage(modules: SCModules, config: CryptoConfig, keys: KeySet)
     extends GraphStage[FlowShape[ByteString, EncryptedIndexData]] {
 
     val inlet = Inlet[ByteString]("IndexEncrypt.in")
@@ -79,7 +79,7 @@ final class IndexProcessingStreams(val modules: ModuleRegistry, val config: AppC
     val shape = FlowShape(inlet, outlet)
 
     def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
-      private[this] val encryption = new IndexEncryption(modules, config.encryption.keys, config.signing.index, serializationModule)
+      private[this] val encryption = new IndexEncryption(modules, config.encryption.keys, config.signing.index, serializer)
 
       def onPull(): Unit = {
         tryPull(inlet)
@@ -94,7 +94,7 @@ final class IndexProcessingStreams(val modules: ModuleRegistry, val config: AppC
     }
   }
 
-  private final class IndexDecryptStage(modules: ModuleRegistry, config: CryptoConfig, keyProvider: KeyProvider)
+  private final class IndexDecryptStage(modules: SCModules, config: CryptoConfig, keyProvider: KeyProvider)
     extends GraphStage[FlowShape[EncryptedIndexData, ByteString]] {
 
     val inlet = Inlet[EncryptedIndexData]("IndexDecrypt.in")
@@ -103,14 +103,14 @@ final class IndexProcessingStreams(val modules: ModuleRegistry, val config: AppC
 
     def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
       private[this] val log = Logging(as, "IndexDecryptStage")
-      private[this] val encryption = new IndexEncryption(modules, config.encryption.keys,
-        config.signing.index, serializationModule)
+      private[this] val encryption = new IndexEncryption(modules, config.encryption.keys, config.signing.index, serializer)
 
       private[this] def decrypt(data: EncryptedIndexData): ByteString = {
         val key = try {
           keyProvider.forDecryption(data.keysId)
-        } catch { case NonFatal(exc) ⇒
-          throw IndexException.KeyMissing(data.keysId, exc)
+        } catch {
+          case NonFatal(exc) ⇒
+            throw IndexException.KeyMissing(data.keysId, exc)
         }
         encryption.decrypt(data, key)
       }
@@ -124,8 +124,9 @@ final class IndexProcessingStreams(val modules: ModuleRegistry, val config: AppC
         try {
           val result = decrypt(element)
           push(outlet, result)
-        } catch { case NonFatal(exc) ⇒
-          log.error(exc, "Index file decrypt error")
+        } catch {
+          case NonFatal(exc) ⇒
+            log.error(exc, "Index file decrypt error")
         }
       }
 

@@ -2,29 +2,30 @@ package com.karasiq.shadowcloud.streams
 
 import java.io.IOException
 
-import akka.Done
-import akka.stream._
-import akka.stream.stage._
-import com.karasiq.shadowcloud.crypto.HashingMethod
-import com.karasiq.shadowcloud.index.{Checksum, Chunk}
-import com.karasiq.shadowcloud.providers.ModuleRegistry
-import com.karasiq.shadowcloud.streams.FileIndexer.Result
-
 import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 
+import akka.Done
+import akka.stream._
+import akka.stream.stage._
+
+import com.karasiq.shadowcloud.crypto.HashingMethod
+import com.karasiq.shadowcloud.index.{Checksum, Chunk}
+import com.karasiq.shadowcloud.providers.SCModules
+import com.karasiq.shadowcloud.streams.FileIndexer.Result
+
 private[shadowcloud] object FileIndexer {
   case class Result(checksum: Checksum, chunks: Seq[Chunk], ioResult: IOResult)
 
-  def apply(registry: ModuleRegistry, plainHashing: HashingMethod = HashingMethod.default,
+  def apply(registry: SCModules, plainHashing: HashingMethod = HashingMethod.default,
             encryptedHashing: HashingMethod = HashingMethod.default): FileIndexer = {
     new FileIndexer(registry, plainHashing, encryptedHashing)
   }
 }
 
 // TODO: Content type
-private[shadowcloud] final class FileIndexer(registry: ModuleRegistry, plainHashing: HashingMethod, encryptedHashing: HashingMethod)
+private[shadowcloud] final class FileIndexer(registry: SCModules, plainHashing: HashingMethod, encryptedHashing: HashingMethod)
   extends GraphStageWithMaterializedValue[SinkShape[Chunk], Future[Result]] {
 
   val inlet = Inlet[Chunk]("FileIndexer.in")

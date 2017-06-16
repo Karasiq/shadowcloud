@@ -6,16 +6,16 @@ import scala.util.Random
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
 
-import com.karasiq.shadowcloud.config.{AppConfig, RegionConfig, StorageConfig}
+import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, StorageConfig}
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
-import com.karasiq.shadowcloud.providers.ModuleRegistry
+import com.karasiq.shadowcloud.providers.SCModules
 
 object TestUtils extends TestImplicits {
   val rootConfig = ConfigFactory.load().getConfig("shadowcloud")
-  val config = AppConfig(rootConfig)
-  val modules = ModuleRegistry(config)
+  val config = SCConfig(rootConfig)
+  val modules = SCModules(config)
   val sha1Hashing = modules.hashingModule(HashingMethod("SHA1"))
   val aesEncryption = modules.encryptionModule(EncryptionMethod("AES/GCM", 256))
 

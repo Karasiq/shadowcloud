@@ -1,18 +1,19 @@
 package com.karasiq.shadowcloud.test.serialization
 
-import akka.util.ByteString
-import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.index.{Chunk, File, Folder}
-import com.karasiq.shadowcloud.serialization.{SerializationModule, SerializationModules}
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
-import com.typesafe.config.{Config, ConfigFactory}
-import org.scalatest.FlatSpecLike
-
 import scala.io.Source
 import scala.language.postfixOps
 
+import akka.util.ByteString
+import com.typesafe.config.{Config, ConfigFactory}
+import org.scalatest.FlatSpecLike
+
+import com.karasiq.shadowcloud.index.{Chunk, File, Folder}
+import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.serialization.{SerializationModule, SerializationModules}
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
+
 class SerializationModuleTest extends ActorSpec with FlatSpecLike {
-  testModule("Akka", SerializationModules.fromActorSystem)
+  testModule("Akka", SerializationModules.forActorSystem(system))
 
   private[this] def testModule(name: String, module: SerializationModule): Unit = {
     name should "serialize config" in {

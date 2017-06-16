@@ -8,24 +8,24 @@ import akka.stream.FlowShape
 import akka.stream.scaladsl.{Flow, GraphDSL, Sink, ZipWith}
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.config.{AppConfig, CryptoConfig, ParallelismConfig}
+import com.karasiq.shadowcloud.config.{CryptoConfig, ParallelismConfig, SCConfig}
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index.Chunk
-import com.karasiq.shadowcloud.providers.ModuleRegistry
+import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.utils.MemorySize
 
 object ChunkProcessingStreams {
-  def apply(modules: ModuleRegistry, crypto: CryptoConfig,
+  def apply(modules: SCModules, crypto: CryptoConfig,
             parallelism: ParallelismConfig)(implicit ec: ExecutionContext): ChunkProcessingStreams = {
     new ChunkProcessingStreams(modules, crypto, parallelism)
   }
 
-  def apply(config: AppConfig)(implicit ec: ExecutionContext): ChunkProcessingStreams = {
-    apply(ModuleRegistry(config), config.crypto, config.parallelism)
+  def apply(config: SCConfig)(implicit ec: ExecutionContext): ChunkProcessingStreams = {
+    apply(SCModules(config), config.crypto, config.parallelism)
   }
 }
 
-final class ChunkProcessingStreams(val modules: ModuleRegistry, val crypto: CryptoConfig,
+final class ChunkProcessingStreams(val modules: SCModules, val crypto: CryptoConfig,
                                    val parallelism: ParallelismConfig)(implicit ec: ExecutionContext) {
   type ChunkFlow = Flow[Chunk, Chunk, NotUsed]
 

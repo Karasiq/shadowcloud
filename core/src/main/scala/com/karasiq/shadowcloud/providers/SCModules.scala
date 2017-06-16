@@ -5,17 +5,17 @@ import java.security.NoSuchAlgorithmException
 import scala.collection.mutable
 import scala.language.postfixOps
 
-import com.karasiq.shadowcloud.config.AppConfig
+import com.karasiq.shadowcloud.config.SCConfig
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.storage.StoragePlugin
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
-private[shadowcloud] object ModuleRegistry {
-  def empty: ModuleRegistry = {
-    new ModuleRegistry
+private[shadowcloud] object SCModules {
+  def empty: SCModules = {
+    new SCModules
   }
 
-  def apply(config: AppConfig): ModuleRegistry = {
+  def apply(config: SCConfig): SCModules = {
     fromNamedProviders(
       config.storage.providers.instances,
       config.crypto.providers.instances
@@ -23,21 +23,21 @@ private[shadowcloud] object ModuleRegistry {
   }
 
   def fromNamedProviders(storages: Seq[(String, StorageProvider)],
-                         crypto: Seq[(String, CryptoProvider)]): ModuleRegistry = {
+                         crypto: Seq[(String, CryptoProvider)]): SCModules = {
     val registry = this.empty
     for ((pName, pInstance) ← storages) registry.register(pName, pInstance)
     for ((pName, pInstance) ← crypto) registry.register(pName, pInstance)
     registry
   }
 
-  def fromProviders(storages: Seq[StorageProvider], crypto: Seq[CryptoProvider]): ModuleRegistry = {
+  def fromProviders(storages: Seq[StorageProvider], crypto: Seq[CryptoProvider]): SCModules = {
     fromNamedProviders(storages.map(p ⇒ (p.defaultName, p)), crypto.map(p ⇒ (p.defaultName, p)))
   }
 }
 
-private[shadowcloud] final class ModuleRegistry extends StorageModuleRegistry with CryptoModuleRegistry {
+private[shadowcloud] final class SCModules extends StorageModuleRegistry with CryptoModuleRegistry {
   override def toString: String = {
-    s"ModuleRegistry(storages = [${storageTypes.mkString(", ")}, hashes = [${hashingAlgorithms.mkString(", ")}], encryption = [${encryptionAlgorithms.mkString(", ")}])"
+    s"SCModules(storages = [${storageTypes.mkString(", ")}, hashes = [${hashingAlgorithms.mkString(", ")}], encryption = [${encryptionAlgorithms.mkString(", ")}])"
   }
 }
 
@@ -156,7 +156,7 @@ private[shadowcloud] sealed trait CryptoModuleRegistry {
     cryptoProviders.values.flatMap(_.signAlgorithms).toSet
   }
 
-  @inline 
+  @inline
   private[this] def moduleFromPF[T <: CryptoMethod, R](pf: PartialFunction[T, R], method: T): R = {
     if (pf.isDefinedAt(method)) pf(method) else throw new NoSuchAlgorithmException(method.algorithm)
   }

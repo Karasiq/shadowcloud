@@ -12,12 +12,13 @@ import akka.util.Timeout
 import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.StringEventBus
-import com.karasiq.shadowcloud.config.{AppConfig, RegionConfig, StorageConfig}
+import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, StorageConfig}
 import com.karasiq.shadowcloud.config.keys.KeySet
-import com.karasiq.shadowcloud.providers.ModuleRegistry
+import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.serialization.SerializationModules
 import com.karasiq.shadowcloud.streams._
-import com.karasiq.shadowcloud.utils.AppPasswordProvider
+import com.karasiq.shadowcloud.utils.SCProviderInstantiator
 
 object ShadowCloud extends ExtensionId[ShadowCloudExtension] with ExtensionIdProvider {
   def apply()(implicit context: ActorContext): ShadowCloudExtension = {
@@ -33,14 +34,14 @@ object ShadowCloud extends ExtensionId[ShadowCloudExtension] with ExtensionIdPro
   }
 }
 
-class ShadowCloudExtension(system: ExtendedActorSystem) extends Extension {
+class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension {
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
   object implicits {
-    implicit val actorSystem = system
-    implicit val executionContext = system.dispatcher
-    implicit val materializer = ActorMaterializer()(system)
+    implicit val actorSystem = _actorSystem
+    implicit val executionContext = _actorSystem.dispatcher
+    implicit val materializer = ActorMaterializer()(_actorSystem)
     implicit val defaultTimeout = Timeout(5 seconds)
   }
 
@@ -49,11 +50,11 @@ class ShadowCloudExtension(system: ExtendedActorSystem) extends Extension {
   // -----------------------------------------------------------------------
   // Configuration
   // -----------------------------------------------------------------------
-  val rootConfig = system.settings.config.getConfig("shadowcloud")
-  val config = AppConfig(rootConfig)
-  val modules = ModuleRegistry(config)
-  val serialization = SerializationModules.fromActorSystem(system)
-  val password = new AppPasswordProvider(rootConfig)
+  private[this] val providers = new SCProviderInstantiator(this)
+  val rootConfig = actorSystem.settings.config.getConfig("shadowcloud")
+  val config = SCConfig(rootConfig)
+  val modules = SCModules(config)
+  val serialization = SerializationModules.forActorSystem(actorSystem)
 
   def regionConfig(regionId: String): RegionConfig = {
     RegionConfig.forId(regionId, rootConfig)
@@ -64,20 +65,32 @@ class ShadowCloudExtension(system: ExtendedActorSystem) extends Extension {
   }
 
   object keys {
+    val provider = providers.getInstance(config.crypto.keyProvider)
+
     def generateKeySet(): KeySet = {
       val enc = modules.encryptionModule(config.crypto.encryption.keys).createParameters()
       val sign = modules.signModule(config.crypto.signing.index).createParameters()
       KeySet(UUID.randomUUID(), sign, enc)
     }
+  }
 
-    val provider = config.crypto.keyProvider.getConstructor(classOf[ShadowCloudExtension]).newInstance(ShadowCloudExtension.this)
+  object passwords extends ConfigImplicits {
+    val provider = providers.getInstance(config.crypto.passwordProvider)
+
+    def getOrAsk(configPath: String, passwordId: String): String = {
+      rootConfig.withDefault(provider.askPassword(passwordId), _.getString(configPath))
+    }
+
+    lazy val masterPassword: String = {
+      getOrAsk("password", "master")
+    }
   }
 
   // -----------------------------------------------------------------------
   // Actors
   // -----------------------------------------------------------------------
   object actors {
-    val regionSupervisor = system.actorOf(RegionSupervisor.props, "shadowcloud")
+    val regionSupervisor = _actorSystem.actorOf(RegionSupervisor.props, "shadowcloud")
   }
 
   // -----------------------------------------------------------------------
@@ -101,7 +114,7 @@ class ShadowCloudExtension(system: ExtendedActorSystem) extends Extension {
   // -----------------------------------------------------------------------
   object streams {
     val chunk = ChunkProcessingStreams(config)
-    val index = IndexProcessingStreams(modules, config, keys.provider)(system)
+    val index = IndexProcessingStreams(modules, config, keys.provider)
     val region = RegionStreams(actors.regionSupervisor, config.parallelism)
     val file = FileStreams(region, chunk)
   }

@@ -77,7 +77,7 @@ class RegionSupervisorTest extends ActorSpec with FlatSpecLike with Matchers {
 
   private[this] def requestState = {
     supervisor ! GetState
-    val GetState.Success(_, (regions, storages)) = receiveOne(1 second)
+    val GetState.Success(_, State(regions, storages)) = receiveOne(1 second)
     (regions, storages)
   }
 }

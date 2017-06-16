@@ -19,6 +19,6 @@ private object H2Context {
   }
 }
 
-final class H2Context(config: Config, password: String) {
+final class H2Context(config: Config, password: String) { // TODO: In-memory mode
   lazy val db = new H2JdbcContext[SnakeCase](H2Context.createJdbcConfig(config, password))
 }

@@ -24,7 +24,7 @@ object Shell extends ImplicitConversions {
     }
 
     // TODO: sc.start() function
-    sc.password.masterPassword // Request password
+    sc.passwords.masterPassword // Request password
     sc.actors.regionSupervisor // Start actor
 
     val state = Await.result(sc.ops.supervisor.getState(), Duration.Inf)
@@ -35,6 +35,8 @@ object Shell extends ImplicitConversions {
     }
 
     println(sc.keys.provider.forEncryption())
+
+    sys.addShutdownHook(Await.result(actorSystem.terminate(), Duration.Inf))
   }
 
   def openRegion(regionId: String): RegionContext = {

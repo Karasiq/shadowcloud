@@ -20,22 +20,25 @@ trait ConfigImplicits {
     def getConfigIfExists(path: String): Config = {
       try {
         config.getConfig(path)
-      } catch { case _: ConfigException ⇒
-        ConfigFactory.empty()
+      } catch {
+        case _: ConfigException ⇒
+          ConfigFactory.empty()
       }
     }
 
     def getConfigOrRef(path: String): Config = {
       try {
         config.getConfig(path)
-      } catch { case _: ConfigException ⇒
-        try {
-          val path1 = config.getString(path)
-          // getConfigOrRefRec(path1)
-          config.getConfig(path1)
-        } catch { case _: ConfigException ⇒
-          ConfigFactory.empty()
-        }
+      } catch {
+        case _: ConfigException ⇒
+          try {
+            val path1 = config.getString(path)
+            // getConfigOrRefRec(path1)
+            config.getConfig(path1)
+          } catch {
+            case _: ConfigException ⇒
+              ConfigFactory.empty()
+          }
       }
     }
 
@@ -43,12 +46,13 @@ trait ConfigImplicits {
       Class.forName(config.getString(path)).asInstanceOf[Class[T]]
     }
 
-    @inline 
-    def withDefault[T](default: T, value: Config ⇒ T): T = {
+    @inline
+    def withDefault[T](default: ⇒ T, value: Config ⇒ T): T = {
       try {
         value(config)
-      } catch { case _: ConfigException ⇒
-        default
+      } catch {
+        case _: ConfigException ⇒
+          default
       }
     }
   }

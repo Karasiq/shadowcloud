@@ -19,8 +19,12 @@ class H2DBExtension(system: ExtendedActorSystem) extends Extension {
   lazy val config = sc.rootConfig.getConfig("persistence.h2")
 
   private[this] def getDbPassword: String = {
-    sc.password.masterPassword.replace(' ', '_')
+    sc.passwords.masterPassword.replace(' ', '_')
   }
 
-  lazy val context = new H2Context(config, getDbPassword)
+  lazy val context = {
+    val context = new H2Context(config, getDbPassword)
+    system.registerOnTermination(context.db.close())
+    context
+  }
 }

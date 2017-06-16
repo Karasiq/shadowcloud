@@ -5,13 +5,13 @@ import scala.language.postfixOps
 
 import org.scalatest.{FlatSpec, Matchers}
 
-import com.karasiq.shadowcloud.config.{AppConfig, RegionConfig, StorageConfig}
+import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, StorageConfig}
 import com.karasiq.shadowcloud.crypto.HashingMethod
 import com.karasiq.shadowcloud.test.utils.TestUtils
 
-class AppConfigTest extends FlatSpec with Matchers {
+class SCConfigTest extends FlatSpec with Matchers {
   "Application config" should "be loaded" in {
-    val config = AppConfig(TestUtils.rootConfig)
+    val config = SCConfig(TestUtils.rootConfig)
     config.crypto.hashing.chunks shouldBe HashingMethod("Blake2b")
     config.crypto.hashing.files shouldBe HashingMethod.none
   }

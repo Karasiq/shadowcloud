@@ -99,6 +99,10 @@ lazy val webapp = (project in file("server") / "webapp")
 // -----------------------------------------------------------------------
 // Misc
 // -----------------------------------------------------------------------
+lazy val javafx = (project in file("javafx"))
+  .settings(commonSettings)
+  .dependsOn(core)
+
 lazy val shell = (project in file("."))
   .settings(commonSettings)
   .settings(
@@ -123,5 +127,5 @@ lazy val shell = (project in file("."))
     },
     liquibaseChangelog := file("src/main/migrations/changelog.sql")
   )
-  .dependsOn(core, persistence)
+  .dependsOn(core, persistence, javafx)
   .enablePlugins(SbtLiquibase)

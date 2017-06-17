@@ -20,7 +20,7 @@ private[shell] final class StorageContext(val storageId: String)(implicit contex
   }
 
   def collectGarbage(delete: Boolean = false): Map[String, GCState] = {
-    val future = storage.collectGarbage(storageId, startNow = true, delete)
+    val future = storage.collectGarbage(storageId, delete)
     Await.result(future, Duration.Inf)
   }
 

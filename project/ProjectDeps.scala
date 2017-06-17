@@ -5,8 +5,8 @@ object ProjectDeps {
   type Deps = Seq[ModuleID]
 
   object akka {
-    private val akkaV = "2.4.17"
-    private val akkaHttpV = "10.0.4"
+    private val akkaV = "2.5.2"
+    private val akkaHttpV = "10.0.7"
 
     def actors: Deps = Seq(
       "com.typesafe.akka" %% "akka-actor" % akkaV,
@@ -39,7 +39,7 @@ object ProjectDeps {
   }
 
   def scalaTest: Deps = Seq(
-    "org.scalatest" %% "scalatest" % "3.0.1" % "test"
+    "org.scalatest" %% "scalatest" % "3.0.3" % "test"
   )
 
   def kryo: Deps = Seq(
@@ -48,8 +48,13 @@ object ProjectDeps {
     "com.twitter" %% "chill-akka" % "0.9.2"
   )
 
+  def protobuf: Deps = Seq(
+    "com.trueaccord.scalapb" %% "scalapb-runtime" % com.trueaccord.scalapb.compiler.Version.scalapbVersion,
+    "com.trueaccord.scalapb" %% "scalapb-runtime" % com.trueaccord.scalapb.compiler.Version.scalapbVersion % "protobuf"
+  )
+
   def bouncyCastle: Deps = Seq(
-    "org.bouncycastle" % "bcprov-jdk15on" % "1.56"
+    "org.bouncycastle" % "bcprov-jdk15on" % "1.57"
   )
 
   def libSodiumJni: Deps = Seq(

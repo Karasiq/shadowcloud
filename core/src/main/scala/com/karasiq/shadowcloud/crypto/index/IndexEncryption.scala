@@ -6,6 +6,7 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.keys.KeySet
 import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.exceptions.CryptoException
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.serialization.SerializationModule
 import com.karasiq.shadowcloud.serialization.protobuf.index.EncryptedIndexData
@@ -24,7 +25,9 @@ private[shadowcloud] final class IndexEncryption(modules: SCModules, keyEncrypti
   }
 
   def decrypt(data: EncryptedIndexData, keys: KeySet): ByteString = {
-    require(data.keysId == keys.id && IndexSignatures.verify(data, signModule, keys.sign), "Invalid signature")
+    if (data.keysId != keys.id || !IndexSignatures.verify(data, signModule, keys.sign)) {
+      throw CryptoException.InvalidSignature()
+    }
     val parameters = serialization.fromBytes[EncryptionParameters](keyEncryptionModule.decrypt(data.header, keys.encryption))
     val encryption = modules.encryptionModule(parameters.method)
     encryption.decrypt(data.data, parameters)

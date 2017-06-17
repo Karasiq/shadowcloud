@@ -17,6 +17,7 @@ object H2DB extends ExtensionId[H2DBExtension] with ExtensionIdProvider {
 class H2DBExtension(system: ExtendedActorSystem) extends Extension {
   lazy val sc = ShadowCloud(system)
   lazy val config = sc.rootConfig.getConfig("persistence.h2")
+  lazy val dispatcher = system.dispatchers.lookup("shadowcloud.persistence.h2.dispatcher")
 
   private[this] def getDbPassword: String = {
     sc.passwords.masterPassword.replace(' ', '_')

@@ -22,10 +22,7 @@ lazy val model = crossProject
     PB.protoSources in Compile := Seq(
       (baseDirectory in Compile).value.getParentFile / "src" / "main" / "protobuf"
     ),
-    libraryDependencies ++= Seq(
-      "com.trueaccord.scalapb" %% "scalapb-runtime" % com.trueaccord.scalapb.compiler.Version.scalapbVersion,
-      "com.trueaccord.scalapb" %% "scalapb-runtime" % com.trueaccord.scalapb.compiler.Version.scalapbVersion % "protobuf"
-    )
+    libraryDependencies ++= ProjectDeps.protobuf
   )
   .jvmSettings(libraryDependencies ++= ProjectDeps.akka.actors)
   .jsSettings(ScalaJSDeps.akka.actors)
@@ -43,9 +40,6 @@ lazy val core = project
 
 lazy val persistence = project
   .settings(commonSettings)
-  .settings(
-    libraryDependencies ++= ProjectDeps.akka.persistence ++ ProjectDeps.h2
-  )
   .dependsOn(core)
 
 // -----------------------------------------------------------------------
@@ -109,7 +103,7 @@ lazy val shell = (project in file("."))
     name := "shadowcloud-shell",
     mainClass in Compile := Some("com.karasiq.shadowcloud.test.Benchmark"),
     libraryDependencies ++= Seq(
-      "org.slf4j" % "slf4j-simple" % "1.7.5"
+      "org.slf4j" % "slf4j-simple" % "1.7.25"
     ),
     initialCommands in console :=
       """import com.karasiq.shadowcloud.shell.Shell._

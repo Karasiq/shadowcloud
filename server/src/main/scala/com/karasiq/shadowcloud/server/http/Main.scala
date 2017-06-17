@@ -32,7 +32,7 @@ object Main extends HttpApp with App with PredefinedToResponseMarshallers {
   // -----------------------------------------------------------------------
   // Route
   // -----------------------------------------------------------------------
-  protected def route: Route = {
+  protected def routes: Route = {
     post {
       (extractRequestEntity & extractPath) { (entity, path) ⇒
         val future = entity.withoutSizeLimit().dataBytes

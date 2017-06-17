@@ -34,7 +34,7 @@ object Shell extends ImplicitConversions {
       testRegion.register(testStorage)
     }
 
-    println(sc.keys.provider.forEncryption())
+    println(Await.result(sc.keys.provider.forEncryption(), Duration.Inf))
 
     sys.addShutdownHook(Await.result(actorSystem.terminate(), Duration.Inf))
   }

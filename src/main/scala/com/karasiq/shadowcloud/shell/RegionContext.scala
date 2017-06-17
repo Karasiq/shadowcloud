@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.shell
 
-import java.nio.file.{StandardOpenOption, Path ⇒ FSPath}
+import java.nio.file.{OpenOption, StandardOpenOption, Path ⇒ FSPath}
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
@@ -66,7 +66,7 @@ private[shell] final class RegionContext(val regionId: String)(implicit context:
   }
 
   def download(localPath: FSPath, path: Path): IOResult = {
-    val options = Set(StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
+    val options = Set[OpenOption](StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
     val future = sc.streams.file.readMostRecent(regionId, path).runWith(FileIO.toPath(localPath, options))
     // ShellUtils.printIOResult(future)
     Await.result(future, Duration.Inf)

@@ -9,10 +9,12 @@ private object H2Context {
     val path = config.getString("path")
     val cipher = config.getString("cipher")
     val compress = config.getBoolean("compress")
+    val initScript = config.getString("init-script")
 
+    //noinspection SpellCheckingInspection
     ConfigFactory.parseMap(Map(
       "dataSourceClassName" → "org.h2.jdbcx.JdbcDataSource",
-      "dataSource.url" → s"jdbc:h2:file:$path;CIPHER=$cipher;COMPRESS=$compress",
+      "dataSource.url" → s"jdbc:h2:file:$path;CIPHER=$cipher;COMPRESS=$compress;INIT=RUNSCRIPT FROM '$initScript'",
       "dataSource.user" → "sa",
       "dataSource.password" → s"$password sa"
     ).asJava)

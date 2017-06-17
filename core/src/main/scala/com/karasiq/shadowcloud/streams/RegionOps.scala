@@ -2,16 +2,16 @@ package com.karasiq.shadowcloud.streams
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
-import scala.language.{higherKinds, postfixOps}
+import scala.language.postfixOps
 
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 
-import com.karasiq.shadowcloud.actors.RegionDispatcher
+import com.karasiq.shadowcloud.actors.{RegionDispatcher, RegionGC}
 import com.karasiq.shadowcloud.actors.RegionDispatcher._
 import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
-import com.karasiq.shadowcloud.actors.utils.MessageStatus
+import com.karasiq.shadowcloud.actors.utils.{GCState, MessageStatus}
 import com.karasiq.shadowcloud.index.{Chunk, File, Folder, Path}
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
@@ -24,24 +24,23 @@ object RegionOps {
 }
 
 final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext, timeout: Timeout) {
-  def writeChunk(regionId: String, chunk: Chunk): Future[Chunk] = {
-    doAsk(regionId, WriteChunk, WriteChunk(chunk))
-  }
-
-  def readChunk(regionId: String, chunk: Chunk): Future[Chunk] = {
-    doAsk(regionId, ReadChunk, ReadChunk(chunk))
-  }
-
+  // -----------------------------------------------------------------------
+  // Index
+  // -----------------------------------------------------------------------
   def getIndex(regionId: String): Future[IndexMerger.State[RegionKey]] = {
-    doAsk(regionId, GetIndex, GetIndex)
+    doAsk(regionId, RegionDispatcher.GetIndex, RegionDispatcher.GetIndex)
   }
 
   def getFiles(regionId: String, path: Path): Future[Set[File]] = {
-    doAsk(regionId, GetFiles, GetFiles(path))
+    doAsk(regionId, RegionDispatcher.GetFiles, RegionDispatcher.GetFiles(path))
   }
 
   def getFolder(regionId: String, path: Path): Future[Folder] = {
-    doAsk(regionId, GetFolder, GetFolder(path))
+    doAsk(regionId, RegionDispatcher.GetFolder, RegionDispatcher.GetFolder(path))
+  }
+
+  def writeIndex(regionId: String, diff: FolderIndexDiff): Future[IndexDiff] = {
+    doAsk(regionId, WriteIndex, WriteIndex(diff))
   }
 
   def createFolder(regionId: String, path: Path): Future[IndexDiff] = {
@@ -68,10 +67,34 @@ final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext,
     regionSupervisor ! RegionEnvelope(regionId, RegionDispatcher.Synchronize)
   }
 
-  private[this] def writeIndex(regionId: String, diff: FolderIndexDiff): Future[IndexDiff] = {
-    doAsk(regionId, WriteIndex, WriteIndex(diff))
+  // -----------------------------------------------------------------------
+  // Chunk IO
+  // -----------------------------------------------------------------------
+  def writeChunk(regionId: String, chunk: Chunk): Future[Chunk] = {
+    doAsk(regionId, WriteChunk, WriteChunk(chunk))
   }
 
+  def readChunk(regionId: String, chunk: Chunk): Future[Chunk] = {
+    doAsk(regionId, ReadChunk, ReadChunk(chunk))
+  }
+
+  // -----------------------------------------------------------------------
+  // Storages
+  // -----------------------------------------------------------------------
+  def getStorages(regionId: String): Future[Seq[RegionDispatcher.Storage]] = {
+    doAsk(regionId, RegionDispatcher.GetStorages, RegionDispatcher.GetStorages)
+  }
+
+  // -----------------------------------------------------------------------
+  // Region GC
+  // -----------------------------------------------------------------------
+  def collectGarbage(regionId: String, delete: Boolean = false): Future[Map[String, GCState]] = {
+    doAsk(regionId, RegionGC.CollectGarbage, RegionGC.CollectGarbage(Some(delete)))
+  }
+
+  // -----------------------------------------------------------------------
+  // Utils
+  // -----------------------------------------------------------------------
   private[this] def doAsk[V](regionId: String, status: MessageStatus[_, V], message: Any): Future[V] = {
     (regionSupervisor ? RegionEnvelope(regionId, message)).flatMap {
       case status.Success(_, value) ⇒

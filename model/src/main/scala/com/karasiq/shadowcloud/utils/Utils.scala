@@ -1,12 +1,13 @@
 package com.karasiq.shadowcloud.utils
 
-import akka.util.ByteString
-import com.karasiq.shadowcloud.index.Chunk
-import com.typesafe.config.ConfigFactory
-
 import scala.collection.TraversableLike
 import scala.concurrent.duration.FiniteDuration
 import scala.language.{higherKinds, postfixOps}
+
+import akka.util.ByteString
+import com.typesafe.config.ConfigFactory
+
+import com.karasiq.shadowcloud.index.Chunk
 
 private[shadowcloud] object Utils {
   // -----------------------------------------------------------------------
@@ -26,6 +27,7 @@ private[shadowcloud] object Utils {
   // toString() utils
   // -----------------------------------------------------------------------
   def printHashes(hashes: Traversable[ByteString], limit: Int = 20): String = {
+    if (hashes.isEmpty) return ""
     val size = hashes.size
     val sb = new StringBuilder(math.min(limit, size) * 22 + 10)
     hashes.filter(_.nonEmpty).take(limit).foreach { hash ⇒

@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.config
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 
-case class RegionConfig(dataReplicationFactor: Int, indexReplicationFactor: Int)
+case class RegionConfig(dataReplicationFactor: Int, indexReplicationFactor: Int, gcAutoDelete: Boolean)
 
 object RegionConfig extends ConfigImplicits {
   def forId(regionId: String, rootConfig: Config): RegionConfig = {
@@ -14,7 +14,8 @@ object RegionConfig extends ConfigImplicits {
   def apply(config: Config): RegionConfig = {
     RegionConfig(
       config.getInt("data-replication-factor"),
-      config.getInt("index-replication-factor")
+      config.getInt("index-replication-factor"),
+      config.getBoolean("gc-auto-delete")
     )
   }
 }

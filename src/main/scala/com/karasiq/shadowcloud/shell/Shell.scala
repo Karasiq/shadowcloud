@@ -83,7 +83,7 @@ object Shell extends ImplicitConversions {
     testStorage.sync()
     Thread.sleep(5000)
 
-    testStorage.collectGarbage(delete = true)
+    testRegion.collectGarbage(delete = true)
     testStorage.compactIndex(testRegion.regionId)
     testStorage.sync()
   }

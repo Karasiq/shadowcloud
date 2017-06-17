@@ -8,7 +8,8 @@ import akka.event.LoggingAdapter
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk => SReadChunk, WriteChunk => SWriteChunk}
+import com.karasiq.shadowcloud.actors.RegionDispatcher
+import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk ⇒ SReadChunk, WriteChunk ⇒ SWriteChunk}
 import com.karasiq.shadowcloud.actors.RegionDispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors.utils.PendingOperation
 import com.karasiq.shadowcloud.config.RegionConfig
@@ -183,7 +184,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
   // -----------------------------------------------------------------------
   // Internal functions
   // -----------------------------------------------------------------------
-  private[this] def getChunkPath(storage: StorageTracker.Storage, chunk: Chunk): ChunkPath = {
+  private[this] def getChunkPath(storage: RegionDispatcher.Storage, chunk: Chunk): ChunkPath = {
     ChunkPath(regionId, storage.config.chunkKey(chunk))
   }
 
@@ -200,7 +201,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
     chunks.remove(status.chunk.checksum.hash)
   }
 
-  private[this] def writeChunkToStorages(status: ChunkStatus): Set[StorageTracker.Storage] = {
+  private[this] def writeChunkToStorages(status: ChunkStatus): Set[RegionDispatcher.Storage] = {
     require(status.chunk.data.nonEmpty, "Chunks is empty")
     val writingCount = status.writingChunk.size + status.hasChunk.size
     val availableStorages = storages.forWrite(status)

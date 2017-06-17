@@ -7,20 +7,17 @@ import akka.actor.{ActorContext, ActorRef}
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.internal.ChunksTracker.ChunkStatus
-import com.karasiq.shadowcloud.config.StorageConfig
+import com.karasiq.shadowcloud.actors.RegionDispatcher.Storage
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.StorageHealth
 
 private[actors] object StorageTracker {
-  case class Storage(id: String, dispatcher: ActorRef, health: StorageHealth, config: StorageConfig)
-
   def apply()(implicit context: ActorContext): StorageTracker = {
     new StorageTracker()
   }
 }
 
 private[actors] final class StorageTracker(implicit context: ActorContext) { // TODO: Quota
-  import StorageTracker._
 
   // -----------------------------------------------------------------------
   // State

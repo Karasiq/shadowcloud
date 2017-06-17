@@ -12,12 +12,12 @@ import akka.pattern.ask
 import akka.util.Timeout
 
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk => SReadChunk, WriteChunk => SWriteChunk}
+import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk ⇒ SReadChunk, WriteChunk ⇒ SWriteChunk}
 import com.karasiq.shadowcloud.actors.events.{RegionEvents, StorageEvents}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
-import com.karasiq.shadowcloud.config.RegionConfig
+import com.karasiq.shadowcloud.config.{RegionConfig, StorageConfig}
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
@@ -27,10 +27,14 @@ import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.utils.Utils
 
 object RegionDispatcher {
+  // Types
+  case class Storage(id: String, dispatcher: ActorRef, health: StorageHealth, config: StorageConfig)
+
   // Messages
   sealed trait Message
   case class Register(storageId: String, dispatcher: ActorRef, health: StorageHealth = StorageHealth.empty) extends Message
   case class Unregister(storageId: String) extends Message
+  case object GetStorages extends Message with MessageStatus[String, Seq[Storage]]
 
   case class WriteIndex(diff: FolderIndexDiff) extends Message
   object WriteIndex extends MessageStatus[FolderIndexDiff, IndexDiff]
@@ -58,6 +62,10 @@ object RegionDispatcher {
 private final class RegionDispatcher(regionId: String, regionProps: RegionConfig) extends Actor with ActorLogging {
   import RegionDispatcher._
   require(regionId.nonEmpty, "Invalid region identifier")
+
+  // -----------------------------------------------------------------------
+  // Context
+  // -----------------------------------------------------------------------
   private[this] implicit val executionContext: ExecutionContext = context.dispatcher
   private[this] implicit val timeout = Timeout(10 seconds)
   private[this] val sc = ShadowCloud()
@@ -65,6 +73,14 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
   private[this] val chunks = ChunksTracker(regionId, regionProps, storages, log)
   private[this] val globalIndex = IndexMerger.region
 
+  // -----------------------------------------------------------------------
+  // Actors
+  // -----------------------------------------------------------------------
+  private[this] val gcActor = context.actorOf(RegionGC.props(regionId), "region-gc")
+
+  // -----------------------------------------------------------------------
+  // Receive
+  // -----------------------------------------------------------------------
   def receive: Receive = {
     // -----------------------------------------------------------------------
     // Global index commands
@@ -91,6 +107,7 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
         .get(path.parent)
         .map(_.files.filter(_.path == path))
         .filter(_.nonEmpty)
+
       files match {
         case Some(files) ⇒
           sender() ! GetFiles.Success(path, files)
@@ -170,6 +187,9 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
       storages.unregister(dispatcher)
       chunks.unregister(dispatcher)
 
+    case GetStorages ⇒
+      sender() ! GetStorages.Success(regionId, storages.all)
+
     case PushDiffs(storageId, diffs, pending) if storages.contains(storageId) ⇒
       globalIndex.addPending(pending)
       addStorageDiffs(storageId, diffs)
@@ -182,10 +202,12 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
         dropStorageDiffs(storageId)
         chunks.unregister(storages.getDispatcher(storageId))
         addStorageDiffs(storageId, localDiffs)
+        gcActor ! RegionGC.Defer(30 minutes)
 
       case StorageEvents.IndexUpdated(`regionId`, sequenceNr, diff, _) ⇒
         log.debug("Storage [{}] index updated: {}", storageId, diff)
         addStorageDiff(storageId, sequenceNr, diff)
+        gcActor ! RegionGC.Defer(10 minutes)
 
       case StorageEvents.PendingIndexUpdated(`regionId`, diff) ⇒
         log.debug("Storage [{}] pending index updated: {}", storageId, diff)
@@ -199,6 +221,7 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
         log.debug("Chunk written: {}", chunk)
         chunks.registerChunk(storages.getDispatcher(storageId), chunk)
         sc.eventStreams.publishRegionEvent(regionId, RegionEvents.ChunkWritten(storageId, chunk))
+        gcActor ! RegionGC.Defer(10 minutes)
 
       case StorageEvents.HealthUpdated(health) ⇒
         log.debug("Storage [{}] health report: {}", storageId, health)
@@ -217,6 +240,12 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
         storages.unregister(dispatcher)
       }
       chunks.unregister(dispatcher)
+
+    // -----------------------------------------------------------------------
+    // GC commands
+    // -----------------------------------------------------------------------
+    case m: RegionGC.Message ⇒
+      gcActor.forward(m)
   }
 
   private[this] def addStorageDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)]): Unit = {

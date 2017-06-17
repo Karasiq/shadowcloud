@@ -94,7 +94,10 @@ private final class IndexDispatcher(storageId: String, repository: CategorizedRe
 
     case AddPending(region, diff) ⇒
       log.debug("Pending diff added: {}", diff)
-      persistAsync(PendingIndexUpdated(region, diff))(updateState)
+      persistAsync(PendingIndexUpdated(region, diff)) { e ⇒
+        updateState(e)
+        sender() ! AddPending.Success(diff, index.pending(region))
+      }
 
     case CompactIndex(region) ⇒
       if (!compactRequested.contains(region)) {

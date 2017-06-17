@@ -36,7 +36,6 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
 
   private[this] implicit val timeout = Timeout(10 seconds)
   private[this] val schedule = context.system.scheduler.schedule(Duration.Zero, 30 seconds, self, CheckHealth)
-  private[this] val gcActor = context.actorOf(GarbageCollector.props(storageId, index, chunkIO), "garbageCollector")
   private[this] val sc = ShadowCloud()
 
   // -----------------------------------------------------------------------
@@ -52,13 +51,13 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
     // -----------------------------------------------------------------------
     // Chunk commands
     // -----------------------------------------------------------------------
-    case msg@ChunkIODispatcher.WriteChunk(region, chunk) ⇒
+    case msg @ ChunkIODispatcher.WriteChunk(region, chunk) ⇒
       writingChunks.addWaiter((region, chunk), sender(), { () ⇒
         log.debug("Writing chunk: {}", chunk)
         chunkIO ! msg
       })
 
-    case msg@ChunkIODispatcher.ReadChunk(region, chunk) ⇒
+    case msg @ ChunkIODispatcher.ReadChunk(region, chunk) ⇒
       log.debug("Reading chunk: {}/{}", region, chunk)
       chunkIO.forward(msg)
 
@@ -68,13 +67,13 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
     // -----------------------------------------------------------------------
     // Chunk responses
     // -----------------------------------------------------------------------
-    case msg@ChunkIODispatcher.WriteChunk.Success((path, chunk), _) ⇒
+    case msg @ ChunkIODispatcher.WriteChunk.Success((path, chunk), _) ⇒
       log.debug("Chunk written, appending to index: {}", chunk)
       writingChunks.finish((path, chunk), msg)
       sc.eventStreams.publishStorageEvent(storageId, StorageEvents.ChunkWritten(path, chunk))
       index ! IndexDispatcher.AddPending(path.region, IndexDiff.newChunks(chunk.withoutData))
 
-    case msg@ChunkIODispatcher.WriteChunk.Failure((region, chunk), error) ⇒
+    case msg @ ChunkIODispatcher.WriteChunk.Failure((region, chunk), error) ⇒
       log.error(error, "Chunk write failure: {}/{}", region, chunk)
       writingChunks.finish((region, chunk), msg)
 
@@ -83,12 +82,6 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
     // -----------------------------------------------------------------------
     case msg: IndexDispatcher.Message ⇒
       index.forward(msg)
-
-    // -----------------------------------------------------------------------
-    // GC commands
-    // -----------------------------------------------------------------------
-    case msg: GarbageCollector.Message ⇒
-      gcActor.forward(msg)
 
     // -----------------------------------------------------------------------
     // Storage health
@@ -114,7 +107,6 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
           val newStats = DiffStats(diffs.diffs.map(_._2): _*)
           stats.updateStats(region, newStats)
         }
-        gcActor ! GarbageCollector.Defer(10 minutes)
 
       case StorageEvents.IndexUpdated(region, _, diff, _) ⇒
         stats.appendStats(region, DiffStats(diff))
@@ -126,7 +118,6 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
             index ! IndexDispatcher.CompactIndex(region)
           }
         }
-        gcActor ! GarbageCollector.Defer(10 minutes)
 
       case StorageEvents.IndexDeleted(region, _) ⇒
         stats.clear(region)
@@ -135,7 +126,6 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
         val written = chunk.checksum.encryptedSize
         log.debug("{} bytes written, updating storage health", written)
         stats.updateHealth(_ - written)
-        gcActor ! GarbageCollector.Defer(30 minutes)
 
       case _ ⇒
       // Ignore

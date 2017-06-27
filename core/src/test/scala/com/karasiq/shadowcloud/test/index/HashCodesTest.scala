@@ -14,8 +14,8 @@ class HashCodesTest extends FlatSpec with Matchers {
   "Chunks" should "be compared" in {
     val chunk1 = TestUtils.randomChunk
     val chunk2 = chunk1.withoutData
-    val chunk3 = chunk2.copy(checksum = chunk2.checksum.copy(encryptedSize = 0, encryptedHash = ByteString.empty))
-    val chunk4 = chunk2.copy(checksum = chunk2.checksum.copy(encryptedSize = 0, encryptedHash = TestUtils.randomBytes(20)))
+    val chunk3 = chunk2.copy(checksum = chunk2.checksum.copy(encSize = 0, encHash = ByteString.empty))
+    val chunk4 = chunk2.copy(checksum = chunk2.checksum.copy(encSize = 0, encHash = TestUtils.randomBytes(20)))
     val chunk5 = chunk2.copy(checksum = chunk2.checksum.copy(hash = TestUtils.randomBytes(20)))
     val chunk6 = chunk2.copy(checksum = chunk2.checksum.copy(size = chunk2.checksum.size + 1))
     chunk1 shouldBe chunk2
@@ -32,8 +32,8 @@ class HashCodesTest extends FlatSpec with Matchers {
 
   "Files" should "be compared" in {
     val file1 = TestUtils.randomFile()
-    val file2 = file1.copy(checksum = file1.checksum.copy(encryptedSize = 0, encryptedHash = ByteString.empty))
-    val file3 = file1.copy(checksum = file1.checksum.copy(encryptedSize = 0, encryptedHash = TestUtils.randomBytes(20)))
+    val file2 = file1.copy(checksum = file1.checksum.copy(encSize = 0, encHash = ByteString.empty))
+    val file3 = file1.copy(checksum = file1.checksum.copy(encSize = 0, encHash = TestUtils.randomBytes(20)))
     val file4 = file1.copy(checksum = file1.checksum.copy(hash = TestUtils.randomBytes(20)))
     val file5 = file1.copy(checksum = file1.checksum.copy(size = file1.checksum.size + 1))
     val file6 = file1.copy(chunks = file1.chunks :+ TestUtils.randomChunk)

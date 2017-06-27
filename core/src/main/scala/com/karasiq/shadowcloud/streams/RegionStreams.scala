@@ -42,7 +42,7 @@ final class RegionStreams(val regionSupervisor: ActorRef, val parallelism: Paral
     .mapAsync(parallelism.read) { case (regionId, path) ⇒
       regionOps.getFiles(regionId, path)
         .map((path, _))
-        .recover { case _: FileNotFoundException ⇒ (path, Set.empty[File]) }
+        .recover { case _: FileNotFoundException ⇒ (path, Set.empty[File]) } // TODO: Region exceptions
     }
 
   val findFile = findFiles.map(e ⇒ FileVersions.mostRecent(e._2))

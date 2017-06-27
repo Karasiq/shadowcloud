@@ -71,10 +71,10 @@ final class ChunkProcessingStreams(val modules: SCModules, val crypto: CryptoCon
     val hasher = modules.hashingModule(chunk.checksum.method)
     if (chunk.checksum.hash.nonEmpty && hasher.createHash(chunk.data.plain) != chunk.checksum.hash) {
       throw new IllegalArgumentException(s"Chunk plaintext checksum not match: $chunk")
-    } else if (chunk.checksum.encryptedHash.nonEmpty && hasher.createHash(chunk.data.encrypted) != chunk.checksum.encryptedHash) {
+    } else if (chunk.checksum.encHash.nonEmpty && hasher.createHash(chunk.data.encrypted) != chunk.checksum.encHash) {
       throw new IllegalArgumentException(s"Chunk ciphertext checksum not match: $chunk")
     } else if ((chunk.data.plain.nonEmpty && chunk.checksum.size != chunk.data.plain.length) ||
-      (chunk.data.encrypted.nonEmpty && chunk.checksum.encryptedSize != chunk.data.encrypted.length)) {
+      (chunk.data.encrypted.nonEmpty && chunk.checksum.encSize != chunk.data.encrypted.length)) {
       throw new IllegalArgumentException(s"Chunk sizes not match: $chunk")
     } else {
       chunk

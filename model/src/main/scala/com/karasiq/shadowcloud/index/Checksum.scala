@@ -1,17 +1,18 @@
 package com.karasiq.shadowcloud.index
 
+import scala.language.postfixOps
+
 import akka.util.ByteString
+
 import com.karasiq.shadowcloud.crypto.HashingMethod
 import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.utils.{HexString, MemorySize}
 
-import scala.language.postfixOps
-
 case class Checksum(method: HashingMethod = HashingMethod.default, encMethod: HashingMethod = HashingMethod.default,
-                    size: Long = 0, hash: ByteString = ByteString.empty, encryptedSize: Long = 0,
-                    encryptedHash: ByteString = ByteString.empty) extends HasEmpty {
+                    size: Long = 0, hash: ByteString = ByteString.empty, encSize: Long = 0,
+                    encHash: ByteString = ByteString.empty) extends HasEmpty {
   def isEmpty: Boolean = {
-    size == 0 && hash.isEmpty && encryptedSize == 0 && encryptedHash.isEmpty
+    size == 0 && hash.isEmpty && encSize == 0 && encHash.isEmpty
   }
 
   override def hashCode(): Int = {
@@ -19,12 +20,12 @@ case class Checksum(method: HashingMethod = HashingMethod.default, encMethod: Ha
   }
 
   override def equals(obj: scala.Any): Boolean = obj match {
-    case Checksum(method1, encMethod1, size1, hash1, encryptedSize1, encryptedHash1) ⇒
+    case Checksum(method1, encMethod1, size1, hash1, encSize1, encHash1) ⇒
       method == method1 &&
         size == size1 &&
         hash == hash1 &&
-        ((encryptedSize == 0 || encryptedSize1 == 0) || encryptedSize == encryptedSize1) &&
-        ((encryptedHash.isEmpty || encryptedHash1.isEmpty) || (encMethod == encMethod1 && encryptedHash == encryptedHash1))
+        ((encSize == 0 || encSize1 == 0) || encSize == encSize1) &&
+        ((encHash.isEmpty || encHash1.isEmpty) || (encMethod == encMethod1 && encHash == encHash1))
 
     case _ ⇒
       false
@@ -42,7 +43,7 @@ case class Checksum(method: HashingMethod = HashingMethod.default, encMethod: Ha
       Seq(method.toString, encMethod.toString)
     }
     val plain = sizeAndHash("plain", size, hash)
-    val encrypted = sizeAndHash("encrypted", encryptedSize, encryptedHash)
+    val encrypted = sizeAndHash("encrypted", encSize, encHash)
 
     s"Checksum(${(methods ++ Seq(plain, encrypted)).filter(_.nonEmpty).mkString(", ")})"
   }

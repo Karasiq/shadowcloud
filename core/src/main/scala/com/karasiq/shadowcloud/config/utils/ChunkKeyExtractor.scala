@@ -1,9 +1,10 @@
 package com.karasiq.shadowcloud.config.utils
 
-import akka.util.ByteString
-import com.karasiq.shadowcloud.index.Chunk
-
 import scala.language.postfixOps
+
+import akka.util.ByteString
+
+import com.karasiq.shadowcloud.index.Chunk
 
 private[shadowcloud] trait ChunkKeyExtractor extends (Chunk ⇒ ByteString) {
   def apply(chunk: Chunk): ByteString
@@ -11,8 +12,8 @@ private[shadowcloud] trait ChunkKeyExtractor extends (Chunk ⇒ ByteString) {
 
 private[shadowcloud] object ChunkKeyExtractor {
   val hash: ChunkKeyExtractor = (chunk: Chunk) ⇒ chunk.checksum.hash
-  val encryptedHash: ChunkKeyExtractor = (chunk: Chunk) ⇒ chunk.checksum.encryptedHash
-  val doubleHash: ChunkKeyExtractor = (chunk: Chunk) ⇒ chunk.checksum.hash ++ chunk.checksum.encryptedHash
+  val encryptedHash: ChunkKeyExtractor = (chunk: Chunk) ⇒ chunk.checksum.encHash
+  val doubleHash: ChunkKeyExtractor = (chunk: Chunk) ⇒ chunk.checksum.hash ++ chunk.checksum.encHash
 
   def fromString(str: String): ChunkKeyExtractor = str match {
     case "hash" ⇒

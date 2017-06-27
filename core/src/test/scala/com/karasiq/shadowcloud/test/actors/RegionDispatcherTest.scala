@@ -54,8 +54,8 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     // Health update
     val StorageEnvelope("testStorage", StorageEvents.HealthUpdated(health)) = receiveOne(1 second)
     health.totalSpace shouldBe initialHealth.totalSpace
-    health.usedSpace shouldBe (initialHealth.usedSpace + chunk.checksum.encryptedSize)
-    health.canWrite shouldBe (initialHealth.canWrite - chunk.checksum.encryptedSize)
+    health.usedSpace shouldBe (initialHealth.usedSpace + chunk.checksum.encSize)
+    health.canWrite shouldBe (initialHealth.canWrite - chunk.checksum.encSize)
 
     // Chunk index update
     val StorageEnvelope("testStorage", StorageEvents.PendingIndexUpdated("testRegion", diff)) = receiveOne(1 second)

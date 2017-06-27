@@ -123,7 +123,7 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
         stats.clear(region)
 
       case StorageEvents.ChunkWritten(_, chunk) ⇒
-        val written = chunk.checksum.encryptedSize
+        val written = chunk.checksum.encSize
         log.debug("{} bytes written, updating storage health", written)
         stats.updateHealth(_ - written)
 

@@ -79,7 +79,7 @@ object TestUtils extends TestImplicits {
   def randomFile(parent: Path = Path.root): File = {
     val chunks = Seq.fill(1)(randomChunk)
     val size = chunks.map(_.checksum.size).sum
-    val encSize = chunks.map(_.checksum.encryptedSize).sum
+    val encSize = chunks.map(_.checksum.encSize).sum
     val hash = sha1Hashing.createHash(ByteString.fromChunks(chunks))
     val encHash = sha1Hashing.createHash(ByteString.fromEncryptedChunks(chunks))
     File(parent / s"$randomString.txt", Timestamp.now, Random.nextInt(10),

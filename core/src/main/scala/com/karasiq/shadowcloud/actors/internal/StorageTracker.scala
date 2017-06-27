@@ -62,7 +62,7 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
         !chunk.writingChunk.contains(dispatcher) &&
         !chunk.waitingChunk.contains(dispatcher)
     }
-    val writeSize = chunk.chunk.checksum.encryptedSize
+    val writeSize = chunk.chunk.checksum.encSize
     available(writeSize).filter(s ⇒ dispatcherCanWrite(s.dispatcher))
   }
 

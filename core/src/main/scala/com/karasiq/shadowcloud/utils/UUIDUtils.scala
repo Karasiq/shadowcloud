@@ -8,8 +8,9 @@ import akka.util.ByteString
 private[shadowcloud] object UUIDUtils {
   def uuidToBytes(uuid: UUID): ByteString = {
     implicit val byteOrder = ByteOrder.BIG_ENDIAN
-    ByteString.newBuilder
-      .putLong(uuid.getMostSignificantBits)
+    val builder = ByteString.newBuilder
+    builder.sizeHint(16)
+    builder.putLong(uuid.getMostSignificantBits)
       .putLong(uuid.getLeastSignificantBits)
       .result()
   }

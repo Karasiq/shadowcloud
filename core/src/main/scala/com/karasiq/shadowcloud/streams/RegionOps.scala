@@ -14,6 +14,7 @@ import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.actors.utils.{GCState, MessageStatus}
 import com.karasiq.shadowcloud.index.{Chunk, File, Folder, Path}
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.storage.replication.StorageStatusProvider.StorageStatus
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 
@@ -81,7 +82,7 @@ final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext,
   // -----------------------------------------------------------------------
   // Storages
   // -----------------------------------------------------------------------
-  def getStorages(regionId: String): Future[Seq[RegionDispatcher.Storage]] = {
+  def getStorages(regionId: String): Future[Seq[StorageStatus]] = {
     doAsk(regionId, RegionDispatcher.GetStorages, RegionDispatcher.GetStorages)
   }
 

@@ -13,28 +13,28 @@ import akka.util.Timeout
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk ⇒ SReadChunk, WriteChunk ⇒ SWriteChunk}
+import com.karasiq.shadowcloud.actors.context.RegionContext
 import com.karasiq.shadowcloud.actors.events.{RegionEvents, StorageEvents}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
-import com.karasiq.shadowcloud.config.{RegionConfig, StorageConfig}
+import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.StorageHealth
+import com.karasiq.shadowcloud.storage.replication.StorageSelector
+import com.karasiq.shadowcloud.storage.replication.StorageStatusProvider.StorageStatus
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.utils.Utils
 
 object RegionDispatcher {
-  // Types
-  case class Storage(id: String, dispatcher: ActorRef, health: StorageHealth, config: StorageConfig)
-
   // Messages
   sealed trait Message
   case class Register(storageId: String, dispatcher: ActorRef, health: StorageHealth = StorageHealth.empty) extends Message
   case class Unregister(storageId: String) extends Message
-  case object GetStorages extends Message with MessageStatus[String, Seq[Storage]]
+  case object GetStorages extends Message with MessageStatus[String, Seq[StorageStatus]]
 
   case class WriteIndex(diff: FolderIndexDiff) extends Message
   object WriteIndex extends MessageStatus[FolderIndexDiff, IndexDiff]
@@ -59,7 +59,7 @@ object RegionDispatcher {
   }
 }
 
-private final class RegionDispatcher(regionId: String, regionProps: RegionConfig) extends Actor with ActorLogging {
+private final class RegionDispatcher(regionId: String, regionConfig: RegionConfig) extends Actor with ActorLogging {
   import RegionDispatcher._
   require(regionId.nonEmpty, "Invalid region identifier")
 
@@ -70,8 +70,10 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
   private[this] implicit val timeout = Timeout(10 seconds)
   private[this] val sc = ShadowCloud()
   private[this] val storages = StorageTracker()
-  private[this] val chunks = ChunksTracker(regionId, regionProps, storages, log)
+  private[this] val chunks = ChunksTracker(regionId, regionConfig, storages, log)
   private[this] val globalIndex = IndexMerger.region
+  private[this] implicit val regionContext = RegionContext(regionId, regionConfig, self, storages, chunks, globalIndex)
+  private[this] implicit val storageSelector = StorageSelector.fromClass(regionConfig.storageSelector)
 
   // -----------------------------------------------------------------------
   // Actors
@@ -90,14 +92,14 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
         sender() ! WriteIndex.Failure(folders, new IllegalArgumentException("Diff is empty"))
       } else {
         val diff = IndexDiff(Utils.timestamp, folders)
-        val actors = Utils.takeOrAll(storages.forIndexWrite(diff).map(_.dispatcher), regionProps.indexReplicationFactor)
-        if (actors.isEmpty) {
+        val storages = storageSelector.forIndexWrite(diff)
+        if (storages.isEmpty) {
           log.warning("No index storages available on {}", regionId)
           sender() ! WriteIndex.Failure(folders, new IllegalStateException("No storages available"))
         } else {
           globalIndex.addPending(diff)
-          log.debug("Writing to virtual region [{}] index: {} (storages = {})", regionId, diff, actors)
-          actors.foreach(_ ! IndexDispatcher.AddPending(regionId, diff))
+          log.debug("Writing to virtual region [{}] index: {} (storages = {})", regionId, diff, storages)
+          storages.foreach(_.dispatcher ! IndexDispatcher.AddPending(regionId, diff))
           sender() ! WriteIndex.Success(folders, globalIndex.pending)
         }
       }
@@ -130,7 +132,7 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
 
     case Synchronize ⇒
       log.info("Force synchronizing indexes of virtual region: {}", regionId)
-      storages.all.foreach(_.dispatcher ! IndexDispatcher.Synchronize)
+      storages.storages.foreach(_.dispatcher ! IndexDispatcher.Synchronize)
 
     // -----------------------------------------------------------------------
     // Read/write commands
@@ -188,7 +190,7 @@ private final class RegionDispatcher(regionId: String, regionProps: RegionConfig
       chunks.unregister(dispatcher)
 
     case GetStorages ⇒
-      sender() ! GetStorages.Success(regionId, storages.all)
+      sender() ! GetStorages.Success(regionId, storages.storages)
 
     case PushDiffs(storageId, diffs, pending) if storages.contains(storageId) ⇒
       globalIndex.addPending(pending)

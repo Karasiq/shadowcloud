@@ -1,12 +1,12 @@
 package com.karasiq.shadowcloud.storage
 
-import com.karasiq.shadowcloud.utils.MemorySize
-
 import scala.concurrent.Future
 import scala.language.postfixOps
 
-case class StorageHealth(canWrite: Long, totalSpace: Long, usedSpace: Long) {
-  require(canWrite >= 0 && totalSpace >= 0 && usedSpace >= 0)
+import com.karasiq.shadowcloud.utils.MemorySize
+
+case class StorageHealth(canWrite: Long, totalSpace: Long, usedSpace: Long, online: Boolean = true) {
+  require(canWrite >= 0 && totalSpace >= 0 && usedSpace >= 0, "Invalid sizes")
 
   def -(bytes: Long): StorageHealth = {
     val newUsedSpace = usedSpace + bytes
@@ -14,7 +14,7 @@ case class StorageHealth(canWrite: Long, totalSpace: Long, usedSpace: Long) {
   }
 
   override def toString: String = {
-    f"StorageHealth(${MemorySize.toString(canWrite)} available, ${MemorySize.toString(usedSpace)}/${MemorySize.toString(totalSpace)})"
+    s"StorageHealth(${if (online) "Online" else "Offline"}, ${MemorySize.toString(canWrite)} available, ${MemorySize.toString(usedSpace)}/${MemorySize.toString(totalSpace)})"
   }
 }
 

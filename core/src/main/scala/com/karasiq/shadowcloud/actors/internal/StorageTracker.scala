@@ -6,10 +6,9 @@ import scala.language.postfixOps
 import akka.actor.{ActorContext, ActorRef}
 
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.actors.internal.ChunksTracker.ChunkStatus
-import com.karasiq.shadowcloud.actors.RegionDispatcher.Storage
-import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.StorageHealth
+import com.karasiq.shadowcloud.storage.replication.StorageStatusProvider
+import com.karasiq.shadowcloud.storage.replication.StorageStatusProvider.StorageStatus
 
 private[actors] object StorageTracker {
   def apply()(implicit context: ActorContext): StorageTracker = {
@@ -17,14 +16,14 @@ private[actors] object StorageTracker {
   }
 }
 
-private[actors] final class StorageTracker(implicit context: ActorContext) { // TODO: Quota
+private[actors] final class StorageTracker(implicit context: ActorContext) extends StorageStatusProvider {
 
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
   private[this] val sc = ShadowCloud()
-  private[this] val storages = mutable.AnyRefMap[String, Storage]()
-  private[this] val storagesByAR = mutable.AnyRefMap[ActorRef, Storage]()
+  private[this] val storagesById = mutable.AnyRefMap[String, StorageStatus]()
+  private[this] val storagesByAR = mutable.AnyRefMap[ActorRef, StorageStatus]()
 
   // -----------------------------------------------------------------------
   // Contains
@@ -34,36 +33,7 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
   }
 
   def contains(storageId: String): Boolean = {
-    storages.contains(storageId)
-  }
-
-  // -----------------------------------------------------------------------
-  // Dispatchers for read/write
-  // -----------------------------------------------------------------------
-  def all: Seq[Storage] = {
-    storages.values.toVector
-  }
-
-  def available(toWrite: Long = 0): Seq[Storage] = {
-    all.filter(_.health.canWrite > toWrite)
-  }
-
-  def forIndexWrite(diff: IndexDiff): Seq[Storage] = {
-    available(1024) // At least 1KB
-  }
-
-  def forRead(status: ChunkStatus): Seq[Storage] = {
-    available().filter(s ⇒ status.hasChunk.contains(s.dispatcher))
-  }
-
-  def forWrite(chunk: ChunkStatus): Seq[Storage] = {
-    def dispatcherCanWrite(dispatcher: ActorRef): Boolean = {
-      !chunk.hasChunk.contains(dispatcher) &&
-        !chunk.writingChunk.contains(dispatcher) &&
-        !chunk.waitingChunk.contains(dispatcher)
-    }
-    val writeSize = chunk.chunk.checksum.encSize
-    available(writeSize).filter(s ⇒ dispatcherCanWrite(s.dispatcher))
+    storagesById.contains(storageId)
   }
 
   // -----------------------------------------------------------------------
@@ -71,8 +41,8 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
   // -----------------------------------------------------------------------
   def register(storageId: String, dispatcher: ActorRef, health: StorageHealth): Unit = {
     context.watch(dispatcher)
-    val storage = Storage(storageId, dispatcher, health, sc.storageConfig(storageId))
-    storages += storageId → storage
+    val storage = StorageStatus(storageId, dispatcher, health, sc.storageConfig(storageId))
+    storagesById += storageId → storage
     storagesByAR += dispatcher → storage
     sc.eventStreams.storage.subscribe(context.self, storageId)
   }
@@ -80,7 +50,7 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
   def unregister(dispatcher: ActorRef): Unit = {
     context.unwatch(dispatcher)
     storagesByAR.remove(dispatcher).foreach { storage ⇒
-      storages -= storage.id
+      storagesById -= storage.id
       sc.eventStreams.storage.unsubscribe(context.self, storage.id)
     }
   }
@@ -88,21 +58,29 @@ private[actors] final class StorageTracker(implicit context: ActorContext) { // 
   // -----------------------------------------------------------------------
   // Get storages
   // -----------------------------------------------------------------------
+  def storages: Seq[StorageStatus] = {
+    storagesById.values.toVector
+  }
+
+  override def getStorage(storageId: String): StorageStatus = {
+    storagesById(storageId)
+  }
+
   def getStorageId(dispatcher: ActorRef): String = {
     storagesByAR(dispatcher).id
   }
 
   def getDispatcher(storageId: String): ActorRef = {
-    storages(storageId).dispatcher
+    storagesById(storageId).dispatcher
   }
 
   // -----------------------------------------------------------------------
   // Update state
   // -----------------------------------------------------------------------
   def update(storageId: String, health: StorageHealth): Unit = {
-    storages.get(storageId).foreach { storage ⇒
+    storagesById.get(storageId).foreach { storage ⇒
       val newStatus = storage.copy(health = health)
-      storages += storageId → newStatus
+      storagesById += storageId → newStatus
       storagesByAR += storage.dispatcher → newStatus
     }
   }

@@ -96,6 +96,7 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
       stats.updateHealth(_ ⇒ health)
 
     case CheckHealth.Failure(`storageId`, error) ⇒
+      stats.updateHealth(_.copy(online = false))
       log.error(error, "Health update failure: {}", storageId)
 
     // -----------------------------------------------------------------------

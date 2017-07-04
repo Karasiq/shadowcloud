@@ -2,16 +2,17 @@ package com.karasiq.shadowcloud.config
 
 import scala.language.postfixOps
 
-import com.typesafe.config.ConfigException
+import com.typesafe.config.{Config, ConfigException}
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.{HashingMethod, SignMethod}
 
-case class SigningConfig(index: SignMethod)
+case class SigningConfig(rootConfig: Config, index: SignMethod) extends WrappedConfig
 
-object SigningConfig extends ConfigImplicits {
+object SigningConfig extends WrappedConfigFactory[SigningConfig] with ConfigImplicits {
   def apply(config: Config): SigningConfig = {
     SigningConfig(
+      config,
       getSignMethod(config, "index")
     )
   }

@@ -4,12 +4,14 @@ import scala.io.Source
 import scala.language.postfixOps
 
 import akka.util.ByteString
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.Config
 import org.scalatest.FlatSpecLike
 
+import com.karasiq.shadowcloud.config.SCConfig
 import com.karasiq.shadowcloud.index.{Chunk, File, Folder}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.serialization.{SerializationModule, SerializationModules}
+import com.karasiq.shadowcloud.serialization.protobuf.index.SerializedIndexData
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 
 class SerializationModuleTest extends ActorSpec with FlatSpecLike {
@@ -17,9 +19,21 @@ class SerializationModuleTest extends ActorSpec with FlatSpecLike {
 
   private[this] def testModule(name: String, module: SerializationModule): Unit = {
     name should "serialize config" in {
-      val config = ConfigFactory.load()
+      val config = TestUtils.rootConfig
       val bytes = module.toBytes(config)
       module.fromBytes[Config](bytes) shouldBe config
+    }
+
+    it should "serialize wrapped config" in {
+      val config = TestUtils.config
+      val bytes = module.toBytes(config)
+      module.fromBytes[SCConfig](bytes) shouldBe config
+    }
+
+    it should "serialize protobuf message" in {
+      val message = SerializedIndexData(data = TestUtils.randomBytes(50))
+      val bytes = module.toBytes(message)
+      module.fromBytes[SerializedIndexData](bytes) shouldBe message
     }
 
     it should "serialize chunk" in {

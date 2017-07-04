@@ -1,17 +1,20 @@
 package com.karasiq.shadowcloud.config
 
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto.HashingMethod
-import com.typesafe.config.ConfigException
-
 import scala.language.postfixOps
 
-private[shadowcloud] case class HashingConfig(chunks: HashingMethod, chunksEncrypted: HashingMethod,
-                         files: HashingMethod, filesEncrypted: HashingMethod)
+import com.typesafe.config.{Config, ConfigException}
 
-private[shadowcloud] object HashingConfig extends ConfigImplicits {
+import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.shadowcloud.crypto.HashingMethod
+
+private[shadowcloud] case class HashingConfig(rootConfig: Config, chunks: HashingMethod,
+                                              chunksEncrypted: HashingMethod, files: HashingMethod,
+                                              filesEncrypted: HashingMethod) extends WrappedConfig
+
+private[shadowcloud] object HashingConfig extends WrappedConfigFactory[HashingConfig] with ConfigImplicits {
   def apply(config: Config): HashingConfig = {
     HashingConfig(
+      config,
       getHashingMethod(config, "chunks"),
       getHashingMethod(config, "chunks-encrypted"),
       getHashingMethod(config, "files"),

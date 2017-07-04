@@ -16,6 +16,8 @@ private[kryo] final class SCKryoRegistrar extends IKryoRegistrar {
   def apply(kryo: Kryo): Unit = {
     register(kryo, new ByteStringSerializer)
     register(kryo, new ConfigSerializer)
+    register(kryo, new WrappedConfigSerializer)
+    register(kryo, new GeneratedMessageSerializer)
     kryo.registerClasses(Iterator(classOf[Checksum], classOf[Chunk], classOf[ChunkIndex],
       classOf[FolderIndex], classOf[ChunkIndexDiff], classOf[Data], classOf[File], classOf[Folder], classOf[FolderDiff],
       classOf[FolderIndexDiff], classOf[IndexDiff], classOf[Path], classOf[SerializedProps], classOf[HashingMethod], classOf[EncryptionMethod],

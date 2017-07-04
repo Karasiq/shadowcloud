@@ -4,9 +4,10 @@ import com.typesafe.config.Config
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 
-private[shadowcloud] case class SCConfig(rootConfig: Config, crypto: CryptoConfig, storage: StoragesConfig, parallelism: ParallelismConfig)
+private[shadowcloud] case class SCConfig(rootConfig: Config, crypto: CryptoConfig,
+                                         storage: StoragesConfig, parallelism: ParallelismConfig) extends WrappedConfig
 
-private[shadowcloud] object SCConfig extends ConfigImplicits {
+private[shadowcloud] object SCConfig extends WrappedConfigFactory[SCConfig] with ConfigImplicits {
   def apply(config: Config): SCConfig = {
     SCConfig(
       config,

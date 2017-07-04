@@ -1,12 +1,13 @@
 package com.karasiq.shadowcloud.config
 
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.typesafe.config.{ConfigObject, ConfigValueType}
-
 import scala.collection.JavaConverters._
 import scala.language.{implicitConversions, postfixOps}
 
-private[shadowcloud] case class ProvidersConfig[T](classes: Seq[(String, Class[T])]) extends AnyVal {
+import com.typesafe.config.{Config, ConfigObject, ConfigValueType}
+
+import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+
+private[shadowcloud] case class ProvidersConfig[T](rootConfig: Config, classes: Seq[(String, Class[T])]) extends WrappedConfig {
   def instances: Seq[(String, T)] = {
     classes.map { case (name, pClass) ⇒
       name → pClass.newInstance()
@@ -14,9 +15,13 @@ private[shadowcloud] case class ProvidersConfig[T](classes: Seq[(String, Class[T
   }
 }
 
-private[shadowcloud] object ProvidersConfig extends ConfigImplicits {
-  def apply[T](config: Config): ProvidersConfig[T] = {
-    new ProvidersConfig(readProviders[T](config.root()))
+private[shadowcloud] object ProvidersConfig extends WrappedConfigFactory[ProvidersConfig[_]] with ConfigImplicits {
+  def withType[T](config: Config): ProvidersConfig[T] = {
+    ProvidersConfig(config, readProviders[T](config.root()))
+  }
+
+  def apply(config: Config): ProvidersConfig[_] = {
+    withType[Any](config)
   }
 
   private[this] def readProviders[T](obj: ConfigObject): Seq[(String, Class[T])] = {

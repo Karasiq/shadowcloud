@@ -16,8 +16,8 @@ object TestUtils extends TestImplicits {
   val rootConfig = ConfigFactory.load().getConfig("shadowcloud")
   val config = SCConfig(rootConfig)
   val modules = SCModules(config)
-  val sha1Hashing = modules.hashingModule(HashingMethod("SHA1"))
-  val aesEncryption = modules.encryptionModule(EncryptionMethod("AES/GCM", 256))
+  val sha1Hashing = modules.crypto.hashingModule(HashingMethod("SHA1"))
+  val aesEncryption = modules.crypto.encryptionModule(EncryptionMethod("AES/GCM", 256))
 
   def regionConfig(regionId: String): RegionConfig = {
     RegionConfig.forId(regionId, rootConfig)

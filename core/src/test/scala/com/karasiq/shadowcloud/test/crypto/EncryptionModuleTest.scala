@@ -2,11 +2,12 @@ package com.karasiq.shadowcloud.test.crypto
 
 import java.security.NoSuchAlgorithmException
 
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule}
-import com.karasiq.shadowcloud.test.utils.TestUtils.{modules, _}
+import scala.language.postfixOps
+
 import org.scalatest.{FlatSpec, Matchers}
 
-import scala.language.postfixOps
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule}
+import com.karasiq.shadowcloud.test.utils.TestUtils.{modules, _}
 
 class EncryptionModuleTest extends FlatSpec with Matchers {
   runTest("", 0, 0)
@@ -27,7 +28,7 @@ class EncryptionModuleTest extends FlatSpec with Matchers {
   }
 
   private[this] def runTest(alg: String, keySize: Int, nonceSize: Int): Unit = {
-    val module = modules.encryptionModule(EncryptionMethod(alg, keySize * 8))
+    val module = modules.crypto.encryptionModule(EncryptionMethod(alg, keySize * 8))
     s"${if (alg.nonEmpty) alg else "Plain"} module" should "generate key" in {
       val params = module.createParameters().symmetric
       params.key.length shouldBe keySize
@@ -52,8 +53,8 @@ class EncryptionModuleTest extends FlatSpec with Matchers {
 
   private[this] def runCrossTest(method1: EncryptionMethod, method2: EncryptionMethod): Unit = {
     def toString(m: EncryptionMethod) = s"${m.provider.capitalize} (${m.algorithm})"
-    val module1 = modules.encryptionModule(method1)
-    val module2 = modules.encryptionModule(method2)
+    val module1 = modules.crypto.encryptionModule(method1)
+    val module2 = modules.crypto.encryptionModule(method2)
     s"${toString(method1)}" should s"create compatible data for ${toString(method2)}" in {
       val data = randomBytes(100)
       val parameters = module1.createParameters()

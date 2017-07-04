@@ -15,6 +15,6 @@ abstract class CryptoProvider extends ModuleProvider {
   def encryptionAlgorithms: Set[String] = Set.empty
   def encryption: EncryptionPF = PartialFunction.empty
 
-  def signAlgorithms: Set[String] = Set.empty
-  def sign: SignPF = PartialFunction.empty
+  def signingAlgorithms: Set[String] = Set.empty
+  def signing: SignPF = PartialFunction.empty
 }

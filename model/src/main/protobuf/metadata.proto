@@ -1,0 +1,55 @@
+// File metadata
+syntax = "proto3";
+option java_package = "com.karasiq.shadowcloud";
+import "scalapb/scalapb.proto";
+
+option (scalapb.options) = {
+  import: "com.karasiq.shadowcloud.utils.ProtobufUtils._"
+};
+
+message Metadata {
+    // Tag
+    message Tag {
+        string id = 1;
+        string parser = 2;
+    }
+
+    // Metadata values
+    message ImageData {
+        string format = 1;
+        uint32 width = 2;
+        uint32 height = 3;
+    }
+
+    message Preview {
+        string format = 1;
+        bytes data = 2 [(scalapb.field).type = "akka.util.ByteString"];
+    }
+
+    message Text {
+        string format = 1;
+        string data = 2;
+    }
+
+    message Table {
+        map<string, string> values = 1;
+    }
+
+    message ArchiveFiles {
+        message ArchiveFile {
+            repeated string path = 1;
+            string name = 2;
+            uint64 size = 3;
+        }
+        repeated ArchiveFile files = 1;
+    }
+
+    Tag tag = 1;
+    oneof value {
+        ImageData imageData = 10;
+        Preview preview = 11;
+        Text text = 12;
+        Table table = 13;
+        ArchiveFiles archiveFiles = 14;
+    }
+}

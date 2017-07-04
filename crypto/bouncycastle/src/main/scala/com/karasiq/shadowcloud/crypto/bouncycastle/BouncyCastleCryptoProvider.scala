@@ -45,11 +45,11 @@ final class BouncyCastleCryptoProvider extends CryptoProvider with ConfigImplici
       RSACipherModule(method)
   }
 
-  override def signAlgorithms: Set[String] = {
+  override def signingAlgorithms: Set[String] = {
     Set("RSA", "ECDSA")
   }
 
-  override def sign: SignPF = {
+  override def signing: SignPF = {
     case method if method.algorithm == "ECDSA" ⇒
       ECDSASignModule(method)
 

@@ -65,4 +65,9 @@ object ProjectDeps {
     "com.h2database" % "h2" % "1.4.192",
     "io.getquill" %% "quill-jdbc" % "1.2.1"
   )
+
+  def tika: Deps = Seq(
+    "org.apache.tika" % "tika-parsers" % "1.15",
+    "org.apache.tika" % "tika-core" % "1.15"
+  )
 }

@@ -45,14 +45,14 @@ final class ChunkProcessingStreams(val modules: SCModules, val crypto: CryptoCon
 
   def encrypt: ChunkFlow = parallelFlow(parallelism.encryption) { chunk ⇒
     require(chunk.data.plain.nonEmpty)
-    val module = modules.encryptionModule(chunk.encryption.method)
+    val module = modules.crypto.encryptionModule(chunk.encryption.method)
     chunk.copy(data = chunk.data.copy(encrypted = module.encrypt(chunk.data.plain, chunk.encryption)))
   }
 
   def createHashes(plainMethod: HashingMethod = crypto.hashing.chunks,
                    encMethod: HashingMethod = crypto.hashing.chunksEncrypted): ChunkFlow = parallelFlow(parallelism.hashing) { chunk ⇒
-    val hasher = modules.hashingModule(plainMethod)
-    val encHasher = modules.hashingModule(encMethod)
+    val hasher = modules.crypto.hashingModule(plainMethod)
+    val encHasher = modules.crypto.hashingModule(encMethod)
     val size = chunk.data.plain.length
     val hash = if (chunk.data.plain.nonEmpty) hasher.createHash(chunk.data.plain) else ByteString.empty
     val encSize = chunk.data.encrypted.length
@@ -62,13 +62,13 @@ final class ChunkProcessingStreams(val modules: SCModules, val crypto: CryptoCon
 
   def decrypt: ChunkFlow = parallelFlow(parallelism.encryption) { chunk ⇒
     require(chunk.data.encrypted.nonEmpty)
-    val decryptor = modules.encryptionModule(chunk.encryption.method)
+    val decryptor = modules.crypto.encryptionModule(chunk.encryption.method)
     val decryptedData = decryptor.decrypt(chunk.data.encrypted, chunk.encryption)
     chunk.copy(data = chunk.data.copy(plain = decryptedData))
   }
 
   def verify: ChunkFlow = parallelFlow(parallelism.hashing) { chunk ⇒
-    val hasher = modules.hashingModule(chunk.checksum.method)
+    val hasher = modules.crypto.hashingModule(chunk.checksum.method)
     if (chunk.checksum.hash.nonEmpty && hasher.createHash(chunk.data.plain) != chunk.checksum.hash) {
       throw new IllegalArgumentException(s"Chunk plaintext checksum not match: $chunk")
     } else if (chunk.checksum.encHash.nonEmpty && hasher.createHash(chunk.data.encrypted) != chunk.checksum.encHash) {

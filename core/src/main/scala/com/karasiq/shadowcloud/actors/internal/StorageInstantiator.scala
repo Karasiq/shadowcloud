@@ -14,9 +14,9 @@ private[actors] object StorageInstantiator {
   }
 }
 
-private[actors] final class StorageInstantiator(registry: SCModules) extends StoragePlugin {
+private[actors] final class StorageInstantiator(modules: SCModules) extends StoragePlugin {
   def createStorage(storageId: String, props: StorageProps)(implicit context: ActorContext): ActorRef = {
-    val plugin = registry.storagePlugin(props)
+    val plugin = modules.storage.storagePlugin(props)
     plugin.createStorage(storageId, props)
   }
 }

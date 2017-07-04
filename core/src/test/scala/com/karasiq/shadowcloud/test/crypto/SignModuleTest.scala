@@ -13,7 +13,7 @@ class SignModuleTest extends FlatSpec with Matchers {
   runTest("RSA", 1024)
 
   private[this] def runTest(alg: String, keySize: Int): Unit = {
-    val module = modules.signModule(SignMethod(alg, hashingMethod, keySize))
+    val module = modules.crypto.signModule(SignMethod(alg, hashingMethod, keySize))
     s"${if (alg.nonEmpty) alg else "No-op"} module" should "generate key" in {
       val params = module.createParameters()
       println(params)
@@ -37,8 +37,8 @@ class SignModuleTest extends FlatSpec with Matchers {
 
   private[this] def runCrossTest(method1: SignMethod, method2: SignMethod): Unit = {
     def toString(m: SignMethod) = s"${m.provider.capitalize} (${m.algorithm})"
-    val module1 = modules.signModule(method1)
-    val module2 = modules.signModule(method2)
+    val module1 = modules.crypto.signModule(method1)
+    val module2 = modules.crypto.signModule(method2)
     s"${toString(method1)}" should s"create compatible signature for ${toString(method2)}" in {
       val data = randomBytes(100)
       val parameters = module1.createParameters()

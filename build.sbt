@@ -36,7 +36,7 @@ lazy val modelJS = model.js
 // -----------------------------------------------------------------------
 lazy val core = project
   .settings(commonSettings)
-  .dependsOn(modelJVM, storageParent, cryptoParent, bouncyCastleCrypto, libSodiumCrypto)
+  .dependsOn(modelJVM, storageParent, cryptoParent, metadataParent, bouncyCastleCrypto, libSodiumCrypto)
 
 lazy val persistence = project
   .settings(commonSettings)
@@ -56,19 +56,34 @@ def cryptoPlugin(id: String): Project = {
     .dependsOn(cryptoParent % "provided")
 }
 
+def metadataPlugin(id: String): Project = {
+  val prefixedId = s"metadata-$id"
+  Project(prefixedId, file("metadata") / id)
+    .settings(
+      commonSettings,
+      name := s"shadowcloud-$prefixedId",
+      libraryDependencies ++= ProjectDeps.scalaTest
+    )
+    .dependsOn(metadataParent % "provided")
+}
+
 lazy val cryptoParent = Project("crypto-parent", file("crypto") / "parent")
   .settings(commonSettings)
   .dependsOn(modelJVM)
 
 lazy val bouncyCastleCrypto = cryptoPlugin("bouncycastle")
-  .settings(libraryDependencies ++= ProjectDeps.bouncyCastle)
 
 lazy val libSodiumCrypto = cryptoPlugin("libsodium")
-  .settings(libraryDependencies ++= ProjectDeps.libSodiumJni)
 
 lazy val storageParent = Project("storage-parent", file("storage") / "parent")
   .settings(commonSettings, libraryDependencies ++= ProjectDeps.akka.streams)
   .dependsOn(modelJVM)
+
+lazy val metadataParent = Project("metadata-parent", file("metadata") / "parent")
+  .settings(commonSettings)
+  .dependsOn(modelJVM)
+
+lazy val tikaMetadata = metadataPlugin("tika")
 
 // -----------------------------------------------------------------------
 // HTTP

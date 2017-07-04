@@ -66,7 +66,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
         val chunkWithData = if (Utils.isSameChunk(stored.chunk, chunk) && chunk.data.encrypted.nonEmpty) {
           chunk
         } else {
-          val encryptor = sc.modules.encryptionModule(stored.chunk.encryption.method)
+          val encryptor = sc.modules.crypto.encryptionModule(stored.chunk.encryption.method)
           stored.chunk.copy(data = chunk.data.copy(encrypted = encryptor.encrypt(chunk.data.plain, stored.chunk.encryption)))
         }
         receiver ! WriteChunk.Success(chunkWithData, chunkWithData)

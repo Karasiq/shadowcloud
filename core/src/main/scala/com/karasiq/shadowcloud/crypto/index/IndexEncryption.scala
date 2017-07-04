@@ -13,11 +13,11 @@ import com.karasiq.shadowcloud.serialization.protobuf.index.EncryptedIndexData
 
 private[shadowcloud] final class IndexEncryption(modules: SCModules, keyEncryption: EncryptionMethod,
                                                  sign: SignMethod, serialization: SerializationModule) {
-  private[this] val keyEncryptionModule = modules.encryptionModule(keyEncryption)
-  private[this] val signModule = modules.signModule(sign)
+  private[this] val keyEncryptionModule = modules.crypto.encryptionModule(keyEncryption)
+  private[this] val signModule = modules.crypto.signModule(sign)
 
   def encrypt(data: ByteString, method: EncryptionMethod, keys: KeySet): EncryptedIndexData = {
-    val encryption = modules.encryptionModule(method)
+    val encryption = modules.crypto.encryptionModule(method)
     val parameters = encryption.createParameters()
     val encrypted = encryption.encrypt(data, parameters)
     val header = keyEncryptionModule.encrypt(serialization.toBytes(parameters), keys.encryption)
@@ -29,7 +29,7 @@ private[shadowcloud] final class IndexEncryption(modules: SCModules, keyEncrypti
       throw CryptoException.InvalidSignature()
     }
     val parameters = serialization.fromBytes[EncryptionParameters](keyEncryptionModule.decrypt(data.header, keys.encryption))
-    val encryption = modules.encryptionModule(parameters.method)
+    val encryption = modules.crypto.encryptionModule(parameters.method)
     encryption.decrypt(data.data, parameters)
   }
 }

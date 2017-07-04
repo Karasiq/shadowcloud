@@ -14,7 +14,7 @@ private[crypto] final class NoOpCryptoProvider extends CryptoProvider {
     case m if m.algorithm.isEmpty ⇒ new NoOpEncryptionModule
   }
 
-  override def sign: SignPF = {
+  override def signing: SignPF = {
     case m if m.algorithm.isEmpty ⇒ new NoOpSignModule
   }
 }

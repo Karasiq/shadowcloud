@@ -25,7 +25,7 @@ private[shadowcloud] object FileIndexer {
 }
 
 // TODO: Content type
-private[shadowcloud] final class FileIndexer(registry: SCModules, plainHashing: HashingMethod, encryptedHashing: HashingMethod)
+private[shadowcloud] final class FileIndexer(modules: SCModules, plainHashing: HashingMethod, encryptedHashing: HashingMethod)
   extends GraphStageWithMaterializedValue[SinkShape[Chunk], Future[Result]] {
 
   val inlet = Inlet[Chunk]("FileIndexer.in")
@@ -35,8 +35,8 @@ private[shadowcloud] final class FileIndexer(registry: SCModules, plainHashing: 
   def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, Future[Result]) = {
     val promise = Promise[Result]
     val logic = new GraphStageLogic(shape) with InHandler {
-      private[this] val hasher = registry.streamHashingModule(plainHashing)
-      private[this] val encHasher = registry.streamHashingModule(encryptedHashing)
+      private[this] val hasher = modules.crypto.streamHashingModule(plainHashing)
+      private[this] val encHasher = modules.crypto.streamHashingModule(encryptedHashing)
       private[this] var plainSize = 0L
       private[this] var encryptedSize = 0L
       private[this] val chunks = Vector.newBuilder[Chunk]

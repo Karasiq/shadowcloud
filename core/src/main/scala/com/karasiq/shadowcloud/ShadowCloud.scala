@@ -68,8 +68,8 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     val provider = providers.getInstance(config.crypto.keyProvider)
 
     def generateKeySet(): KeySet = {
-      val enc = modules.encryptionModule(config.crypto.encryption.keys).createParameters()
-      val sign = modules.signModule(config.crypto.signing.index).createParameters()
+      val enc = modules.crypto.encryptionModule(config.crypto.encryption.keys).createParameters()
+      val sign = modules.crypto.signModule(config.crypto.signing.index).createParameters()
       KeySet(UUID.randomUUID(), sign, enc)
     }
   }

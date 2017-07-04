@@ -27,7 +27,7 @@ private[tika] final class TikaTextParser extends MetadataParser {
     val stream = new ByteArrayInputStream(data.toArray)
     parser.parse(stream, handler, metadata)
 
-    val result = parser.toString
+    val result = handler.toString
     if (result.nonEmpty) {
       Vector(Metadata(Some(Metadata.Tag("text", "tika")), Metadata.Value.Text(Metadata.Text("plain", result))))
     } else {

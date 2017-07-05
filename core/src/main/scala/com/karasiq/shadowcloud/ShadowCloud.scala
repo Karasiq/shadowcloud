@@ -43,6 +43,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     implicit val executionContext = _actorSystem.dispatcher
     implicit val materializer = ActorMaterializer()(_actorSystem)
     implicit val defaultTimeout = Timeout(5 seconds)
+    private[ShadowCloudExtension] implicit val pInst = new SCProviderInstantiator(ShadowCloudExtension.this)
   }
 
   import implicits._
@@ -50,7 +51,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // -----------------------------------------------------------------------
   // Configuration
   // -----------------------------------------------------------------------
-  private[this] val providers = new SCProviderInstantiator(this)
+
   val rootConfig = actorSystem.settings.config.getConfig("shadowcloud")
   val config = SCConfig(rootConfig)
   val modules = SCModules(config)
@@ -65,7 +66,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   }
 
   object keys {
-    val provider = providers.getInstance(config.crypto.keyProvider)
+    val provider = pInst.getInstance(config.crypto.keyProvider)
 
     def generateKeySet(): KeySet = {
       val enc = modules.crypto.encryptionModule(config.crypto.encryption.keys).createParameters()
@@ -75,7 +76,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   }
 
   object passwords extends ConfigImplicits {
-    val provider = providers.getInstance(config.crypto.passwordProvider)
+    val provider = pInst.getInstance(config.crypto.passwordProvider)
 
     def getOrAsk(configPath: String, passwordId: String): String = {
       rootConfig.withDefault(provider.askPassword(passwordId), _.getString(configPath))

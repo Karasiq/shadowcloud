@@ -6,11 +6,12 @@ import scala.language.{implicitConversions, postfixOps}
 import com.typesafe.config.{Config, ConfigObject, ConfigValueType}
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.shadowcloud.utils.ProviderInstantiator
 
 private[shadowcloud] case class ProvidersConfig[T](rootConfig: Config, classes: Seq[(String, Class[T])]) extends WrappedConfig {
-  def instances: Seq[(String, T)] = {
+  def instances(implicit inst: ProviderInstantiator): Seq[(String, T)] = {
     classes.map { case (name, pClass) ⇒
-      name → pClass.newInstance()
+      name → inst.getInstance(pClass)
     }
   }
 }

@@ -1,21 +1,22 @@
 package com.karasiq.shadowcloud.test.utils
 
 import scala.language.postfixOps
-import scala.util.Random
+import scala.util.{Random, Try}
 
 import akka.util.ByteString
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{Config, ConfigFactory}
 
 import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, StorageConfig}
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.providers.SCModules
+import com.karasiq.shadowcloud.utils.ProviderInstantiator
 
 object TestUtils extends TestImplicits {
   val rootConfig = ConfigFactory.load().getConfig("shadowcloud")
   val config = SCConfig(rootConfig)
-  val modules = SCModules(config)
+  val modules = SCModules(config)(new TestProviderInstantiator)
   val sha1Hashing = modules.crypto.hashingModule(HashingMethod("SHA1"))
   val aesEncryption = modules.crypto.encryptionModule(EncryptionMethod("AES/GCM", 256))
 
@@ -96,5 +97,14 @@ object TestUtils extends TestImplicits {
     val folder = randomFolder()
     val chunks = folder.files.flatMap(_.chunks)
     IndexDiff(folder.timestamp.lastModified, FolderIndexDiff.create(folder), ChunkIndexDiff(chunks))
+  }
+
+  private[this] final class TestProviderInstantiator extends ProviderInstantiator {
+    def getInstance[T](pClass: Class[T]): T = {
+      Try(pClass.getConstructor(classOf[SCConfig]).newInstance(config))
+        .orElse(Try(pClass.getConstructor(classOf[Config]).newInstance(rootConfig)))
+        .orElse(Try(pClass.newInstance()))
+        .getOrElse(throw new InstantiationException("No appropriate constructor found for " + pClass))
+    }
   }
 }

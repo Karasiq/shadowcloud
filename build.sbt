@@ -36,11 +36,15 @@ lazy val modelJS = model.js
 // -----------------------------------------------------------------------
 lazy val core = project
   .settings(commonSettings)
-  .dependsOn(modelJVM, storageParent, cryptoParent, metadataParent, bouncyCastleCrypto, libSodiumCrypto)
+  .dependsOn(modelJVM, storageParent, cryptoParent, metadataParent)
 
 lazy val persistence = project
   .settings(commonSettings)
   .dependsOn(core)
+
+lazy val coreAssembly = (project in file("target/core-assembly"))
+  .settings(commonSettings)
+  .dependsOn(core, persistence, bouncyCastleCrypto, libSodiumCrypto, tikaMetadata)
 
 // -----------------------------------------------------------------------
 // Plugins
@@ -98,7 +102,7 @@ lazy val server = project
     scalaJsBundlerCompile in Compile <<= (scalaJsBundlerCompile in Compile)
       .dependsOn(fastOptJS in Compile in webapp)
   )
-  .dependsOn(core)
+  .dependsOn(coreAssembly)
   .enablePlugins(ScalaJSBundlerPlugin, JavaAppPackaging)
 
 lazy val webapp = (project in file("server") / "webapp")
@@ -136,5 +140,5 @@ lazy val shell = (project in file("."))
     },
     liquibaseChangelog := file("src/main/migrations/changelog.sql")
   )
-  .dependsOn(core, persistence, javafx)
+  .dependsOn(coreAssembly, javafx)
   .enablePlugins(SbtLiquibase)

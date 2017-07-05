@@ -12,7 +12,7 @@ import com.karasiq.shadowcloud.config.{CryptoConfig, ParallelismConfig, SCConfig
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.providers.SCModules
-import com.karasiq.shadowcloud.utils.MemorySize
+import com.karasiq.shadowcloud.utils.{MemorySize, ProviderInstantiator}
 
 object ChunkProcessingStreams {
   def apply(modules: SCModules, crypto: CryptoConfig,
@@ -20,7 +20,7 @@ object ChunkProcessingStreams {
     new ChunkProcessingStreams(modules, crypto, parallelism)
   }
 
-  def apply(config: SCConfig)(implicit ec: ExecutionContext): ChunkProcessingStreams = {
+  def apply(config: SCConfig)(implicit ec: ExecutionContext, inst: ProviderInstantiator): ChunkProcessingStreams = {
     apply(SCModules(config), config.crypto, config.parallelism)
   }
 }

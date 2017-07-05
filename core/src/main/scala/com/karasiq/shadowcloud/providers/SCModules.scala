@@ -4,9 +4,10 @@ import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.config.{ProvidersConfig, SCConfig}
 import com.karasiq.shadowcloud.metadata.MetadataProvider
+import com.karasiq.shadowcloud.utils.ProviderInstantiator
 
 private[shadowcloud] object SCModules {
-  def apply(config: SCConfig): SCModules = {
+  def apply(config: SCConfig)(implicit inst: ProviderInstantiator): SCModules = {
     new SCModules(
       config.storage.providers,
       config.crypto.providers,
@@ -17,7 +18,7 @@ private[shadowcloud] object SCModules {
 
 private[shadowcloud] class SCModules(_storages: ProvidersConfig[StorageProvider],
                                      _crypto: ProvidersConfig[CryptoProvider],
-                                     _metadata: ProvidersConfig[MetadataProvider]) {
+                                     _metadata: ProvidersConfig[MetadataProvider])(implicit inst: ProviderInstantiator) {
 
   val storage = new StorageModuleRegistry(_storages)
   val crypto = new CryptoModuleRegistry(_crypto)

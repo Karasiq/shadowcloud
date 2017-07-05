@@ -4,8 +4,9 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.ProvidersConfig
 import com.karasiq.shadowcloud.metadata.{Metadata, MetadataParser, MetadataProvider, MimeDetector}
+import com.karasiq.shadowcloud.utils.ProviderInstantiator
 
-private[shadowcloud] class MetadataModuleRegistry(providers: ProvidersConfig[MetadataProvider])
+private[shadowcloud] class MetadataModuleRegistry(providers: ProvidersConfig[MetadataProvider])(implicit inst: ProviderInstantiator)
   extends MimeDetector with MetadataParser {
 
   private[this] val (plugins, detectors, parsers) = {

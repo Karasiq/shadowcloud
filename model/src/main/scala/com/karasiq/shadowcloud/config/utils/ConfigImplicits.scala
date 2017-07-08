@@ -50,14 +50,16 @@ trait ConfigImplicits {
       math.min(config.getBytes(path), Int.MaxValue).toInt
     }
 
-    @inline
-    def withDefault[T](default: ⇒ T, value: Config ⇒ T): T = {
+    def optional[T](value: Config ⇒ T): Option[T] = {
       try {
-        value(config)
-      } catch {
-        case _: ConfigException ⇒
-          default
+        Option(value(config))
+      } catch { case _: ConfigException ⇒
+        None
       }
+    }
+
+    def withDefault[T](default: ⇒ T, value: Config ⇒ T): T = {
+      optional(value).getOrElse(default)
     }
   }
 }

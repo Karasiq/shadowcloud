@@ -43,6 +43,9 @@ object MetadataParserApp extends App {
             case Metadata.Value.Table(table) ⇒
               ("table.txt", ByteString(table.values.map { case (k, vs) ⇒ s"$k: ${vs.values.mkString(", ")}"}.mkString("\n")))
 
+            case Metadata.Value.EmbeddedResources(resources) ⇒
+              ("embedded.txt", ByteString(resources.toString))
+
             case v ⇒
               (s"${v.getClass.getSimpleName}.txt", ByteString(value.toString))
           }

@@ -84,7 +84,7 @@ lazy val storageParent = Project("storage-parent", file("storage") / "parent")
   .dependsOn(modelJVM)
 
 lazy val metadataParent = Project("metadata-parent", file("metadata") / "parent")
-  .settings(commonSettings)
+  .settings(commonSettings, libraryDependencies ++= ProjectDeps.akka.streams)
   .dependsOn(modelJVM)
 
 lazy val tikaMetadata = metadataPlugin("tika")

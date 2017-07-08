@@ -1,32 +1,61 @@
 package com.karasiq.shadowcloud.metadata.tika
 
-import scala.collection.JavaConverters._
+import java.io.File
 
+import scala.concurrent.duration._
+import scala.language.postfixOps
+
+import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
+import akka.stream.scaladsl.{FileIO, Keep}
+import akka.stream.testkit.scaladsl.TestSink
+import akka.testkit.TestKit
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
-import org.apache.commons.io.IOUtils
-import org.scalatest.{FlatSpec, Matchers}
+import org.apache.commons.io.FileUtils
+import org.apache.tika.Tika
+import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
 
-class TikaMetadataProviderTest extends FlatSpec with Matchers {
-  val testPdfFile = ByteString(IOUtils.toByteArray(getClass.getClassLoader.getResourceAsStream("TypeClasses.pdf")))
+import com.karasiq.shadowcloud.metadata.Metadata
 
-  val detector = TikaMimeDetector()
+class TikaMetadataProviderTest extends TestKit(ActorSystem("test")) with FlatSpecLike with Matchers with BeforeAndAfterAll {
+  implicit val materializer = ActorMaterializer()(system)
+  val testPdfFile = new File(getClass.getClassLoader.getResource("TypeClasses.pdf").toURI)
+  val testPdfBytes = ByteString(FileUtils.readFileToByteArray(testPdfFile))
+
+  val tika = new Tika()
+  val detector = TikaMimeDetector(tika)
   "Mime detector" should "detect PDF" in {
-    detector.getMimeType("TypeClasses.pdf", testPdfFile) shouldBe Some("application/pdf")
+    detector.getMimeType("TypeClasses.pdf", testPdfBytes) shouldBe Some("application/pdf")
   }
 
-  val textParserConfig = ConfigFactory.parseMap(Map(
-    "fb2-fix" → true,
-    "handle-all-mimes" → false,
-    "extensions" → Seq("pdf").asJava,
-    "mimes" → Seq("application/pdf").asJava
-  ).asJava)
-  val textParser = TikaTextParser(textParserConfig)
+  val autoParserConfig = ConfigFactory.load().getConfig("shadowcloud.metadata.tika.auto-parser")
+  val autoParser = TikaAutoParser(tika, autoParserConfig)
 
-  "Text parser" should "extract text" in {
-    val text = textParser.parseMetadata("TypeClasses.pdf", "application/pdf", testPdfFile)
-      .flatMap(_.value.text)
-      .head.data
-    text.contains("Type Classes as Objects and Implicits") shouldBe true
+  "Parser" should "extract text" in {
+    val output = FileIO.fromPath(testPdfFile.toPath)
+      .via(autoParser.parseMetadata("TypeClasses.pdf", "application/pdf"))
+      .toMat(TestSink.probe)(Keep.right)
+      .run()
+
+    val text = output.requestNext(10 seconds)
+    text.tag shouldBe Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.CONTENT))
+    text.value.text.exists(t ⇒ t.format == "txt" && t.data.contains("Type Classes as Objects and Implicits")) shouldBe true
+
+    val xml = output.requestNext()
+    xml.tag shouldBe Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.CONTENT))
+    xml.value.text.exists(t ⇒ t.format == "xhtml" && t.data.contains("<p>Adriaan Moors Martin Odersky\nEPFL\n</p>")) shouldBe true
+
+    val metaTable = output.requestNext()
+    metaTable.tag shouldBe Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.METADATA))
+    metaTable.value.table.exists(_.values("created").values == Seq("Mon Jul 26 13:01:12 MSD 2010")) shouldBe true
+
+    output.request(1)
+    output.expectComplete()
+  }
+
+  override protected def afterAll(): Unit = {
+    TestKit.shutdownActorSystem(system)
+    super.afterAll()
   }
 }

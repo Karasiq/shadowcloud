@@ -46,6 +46,10 @@ trait ConfigImplicits {
       Class.forName(config.getString(path)).asInstanceOf[Class[T]]
     }
 
+    def getBytesInt(path: String): Int = {
+      math.min(config.getBytes(path), Int.MaxValue).toInt
+    }
+
     @inline
     def withDefault[T](default: ⇒ T, value: Config ⇒ T): T = {
       try {

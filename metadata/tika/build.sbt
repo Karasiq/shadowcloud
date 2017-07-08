@@ -1,1 +1,2 @@
-libraryDependencies ++= ProjectDeps.tika
+libraryDependencies ++= ProjectDeps.tika ++
+  ProjectDeps.akka.streams

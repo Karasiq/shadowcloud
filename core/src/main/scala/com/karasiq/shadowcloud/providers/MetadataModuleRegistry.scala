@@ -1,5 +1,8 @@
 package com.karasiq.shadowcloud.providers
 
+import akka.NotUsed
+import akka.stream.FlowShape
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Merge}
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.ProvidersConfig
@@ -29,9 +32,17 @@ private[shadowcloud] class MetadataModuleRegistry(providers: ProvidersConfig[Met
     parsers.exists(_.canParse(name, mime))
   }
 
-  def parseMetadata(name: String, mime: String, data: ByteString): Seq[Metadata] = {
-    parsers
-      .filter(_.canParse(name, mime))
-      .foldLeft(Vector.empty[Metadata])((m, p) ⇒ m ++ p.parseMetadata(name, mime, data))
+  def parseMetadata(name: String, mime: String): Flow[ByteString, Metadata, NotUsed] = {
+    val availableParsers = parsers.filter(_.canParse(name, mime))
+    Flow.fromGraph(GraphDSL.create() { implicit builder ⇒
+      import GraphDSL.Implicits._
+      val broadcast = builder.add(Broadcast[ByteString](availableParsers.length))
+      val merge = builder.add(Merge[Metadata](availableParsers.length))
+      availableParsers.foreach { parser ⇒
+        val parse = builder.add(parser.parseMetadata(name, mime).async)
+        broadcast ~> parse ~> merge
+      }
+      FlowShape(broadcast.in, merge.out)
+    })
   }
 }

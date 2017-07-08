@@ -6,7 +6,7 @@ import org.apache.tika.Tika
 import com.karasiq.shadowcloud.metadata.MimeDetector
 
 private[tika] object TikaMimeDetector {
-  def apply(tika: Tika = new Tika()): TikaMimeDetector = {
+  def apply(tika: Tika): TikaMimeDetector = {
     new TikaMimeDetector(tika)
   }
 }

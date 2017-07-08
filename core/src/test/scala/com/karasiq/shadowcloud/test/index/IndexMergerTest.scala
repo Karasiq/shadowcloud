@@ -1,14 +1,15 @@
 package com.karasiq.shadowcloud.test.index
 
+import scala.language.postfixOps
+
+import org.scalatest.{Matchers, WordSpec}
+
 import com.karasiq.shadowcloud.index.FolderIndex
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
-import org.scalatest.WordSpecLike
+import com.karasiq.shadowcloud.test.utils.TestUtils
 
-import scala.language.postfixOps
-
-class IndexMergerTest extends ActorSpec with WordSpecLike {
+class IndexMergerTest extends WordSpec with Matchers {
   "Index" when {
     "empty" should {
       val index = IndexMerger()

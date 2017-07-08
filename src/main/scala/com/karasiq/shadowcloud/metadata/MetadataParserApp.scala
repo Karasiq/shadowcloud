@@ -25,9 +25,7 @@ object MetadataParserApp extends App {
       println(s"Mime type: $mime")
 
       FileIO.fromPath(Paths.get(file))
-        .log("file")
         .via(parser.parseMetadata(file, mime))
-        .log("meta")
         .alsoTo(Sink.foreach { value ⇒
           val (extension, bytes) = value.value match {
             case Metadata.Value.Text(text) ⇒
@@ -48,7 +46,8 @@ object MetadataParserApp extends App {
             case v ⇒
               (s"${v.getClass.getSimpleName}.txt", ByteString(value.toString))
           }
-          val fileName = FilenameUtils.getName(file) + "_" + value.tag.fold("unk")(t ⇒ s"${t.parser}_${t.id}.$extension")
+          val fileName = FilenameUtils.getName(file) + "_" + value.tag.fold("unk")(t ⇒
+            s"${t.plugin}_${t.parser}_${t.disposition.toString().toLowerCase}.$extension")
           FileUtils.writeByteArrayToFile(new File(fileName), bytes.toArray)
           println(s"Metadata saved: $fileName")
         })

@@ -14,7 +14,7 @@ message Metadata {
             METADATA = 0;
             CONTENT = 1;
         }
-        string id = 1;
+        string plugin = 1;
         string parser = 2;
         Disposition disposition = 3;
     }

@@ -24,21 +24,24 @@ private[tika] trait TikaMetadataParser extends MetadataParser {
   val parser: Parser
   val config: Config
 
-  protected lazy val extensions = config.getStringList("extensions").asScala.toSet
-  protected lazy val mimes = {
-    val configMimes = config.getStringList("mimes").asScala.toSet
-    if (config.getBoolean("handle-all-mimes")) {
-      val internalList = parser.getSupportedTypes(new ParseContext).asScala.map(_.toString)
-      internalList ++ configMimes
-    } else {
-      configMimes
+  protected object stdParserConfig {
+    val enabled = config.getBoolean("enabled")
+    val extensions = config.getStringList("extensions").asScala.toSet
+    val mimes = {
+      val configMimes = config.getStringList("mimes").asScala.toSet
+      if (config.getBoolean("handle-all-mimes")) {
+        val internalList = parser.getSupportedTypes(new ParseContext).asScala.map(_.toString)
+        internalList ++ configMimes
+      } else {
+        configMimes
+      }
     }
   }
 
   protected def parseStream(metadata: TikaMetadata, inputStream: InputStream): Seq[Metadata]
 
   def canParse(name: String, mime: String): Boolean = {
-    mimes.contains(mime) || extensions.contains(FilenameUtils.getExtension(name))
+    stdParserConfig.enabled && (stdParserConfig.mimes.contains(mime) || stdParserConfig.extensions.contains(FilenameUtils.getExtension(name)))
   }
 
 

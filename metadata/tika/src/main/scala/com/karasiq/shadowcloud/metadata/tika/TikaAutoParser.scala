@@ -26,16 +26,24 @@ private[tika] object TikaAutoParser {
   * @param config Parser config
   */
 private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends TikaMetadataParser with ConfigImplicits {
-  private[this] val useRecursiveParser = config.getBoolean("recursive")
-  private[this] val enableFb2Fix = config.getBoolean("fb2-fix")
-  private[this] val textEnabled = config.getBoolean("text.enabled")
-  private[this] val textLimit = config.getBytesInt("text.limit")
-  private[this] val xhtmlEnabled = config.getBoolean("xhtml.enabled")
+  // Configuration
+  private[this] object autoParserConfig {
+    // Parser
+    val recursive = config.getBoolean("recursive")
+    val fb2Fix = config.getBoolean("fb2-fix")
+
+    // Text handler
+    val textEnabled = config.getBoolean("text.enabled")
+    val textLimit = config.getBytesInt("text.limit")
+
+    // XHTML handler
+    val xhtmlEnabled = config.getBoolean("xhtml.enabled")
+  }
 
   override val parser = tika.getParser
 
   override def canParse(name: String, mime: String): Boolean = {
-    super.canParse(name, mime) || (enableFb2Fix && name.endsWith(".fb2.zip"))
+    super.canParse(name, mime) || (autoParserConfig.fb2Fix && name.endsWith(".fb2.zip"))
   }
 
   protected def parseStream(metadata: TikaMetadata, inputStream: InputStream): Seq[Metadata] = {
@@ -76,7 +84,7 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
           Metadata.Value.ArchiveFiles(Metadata.ArchiveFiles(files))))
     }
 
-    val (rawMetadatas, contentHandlers) = if (useRecursiveParser) {
+    val (rawMetadatas, contentHandlers) = if (autoParserConfig.recursive) {
       // Recursive parser
       val handlers = new ArrayBuffer[Handlers]()
       val recursiveParserWrapper = new RecursiveParserWrapper(this.parser, new ContentHandlerFactory {
@@ -123,8 +131,8 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
 
   private[this] def createContentHandlers(): Handlers = {
     new Handlers(
-      Some(new BodyContentHandler(textLimit)).filter(_ ⇒ textEnabled),
-      Some(new ToXMLContentHandler()).filter(_ ⇒ xhtmlEnabled)
+      Some(new BodyContentHandler(autoParserConfig.textLimit)).filter(_ ⇒ autoParserConfig.textEnabled),
+      Some(new ToXMLContentHandler()).filter(_ ⇒ autoParserConfig.xhtmlEnabled)
     )
   }
 

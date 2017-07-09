@@ -1,7 +1,6 @@
 package com.karasiq.shadowcloud.metadata.imageio
 
 import java.awt.image.BufferedImage
-import java.io.ByteArrayOutputStream
 
 import scala.language.postfixOps
 
@@ -14,7 +13,7 @@ import com.typesafe.config.Config
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.metadata.{Metadata, MetadataParser}
 import com.karasiq.shadowcloud.metadata.imageio.utils.ImageIOResizer
-import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.utils.{ByteStringOutputStream, Utils}
 
 private[imageio] object ImageIOThumbnailCreator {
   def apply(config: Config): ImageIOThumbnailCreator = {
@@ -47,9 +46,9 @@ private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataP
 
       val resizeImage = builder.add(Flow[BufferedImage].map { originalImage ⇒
         val image = ImageIOResizer.resize(originalImage, thumbnailCreatorConfig.size)
-        val outputStream = new ByteArrayOutputStream(10 * 1024) // 10KB
+        val outputStream = ByteStringOutputStream()
         ImageIOResizer.compress(image, outputStream, thumbnailCreatorConfig.format, thumbnailCreatorConfig.quality)
-        ByteString(outputStream.toByteArray)
+        outputStream.toByteString
       })
 
       val createMetadata = builder.add(Flow[ByteString].map { data ⇒

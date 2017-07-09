@@ -46,7 +46,12 @@ class ImageIOMetadataProviderTest extends TestKit(ActorSystem("imageio-test"))
       .via(thumbnailCreator.parseMetadata(name, s"image/$imageType"))
       .runWith(TestSink.probe)
 
-    val thumb = testStream.requestNext(15 seconds)
+    val imageData = testStream.requestNext(5 seconds)
+    val imageDataValue = imageData.value.imageData.get
+    imageDataValue.width shouldBe width
+    imageDataValue.height shouldBe height
+
+    val thumb = testStream.requestNext(5 seconds)
     val thumbImage = extractThumbnail(thumb)
     thumbImage.getWidth shouldBe tWidth
     thumbImage.getHeight shouldBe tHeight

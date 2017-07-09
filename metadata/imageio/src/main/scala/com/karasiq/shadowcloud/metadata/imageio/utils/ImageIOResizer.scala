@@ -1,38 +1,51 @@
 package com.karasiq.shadowcloud.metadata.imageio.utils
 
 import javax.imageio.{IIOImage, ImageIO, ImageWriteParam, ImageWriter}
-import java.awt.{Dimension, Image, Toolkit}
+import java.awt.{Dimension, Image, RenderingHints, Toolkit}
 import java.awt.image._
-import java.awt.RenderingHints._
 import java.io.OutputStream
 
 import scala.collection.JavaConverters._
 
 object ImageIOResizer {
-  private[this] object renderingHints {
-    val fast = Map(
+  case class Quality(hints: Map[RenderingHints.Key, AnyRef]) {
+    def toJavaMap: java.util.Map[RenderingHints.Key, AnyRef] = hints.asJava
+
+    def withKey(key: RenderingHints.Key, value: AnyRef): Quality = {
+      copy(hints = hints + (key → value))
+    }
+  }
+
+  object Quality {
+    import RenderingHints._
+    
+    def apply(values: (RenderingHints.Key, AnyRef)*): Quality = {
+      Quality(values.toMap)
+    }
+
+    val fast = Quality(
       KEY_RENDERING → VALUE_RENDER_SPEED,
       KEY_COLOR_RENDERING → VALUE_COLOR_RENDER_SPEED,
       KEY_ANTIALIASING → VALUE_ANTIALIAS_OFF,
       KEY_ALPHA_INTERPOLATION → VALUE_ALPHA_INTERPOLATION_SPEED,
       KEY_INTERPOLATION → VALUE_INTERPOLATION_NEAREST_NEIGHBOR
-    ).asJava
+    )
 
-    val default = Map(
+    val default = Quality(
       KEY_RENDERING → VALUE_RENDER_SPEED,
       KEY_COLOR_RENDERING → VALUE_COLOR_RENDER_SPEED,
       KEY_ANTIALIASING → VALUE_ANTIALIAS_ON,
       KEY_ALPHA_INTERPOLATION → VALUE_ALPHA_INTERPOLATION_SPEED,
       KEY_INTERPOLATION → VALUE_INTERPOLATION_BILINEAR
-    ).asJava
+    )
 
-    val highQuality = Map(
+    val highQuality = Quality(
       KEY_RENDERING → VALUE_RENDER_QUALITY,
       KEY_COLOR_RENDERING → VALUE_COLOR_RENDER_QUALITY,
       KEY_ANTIALIASING → VALUE_ANTIALIAS_ON,
       KEY_ALPHA_INTERPOLATION → VALUE_ALPHA_INTERPOLATION_QUALITY,
       KEY_INTERPOLATION → VALUE_INTERPOLATION_BICUBIC
-    ).asJava
+    )
   }
 
   private[this] def getScaledDimension(imgSize: Dimension, boundary: Dimension): Dimension = {
@@ -49,12 +62,12 @@ object ImageIOResizer {
     new Dimension(newWidth, newHeight)
   }
 
-  private[this] def redrawImage(image: Image, size: Dimension): BufferedImage = {
+  private[this] def redrawImage(image: Image, size: Dimension, quality: Quality): BufferedImage = {
     val outputImage = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_RGB)
     val graphics = outputImage.createGraphics()
     try {
       // Max quality settings
-      graphics.setRenderingHints(renderingHints.default)
+      graphics.setRenderingHints(quality.toJavaMap)
       graphics.drawImage(image, 0, 0, size.width, size.height, null)
       outputImage
     } finally {
@@ -83,14 +96,15 @@ object ImageIOResizer {
     }
   }
 
-  def compress(image: BufferedImage, outputStream: OutputStream, format: String = "jpeg", quality: Int = 80): Unit = {
+  def compress(image: BufferedImage, outputStream: OutputStream,
+               format: String = "jpeg", saveQuality: Int = 80): Unit = {
     val imageOutputStream = ImageIO.createImageOutputStream(outputStream)
     try {
       val writer: ImageWriter = ImageIO.getImageWritersByFormatName(format).next
       val iwp: ImageWriteParam = writer.getDefaultWriteParam
       if (iwp.canWriteCompressed) {
         iwp.setCompressionMode(ImageWriteParam.MODE_EXPLICIT)
-        iwp.setCompressionQuality(quality.toFloat / 100.0f)
+        iwp.setCompressionQuality(saveQuality.toFloat / 100.0f)
       }
       writer.setOutput(imageOutputStream)
       writer.write(null, new IIOImage(image, null, null), iwp)
@@ -101,10 +115,10 @@ object ImageIOResizer {
     }
   }
 
-  def resize(image: BufferedImage, size: Int): BufferedImage = {
+  def resize(image: BufferedImage, size: Int, quality: Quality = Quality.default): BufferedImage = {
     val imgSize = new Dimension(image.getWidth, image.getHeight)
     val boundary = new Dimension(size, size)
     val newSize = getScaledDimension(imgSize, boundary)
-    redrawImage(image, newSize)
+    redrawImage(image, newSize, quality)
   }
 }

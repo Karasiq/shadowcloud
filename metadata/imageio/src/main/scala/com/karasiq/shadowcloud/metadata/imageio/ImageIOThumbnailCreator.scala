@@ -6,7 +6,7 @@ import scala.language.postfixOps
 
 import akka.NotUsed
 import akka.stream.{Attributes, FlowShape}
-import akka.stream.scaladsl.{Flow, GraphDSL}
+import akka.stream.scaladsl.{Broadcast, Concat, Flow, GraphDSL}
 import akka.util.ByteString
 import com.typesafe.config.Config
 
@@ -44,6 +44,11 @@ private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataP
         ImageIOResizer.loadImage(bytes.toArray)
       })
 
+      val createImageData = builder.add(Flow[BufferedImage].map { image ⇒
+        Metadata(Some(Metadata.Tag("imageio", "thumbnail", Metadata.Tag.Disposition.METADATA)),
+          Metadata.Value.ImageData(Metadata.ImageData(image.getWidth, image.getHeight)))
+      })
+
       val resizeImage = builder.add(Flow[BufferedImage].map { originalImage ⇒
         val image = ImageIOResizer.resize(originalImage, thumbnailCreatorConfig.size)
         val outputStream = ByteStringOutputStream()
@@ -51,17 +56,21 @@ private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataP
         outputStream.toByteString
       })
 
-      val createMetadata = builder.add(Flow[ByteString].map { data ⇒
+      val createPreview = builder.add(Flow[ByteString].map { data ⇒
         Metadata(Some(Metadata.Tag("imageio", "thumbnail", Metadata.Tag.Disposition.PREVIEW)),
           Metadata.Value.Preview(Metadata.Preview(thumbnailCreatorConfig.format, data)))
       })
 
-      val concatBytes = Flow[ByteString].fold(ByteString.empty)(_ ++ _)
-      val concatInput = builder.add(concatBytes)
-      val concatOutput = builder.add(concatBytes)
+      val readImage = builder.add(Flow[ByteString].fold(ByteString.empty)(_ ++ _))
+      val processImage = builder.add(Broadcast[BufferedImage](2))
+      val writeMetadata = builder.add(Concat[Metadata](2))
 
-      concatInput ~> loadImage ~> resizeImage ~> concatOutput ~> createMetadata
-      FlowShape(concatInput.in, createMetadata.out)
+      readImage ~> loadImage ~> processImage
+
+      processImage ~> createImageData ~> writeMetadata
+      processImage ~> resizeImage ~> createPreview ~> writeMetadata
+
+      FlowShape(readImage.in, writeMetadata.out)
     })
     flow.addAttributes(Attributes.name("imageioThumbnailCreator"))
   }

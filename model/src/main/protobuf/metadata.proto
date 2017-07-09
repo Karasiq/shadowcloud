@@ -22,9 +22,8 @@ message Metadata {
 
     // Metadata values
     message ImageData {
-        string format = 1;
-        uint32 width = 2;
-        uint32 height = 3;
+        uint32 width = 1;
+        uint32 height = 2;
     }
 
     message Preview {

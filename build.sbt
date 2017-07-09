@@ -9,6 +9,10 @@ val commonSettings = Seq(
   licenses := Seq("Apache License, Version 2.0" → url("http://opensource.org/licenses/Apache-2.0"))
 )
 
+val testSettings = Seq(
+  libraryDependencies ++= ProjectDeps.scalaTest ++ ProjectDeps.akka.testKit
+)
+
 // -----------------------------------------------------------------------
 // Shared
 // -----------------------------------------------------------------------
@@ -43,32 +47,23 @@ lazy val persistence = project
   .dependsOn(core)
 
 lazy val coreAssembly = (project in file("target/core-assembly"))
-  .settings(commonSettings)
+  .settings(commonSettings, testSettings)
   .dependsOn(core, persistence, bouncyCastleCrypto, libsodiumCrypto, tikaMetadata, imageioMetadata)
 
 // -----------------------------------------------------------------------
 // Plugins
 // -----------------------------------------------------------------------
+
+// Crypto plugins
 def cryptoPlugin(id: String): Project = {
   val prefixedId = s"crypto-$id"
   Project(prefixedId, file("crypto") / id)
     .settings(
       commonSettings,
-      name := s"shadowcloud-$prefixedId",
-      libraryDependencies ++= ProjectDeps.scalaTest
+      testSettings,
+      name := s"shadowcloud-$prefixedId"
     )
     .dependsOn(cryptoParent % "provided")
-}
-
-def metadataPlugin(id: String): Project = {
-  val prefixedId = s"metadata-$id"
-  Project(prefixedId, file("metadata") / id)
-    .settings(
-      commonSettings,
-      name := s"shadowcloud-$prefixedId",
-      libraryDependencies ++= ProjectDeps.scalaTest
-    )
-    .dependsOn(metadataParent % "provided")
 }
 
 lazy val cryptoParent = Project("crypto-parent", file("crypto") / "parent")
@@ -79,15 +74,29 @@ lazy val bouncyCastleCrypto = cryptoPlugin("bouncycastle")
 
 lazy val libsodiumCrypto = cryptoPlugin("libsodium")
 
+// Storage plugins
 lazy val storageParent = Project("storage-parent", file("storage") / "parent")
   .settings(commonSettings, libraryDependencies ++= ProjectDeps.akka.streams)
   .dependsOn(modelJVM)
+
+// Metadata plugins
+def metadataPlugin(id: String): Project = {
+  val prefixedId = s"metadata-$id"
+  Project(prefixedId, file("metadata") / id)
+    .settings(
+      commonSettings,
+      testSettings,
+      name := s"shadowcloud-$prefixedId"
+    )
+    .dependsOn(metadataParent % "provided")
+}
 
 lazy val metadataParent = Project("metadata-parent", file("metadata") / "parent")
   .settings(commonSettings, libraryDependencies ++= ProjectDeps.akka.streams)
   .dependsOn(modelJVM)
 
 lazy val tikaMetadata = metadataPlugin("tika")
+  .settings(libraryDependencies ++= ProjectDeps.tika)
 
 lazy val imageioMetadata = metadataPlugin("imageio")
 

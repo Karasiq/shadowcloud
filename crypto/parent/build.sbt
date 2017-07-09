@@ -1,1 +1,0 @@
-name := "shadowcloud-plugin-parent"

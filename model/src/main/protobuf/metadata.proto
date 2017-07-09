@@ -13,6 +13,7 @@ message Metadata {
         enum Disposition {
             METADATA = 0;
             CONTENT = 1;
+            PREVIEW = 2;
         }
         string plugin = 1;
         string parser = 2;

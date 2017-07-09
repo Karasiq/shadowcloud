@@ -9,13 +9,11 @@ object ProjectDeps {
     private val akkaHttpV = "10.0.7"
 
     def actors: Deps = Seq(
-      "com.typesafe.akka" %% "akka-actor" % akkaV,
-      "com.typesafe.akka" %% "akka-testkit" % akkaV % "test"
+      "com.typesafe.akka" %% "akka-actor" % akkaV
     )
 
     def streams: Deps = Seq(
-      "com.typesafe.akka" %% "akka-stream" % akkaV,
-      "com.typesafe.akka" %% "akka-stream-testkit" % akkaV % "test"
+      "com.typesafe.akka" %% "akka-stream" % akkaV
     )
 
     def http: Deps = Seq(
@@ -26,8 +24,13 @@ object ProjectDeps {
       "com.typesafe.akka" %% "akka-persistence" % akkaV
     )
 
+    def testKit: Deps = Seq(
+      "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
+      "com.typesafe.akka" %% "akka-stream-testkit" % akkaV % "test"
+    )
+
     def all: Deps = {
-      actors ++ streams ++ http ++ persistence
+      actors ++ streams ++ http ++ persistence ++ testKit
     }
 
     def provided: Def.Setting[Seq[ModuleID]] = {

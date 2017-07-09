@@ -56,5 +56,15 @@ private[shadowcloud] object Utils {
     if (count > 0) all.take(count) else all
   }
 
+  def getFileExtension(path: String): String = {
+    def indexOfExtension(path: String): Option[Int] = {
+      def indexOfLastSeparator(filename: String): Int = math.max(filename.lastIndexOf('/'), filename.lastIndexOf('\\'))
+      val lastDot = path.lastIndexOf('.')
+      val lastSeparator = indexOfLastSeparator(path)
+      Some(lastDot).filterNot(lastSeparator > _)
+    }
+    indexOfExtension(path).fold("")(index ⇒ path.substring(index + 1))
+  }
+
   val emptyConfig = ConfigFactory.empty()
 }

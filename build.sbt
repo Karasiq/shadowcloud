@@ -44,7 +44,7 @@ lazy val persistence = project
 
 lazy val coreAssembly = (project in file("target/core-assembly"))
   .settings(commonSettings)
-  .dependsOn(core, persistence, bouncyCastleCrypto, libSodiumCrypto, tikaMetadata)
+  .dependsOn(core, persistence, bouncyCastleCrypto, libsodiumCrypto, tikaMetadata, imageioMetadata)
 
 // -----------------------------------------------------------------------
 // Plugins
@@ -77,7 +77,7 @@ lazy val cryptoParent = Project("crypto-parent", file("crypto") / "parent")
 
 lazy val bouncyCastleCrypto = cryptoPlugin("bouncycastle")
 
-lazy val libSodiumCrypto = cryptoPlugin("libsodium")
+lazy val libsodiumCrypto = cryptoPlugin("libsodium")
 
 lazy val storageParent = Project("storage-parent", file("storage") / "parent")
   .settings(commonSettings, libraryDependencies ++= ProjectDeps.akka.streams)
@@ -88,6 +88,8 @@ lazy val metadataParent = Project("metadata-parent", file("metadata") / "parent"
   .dependsOn(modelJVM)
 
 lazy val tikaMetadata = metadataPlugin("tika")
+
+lazy val imageioMetadata = metadataPlugin("imageio")
 
 // -----------------------------------------------------------------------
 // HTTP

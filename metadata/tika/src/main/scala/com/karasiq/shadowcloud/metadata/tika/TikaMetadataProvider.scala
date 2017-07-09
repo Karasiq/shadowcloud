@@ -7,16 +7,20 @@ import org.apache.tika.config.TikaConfig
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.metadata.MetadataProvider
 
-class TikaMetadataProvider(config: Config) extends MetadataProvider with ConfigImplicits {
-  private[this] val tikaConfig = config.getConfig("metadata.tika")
-  private[this] val tikaXmlConfig = config.optional(_.getString("xml-config-file"))
-  private[this] val tika = tikaXmlConfig.fold(new Tika())(xml ⇒ new Tika(new TikaConfig(xml)))
+class TikaMetadataProvider(rootConfig: Config) extends MetadataProvider {
+  protected object tikaConfig extends ConfigImplicits {
+    val config = rootConfig.getConfig("metadata.tika")
+    val xmlConfigFile = config.optional(_.getString("xml-config-file"))
+    val autoParserConfig = config.getConfig("auto-parser")
+  }
+
+  protected val tika = tikaConfig.xmlConfigFile.fold(new Tika())(xml ⇒ new Tika(new TikaConfig(xml)))
 
   val detectors = Vector(
     TikaMimeDetector(tika)
   )
 
   val parsers = Vector(
-    TikaAutoParser(tika, tikaConfig.getConfig("auto-parser"))
+    TikaAutoParser(tika, tikaConfig.autoParserConfig)
   )
 }

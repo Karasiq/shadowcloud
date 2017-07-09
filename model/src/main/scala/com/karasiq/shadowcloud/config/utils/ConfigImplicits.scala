@@ -50,6 +50,11 @@ trait ConfigImplicits {
       math.min(config.getBytes(path), Int.MaxValue).toInt
     }
 
+    def getStringSet(path: String): Set[String] = {
+      import scala.collection.JavaConverters._
+      config.getStringList(path).asScala.toSet
+    }
+
     def optional[T](value: Config ⇒ T): Option[T] = {
       try {
         Option(value(config))

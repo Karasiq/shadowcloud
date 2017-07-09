@@ -1,0 +1,1 @@
+libraryDependencies ++= ProjectDeps.akka.streams

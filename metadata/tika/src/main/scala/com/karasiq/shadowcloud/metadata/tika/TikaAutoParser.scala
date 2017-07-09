@@ -25,9 +25,9 @@ private[tika] object TikaAutoParser {
   * Parses file with default Tika parser
   * @param config Parser config
   */
-private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends TikaMetadataParser with ConfigImplicits {
+private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends TikaMetadataParser {
   // Configuration
-  private[this] object autoParserConfig {
+  private[this] object autoParserConfig extends ConfigImplicits {
     // Parser
     val recursive = config.getBoolean("recursive")
     val fb2Fix = config.getBoolean("fb2-fix")

@@ -12,8 +12,8 @@ message Metadata {
     message Tag {
         enum Disposition {
             METADATA = 0;
-            CONTENT = 1;
-            PREVIEW = 2;
+            PREVIEW = 1;
+            CONTENT = 2;
         }
         string plugin = 1;
         string parser = 2;

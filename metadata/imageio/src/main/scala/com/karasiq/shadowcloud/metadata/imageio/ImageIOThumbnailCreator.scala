@@ -52,7 +52,7 @@ private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataP
       })
 
       val createMetadata = builder.add(Flow[ByteString].map { data ⇒
-        Metadata(Some(Metadata.Tag("imageio", "thumbnail", Metadata.Tag.Disposition.CONTENT)),
+        Metadata(Some(Metadata.Tag("imageio", "thumbnail", Metadata.Tag.Disposition.PREVIEW)),
           Metadata.Value.Preview(Metadata.Preview(thumbnailCreatorConfig.format, data)))
       })
 

@@ -80,7 +80,7 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
 
       Some(archiveFiles)
         .filter(_.nonEmpty)
-        .map(files ⇒ Metadata(Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.METADATA)),
+        .map(files ⇒ Metadata(Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.PREVIEW)),
           Metadata.Value.ArchiveFiles(Metadata.ArchiveFiles(files))))
     }
 

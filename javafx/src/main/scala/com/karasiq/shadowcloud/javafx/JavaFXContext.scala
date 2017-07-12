@@ -43,9 +43,8 @@ final class JavaFXContextExtension(system: ExtendedActorSystem) extends Extensio
       def run(): Unit = {
         try {
           app.main(Array.empty)
-        } catch {
-          case NonFatal(ex) ⇒
-            initPromise.failure(ex)
+        } catch { case NonFatal(ex) ⇒
+          initPromise.tryFailure(ex)
         }
       }
     })

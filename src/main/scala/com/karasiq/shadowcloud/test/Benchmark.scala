@@ -26,6 +26,7 @@ private object Benchmark extends App {
   printBlock("Default settings benchmark")
   println(sc.config.crypto)
   for (_ ← 1 to 5) runWriteBenchmark()
+  //System.exit(0)
 
   runProviderBenchmark("bouncycastle", "AES/GCM", 256, "Blake2b")
   runProviderBenchmark("bouncycastle", "XSalsa20", 256, "Blake2b")
@@ -49,8 +50,9 @@ private object Benchmark extends App {
   private[this] def runWriteBenchmark(encryption: EncryptionMethod = sc.config.crypto.encryption.chunks,
                                       hashing: HashingMethod = sc.config.crypto.hashing.chunks,
                                       fileHashing: HashingMethod = sc.config.crypto.hashing.files): Unit = {
-    val chunkSize = MemorySize.MB
-    val chunkCount = 1024
+    val modifier = 1
+    val chunkSize = MemorySize.MB * modifier
+    val chunkCount = 1024 / modifier
     val mbCount = chunkCount * (chunkSize.toDouble / MemorySize.MB)
     println(s"Starting write benchmark: $encryption/$hashing/$fileHashing")
 

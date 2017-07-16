@@ -10,11 +10,12 @@ import com.typesafe.config.Config
 import com.karasiq.shadowcloud.config.{ConfigProps, WrappedConfig, WrappedConfigFactory}
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.index.utils.HasEmpty
-import com.karasiq.shadowcloud.storage.props.StorageProps.{Address, Credentials}
+import com.karasiq.shadowcloud.storage.props.StorageProps.{Address, Credentials, Quota}
 import com.karasiq.shadowcloud.utils.Utils
 
 case class StorageProps(rootConfig: Config, storageType: String, address: Address = Address.empty,
-                        credentials: Credentials = Credentials.empty, provider: String = "") extends WrappedConfig
+                        credentials: Credentials = Credentials.empty, quota: Quota = Quota.empty,
+                        provider: String = "") extends WrappedConfig
 
 object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplicits {
   // -----------------------------------------------------------------------
@@ -64,6 +65,29 @@ object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplic
     }
   }
 
+  case class Quota(rootConfig: Config, limitSpace: Option[Long]) extends WrappedConfig with HasEmpty {
+    def isEmpty: Boolean = limitSpace.isEmpty
+
+    def getLimitedSpace(storageSpace: Long): Long = {
+      if (limitSpace.isEmpty) {
+        storageSpace
+      } else {
+        math.min(storageSpace, limitSpace.get)
+      }
+    }
+  }
+
+  object Quota extends WrappedConfigFactory[Quota] {
+    val empty = Quota(Utils.emptyConfig)
+
+    def apply(config: Config): Quota = {
+      Quota(
+        config,
+        config.optional(_.getBytes("limit-space"))
+      )
+    }
+  }
+
   // -----------------------------------------------------------------------
   // Constructor
   // -----------------------------------------------------------------------
@@ -73,6 +97,7 @@ object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplic
       config.getString("type"),
       Address(config.getConfigIfExists("address")),
       Credentials(config.getConfigIfExists("credentials")),
+      Quota(config.getConfigIfExists("quota")),
       config.withDefault("", _.getString("provider"))
     )
   }

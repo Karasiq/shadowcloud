@@ -19,6 +19,7 @@ import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
+import com.karasiq.shadowcloud.storage.props.StorageProps.Quota
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
@@ -33,7 +34,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   val fileRepository = Repository.forChunks(Repositories.fromDirectory(chunksDir))
   val index = system.actorOf(IndexDispatcher.props("testStorage", indexRepository), "index")
   val chunkIO = TestActorRef(ChunkIODispatcher.props(fileRepository), "chunkIO")
-  val healthProvider = StorageHealthProviders.fromDirectory(chunksDir)
+  val healthProvider = StorageHealthProviders.fromDirectory(chunksDir, Quota.empty.copy(limitSpace = Some(100L * 1024 * 1024)))
   val initialHealth = healthProvider.health.futureValue
   val storage = TestActorRef(StorageDispatcher.props("testStorage", index, chunkIO, healthProvider), "storage")
   val testRegion = TestActorRef(RegionDispatcher.props("testRegion", TestUtils.regionConfig("testRegion")), "testRegion")

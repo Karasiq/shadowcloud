@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.config.utils
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-import com.typesafe.config.{ConfigException, ConfigFactory}
+import com.typesafe.config.ConfigException
 
 import com.karasiq.shadowcloud.utils.Utils
 
@@ -20,9 +20,8 @@ trait ConfigImplicits {
     def getConfigIfExists(path: String): Config = {
       try {
         config.getConfig(path)
-      } catch {
-        case _: ConfigException ⇒
-          ConfigFactory.empty()
+      } catch { case _: ConfigException ⇒
+        Utils.emptyConfig
       }
     }
 
@@ -35,9 +34,8 @@ trait ConfigImplicits {
             val path1 = config.getString(path)
             // getConfigOrRefRec(path1)
             config.getConfig(path1)
-          } catch {
-            case _: ConfigException ⇒
-              ConfigFactory.empty()
+          } catch { case _: ConfigException ⇒
+            Utils.emptyConfig
           }
       }
     }

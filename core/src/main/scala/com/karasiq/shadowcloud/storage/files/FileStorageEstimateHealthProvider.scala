@@ -8,7 +8,7 @@ import scala.util.Try
 
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
 
-private[storage] final class FileStorageHealthProvider(directory: FsPath) extends StorageHealthProvider {
+private[storage] final class FileStorageEstimateHealthProvider(directory: FsPath) extends StorageHealthProvider {
   def health: Future[StorageHealth] = {
     Future.fromTry(Try {
       val fileStore = Files.getFileStore(directory)

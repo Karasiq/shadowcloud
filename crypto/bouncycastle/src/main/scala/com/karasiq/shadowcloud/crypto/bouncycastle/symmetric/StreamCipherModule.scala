@@ -4,23 +4,29 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 import org.bouncycastle.crypto.StreamCipher
-import org.bouncycastle.crypto.engines.{ChaChaEngine, Salsa20Engine, XSalsa20Engine}
 import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
 
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, StreamEncryptionModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCSymmetricKeys
 
+//noinspection RedundantDefaultArgument
 private[bouncycastle] object StreamCipherModule {
-  def Salsa20(method: EncryptionMethod = EncryptionMethod("Salsa20", 256)): StreamCipherModule = {
-    new StreamCipherModule(method, new Salsa20Engine(), 8)
+  def apply(method: EncryptionMethod): StreamCipherModule = {
+    val cipher = BCStreamCiphers.createStreamCipher(method.algorithm)
+    val nonceSize = BCStreamCiphers.getNonceSize(method.algorithm)
+    new StreamCipherModule(method, cipher, nonceSize)
   }
 
-  def XSalsa20(method: EncryptionMethod = EncryptionMethod("XSalsa20", 256)): StreamCipherModule = {
-    new StreamCipherModule(method, new XSalsa20Engine(), 24)
+  def Salsa20(): StreamCipherModule = {
+    apply(EncryptionMethod("Salsa20", 256))
   }
 
-  def ChaCha20(method: EncryptionMethod = EncryptionMethod("ChaCha20", 256)): StreamCipherModule = {
-    new StreamCipherModule(method, new ChaChaEngine(), 8)
+  def XSalsa20(): StreamCipherModule = {
+    apply(EncryptionMethod("XSalsa20", 256))
+  }
+
+  def ChaCha20(): StreamCipherModule = {
+    apply(EncryptionMethod("ChaCha20", 256))
   }
 }
 
@@ -39,8 +45,8 @@ private[bouncycastle] final class StreamCipherModule(val method: EncryptionMetho
     val inArray = data.toArray
     val length = inArray.length
     val outArray = new Array[Byte](length)
-    cipher.processBytes(inArray, 0, inArray.length, outArray, 0)
-    ByteString(outArray)
+    val outLength = cipher.processBytes(inArray, 0, length, outArray, 0)
+    ByteString.fromArray(outArray, 0, outLength)
   }
 
   def finish(): ByteString = {

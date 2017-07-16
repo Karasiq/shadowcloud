@@ -16,6 +16,7 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.sign.{ECDSASignModule, RSASig
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, StreamCipherModule}
 import com.karasiq.shadowcloud.utils.HexString
 
+//noinspection RedundantDefaultArgument
 class BouncyCastleTest extends FlatSpec with Matchers {
   val provider = new BouncyCastleCryptoProvider
   val testData = ByteString("# First, make a nonce: A single-use value never repeated under the same key\n# The nonce isn't secret, and can be sent with the ciphertext.\n# The cipher instance has a nonce_bytes method for determining how many bytes should be in a nonce")
@@ -24,12 +25,16 @@ class BouncyCastleTest extends FlatSpec with Matchers {
   // Encryption
   // -----------------------------------------------------------------------
   testSymmetricEncryption("AES/GCM", AEADBlockCipherModule.AES_GCM(), 32, 12)
+  testSymmetricEncryption("AES/CCM", AEADBlockCipherModule.AES_CCM(), 32, 12)
+  testSymmetricEncryption("AES/EAX", AEADBlockCipherModule.AES_EAX(), 32, 12)
+  testSymmetricEncryption("AES/OCB", AEADBlockCipherModule.AES_OCB(), 32, 12)
   testSymmetricEncryption("Salsa20", StreamCipherModule.Salsa20(), 32, 8)
   testSymmetricEncryption("XSalsa20", StreamCipherModule.XSalsa20(), 32, 24)
   testSymmetricEncryption("ChaCha20", StreamCipherModule.ChaCha20(), 32, 8)
 
   testAsymmetricEncryption("RSA", RSACipherModule(EncryptionMethod("RSA", 1024)))
-  testAsymmetricEncryption("ECIES", ECIESCipherModule(EncryptionMethod("ECIES", 521)))
+  testAsymmetricEncryption("ECIES", ECIESCipherModule(EncryptionMethod("ECIES", 521, config = ConfigProps("ies-block-cipher" → "AES/CBC"))))
+  testAsymmetricEncryption("ECIES (Stream)", ECIESCipherModule(EncryptionMethod("ECIES", 521)))
 
   // -----------------------------------------------------------------------
   // Hashes

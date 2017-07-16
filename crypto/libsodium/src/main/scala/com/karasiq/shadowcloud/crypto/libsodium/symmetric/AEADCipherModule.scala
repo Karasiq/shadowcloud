@@ -48,7 +48,7 @@ private[libsodium] final class AEADCipherModule(val method: EncryptionMethod, us
   protected def process(data: Array[Byte]): Array[Byte] = {
     require(cipher ne null, "Not initialized")
     if (encryptMode) {
-      cipher.encrypt(nonce, data, additionalData)
+      cipher.encrypt(nonce, data, additionalData) // TODO: Test streaming
     } else {
       cipher.decrypt(nonce, data, additionalData)
     }

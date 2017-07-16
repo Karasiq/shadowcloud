@@ -3,8 +3,7 @@ package com.karasiq.shadowcloud.crypto.bouncycastle.symmetric
 import scala.language.postfixOps
 
 import akka.util.ByteString
-import org.bouncycastle.crypto.engines.AESEngine
-import org.bouncycastle.crypto.modes.{AEADBlockCipher, GCMBlockCipher}
+import org.bouncycastle.crypto.modes.AEADBlockCipher
 import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
 
 import com.karasiq.shadowcloud.config.ConfigProps
@@ -12,11 +11,28 @@ import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCSymmetricKeys
 
+//noinspection RedundantDefaultArgument
 private[bouncycastle] object AEADBlockCipherModule extends ConfigImplicits {
-  def AES_GCM(method: EncryptionMethod = EncryptionMethod("AES/GCM", 256)): AEADBlockCipherModule = {
+  def apply(method: EncryptionMethod): AEADBlockCipherModule = {
     val config = ConfigProps.toConfig(method.config)
     val ivSize = config.withDefault(12, _.getInt("iv-size"))
-    new AEADBlockCipherModule(method, new GCMBlockCipher(new AESEngine), ivSize)
+    new AEADBlockCipherModule(method, BCBlockCiphers.createAEADCipher(method.algorithm), ivSize)
+  }
+
+  def AES_GCM(): AEADBlockCipherModule = {
+    apply(EncryptionMethod("AES/GCM", 256))
+  }
+
+  def AES_CCM(): AEADBlockCipherModule = {
+    apply(EncryptionMethod("AES/CCM", 256))
+  }
+
+  def AES_EAX(): AEADBlockCipherModule = {
+    apply(EncryptionMethod("AES/EAX", 256))
+  }
+
+  def AES_OCB(): AEADBlockCipherModule = {
+    apply(EncryptionMethod("AES/OCB", 256))
   }
 }
 

@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.symmetric
 
-import java.nio.ByteBuffer
-
 import scala.language.postfixOps
 
 import akka.util.ByteString
@@ -28,14 +26,12 @@ private[bouncycastle] final class AEADBlockCipherModule(val method: EncryptionMe
   extends StreamEncryptionModule with BCSymmetricKeys {
 
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
-    val symParameters = parameters.symmetric
-    val key = symParameters.key.toArray
-    val iv = symParameters.nonce.toArray
-    val keyParams = new ParametersWithIV(new KeyParameter(key), iv)
+    val sp = EncryptionParameters.symmetric(parameters)
+    val keyParams = new ParametersWithIV(new KeyParameter(sp.key.toArray), sp.nonce.toArray)
     try {
       cipher.init(encrypt, keyParams)
     } catch { case _: IllegalArgumentException ⇒
-      cipher.init(encrypt, new ParametersWithIV(new KeyParameter(key), Array[Byte](0)))
+      cipher.init(encrypt, new ParametersWithIV(keyParams.getParameters, Array[Byte](0)))
       cipher.init(encrypt, keyParams)
     }
   }
@@ -43,12 +39,12 @@ private[bouncycastle] final class AEADBlockCipherModule(val method: EncryptionMe
   def process(data: ByteString): ByteString = {
     val output = new Array[Byte](cipher.getUpdateOutputSize(data.length))
     val length = cipher.processBytes(data.toArray, 0, data.length, output, 0)
-    ByteString(ByteBuffer.wrap(output, 0, length))
+    ByteString.fromArray(output, 0, length)
   }
 
   def finish(): ByteString = {
     val output = new Array[Byte](cipher.getOutputSize(0))
     val length = cipher.doFinal(output, 0)
-    ByteString(ByteBuffer.wrap(output, 0, length))
+    ByteString.fromArray(output, 0, length)
   }
 }

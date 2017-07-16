@@ -30,8 +30,8 @@ private[bouncycastle] final class StreamCipherModule(val method: EncryptionMetho
   extends StreamEncryptionModule with BCSymmetricKeys {
 
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
-    val parameters1 = parameters.symmetric
-    val bcParameters = new ParametersWithIV(new KeyParameter(parameters1.key.toArray), parameters1.nonce.toArray)
+    val sp = EncryptionParameters.symmetric(parameters)
+    val bcParameters = new ParametersWithIV(new KeyParameter(sp.key.toArray), sp.nonce.toArray)
     cipher.init(encrypt, bcParameters)
   }
 

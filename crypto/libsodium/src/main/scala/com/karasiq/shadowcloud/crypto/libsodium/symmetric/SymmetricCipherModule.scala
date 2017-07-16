@@ -5,7 +5,7 @@ import scala.language.postfixOps
 import akka.util.ByteString
 import org.abstractj.kalium.NaCl
 import org.abstractj.kalium.NaCl.Sodium
-import org.abstractj.kalium.crypto.{Random => LSRandom}
+import org.abstractj.kalium.crypto.{Random ⇒ LSRandom}
 
 import com.karasiq.shadowcloud.crypto.{EncryptionParameters, StreamEncryptionModule, SymmetricEncryptionParameters}
 
@@ -19,7 +19,7 @@ private[libsodium] trait SymmetricCipherModule extends StreamEncryptionModule {
   protected def process(data: Array[Byte]): Array[Byte]
 
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
-    val sp = parameters.symmetric
+    val sp = EncryptionParameters.symmetric(parameters)
     require(sp.key.length == keySize && sp.nonce.length == nonceSize)
     init(encrypt, sp.key.toArray, sp.nonce.toArray)
   }
@@ -40,7 +40,7 @@ private[libsodium] trait SymmetricCipherModule extends StreamEncryptionModule {
   }
 
   def updateParameters(parameters: EncryptionParameters): EncryptionParameters = {
-    val nonce = random.randomBytes(nonceSize)
-    parameters.symmetric.copy(nonce = ByteString(nonce))
+    val nonce = ByteString(random.randomBytes(nonceSize))
+    EncryptionParameters.symmetric(parameters).copy(nonce = nonce)
   }
 }

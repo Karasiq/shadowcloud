@@ -69,7 +69,7 @@ private[bouncycastle] final class ECIESCipherModule(val method: EncryptionMethod
   })
 
   override def createParameters(): EncryptionParameters = {
-    val basicParameters = super.createParameters().asymmetric
+    val basicParameters = EncryptionParameters.asymmetric(super.createParameters())
     ECIESCipherModule.createIesParameters(basicParameters)
   }
 

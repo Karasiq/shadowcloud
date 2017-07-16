@@ -18,8 +18,7 @@ private[bouncycastle] trait BCAsymmetricCipherKeys extends BCAsymmetricKeys { se
   }
 
   protected def getCipherKey(parameters: EncryptionParameters, encrypt: Boolean): AsymmetricKeyParameter = {
-    require(!parameters.isSymmetric, "Asymmetric parameters required")
-    val ap = parameters.asymmetric
+    val ap = EncryptionParameters.asymmetric(parameters)
     if (encrypt) {
       KeyUtils.decodePublicKey(ap.publicKey)
     } else {

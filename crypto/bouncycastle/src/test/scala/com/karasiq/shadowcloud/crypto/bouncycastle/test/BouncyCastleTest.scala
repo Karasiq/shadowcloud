@@ -84,11 +84,11 @@ class BouncyCastleTest extends FlatSpec with Matchers {
   // -----------------------------------------------------------------------
   private[this] def testSymmetricEncryption(name: String, module: EncryptionModule, keySize: Int, nonceSize: Int): Unit = {
     s"$name module" should "generate key" in {
-      val parameters = module.createParameters()
-      parameters.symmetric.key.length shouldBe keySize
-      parameters.symmetric.nonce.length shouldBe nonceSize
-      val parameters1 = module.updateParameters(parameters)
-      parameters1.symmetric.nonce should not be parameters.symmetric.nonce
+      val parameters = EncryptionParameters.symmetric(module.createParameters())
+      parameters.key.length shouldBe keySize
+      parameters.nonce.length shouldBe nonceSize
+      val parameters1 = EncryptionParameters.symmetric(module.updateParameters(parameters))
+      parameters1.nonce should not be parameters.nonce
     }
 
     it should "encrypt data" in {
@@ -112,9 +112,8 @@ class BouncyCastleTest extends FlatSpec with Matchers {
 
   private[this] def testAsymmetricEncryption(name: String, module: EncryptionModule): Unit = {
     s"$name module" should "generate key" in {
-      val parameters = module.createParameters()
-      parameters.isSymmetric shouldBe false
-      val parameters1 = module.updateParameters(parameters)
+      val parameters = EncryptionParameters.asymmetric(module.createParameters())
+      val parameters1 = EncryptionParameters.asymmetric(module.updateParameters(parameters))
       parameters1 shouldBe parameters
       println(parameters)
     }

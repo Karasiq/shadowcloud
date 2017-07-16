@@ -20,7 +20,7 @@ private[bouncycastle] trait BCSymmetricKeys { self: EncryptionModule ⇒
   }
 
   def updateParameters(parameters: EncryptionParameters): SymmetricEncryptionParameters = {
-    parameters.symmetric.copy(nonce = generateBytes(nonceSize))
+    EncryptionParameters.symmetric(parameters).copy(nonce = generateBytes(nonceSize))
   }
 
   protected def generateBytes(size: Int): ByteString = {

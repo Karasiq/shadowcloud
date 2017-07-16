@@ -6,7 +6,7 @@ import scala.language.postfixOps
 
 import org.scalatest.{FlatSpec, Matchers}
 
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule}
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule, EncryptionParameters}
 import com.karasiq.shadowcloud.test.utils.TestUtils.{modules, _}
 
 class EncryptionModuleTest extends FlatSpec with Matchers {
@@ -30,9 +30,9 @@ class EncryptionModuleTest extends FlatSpec with Matchers {
   private[this] def runTest(alg: String, keySize: Int, nonceSize: Int): Unit = {
     val module = modules.crypto.encryptionModule(EncryptionMethod(alg, keySize * 8))
     s"${if (alg.nonEmpty) alg else "Plain"} module" should "generate key" in {
-      val params = module.createParameters().symmetric
-      params.key.length shouldBe keySize
-      params.nonce.length shouldBe nonceSize
+      val params = EncryptionParameters.symmetric(module.createParameters())
+      params.key should have length keySize
+      params.nonce should have length nonceSize
     }
 
     it should "encrypt data" in {

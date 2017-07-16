@@ -1,15 +1,16 @@
 package com.karasiq.shadowcloud.crypto.libsodium.test
 
+import scala.language.postfixOps
+
 import akka.util.ByteString
+import org.scalatest.{FlatSpec, Matchers}
+
 import com.karasiq.shadowcloud.config.ConfigProps
+import com.karasiq.shadowcloud.crypto.{EncryptionModule, EncryptionParameters, HashingMethod, HashingModule}
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
 import com.karasiq.shadowcloud.crypto.libsodium.internal._
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
-import com.karasiq.shadowcloud.crypto.{EncryptionModule, HashingMethod, HashingModule}
 import com.karasiq.shadowcloud.utils.HexString
-import org.scalatest.{FlatSpec, Matchers}
-
-import scala.language.postfixOps
 
 class LibSodiumTest extends FlatSpec with Matchers {
   val testData = ByteString("# First, make a nonce: A single-use value never repeated under the same key\n# The nonce isn't secret, and can be sent with the ciphertext.\n# The cipher instance has a nonce_bytes method for determining how many bytes should be in a nonce")
@@ -43,11 +44,11 @@ class LibSodiumTest extends FlatSpec with Matchers {
 
   private[this] def testEncryption(name: String, module: EncryptionModule, keySize: Int, nonceSize: Int): Unit = {
     s"$name module" should "generate key" in {
-      val parameters = module.createParameters()
-      parameters.symmetric.key.length shouldBe keySize
-      parameters.symmetric.nonce.length shouldBe nonceSize
-      val parameters1 = module.updateParameters(parameters)
-      parameters1.symmetric.nonce should not be parameters.symmetric.nonce
+      val parameters = EncryptionParameters.symmetric(module.createParameters())
+      parameters.key.length shouldBe keySize
+      parameters.nonce.length shouldBe nonceSize
+      val parameters1 = EncryptionParameters.symmetric(module.updateParameters(parameters))
+      parameters1.nonce should not be parameters.nonce
     }
 
     it should "encrypt data" in {

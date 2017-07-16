@@ -2,17 +2,18 @@ package com.karasiq.shadowcloud.storage.files
 
 import java.nio.file.{Files, Paths}
 
+import scala.language.postfixOps
+
 import akka.actor.{ActorContext, ActorRef}
+
 import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, IndexDispatcher, StorageDispatcher}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
-import scala.language.postfixOps
-
 private[storage] final class FileStoragePlugin extends StoragePlugin {
   def createStorage(storageId: String, props: StorageProps)(implicit context: ActorContext): ActorRef = {
     import context.dispatcher
-    val path = Paths.get(props.address.address)
+    val path = Paths.get(props.address.uri)
     val indexDir = path.resolve(s".scli-${props.address.postfix}")
     Files.createDirectories(indexDir)
     val index = Repository.forIndex(Repositories.fromDirectory(indexDir))

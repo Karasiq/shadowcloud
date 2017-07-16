@@ -15,7 +15,7 @@ import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIn
 private[kryo] final class SCKryoRegistrar extends IKryoRegistrar {
   def apply(kryo: Kryo): Unit = {
     register(kryo, new ByteStringSerializer)
-    register(kryo, new ConfigSerializer)
+    register(kryo, new ConfigSerializer(json = false))
     register(kryo, new WrappedConfigSerializer)
     register(kryo, new GeneratedMessageSerializer)
     kryo.registerClasses(Iterator(classOf[Checksum], classOf[Chunk], classOf[ChunkIndex],

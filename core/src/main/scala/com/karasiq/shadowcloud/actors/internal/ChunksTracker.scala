@@ -14,8 +14,8 @@ import com.karasiq.shadowcloud.actors.utils.PendingOperation
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
-import com.karasiq.shadowcloud.storage.replication.{ChunkStatusProvider, StorageSelector}
-import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.{ChunkStatus, Status}
+import com.karasiq.shadowcloud.storage.replication.{ChunkAvailability, ChunkStatusProvider, ChunkWriteAffinity, StorageSelector}
+import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.{ChunkStatus, WriteStatus}
 import com.karasiq.shadowcloud.storage.replication.StorageStatusProvider.StorageStatus
 import com.karasiq.shadowcloud.utils.Utils
 
@@ -46,7 +46,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
       case Some(status) ⇒
         if (!Utils.isSameChunk(status.chunk, chunk)) {
           receiver ! ReadChunk.Failure(chunk, new IllegalArgumentException(s"Chunks conflict: ${status.chunk} / $chunk"))
-        } else if (status.chunk.data.encrypted.nonEmpty) {
+        } else if (status.chunk.data.nonEmpty) {
           log.debug("Chunk extracted from cache: {}", status.chunk)
           receiver ! ReadChunk.Success(chunk, status.chunk)
         } else {
@@ -62,44 +62,59 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
   def writeChunk(chunk: Chunk, receiver: ActorRef)(implicit storageSelector: StorageSelector): ChunkStatus = {
     require(chunk.nonEmpty)
     getChunkStatus(chunk) match {
-      case Some(stored) if stored.status == Status.STORED ⇒
-        val chunkWithData = if (Utils.isSameChunk(stored.chunk, chunk) && chunk.data.encrypted.nonEmpty) {
-          chunk
-        } else {
-          val encryptor = sc.modules.crypto.encryptionModule(stored.chunk.encryption.method)
-          stored.chunk.copy(data = chunk.data.copy(encrypted = encryptor.encrypt(chunk.data.plain, stored.chunk.encryption)))
-        }
-        receiver ! WriteChunk.Success(chunkWithData, chunkWithData)
-        log.debug("Chunk restored from index, write skipped: {}", chunkWithData)
-        stored.copy(chunk = chunkWithData)
+      case Some(status) ⇒
+        status.writeStatus match {
+          case WriteStatus.Pending(_) ⇒
+            context.watch(receiver)
+            log.debug("Already writing chunk, added to queue: {}", chunk)
+            putStatus(status.copy(waitingChunk = status.waitingChunk + receiver))
 
-      case Some(pending) if pending.status == Status.PENDING ⇒
-        context.watch(receiver)
-        log.debug("Already writing chunk, added to queue: {}", chunk)
-        putStatus(pending.copy(waitingChunk = pending.waitingChunk + receiver))
+          case WriteStatus.Finished ⇒
+            val chunkWithData = if (Utils.isSameChunk(status.chunk, chunk) && chunk.data.encrypted.nonEmpty) {
+              chunk
+            } else {
+              // TODO: Move decryption to stream
+              val encryptor = sc.modules.crypto.encryptionModule(status.chunk.encryption.method)
+              status.chunk.copy(data = chunk.data.copy(encrypted = encryptor.encrypt(chunk.data.plain, status.chunk.encryption)))
+            }
+            receiver ! WriteChunk.Success(chunkWithData, chunkWithData)
+            log.debug("Chunk restored from index, write skipped: {}", chunkWithData)
+            status.copy(chunk = chunkWithData)
+        }
 
       case None ⇒
         context.watch(receiver)
-        val status = ChunkStatus(Status.PENDING, Utils.timestamp, chunk, waitingChunk = Set(receiver))
-        val written = writeChunkToStorages(status)
+        val status = ChunkStatus(WriteStatus.Pending(ChunkWriteAffinity.empty), Utils.timestamp, chunk, waitingChunk = Set(receiver))
+        val affinity = storageSelector.forWrite(status)
+        val statusWithAffinity = status.copy(WriteStatus.Pending(affinity))
+        val written = writeChunkToStorages(statusWithAffinity)
         if (written.isEmpty) {
           log.warning("No storages available for write: {}", chunk)
         } else {
           log.debug("Writing chunk to {}: {}", written, chunk)
         }
-        putStatus(status.copy(writingChunk = written.map(_.id)))
+        putStatus(statusWithAffinity.copy(availability = ChunkAvailability(writingChunk = written.map(_.id).toSet)))
     }
   }
 
   def retryPendingChunks()(implicit storageSelector: StorageSelector): Unit = {
-    chunksMap.foreachValue { status ⇒
-      if (status.status == Status.PENDING && status.hasChunk.isEmpty) {
-        val written = writeChunkToStorages(status)
-        if (written.nonEmpty) {
-          log.debug("Retrying chunk write to {}: {}", written, status)
-          putStatus(status.copy(hasChunk = written.map(_.id)))
+    chunksMap.foreachValue {
+      case cs @ ChunkStatus(WriteStatus.Pending(affinity), _, _, _, _) ⇒
+        if (affinity.isFinished(cs)) {
+          log.debug("Marking chunk as finished: {}", cs)
+          putStatus(cs.finished)
+        } else {
+          val written = writeChunkToStorages(cs)
+          if (written.nonEmpty) {
+            log.debug("Retrying chunk write to {}: {}", written, cs)
+            val writtenIds = written.map(_.id)
+            putStatus(cs.copy(availability = cs.availability.copy(writingChunk =
+              cs.availability.writingChunk ++ writtenIds)))
+          }
         }
-      }
+
+      case _ ⇒
+        // Skip 
     }
   }
 
@@ -114,28 +129,36 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
         status
 
       case Some(status)  ⇒
-        if (status.status == Status.PENDING) { // Chunk is pending
-          val newStatus = status.copy(writingChunk = status.writingChunk - storageId,
-            hasChunk = status.hasChunk + storageId)
-          if (storageSelector.isFinished(newStatus)) {
-            require(status.chunk.data.nonEmpty)
-            log.debug("Resolved pending chunk: {}", chunk)
-            status.waitingChunk.foreach(_ ! WriteChunk.Success(status.chunk, status.chunk))
-            putStatus(newStatus.copy(status = Status.STORED,
-              chunk = status.chunk.withoutData, waitingChunk = Set.empty))
-          } else {
-            log.debug("Need more writes for {}", chunk)
-            putStatus(newStatus)
-          }
-        } else if (!status.hasChunk.contains(storageId)) {
-          log.debug("Chunk duplicate found on {}: {}", dispatcher, chunk)
-          putStatus(status.copy(writingChunk = status.writingChunk - storageId, hasChunk = status.hasChunk + storageId))
-        } else {
-          status
+        status.writeStatus match {
+          case WriteStatus.Pending(affinity) ⇒
+            val newStatus = status.copy(availability = status.availability.finished(storageId))
+            if (affinity.isWrittenEnough(newStatus)) {
+              require(status.chunk.data.nonEmpty)
+              log.debug("Resolved pending chunk: {}", chunk)
+              status.waitingChunk.foreach(_ ! WriteChunk.Success(status.chunk, status.chunk))
+              val resultStatus = if (affinity.isFinished(newStatus)) {
+                newStatus.finished
+              } else {
+                newStatus
+              }
+              putStatus(resultStatus.copy(waitingChunk = Set.empty))
+            } else {
+              log.debug("Need more writes for {}", chunk)
+              putStatus(newStatus)
+            }
+
+          case WriteStatus.Finished ⇒
+            if (!status.availability.isWritten(storageId)) {
+              log.debug("Chunk duplicate found on {}: {}", dispatcher, chunk)
+              putStatus(status.copy(availability = status.availability.finished(storageId)))
+            } else {
+              status
+            }
         }
 
-      case None ⇒ // Chunk first seen
-        putStatus(ChunkStatus(Status.STORED, Utils.timestamp, chunk.withoutData, hasChunk = Set(storageId)))
+      case None ⇒
+        putStatus(ChunkStatus(WriteStatus.Finished, Utils.timestamp,
+          chunk.withoutData, ChunkAvailability.empty.finished(storageId)))
     }
   }
 
@@ -199,11 +222,18 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
     chunksMap.remove(status.chunk.checksum.hash)
   }
 
-  private[this] def writeChunkToStorages(status: ChunkStatus)(implicit storageSelector: StorageSelector): Set[StorageStatus] = {
+  private[this] def writeChunkToStorages(status: ChunkStatus)(implicit storageSelector: StorageSelector): Seq[StorageStatus] = {
     require(status.chunk.data.nonEmpty, "Chunks is empty")
-    val selectedStorages = storageSelector.forWrite(status)
+    val storageIds = status.writeStatus match {
+      case WriteStatus.Pending(affinity) ⇒
+        affinity.selectForWrite(status)
+
+      case WriteStatus.Finished ⇒
+        Vector.empty
+    }
+    val selectedStorages = storageIds.map(storages.getStorage)
     selectedStorages.foreach(storage ⇒ storage.dispatcher ! SWriteChunk(getChunkPath(storage, status.chunk), status.chunk))
-    selectedStorages.toSet
+    selectedStorages
   }
 
   private[this] def readChunkFromStorage(status: ChunkStatus)(implicit storageSelector: StorageSelector): Option[StorageStatus] = {
@@ -223,19 +253,22 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
   private[this] def removeActorRef(status: ChunkStatus, actor: ActorRef): Unit = {
     def removeStorage(status: ChunkStatus, actor: ActorRef): Unit = {
       val storageId = storages.getStorageId(actor)
-      if (!status.hasChunk.contains(storageId) && !status.writingChunk.contains(storageId) &&
-        !status.waitingChunk.contains(actor)) return
+      if (!status.availability.contains(storageId) && !status.waitingChunk.contains(actor)) return
 
-      val newStatus = status.copy(writingChunk = status.writingChunk - storageId,
-        hasChunk = status.hasChunk - storageId, waitingChunk = status.waitingChunk - actor)
-      if (status.status == Status.STORED && newStatus.hasChunk.isEmpty) {
-        log.warning("Chunk is lost: {}", newStatus.chunk)
-        removeStatus(status)
-      } else if (status.status == Status.PENDING && newStatus.waitingChunk.isEmpty) {
-        log.warning("Chunk write cancelled: {}", newStatus.chunk)
-        removeStatus(status)
-      } else {
-        putStatus(newStatus)
+      val newStatus = status.copy(
+        availability = status.availability - storageId,
+        waitingChunk = status.waitingChunk - actor
+      )
+
+      status.writeStatus match {
+        case WriteStatus.Pending(_) ⇒
+          putStatus(newStatus)
+
+        case WriteStatus.Finished ⇒
+          if (newStatus.availability.isEmpty) {
+            log.warning("Chunk is lost: {}", newStatus.chunk)
+            removeStatus(status)
+          }
       }
     }
 

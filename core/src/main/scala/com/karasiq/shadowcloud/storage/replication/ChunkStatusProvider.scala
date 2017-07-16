@@ -6,12 +6,20 @@ import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 
 object ChunkStatusProvider {
-  object Status extends Enumeration {
-    val PENDING, STORED = Value
+  sealed trait WriteStatus
+
+  object WriteStatus {
+    case class Pending(affinity: ChunkWriteAffinity) extends WriteStatus
+    case object Finished extends WriteStatus
   }
 
-  case class ChunkStatus(status: Status.Value, time: Long, chunk: Chunk, writingChunk: Set[String] = Set.empty,
-                         hasChunk: Set[String] = Set.empty, waitingChunk: Set[ActorRef] = Set.empty)
+  case class ChunkStatus(writeStatus: WriteStatus, time: Long, chunk: Chunk,
+                         availability: ChunkAvailability = ChunkAvailability.empty,
+                         waitingChunk: Set[ActorRef] = Set.empty) {
+    def finished: ChunkStatus = {
+      copy(writeStatus = WriteStatus.Finished, chunk = chunk.withoutData)
+    }
+  }
 }
 
 trait ChunkStatusProvider {

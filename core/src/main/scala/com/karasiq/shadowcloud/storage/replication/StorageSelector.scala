@@ -15,6 +15,6 @@ trait StorageSelector {
   def available(toWrite: Long = 0): Seq[StorageStatus]
   def forIndexWrite(diff: IndexDiff): Seq[StorageStatus]
   def forRead(status: ChunkStatus): Option[StorageStatus]
-  def forWrite(chunk: ChunkStatus): Seq[StorageStatus]
+  def forWrite(chunk: ChunkStatus): ChunkWriteAffinity
   def isFinished(chunk: ChunkStatus): Boolean
 }

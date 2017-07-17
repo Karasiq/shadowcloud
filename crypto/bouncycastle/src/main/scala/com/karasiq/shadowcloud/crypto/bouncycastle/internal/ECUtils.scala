@@ -18,8 +18,8 @@ private[bouncycastle] object ECUtils {
       case null ⇒
         new ECDomainParameters(spec.getCurve, spec.getG, spec.getN, spec.getH, spec.getSeed)
 
-      case cid ⇒
-        new ECNamedDomainParameters(cid, spec.getCurve, spec.getG, spec.getN, spec.getH, spec.getSeed)
+      case curveId ⇒
+        new ECNamedDomainParameters(curveId, spec.getCurve, spec.getG, spec.getN, spec.getH, spec.getSeed)
     }
   }
 
@@ -31,7 +31,9 @@ private[bouncycastle] object ECUtils {
     val curveName = try {
       val config = ConfigProps.toConfig(method.config)
       Some(config.getString("curve"))
-    } catch { case NonFatal(_) ⇒ None }
+    } catch { case NonFatal(_) ⇒
+      None
+    }
 
     def keySize: Int = method match {
       case em: EncryptionMethod ⇒

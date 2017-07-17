@@ -5,7 +5,7 @@ import java.security.MessageDigest
 import org.bouncycastle.crypto.Digest
 
 private[hashing] object BCDigestWrapper {
-  final class MDDigest(md: MessageDigest) extends Digest {
+  private[this] final class MDDigest(md: MessageDigest) extends Digest {
     def getDigestSize: Int = {
       md.getDigestLength
     }
@@ -28,6 +28,10 @@ private[hashing] object BCDigestWrapper {
 
     def reset(): Unit = {
       md.reset()
+    }
+
+    override def toString: String = {
+      s"MDDigest($md)"
     }
   }
 

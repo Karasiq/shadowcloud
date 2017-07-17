@@ -26,6 +26,14 @@ private[bouncycastle] object BCDigests extends ConfigImplicits {
     "Skein"
   )
 
+  def hasSize(algorithm: String): Boolean = {
+    digestsWithSize.contains(algorithm)
+  }
+
+  def hasTwoSizes(algorithm: String): Boolean = {
+    digestsWithTwoSizes.contains(algorithm)
+  }
+
   def createDigest(method: HashingMethod): Digest = {
     BCDigestWrapper(createMessageDigest(method))
   }
@@ -40,22 +48,10 @@ private[bouncycastle] object BCDigests extends ConfigImplicits {
     }
   }
 
-  def hasSize(algorithm: String): Boolean = {
-    digestsWithSize.contains(algorithm)
-  }
-
-  def hasTwoSizes(algorithm: String): Boolean = {
-    digestsWithTwoSizes.contains(algorithm)
-  }
-
   def createMDWithSize(algorithm: String, method: HashingMethod, defaultSize: Int = 256): MessageDigest = {
     val config = ConfigProps.toConfig(method.config)
     val digestSize = config.withDefault(defaultSize, _.getInt("digest-size"))
     getMDInstance(s"$algorithm-$digestSize")
-  }
-
-  private[this] def getMDInstance(algorithm: String): MessageDigest = {
-    MessageDigest.getInstance(algorithm, BCUtils.provider)
   }
 
   def createMDWithTwoSizes(alg: String, method: HashingMethod, defaultStateSize: Int = 256): MessageDigest = {
@@ -71,5 +67,9 @@ private[bouncycastle] object BCDigests extends ConfigImplicits {
 
   def createMessageDigest(algorithm: String): MessageDigest = {
     createMessageDigest(HashingMethod(algorithm))
+  }
+
+  private[this] def getMDInstance(algorithm: String): MessageDigest = {
+    MessageDigest.getInstance(algorithm, BCUtils.provider)
   }
 }

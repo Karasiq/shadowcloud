@@ -6,7 +6,7 @@ import org.bouncycastle.crypto.encodings.OAEPEncoding
 import org.bouncycastle.crypto.engines.RSAEngine
 
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters}
-import com.karasiq.shadowcloud.crypto.bouncycastle.internal.KeyUtils
+import com.karasiq.shadowcloud.crypto.bouncycastle.internal.RSAUtils
 
 private[bouncycastle] object RSACipherModule {
   def apply(method: EncryptionMethod = EncryptionMethod("RSA", 4096)): RSACipherModule = {
@@ -16,7 +16,7 @@ private[bouncycastle] object RSACipherModule {
 
 private[bouncycastle] final class RSACipherModule(val method: EncryptionMethod) extends BCAsymmetricCipherModule {
   protected val cipher = new OAEPEncoding(new RSAEngine)
-  protected val keyPairGenerator = KeyUtils.rsaKeyGenerator(method.keySize)
+  protected val keyPairGenerator = RSAUtils.createKeyGenerator(method.keySize, RSAUtils.getPublicExponent(method))
 
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
     cipher.init(encrypt, getCipherKey(parameters, encrypt))

@@ -33,7 +33,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
   testSymmetricEncryption("ChaCha20", StreamCipherModule.ChaCha20(), 32, 8)
 
   testAsymmetricEncryption("RSA", RSACipherModule(EncryptionMethod("RSA", 1024)))
-  testAsymmetricEncryption("ECIES", ECIESCipherModule(EncryptionMethod("ECIES", 521, config = ConfigProps("ies-block-cipher" → "AES/CBC"))))
+  testAsymmetricEncryption("ECIES", ECIESCipherModule(EncryptionMethod("ECIES", 521, config = ConfigProps("ies.block-cipher" → "AES/CBC"))))
   testAsymmetricEncryption("ECIES (Stream)", ECIESCipherModule(EncryptionMethod("ECIES", 521)))
 
   // -----------------------------------------------------------------------

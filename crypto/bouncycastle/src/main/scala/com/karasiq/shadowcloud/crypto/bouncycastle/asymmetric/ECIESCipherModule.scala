@@ -24,9 +24,12 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.BCBlockCiphers
 import com.karasiq.shadowcloud.utils.HexString
 
 private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
-  private[this] val secureRandom = new SecureRandom()
-
-  val defaultDigest = HashingMethod("SHA-512") // HashingMethod("SHA3", config = ConfigProps("digest-size" → 512))
+  object defaults {
+    val digest = HashingMethod("SHA-512") // HashingMethod("SHA3", config = ConfigProps("digest-size" → 512))
+    val encodingSize = 8
+    val derivationSize = 8
+    val macKeySize = 256
+  }
 
   def apply(method: EncryptionMethod = EncryptionMethod("ECIES")): ECIESCipherModule = {
     new ECIESCipherModule(method)
@@ -42,9 +45,9 @@ private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
 
   private def getBlockCipherMethod(config: Config): Option[EncryptionMethod] = {
     config
-      .optional(_.getConfig("ies-block-cipher"))
+      .optional(_.getConfig("ies.block-cipher"))
       .map(CryptoProps.encryption)
-      .orElse(config.optional(_.getString("ies-block-cipher")).map(EncryptionMethod(_)))
+      .orElse(config.optional(_.getString("ies.block-cipher")).map(EncryptionMethod(_)))
       .filter(_.algorithm.nonEmpty)
   }
 
@@ -55,9 +58,9 @@ private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
       config.withDefault(null, cfg ⇒ HexString.decode(cfg.getString(name)).toArray)
     }
 
-    val derivation = getByteArrayOrNull("ies-derivation")
-    val encoding = getByteArrayOrNull("ies-encoding")
-    val macKeySize = config.withDefault(64, _.getInt("ies-mac-key-size"))
+    val derivation = getByteArrayOrNull("ies.derivation")
+    val encoding = getByteArrayOrNull("ies.encoding")
+    val macKeySize = config.withDefault(defaults.macKeySize, _.getInt("ies.mac-key-size"))
 
     getBlockCipherMethod(config) match {
       case Some(bcMethod) ⇒
@@ -70,28 +73,31 @@ private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
   }
 
   private def addIesParameters(parameters: AsymmetricEncryptionParameters): AsymmetricEncryptionParameters = {
+    val secureRandom = new SecureRandom()
+
     def randomBytes(size: Int): String = {
       val bytes = new Array[Byte](size)
       secureRandom.nextBytes(bytes)
       HexString.encode(ByteString(bytes))
     }
+
     val newConfig = ConfigProps.toConfig(parameters.method.config)
-      .withValue("ies-derivation", ConfigValueFactory.fromAnyRef(randomBytes(8)))
-      .withValue("ies-encoding", ConfigValueFactory.fromAnyRef(randomBytes(8)))
+      .withValue("ies.derivation", ConfigValueFactory.fromAnyRef(randomBytes(defaults.derivationSize)))
+      .withValue("ies.encoding", ConfigValueFactory.fromAnyRef(randomBytes(defaults.encodingSize)))
     parameters.copy(method = parameters.method.copy(config = ConfigProps.fromConfig(newConfig)))
   }
 
   private def createIesEngine(method: EncryptionMethod): IESEngine = {
     def createDigest(config: Config): Digest = {
-      val digestMethod = getDigestMethod(config, "ies-digest").getOrElse(this.defaultDigest)
+      val digestMethod = getDigestMethod(config, "ies.digest").getOrElse(defaults.digest)
       BCDigests.createDigest(digestMethod)
     }
 
     def createHMac(config: Config): HMac = {
       // Will fail if digest is not in list: org.bouncycastle.crypto.macs.HMac#blockLengths
-      val digestMethod = getDigestMethod(config, "ies-hmac")
-        .orElse(getDigestMethod(config, "ies-digest"))
-        .getOrElse(this.defaultDigest)
+      val digestMethod = getDigestMethod(config, "ies.hmac")
+        .orElse(getDigestMethod(config, "ies.digest"))
+        .getOrElse(defaults.digest)
 
       new HMac(BCDigests.createDigest(digestMethod))
     }

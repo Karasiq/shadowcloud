@@ -23,7 +23,7 @@ import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.StorageHealth
-import com.karasiq.shadowcloud.storage.replication.StorageSelector
+import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.replication.StorageStatusProvider.StorageStatus
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
@@ -49,6 +49,7 @@ object RegionDispatcher {
   case object WriteChunk extends MessageStatus[Chunk, Chunk]
   case class ReadChunk(chunk: Chunk) extends Message
   case object ReadChunk extends MessageStatus[Chunk, Chunk]
+  case class RewriteChunk(chunk: Chunk, newAffinity: Option[ChunkWriteAffinity]) extends Message
 
   // Internal messages
   private case class PushDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)], pending: IndexDiff) extends Message
@@ -142,6 +143,9 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
 
     case WriteChunk(chunk) ⇒
       chunks.writeChunk(chunk, sender())
+
+    case RewriteChunk(chunk, newAffinity) ⇒
+      chunks.repairChunk(chunk, newAffinity, sender())
 
     case SReadChunk.Success((ChunkPath(`regionId`, _), _), chunk) ⇒
       log.debug("Chunk read success: {}", chunk)

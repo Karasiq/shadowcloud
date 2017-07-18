@@ -42,6 +42,7 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
   // State
   // -----------------------------------------------------------------------
   private[this] val writingChunks = PendingOperation.withRegionChunk
+  private[this] val readingChunks = PendingOperation.withRegionChunk
   private[this] val stats = StorageStatsTracker(storageId, health)
 
   // -----------------------------------------------------------------------
@@ -58,8 +59,10 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
       })
 
     case msg @ ChunkIODispatcher.ReadChunk(region, chunk) ⇒
-      log.debug("Reading chunk: {}/{}", region, chunk)
-      chunkIO.forward(msg)
+      readingChunks.addWaiter((region, chunk), sender(), { () ⇒
+        log.debug("Reading chunk: {}/{}", region, chunk)
+        chunkIO ! msg
+      })
 
     case msg: ChunkIODispatcher.Message ⇒
       chunkIO.forward(msg)
@@ -76,6 +79,9 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
     case msg @ ChunkIODispatcher.WriteChunk.Failure((region, chunk), error) ⇒
       log.error(error, "Chunk write failure: {}/{}", region, chunk)
       writingChunks.finish((region, chunk), msg)
+
+    case msg: ChunkIODispatcher.ReadChunk.Status ⇒
+      readingChunks.finish(msg.key, msg)
 
     // -----------------------------------------------------------------------
     // Index commands

@@ -24,6 +24,7 @@ import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
+import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 import com.karasiq.shadowcloud.storage.replication.StorageStatusProvider.StorageStatus
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
@@ -35,6 +36,8 @@ object RegionDispatcher {
   case class Register(storageId: String, dispatcher: ActorRef, health: StorageHealth = StorageHealth.empty) extends Message
   case class Unregister(storageId: String) extends Message
   case object GetStorages extends Message with MessageStatus[String, Seq[StorageStatus]]
+  case class GetChunkStatus(chunk: Chunk) extends Message
+  object GetChunkStatus extends MessageStatus[Chunk, ChunkStatus]
 
   case class WriteIndex(diff: FolderIndexDiff) extends Message
   object WriteIndex extends MessageStatus[FolderIndexDiff, IndexDiff]
@@ -135,6 +138,15 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
       log.info("Force synchronizing indexes of virtual region: {}", regionId)
       storages.storages.foreach(_.dispatcher ! IndexDispatcher.Synchronize)
 
+    case GetChunkStatus(chunk) ⇒
+      chunks.getChunkStatus(chunk) match {
+        case Some(status) ⇒
+          sender() ! GetChunkStatus.Success(chunk, status)
+
+        case None ⇒
+          sender() ! GetChunkStatus.Failure(chunk, new NoSuchElementException("Chunk not found"))
+      }
+
     // -----------------------------------------------------------------------
     // Read/write commands
     // -----------------------------------------------------------------------
@@ -149,19 +161,21 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
 
     case SReadChunk.Success((ChunkPath(`regionId`, _), _), chunk) ⇒
       log.debug("Chunk read success: {}", chunk)
-      chunks.readSuccess(chunk)
+      chunks.onReadSuccess(chunk)
 
     case SReadChunk.Failure((ChunkPath(`regionId`, _), chunk), error) ⇒
       log.error(error, "Chunk read failed: {}", chunk)
-      chunks.readFailure(chunk, error)
+      val storageId = storages.getStorageId(sender())
+      chunks.onReadFailure(chunk, storageId, error)
 
     case SWriteChunk.Success((ChunkPath(`regionId`, _), _), chunk) ⇒
       log.debug("Chunk write success: {}", chunk)
-      // chunks.registerChunk(sender(), chunk)
+      // chunks.registerChunk(sender(), chunk) // Wait for ChunkWritten event
 
     case SWriteChunk.Failure((ChunkPath(`regionId`, _), chunk), error) ⇒
       log.error(error, "Chunk write failed: {}", chunk)
-      chunks.unregisterChunk(sender(), chunk)
+      val storageId = storages.getStorageId(sender())
+      chunks.onWriteFailure(chunk, storageId, error)
       chunks.retryPendingChunks()
 
     // -----------------------------------------------------------------------
@@ -199,7 +213,6 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
     case PushDiffs(storageId, diffs, pending) if storages.contains(storageId) ⇒
       globalIndex.addPending(pending)
       addStorageDiffs(storageId, diffs)
-      chunks.retryPendingChunks()
 
     case StorageEnvelope(storageId, event: StorageEvents.Event) if storages.contains(storageId) ⇒ event match {
       case StorageEvents.IndexLoaded(diffs) ⇒
@@ -225,7 +238,7 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
 
       case StorageEvents.ChunkWritten(ChunkPath(`regionId`, _), chunk) ⇒
         log.debug("Chunk written: {}", chunk)
-        chunks.registerChunk(storages.getDispatcher(storageId), chunk)
+        chunks.onWriteSuccess(chunk, storageId)
         sc.eventStreams.publishRegionEvent(regionId, RegionEvents.ChunkWritten(storageId, chunk))
         gcActor ! RegionGC.Defer(10 minutes)
 
@@ -257,7 +270,7 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
   private[this] def addStorageDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)]): Unit = {
     val dispatcher = storages.getDispatcher(storageId)
     diffs.foreach { case (sequenceNr, diff) ⇒
-      chunks.update(dispatcher, diff.chunks)
+      chunks.registerDiff(dispatcher, diff.chunks)
       val regionKey = RegionKey(diff.time, storageId, sequenceNr)
       globalIndex.add(regionKey, diff)
       log.debug("Virtual region [{}] index updated: {} -> {}", regionId, regionKey, diff)

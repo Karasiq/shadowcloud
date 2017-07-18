@@ -4,11 +4,13 @@ import com.karasiq.shadowcloud.index.utils.HasEmpty
 
 case class ChunkAvailability(hasChunk: Set[String] = Set.empty,
                              writingChunk: Set[String] = Set.empty,
-                             writeFailed: Set[String] = Set.empty) extends HasEmpty {
-  def contains(storageId: String): Boolean = {
-    hasChunk.contains(storageId) || writingChunk.contains(storageId) || writeFailed.contains(storageId)
-  }
+                             writeFailed: Set[String] = Set.empty,
+                             readFailed: Set[String] = Set.empty) extends HasEmpty {
 
+  def contains(storageId: String): Boolean = {
+    hasChunk.contains(storageId) || writingChunk.contains(storageId) ||
+      writeFailed.contains(storageId) || readFailed.contains(storageId)
+  }
 
   def isEmpty: Boolean = {
     hasChunk.isEmpty && writingChunk.isEmpty
@@ -23,15 +25,23 @@ case class ChunkAvailability(hasChunk: Set[String] = Set.empty,
   }
 
   def isFailed(storageId: String): Boolean = {
-    writeFailed.contains(storageId)
+    writeFailed.contains(storageId) || readFailed.contains(storageId)
   }
 
-  def finished(storageId: String): ChunkAvailability = {
-    copy(hasChunk = hasChunk + storageId, writingChunk = writingChunk - storageId)
+  def withWriting(storageIds: String*): ChunkAvailability = {
+    copy(hasChunk = hasChunk -- storageIds, writingChunk = writingChunk ++ storageIds, writeFailed = writeFailed -- storageIds)
   }
 
-  def failed(storageId: String): ChunkAvailability = {
-    copy(writingChunk = writingChunk - storageId, writeFailed = writeFailed + storageId)
+  def withFinished(storageIds: String*): ChunkAvailability = {
+    copy(hasChunk = hasChunk ++ storageIds, writingChunk = writingChunk -- storageIds)
+  }
+
+  def withWriteFailed(storageIds: String*): ChunkAvailability = {
+    copy(writingChunk = writingChunk -- storageIds, writeFailed = writeFailed ++ storageIds)
+  }
+
+  def withReadFailed(storageIds: String*): ChunkAvailability = {
+    copy(readFailed = readFailed ++ storageIds)
   }
 
   def -(storageId: String): ChunkAvailability = {

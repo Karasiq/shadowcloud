@@ -14,6 +14,8 @@ import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.actors.utils.{GCState, MessageStatus}
 import com.karasiq.shadowcloud.index.{Chunk, File, Folder, Path}
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
+import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 import com.karasiq.shadowcloud.storage.replication.StorageStatusProvider.StorageStatus
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
@@ -68,6 +70,10 @@ final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext,
     regionSupervisor ! RegionEnvelope(regionId, RegionDispatcher.Synchronize)
   }
 
+  def getChunkStatus(regionId: String, chunk: Chunk): Future[ChunkStatus] = {
+    doAsk(regionId, GetChunkStatus, GetChunkStatus(chunk))
+  }
+
   // -----------------------------------------------------------------------
   // Chunk IO
   // -----------------------------------------------------------------------
@@ -77,6 +83,10 @@ final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext,
 
   def readChunk(regionId: String, chunk: Chunk): Future[Chunk] = {
     doAsk(regionId, ReadChunk, ReadChunk(chunk))
+  }
+
+  def rewriteChunk(regionId: String, chunk: Chunk, newAffinity: Option[ChunkWriteAffinity]): Future[Chunk] = {
+    doAsk(regionId, WriteChunk, RewriteChunk(chunk, newAffinity))
   }
 
   // -----------------------------------------------------------------------

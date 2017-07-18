@@ -28,12 +28,7 @@ class DefaultStorageSelector(region: RegionContext) extends StorageSelector {
     }
 
     def limitToRF(storages: Seq[StorageStatus]): Seq[StorageStatus] = {
-      if (region.config.dataReplicationFactor > 0) {
-        val hasChunk = (ws.hasChunk ++ ws.writingChunk).size
-        storages.take(hasChunk - region.config.dataReplicationFactor)
-      } else {
-        storages
-      }
+      Utils.takeOrAll(storages, region.config.dataReplicationFactor)
     }
 
     val writeSize = chunk.chunk.checksum.encSize

@@ -80,7 +80,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
       case Some(status) ⇒
         status.writeStatus match {
           case WriteStatus.Pending(_) ⇒
-            context.watch(receiver)
+            // context.watch(receiver)
             log.debug("Already writing chunk, added to queue: {}", chunk)
             putStatus(status.copy(waitingChunk = status.waitingChunk + receiver))
 
@@ -98,7 +98,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
         }
 
       case None ⇒
-        context.watch(receiver)
+        // context.watch(receiver)
         val status = ChunkStatus(WriteStatus.Pending(ChunkWriteAffinity.empty), Utils.timestamp, chunk, waitingChunk = Set(receiver))
         val affinity = storageSelector.forWrite(status)
         val statusWithAffinity = status.copy(WriteStatus.Pending(affinity))

@@ -1,9 +1,11 @@
 package com.karasiq.shadowcloud.storage.replication.selectors
 
+import scala.util.Random
+
 import com.karasiq.shadowcloud.actors.context.RegionContext
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
-import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
+import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.{ChunkStatus, WriteStatus}
 import com.karasiq.shadowcloud.storage.replication.StorageStatusProvider.StorageStatus
 import com.karasiq.shadowcloud.utils.Utils
 
@@ -18,31 +20,34 @@ class DefaultStorageSelector(region: RegionContext) extends StorageSelector {
   }
 
   def forRead(status: ChunkStatus): Option[StorageStatus] = {
-    available().find(storage ⇒ status.availability.isWritten(storage.id))
+    available().find(storage ⇒ status.availability.isWritten(storage.id) && !status.availability.isFailed(storage.id))
   }
 
   def forWrite(chunk: ChunkStatus): ChunkWriteAffinity = {
-    val ws = chunk.availability
-    def canWriteChunk(storage: StorageStatus): Boolean = {
-      !ws.isWriting(storage.id) && !chunk.waitingChunk.contains(storage.dispatcher)
+    def generateList(): Seq[String] = {
+      def canWriteChunk(storage: StorageStatus): Boolean = {
+        !chunk.availability.isWriting(storage.id) && !chunk.waitingChunk.contains(storage.dispatcher)
+      }
+
+      val writeSize = chunk.chunk.checksum.encSize
+      available(writeSize)
+        .filter(canWriteChunk)
+        .map(_.id)
     }
 
-    def limitToRF(storages: Seq[StorageStatus]): Seq[StorageStatus] = {
-      Utils.takeOrAll(storages, region.config.dataReplicationFactor)
+    def selectFromList(storages: Seq[String]): Seq[String] = {
+      val randomized = Random.shuffle(storages.distinct)
+      Utils.takeOrAll(randomized, region.config.dataReplicationFactor)
     }
 
-    val writeSize = chunk.chunk.checksum.encSize
-    val ids = limitToRF(available(writeSize).filter(canWriteChunk)).map(_.id)
-    ChunkWriteAffinity(ids)
-  }
+    val generatedList = generateList()
+    chunk.writeStatus match {
+      case WriteStatus.Pending(affinity) ⇒
+        val newList = affinity.mandatory.filterNot(chunk.availability.isFailed) ++ generatedList
+        affinity.copy(mandatory = selectFromList(newList))
 
-  def isFinished(chunk: ChunkStatus): Boolean = {
-    val needWrites = if (region.config.dataReplicationFactor > 0) {
-      region.config.dataReplicationFactor
-    } else {
-      math.max(1, available(chunk.chunk.checksum.encSize).size)
+      case _ ⇒
+        ChunkWriteAffinity(selectFromList(generatedList))
     }
-    val hasChunk = chunk.availability.hasChunk.size
-    hasChunk >= needWrites
   }
 }

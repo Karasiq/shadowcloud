@@ -1,10 +1,14 @@
 package com.karasiq.shadowcloud.storage.replication
 
+import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 
 case class ChunkWriteAffinity(mandatory: Seq[String] = Vector.empty,
                               eventually: Seq[String] = Vector.empty, // Can hold chunk in memory forever
-                              optional: Seq[String] = Vector.empty) {
+                              optional: Seq[String] = Vector.empty) extends HasEmpty {
+
+  def isEmpty: Boolean = mandatory.isEmpty && eventually.isEmpty && optional.isEmpty
+
   def selectForWrite(cs: ChunkStatus): Seq[String] = {
     (mandatory ++ eventually).filterNot(cs.availability.isWriting) ++
       optional.filterNot(stId ⇒ cs.availability.isWriting(stId) || cs.availability.isFailed(stId))

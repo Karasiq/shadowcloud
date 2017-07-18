@@ -146,7 +146,8 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
 
   def retryPendingChunks()(implicit storageSelector: StorageSelector): Unit = {
     chunksMap.foreachValue {
-      case chunkStatus @ ChunkStatus(WriteStatus.Pending(affinity), _, _, _, _) ⇒
+      case chunkStatus @ ChunkStatus(WriteStatus.Pending(_), _, _, _, _) ⇒
+        val affinity = storageSelector.forWrite(chunkStatus) // Try refresh affinity
         if (affinity.isFinished(chunkStatus)) {
           log.debug("Marking chunk as finished: {}", chunkStatus)
           putStatus(tryFinishChunk(chunkStatus))

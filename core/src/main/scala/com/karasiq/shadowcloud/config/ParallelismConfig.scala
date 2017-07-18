@@ -4,22 +4,28 @@ import com.typesafe.config.Config
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 
-private[shadowcloud] case class ParallelismConfig(rootConfig: Config, hashing: Int, encryption: Int,
+private[shadowcloud] case class ParallelismConfig(rootConfig: Config,
+                                                  hashing: Int, encryption: Int,
                                                   write: Int, read: Int) extends WrappedConfig
 
 private[shadowcloud] object ParallelismConfig extends WrappedConfigFactory[ParallelismConfig] with ConfigImplicits {
   def apply(config: Config): ParallelismConfig = {
+    def getPositiveInt(path: String, default: Int): Int = {
+      config.optional(_.getInt(path))
+        .filter(_ > 0)
+        .getOrElse(default)
+    }
+
+    def getCores(path: String): Int = {
+      getPositiveInt(path, sys.runtime.availableProcessors())
+    }
+
     ParallelismConfig(
       config,
-      intOrAllCores(config, "hashing"),
-      intOrAllCores(config, "encryption"),
-      intOrAllCores(config, "write"),
-      intOrAllCores(config, "read")
+      getCores("hashing"),
+      getCores("encryption"),
+      getPositiveInt("write", 4),
+      getPositiveInt("read", 4)
     )
-  }
-
-  private[this] def intOrAllCores(config: Config, path: String): Int = {
-    val value = config.getInt(path)
-    if (value > 0) value else sys.runtime.availableProcessors()
   }
 }

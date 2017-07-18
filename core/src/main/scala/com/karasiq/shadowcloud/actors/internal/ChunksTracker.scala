@@ -253,22 +253,22 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
   private[this] def removeActorRef(status: ChunkStatus, actor: ActorRef): Unit = {
     def removeStorage(status: ChunkStatus, actor: ActorRef): Unit = {
       val storageId = storages.getStorageId(actor)
-      if (!status.availability.contains(storageId) && !status.waitingChunk.contains(actor)) return
+      if (status.availability.contains(storageId) || status.waitingChunk.contains(actor)) {
+        val newStatus = status.copy(
+          availability = status.availability - storageId,
+          waitingChunk = status.waitingChunk - actor
+        )
 
-      val newStatus = status.copy(
-        availability = status.availability - storageId,
-        waitingChunk = status.waitingChunk - actor
-      )
+        status.writeStatus match {
+          case WriteStatus.Pending(_) ⇒
+            putStatus(newStatus)
 
-      status.writeStatus match {
-        case WriteStatus.Pending(_) ⇒
-          putStatus(newStatus)
-
-        case WriteStatus.Finished ⇒
-          if (newStatus.availability.isEmpty) {
-            log.warning("Chunk is lost: {}", newStatus.chunk)
-            removeStatus(status)
-          }
+          case WriteStatus.Finished ⇒
+            if (newStatus.availability.isEmpty) {
+              log.warning("Chunk is lost: {}", newStatus.chunk)
+              removeStatus(status)
+            }
+        }
       }
     }
 

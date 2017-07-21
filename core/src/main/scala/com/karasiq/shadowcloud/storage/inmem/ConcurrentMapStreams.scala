@@ -2,13 +2,16 @@ package com.karasiq.shadowcloud.storage.inmem
 
 import java.io.IOException
 
-import akka.stream.scaladsl.{Flow, Sink, Source}
-import com.karasiq.shadowcloud.exceptions.StorageException
-import com.karasiq.shadowcloud.storage.StorageIOResult
-
-import scala.collection.concurrent.{Map => CMap}
+import scala.collection.concurrent.{Map ⇒ CMap}
 import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
+
+import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.util.ByteString
+
+import com.karasiq.shadowcloud.exceptions.StorageException
+import com.karasiq.shadowcloud.storage.StorageIOResult
+import com.karasiq.shadowcloud.utils.HexString
 
 private[inmem] final class ConcurrentMapStreams[K, V](map: CMap[K, V], length: V ⇒ Int) {
   def keys: Source[K, Future[StorageIOResult]] = {
@@ -68,6 +71,13 @@ private[inmem] final class ConcurrentMapStreams[K, V](map: CMap[K, V], length: V
   }
 
   private[this] def toPathString(key: K): String = {
-    s"$key in $rootPathString"
+    val keyString = key match {
+      case (region: String, hash: ByteString) ⇒
+        region + "/" + HexString.encode(hash)
+
+      case _ ⇒
+        key.toString
+    }
+    keyString + " in " + rootPathString
   }
 }

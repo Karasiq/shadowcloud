@@ -58,7 +58,7 @@ private final class ChunkIODispatcher(repository: CategorizedRepository[String, 
   private[this] val chunksRead = PendingOperation.withRegionChunk
 
   private[this] val writeQueue = Source
-    .queue[(ChunkPath, Chunk, Promise[StorageIOResult])](sc.config.buffers.storageWrite, OverflowStrategy.dropNew)
+    .queue[(ChunkPath, Chunk, Promise[StorageIOResult])](sc.config.queues.storageWrite, OverflowStrategy.dropNew)
     .flatMapConcat { case (path, chunk, promise) ⇒
       val repository = subRepository(path.region)
       Source.single(chunk.data.encrypted)
@@ -74,7 +74,7 @@ private final class ChunkIODispatcher(repository: CategorizedRepository[String, 
     .run()
 
   private[this] val readQueue = Source
-    .queue[(ChunkPath, Chunk, Promise[(Chunk, StorageIOResult)])](sc.config.buffers.storageRead, OverflowStrategy.dropNew)
+    .queue[(ChunkPath, Chunk, Promise[(Chunk, StorageIOResult)])](sc.config.queues.storageRead, OverflowStrategy.dropNew)
     .flatMapConcat { case (path, chunk, promise) ⇒
       val localRepository = subRepository(path.region)
       val readSource = localRepository.read(path.id)

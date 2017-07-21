@@ -2,11 +2,12 @@ package com.karasiq.shadowcloud
 
 import java.util.UUID
 
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-import akka.actor.{ActorContext, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
-import akka.stream.ActorMaterializer
+import akka.actor.{ActorContext, ActorSystem, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
+import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
 
 import com.karasiq.shadowcloud.actors.RegionSupervisor
@@ -18,7 +19,7 @@ import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.serialization.SerializationModules
 import com.karasiq.shadowcloud.streams._
-import com.karasiq.shadowcloud.utils.SCProviderInstantiator
+import com.karasiq.shadowcloud.utils.{ProviderInstantiator, SCProviderInstantiator}
 
 object ShadowCloud extends ExtensionId[ShadowCloudExtension] with ExtensionIdProvider {
   def apply()(implicit context: ActorContext): ShadowCloudExtension = {
@@ -39,11 +40,11 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // Context
   // -----------------------------------------------------------------------
   object implicits {
-    implicit val actorSystem = _actorSystem
-    implicit val executionContext = _actorSystem.dispatcher
-    implicit val materializer = ActorMaterializer()(_actorSystem)
-    implicit val defaultTimeout = Timeout(5 seconds)
-    private[ShadowCloudExtension] implicit val pInst = new SCProviderInstantiator(ShadowCloudExtension.this)
+    implicit val actorSystem: ActorSystem = _actorSystem
+    implicit val executionContext: ExecutionContext = _actorSystem.dispatcher
+    implicit val materializer: Materializer = ActorMaterializer()(_actorSystem)
+    implicit val defaultTimeout: Timeout = Timeout(5 seconds)
+    private[ShadowCloudExtension] implicit val pInst: ProviderInstantiator = new SCProviderInstantiator(ShadowCloudExtension.this)
   }
 
   import implicits._
@@ -124,5 +125,6 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     val supervisor = RegionSupervisorOps(actors.regionSupervisor)
     val region = RegionOps(actors.regionSupervisor)
     val storage = StorageOps(actors.regionSupervisor)
+    val background = BackgroundOps(ShadowCloudExtension.this)
   }
 }

@@ -64,7 +64,7 @@ class ChunkSplitterTest extends ActorSpec with FlatSpecLike {
       .via(ChunkSplitter(100))
       .via(chunkProcessing.beforeWrite(hashing = hashingMethod, encHashing = hashingMethod))
       .map(testChunk)
-      .runWith(FileIndexer(chunkProcessing.modules, hashingMethod, hashingMethod))
+      .runWith(sc.streams.chunk.index(hashingMethod, hashingMethod))
 
     whenReady(result) { file ⇒
       file.chunks.map(_.checksum.hash) shouldBe sourceHashes

@@ -93,7 +93,7 @@ object IndexDiff {
     if (folders.isEmpty) {
       empty
     } else {
-      IndexDiff(Utils.timestamp, FolderIndexDiff.delete(folders:_*))
+      IndexDiff(Utils.timestamp, FolderIndexDiff.deleteFolderPaths(folders:_*))
     }
   }
 }

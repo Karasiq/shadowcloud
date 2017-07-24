@@ -62,7 +62,7 @@ final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext,
 
   def deleteFolder(regionId: String, path: Path): Future[Folder] = {
     getFolder(regionId, path).flatMap { folder ⇒
-      writeIndex(regionId, FolderIndexDiff.delete(folder.path)).map(_ ⇒ folder)
+      writeIndex(regionId, FolderIndexDiff.deleteFolderPaths(folder.path)).map(_ ⇒ folder)
     }
   }
 

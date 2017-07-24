@@ -25,4 +25,7 @@ object Timestamp {
     val ts = Utils.timestamp
     Timestamp(ts, ts)
   }
+
+  implicit val ordering: Ordering[Timestamp] =
+    Ordering.by(ts ⇒ (ts.lastModified, ts.created))
 }

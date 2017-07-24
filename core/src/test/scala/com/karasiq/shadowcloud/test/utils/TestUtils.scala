@@ -1,5 +1,7 @@
 package com.karasiq.shadowcloud.test.utils
 
+import java.util.UUID
+
 import scala.language.postfixOps
 import scala.util.{Random, Try}
 
@@ -54,7 +56,7 @@ object TestUtils extends TestImplicits {
       Chunk(Checksum(hashingMethod, hashingMethod, 100, preCalcHashes(2), 100, preCalcHashes(2)), EncryptionParameters.empty, Data(text.slice(200, 300), text.slice(200, 300))),
       Chunk(Checksum(hashingMethod, hashingMethod, 56, preCalcHashes(3), 56, preCalcHashes(3)), EncryptionParameters.empty, Data(text.slice(300, 356), text.slice(300, 356)))
     )
-    (text, File(Path.root / "test.txt", Timestamp(testTimestamp, testTimestamp), 0, Checksum(hashingMethod, hashingMethod, 356, textHash, 356, textHash), chunks))
+    (text, File(Path.root / "test.txt", UUID.fromString("c3cd9085-b2d5-43fb-b85c-a8448698f7a6"), Timestamp(testTimestamp, testTimestamp), 0, Checksum(hashingMethod, hashingMethod, 356, textHash, 356, textHash), chunks))
   }
 
   def testChunk: Chunk = {
@@ -83,7 +85,7 @@ object TestUtils extends TestImplicits {
     val encSize = chunks.map(_.checksum.encSize).sum
     val hash = sha1Hashing.createHash(ByteString.fromChunks(chunks))
     val encHash = sha1Hashing.createHash(ByteString.fromEncryptedChunks(chunks))
-    File(parent / s"$randomString.txt", Timestamp.now, Random.nextInt(10),
+    File(parent / s"$randomString.txt", File.newFileId, Timestamp.now, Random.nextInt(10),
       Checksum(sha1Hashing.method, sha1Hashing.method, size, hash, encSize, encHash), chunks)
   }
 

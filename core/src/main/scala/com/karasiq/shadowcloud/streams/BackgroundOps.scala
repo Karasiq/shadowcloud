@@ -5,32 +5,24 @@ import scala.concurrent.Future
 import akka.stream._
 import akka.stream.scaladsl.Source
 
-import com.karasiq.shadowcloud.ShadowCloudExtension
+import com.karasiq.shadowcloud.config.SCConfig
 import com.karasiq.shadowcloud.index.Chunk
 
 private[shadowcloud] object BackgroundOps {
-  def apply(sc: ShadowCloudExtension): BackgroundOps = {
-    new BackgroundOps(sc)
+  def apply(config: SCConfig, regionOps: RegionOps)(implicit mat: Materializer): BackgroundOps = {
+    new BackgroundOps(config, regionOps)
   }
 }
 
-private[shadowcloud] final class BackgroundOps(sc: ShadowCloudExtension) {
-  import sc.implicits._
-
-  private[this] val repairQueue = Source
-    .queue[RegionRepairStream.Request](sc.config.queues.regionRepair, OverflowStrategy.dropNew)
-    .to(RegionRepairStream(sc))
+private[shadowcloud] final class BackgroundOps(config: SCConfig, regionOps: RegionOps)(implicit mat: Materializer) {
+  private[this] val repairStream = RegionRepairStream(config.parallelism, regionOps)
     .addAttributes(Attributes.name("regionRepairQueue") and ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
-    .run()
 
-  def repair(regionId: String, strategy: RegionRepairStream.Strategy, chunks: Seq[Chunk] = Nil): Future[Seq[Chunk]] = {
+  def repair(regionId: String, strategy: RegionRepairStream.Strategy, chunks: Seq[Chunk] = Nil): Future[Seq[Chunk]] = { // TODO: Queue
     val request = RegionRepairStream.Request(regionId, strategy, chunks)
-    repairQueue.offer(request).flatMap {
-      case QueueOfferResult.Enqueued ⇒
-        request.result.future
-
-      case _ ⇒
-        Future.failed(new IllegalArgumentException("Repair queue is full"))
-    }
+    Source.single(request)
+      .to(repairStream)
+      .mapMaterializedValue(_ ⇒ request.result.future)
+      .run()
   }
 }

@@ -8,24 +8,28 @@ import scala.util.{Failure, Success, Try}
 
 import akka.Done
 import akka.stream._
+import akka.stream.scaladsl.Sink
 import akka.stream.stage._
+import akka.util.ByteString
 
 import com.karasiq.shadowcloud.crypto.HashingMethod
 import com.karasiq.shadowcloud.index.{Checksum, Chunk}
-import com.karasiq.shadowcloud.providers.SCModules
+import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 import com.karasiq.shadowcloud.streams.FileIndexer.Result
+import com.karasiq.shadowcloud.utils.ChunkUtils
 
 private[shadowcloud] object FileIndexer {
   case class Result(checksum: Checksum, chunks: Seq[Chunk], ioResult: IOResult)
 
-  def apply(registry: SCModules, plainHashing: HashingMethod = HashingMethod.default,
-            encryptedHashing: HashingMethod = HashingMethod.default): FileIndexer = {
-    new FileIndexer(registry, plainHashing, encryptedHashing)
+  def apply(registry: CryptoModuleRegistry, plainHashing: HashingMethod = HashingMethod.default,
+            encryptedHashing: HashingMethod = HashingMethod.default): Sink[Chunk, Future[Result]] = {
+    Sink.fromGraph(new FileIndexer(registry, plainHashing, encryptedHashing))
   }
 }
 
-// TODO: Content type
-private[shadowcloud] final class FileIndexer(modules: SCModules, plainHashing: HashingMethod, encryptedHashing: HashingMethod)
+private[shadowcloud] final class FileIndexer(cryptoModules: CryptoModuleRegistry,
+                                             plainHashing: HashingMethod,
+                                             encryptedHashing: HashingMethod)
   extends GraphStageWithMaterializedValue[SinkShape[Chunk], Future[Result]] {
 
   val inlet = Inlet[Chunk]("FileIndexer.in")
@@ -35,23 +39,39 @@ private[shadowcloud] final class FileIndexer(modules: SCModules, plainHashing: H
   def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, Future[Result]) = {
     val promise = Promise[Result]
     val logic = new GraphStageLogic(shape) with InHandler {
-      private[this] val hasher = modules.crypto.streamHashingModule(plainHashing)
-      private[this] val encHasher = modules.crypto.streamHashingModule(encryptedHashing)
+      private[this] val hasher = Some(plainHashing)
+        .filterNot(_.algorithm.isEmpty)
+        .map(CryptoModuleRegistry.streamHashingModule(cryptoModules, _))
+
+      private[this] val encHasher = Some(encryptedHashing)
+        .filterNot(_.algorithm.isEmpty)
+        .map(CryptoModuleRegistry.streamHashingModule(cryptoModules, _))
+
       private[this] var plainSize = 0L
       private[this] var encryptedSize = 0L
       private[this] val chunks = Vector.newBuilder[Chunk]
 
       private[this] def update(chunk: Chunk): Unit = {
-        hasher.update(chunk.data.plain)
-        encHasher.update(chunk.data.encrypted)
-        plainSize += chunk.data.plain.length
-        encryptedSize += chunk.data.encrypted.length
+        hasher.foreach { module ⇒
+          val data = ChunkUtils.getPlainBytes(cryptoModules, chunk)
+          module.update(data)
+        }
+
+        encHasher.foreach { module ⇒
+          val data = ChunkUtils.getEncryptedBytes(cryptoModules, chunk)
+          module.update(data)
+        }
+
+        plainSize += chunk.checksum.size
+        encryptedSize += chunk.checksum.encSize
         chunks += chunk.withoutData
       }
 
       private[this] def finish(status: Try[Done]): Unit = {
-        val checksum = Checksum(plainHashing, encryptedHashing, plainSize, hasher.createHash(),
-          encryptedSize, encHasher.createHash())
+        val checksum = Checksum(plainHashing, encryptedHashing,
+          plainSize, hasher.fold(ByteString.empty)(_.createHash()),
+          encryptedSize, encHasher.fold(ByteString.empty)(_.createHash()))
+
         val indexedFile = Result(checksum, chunks.result(), IOResult(plainSize, status))
         promise.trySuccess(indexedFile)
       }

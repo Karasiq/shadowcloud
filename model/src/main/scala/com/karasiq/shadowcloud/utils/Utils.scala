@@ -7,9 +7,14 @@ import scala.language.{higherKinds, postfixOps}
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
 
-import com.karasiq.shadowcloud.index.Chunk
+import com.karasiq.shadowcloud.index.{Chunk, Path}
 
 private[shadowcloud] object Utils {
+  // -----------------------------------------------------------------------
+  // Paths
+  // -----------------------------------------------------------------------
+  val internalFolderPath = Path.root / ".$sc-internal"
+  
   // -----------------------------------------------------------------------
   // Time
   // -----------------------------------------------------------------------

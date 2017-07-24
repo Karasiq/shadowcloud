@@ -5,7 +5,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.NotUsed
-import akka.actor.{ActorLogging, OneForOneStrategy, Props, SupervisorStrategy}
+import akka.actor.{ActorLogging, OneForOneStrategy, Props, Status, SupervisorStrategy}
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import akka.util.Timeout
 
@@ -141,11 +141,19 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
     // -----------------------------------------------------------------------
     // Envelopes
     // -----------------------------------------------------------------------
-    case RegionEnvelope(regionId, message) if state.containsRegion(regionId) ⇒
-      state.regions(regionId).dispatcher.forward(message)
+    case RegionEnvelope(regionId, message) ⇒
+      if (state.containsRegion(regionId)) {
+        state.regions(regionId).dispatcher.forward(message)
+      } else {
+        sender() ! Status.Failure(new NoSuchElementException(regionId))
+      }
 
-    case StorageEnvelope(storageId, message) if state.containsStorage(storageId) ⇒
-      state.storages(storageId).dispatcher.forward(message)
+    case StorageEnvelope(storageId, message) ⇒
+      if (state.containsStorage(storageId)) {
+        state.storages(storageId).dispatcher.forward(message)
+      } else {
+        sender() ! Status.Failure(new NoSuchElementException(storageId))
+      }
   }
 
   // -----------------------------------------------------------------------

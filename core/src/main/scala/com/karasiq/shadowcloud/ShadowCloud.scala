@@ -98,7 +98,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // -----------------------------------------------------------------------
   // Events
   // -----------------------------------------------------------------------
-  object eventStreams {
+  object eventStreams { // TODO: Supervisor events
     val region = new StringEventBus[RegionEnvelope](_.regionId)
     val storage = new StringEventBus[StorageEnvelope](_.storageId)
 
@@ -119,12 +119,13 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     val index = IndexProcessingStreams(modules, config, keys.provider)
     val region = RegionStreams(actors.regionSupervisor, config.parallelism)
     val file = FileStreams(region, chunk)
+    val metadata = MetadataStreams(file, ops.region, serialization)
   }
 
   object ops {
     val supervisor = RegionSupervisorOps(actors.regionSupervisor)
     val region = RegionOps(actors.regionSupervisor)
     val storage = StorageOps(actors.regionSupervisor)
-    val background = BackgroundOps(ShadowCloudExtension.this)
+    val background = BackgroundOps(config, this.region)
   }
 }

@@ -88,9 +88,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
             val chunkWithData = if (Utils.isSameChunk(status.chunk, chunk) && chunk.data.encrypted.nonEmpty) {
               chunk
             } else {
-              // TODO: Move decryption to stream
-              val encryptor = sc.modules.crypto.encryptionModule(status.chunk.encryption.method)
-              status.chunk.copy(data = chunk.data.copy(encrypted = encryptor.encrypt(chunk.data.plain, status.chunk.encryption)))
+              status.chunk.copy(data = chunk.data.copy(encrypted = ByteString.empty))
             }
             receiver ! WriteChunk.Success(chunkWithData, chunkWithData)
             log.debug("Chunk restored from index, write skipped: {}", chunkWithData)

@@ -1,9 +1,9 @@
 package com.karasiq.shadowcloud.actors.utils
 
-import akka.actor.DeadLetterSuppression
-
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
+
+import akka.actor.{DeadLetterSuppression, Status}
 
 trait MessageStatus[Key, Value] {
   sealed abstract class Status extends DeadLetterSuppression {
@@ -24,6 +24,12 @@ trait MessageStatus[Key, Value] {
         Future.successful(value)
 
       case this.Failure(_, error) ⇒
+        Future.failed(error)
+
+      case Status.Failure(error) ⇒
+        Future.failed(error)
+
+      case scala.util.Failure(error) ⇒
         Future.failed(error)
 
       case _ ⇒

@@ -18,9 +18,8 @@ class RegionRepairTest extends ActorSpec with FlatSpecLike {
   val testStorage1 = "repairTestS1"
   val testStorage2 = "repairTestS2"
 
-  "Region repair dispatcher" should "repair chunks" in {
+  "Region repair stream" should "repair chunks" in {
     registerRegionAndStorages()
-    expectNoMsg(100 millis) // Wait for registration
 
     val chunk = TestUtils.testChunk
     sc.ops.region.writeChunk(testRegionId, chunk).futureValue shouldBe chunk
@@ -29,7 +28,7 @@ class RegionRepairTest extends ActorSpec with FlatSpecLike {
     expectNoMsg(500 millis) // Wait for synchronization
 
     val (repairStream, repairResult) = TestSource.probe[RegionRepairStream.Request]
-      .alsoTo(RegionRepairStream(sc))
+      .alsoTo(RegionRepairStream(sc.config.parallelism, sc.ops.region))
       .mapAsync(1)(_.result.future)
       .toMat(TestSink.probe)(Keep.both)
       .run()
@@ -55,5 +54,6 @@ class RegionRepairTest extends ActorSpec with FlatSpecLike {
     sc.ops.supervisor.addStorage(testStorage2, StorageProps.inMemory)
     sc.ops.supervisor.register(testRegionId, testStorage1)
     sc.ops.supervisor.register(testRegionId, testStorage2)
+    expectNoMsg(100 millis)
   }
 }

@@ -9,8 +9,18 @@ import com.karasiq.shadowcloud.config.ProvidersConfig
 import com.karasiq.shadowcloud.metadata.{Metadata, MetadataParser, MetadataProvider, MimeDetector}
 import com.karasiq.shadowcloud.utils.ProviderInstantiator
 
-private[shadowcloud] class MetadataModuleRegistry(providers: ProvidersConfig[MetadataProvider])(implicit inst: ProviderInstantiator)
-  extends MimeDetector with MetadataParser {
+private[shadowcloud] trait MetadataModuleRegistry extends MimeDetector with MetadataParser {
+  def metadataPlugins: Set[String]
+}
+
+private[shadowcloud] object MetadataModuleRegistry {
+  def apply(providers: ProvidersConfig[MetadataProvider])(implicit inst: ProviderInstantiator): MetadataModuleRegistry = {
+    new MetadataModuleRegistryImpl(providers)
+  }
+}
+
+private[shadowcloud] final class MetadataModuleRegistryImpl(providers: ProvidersConfig[MetadataProvider])
+                                                     (implicit inst: ProviderInstantiator) extends MetadataModuleRegistry {
 
   private[this] val (plugins, detectors, parsers) = {
     val (s1, s2) = providers.instances

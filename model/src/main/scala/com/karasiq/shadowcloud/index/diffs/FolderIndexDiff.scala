@@ -110,36 +110,58 @@ object FolderIndexDiff {
     if (files.isEmpty) {
       empty
     } else {
-      val diffs = files.groupBy(_.path.parent).map { case (path, files) ⇒
-        FolderDiff(path, files.maxBy(_.timestamp.lastModified).timestamp.lastModified, files.toSet)
+      val timestamp = Utils.timestamp
+      val diffs = files
+        .groupBy(_.path.parent)
+        .map { case (path, files) ⇒ FolderDiff(path, timestamp, files.toSet) }
+      FolderIndexDiff(diffs.toVector)
+    }
+  }
+
+  def deleteFolderPaths(folders: Path*): FolderIndexDiff = {
+    if (folders.isEmpty) {
+      empty
+    } else {
+      val timestamp = Utils.timestamp
+      val diffs = folders
+        .filterNot(_.isRoot)
+        .groupBy(_.parent)
+        .map { case (parent, folders) ⇒ FolderDiff(parent, timestamp, deletedFolders = folders.map(_.name).toSet) }
+      FolderIndexDiff(diffs.toVector)
+    }
+  }
+
+  // Explicitly deletes sub-items
+  def deleteFolders(folders: Folder*): FolderIndexDiff = {
+    if (folders.isEmpty) {
+      empty
+    } else {
+      val timestamp = Utils.timestamp
+      val diffs = folders.flatMap { folder ⇒
+        Seq(
+          FolderDiff(folder.path, timestamp, deletedFiles = folder.files, deletedFolders = folder.folders),
+          FolderDiff(folder.path.parent, timestamp, deletedFolders = Set(folder.path.name))
+        )
       }
       FolderIndexDiff(diffs.toVector)
     }
   }
 
-  def delete(folders: Path*): FolderIndexDiff = {
-    if (folders.isEmpty) {
-      empty
-    } else {
-      val diffs = folders
-        .filterNot(_.isRoot)
-        .groupBy(_.parent)
-        .map { case (parent, folders) ⇒
-          FolderDiff(parent, Utils.timestamp, deletedFolders = folders.map(_.name).toSet)
-        }
-      FolderIndexDiff(diffs.toVector)
-    }
+  // Explicitly deletes directory tree
+  def deleteFolderTree(index: FolderIndex, path: Path): FolderIndexDiff = {
+    val folders = index.get(path).toSeq
+      .flatMap(f ⇒ f +: f.folders.toSeq.map(f.path / _).flatMap(index.get))
+    deleteFolders(folders:_*)
   }
 
   def deleteFiles(files: File*): FolderIndexDiff = {
     if (files.isEmpty) {
       empty
     } else {
+      val timestamp = Utils.timestamp
       val diffs = files
         .groupBy(_.path.parent)
-        .map { case (parent, files) ⇒
-          FolderDiff(parent, Utils.timestamp, deletedFiles = files.toSet)
-        }
+        .map { case (parent, files) ⇒ FolderDiff(parent, timestamp, deletedFiles = files.toSet) }
       FolderIndexDiff(diffs.toVector)
     }
   }
@@ -147,11 +169,7 @@ object FolderIndexDiff {
   def move(folder: Folder, newPath: Path): FolderIndexDiff = {
     require(!folder.path.isRoot, "Cannot move root")
     val timestamp = Utils.timestamp
-    val remove = Seq(
-      FolderDiff(folder.path, timestamp, deletedFiles = folder.files, deletedFolders = folder.folders),
-      FolderDiff(folder.path.parent, timestamp, deletedFolders = Set(folder.path.name))
-    )
-    val add = if (newPath.isRoot) {
+    val diffs = if (newPath.isRoot) {
       Seq(FolderDiff.create(folder.withPath(newPath)))
     } else {
       Seq(
@@ -159,6 +177,8 @@ object FolderIndexDiff {
         FolderDiff.create(folder.withPath(newPath))
       )
     }
-    FolderIndexDiff(remove ++ add)
+
+    deleteFolderPaths(folder.path)
+      .mergeWith(FolderIndexDiff(diffs), FolderDecider.createWins)
   }
 }

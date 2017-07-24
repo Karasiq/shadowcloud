@@ -101,9 +101,9 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
           log.warning("No index storages available on {}", regionId)
           sender() ! WriteIndex.Failure(folders, new IllegalStateException("No storages available"))
         } else {
-          globalIndex.addPending(diff)
           log.debug("Writing to virtual region [{}] index: {} (storages = {})", regionId, diff, storages)
           storages.foreach(_.dispatcher ! IndexDispatcher.AddPending(regionId, diff))
+          globalIndex.addPending(diff)
           sender() ! WriteIndex.Success(folders, globalIndex.pending)
         }
       }

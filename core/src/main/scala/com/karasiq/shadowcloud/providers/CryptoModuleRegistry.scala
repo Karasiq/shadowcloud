@@ -2,11 +2,118 @@ package com.karasiq.shadowcloud.providers
 
 import java.security.NoSuchAlgorithmException
 
+import akka.util.ByteString
+
 import com.karasiq.shadowcloud.config.ProvidersConfig
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.utils.ProviderInstantiator
 
-private[shadowcloud] class CryptoModuleRegistry(providers: ProvidersConfig[CryptoProvider])(implicit inst: ProviderInstantiator) {
+private[shadowcloud] trait CryptoModuleRegistry {
+  def hashingModule(method: HashingMethod): HashingModule
+  def encryptionModule(method: EncryptionMethod): EncryptionModule
+  def signModule(method: SignMethod): SignModule
+
+  def hashingAlgorithms: Set[String]
+  def encryptionAlgorithms: Set[String]
+  def signingAlgorithms: Set[String]
+}
+
+private[shadowcloud] object CryptoModuleRegistry {
+  // -----------------------------------------------------------------------
+  // Constructor
+  // -----------------------------------------------------------------------
+  def apply(providers: ProvidersConfig[CryptoProvider])(implicit inst: ProviderInstantiator): CryptoModuleRegistry = {
+    new CryptoModuleRegistryImpl(providers)
+  }
+
+  // -----------------------------------------------------------------------
+  // Wrappers
+  // -----------------------------------------------------------------------
+  def threadSafeHashingModule(registry: CryptoModuleRegistry, method: HashingMethod): HashingModule = {
+    val method1 = method.copy(stream = false)
+    registry.hashingModule(method1) match {
+      case _: StreamHashingModule ⇒
+        new HashingModule {
+          def method: HashingMethod = method1
+          def createHash(data: ByteString): ByteString = {
+            val module = registry.hashingModule(method1)
+            module.createHash(data)
+          }
+        }
+
+      case module ⇒
+        module
+    }
+  }
+
+  def threadSafeEncryptionModule(registry: CryptoModuleRegistry, method: EncryptionMethod): EncryptionModule = {
+    val method1 = method.copy(stream = false)
+    registry.encryptionModule(method1) match {
+      case module: StreamEncryptionModule ⇒
+        new EncryptionModule {
+          private[this] def newModule = registry.encryptionModule(method1)
+          def method: EncryptionMethod = method1
+          def createParameters(): EncryptionParameters = module.createParameters()
+          def updateParameters(parameters: EncryptionParameters): EncryptionParameters = module.updateParameters(parameters)
+          def encrypt(data: ByteString, parameters: EncryptionParameters): ByteString = newModule.encrypt(data, parameters)
+          def decrypt(data: ByteString, parameters: EncryptionParameters): ByteString = newModule.decrypt(data, parameters)
+        }
+
+      case module ⇒
+        module
+    }
+  }
+
+  def threadSafeSignModule(registry: CryptoModuleRegistry, method: SignMethod): SignModule = {
+    val method1 = method.copy(stream = false)
+    registry.signModule(method1) match {
+      case module: StreamSignModule ⇒
+        new SignModule {
+          private[this] def newModule = registry.signModule(method1)
+          def createParameters(): SignParameters = module.createParameters()
+          def method: SignMethod = method1
+          def sign(data: ByteString, parameters: SignParameters): ByteString = newModule.sign(data, parameters)
+          def verify(data: ByteString, signature: ByteString, parameters: SignParameters): Boolean = newModule.verify(data, signature, parameters)
+        }
+
+      case _ ⇒
+        throw new IllegalArgumentException("Stream signature module required")
+    }
+  }
+
+  def streamHashingModule(registry: CryptoModuleRegistry, method: HashingMethod): StreamHashingModule = {
+    registry.hashingModule(method.copy(stream = true)) match {
+      case m: StreamHashingModule ⇒
+        m
+
+      case _ ⇒
+        throw new IllegalArgumentException("Stream hashing module required")
+    }
+  }
+
+  def streamEncryptionModule(registry: CryptoModuleRegistry, method: EncryptionMethod): StreamEncryptionModule = {
+    registry.encryptionModule(method.copy(stream = true)) match {
+      case m: StreamEncryptionModule ⇒
+        m
+
+      case _ ⇒
+        throw new IllegalArgumentException("Stream encryption module required")
+    }
+  }
+
+  def streamSignModule(registry: CryptoModuleRegistry, method: SignMethod): StreamSignModule = {
+    registry.signModule(method.copy(stream = true)) match {
+      case m: StreamSignModule ⇒
+        m
+
+      case _ ⇒
+        throw new IllegalArgumentException("Stream signature module required")
+    }
+  }
+}
+
+private[providers] final class CryptoModuleRegistryImpl(providers: ProvidersConfig[CryptoProvider])
+                                                 (implicit inst: ProviderInstantiator) extends CryptoModuleRegistry {
 
   // -----------------------------------------------------------------------
   // Context
@@ -37,16 +144,6 @@ private[shadowcloud] class CryptoModuleRegistry(providers: ProvidersConfig[Crypt
     moduleFromPF(pf, method)
   }
 
-  def streamHashingModule(method: HashingMethod): StreamHashingModule = {
-    hashingModule(method.copy(stream = true)) match {
-      case m: StreamHashingModule ⇒
-        m
-
-      case _ ⇒
-        throw new IllegalArgumentException("Stream hashing module required")
-    }
-  }
-
   def encryptionModule(method: EncryptionMethod): EncryptionModule = {
     val pf = if (method.provider.isEmpty) {
       context.encryption
@@ -56,16 +153,6 @@ private[shadowcloud] class CryptoModuleRegistry(providers: ProvidersConfig[Crypt
     moduleFromPF(pf, method)
   }
 
-  def streamEncryptionModule(method: EncryptionMethod): StreamEncryptionModule = {
-    encryptionModule(method.copy(stream = true)) match {
-      case m: StreamEncryptionModule ⇒
-        m
-
-      case _ ⇒
-        throw new IllegalArgumentException("Stream encryption module required")
-    }
-  }
-
   def signModule(method: SignMethod): SignModule = {
     val pf = if (method.provider.isEmpty) {
       context.signing
@@ -73,16 +160,6 @@ private[shadowcloud] class CryptoModuleRegistry(providers: ProvidersConfig[Crypt
       providerMap(method.provider).signing
     }
     moduleFromPF(pf, method)
-  }
-
-  def streamSignModule(method: SignMethod): StreamSignModule = {
-    signModule(method.copy(stream = true)) match {
-      case m: StreamSignModule ⇒
-        m
-
-      case _ ⇒
-        throw new IllegalArgumentException("Stream signature module required")
-    }
   }
 
   @inline

@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.streams
 
-import java.io.FileNotFoundException
-
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -16,7 +14,7 @@ import akka.util.Timeout
 import com.karasiq.shadowcloud.actors.RegionDispatcher
 import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.config.ParallelismConfig
-import com.karasiq.shadowcloud.index.{Chunk, File, Path, Timestamp}
+import com.karasiq.shadowcloud.index.{Chunk, File, Path}
 import com.karasiq.shadowcloud.index.diffs.{FileVersions, FolderIndexDiff}
 
 object RegionStreams {
@@ -42,7 +40,7 @@ final class RegionStreams(val regionSupervisor: ActorRef, val parallelism: Paral
     .mapAsync(parallelism.read) { case (regionId, path) ⇒
       regionOps.getFiles(regionId, path)
         .map((path, _))
-        .recover { case _: FileNotFoundException ⇒ (path, Set.empty[File]) } // TODO: Region exceptions
+        .recover { case _ ⇒ (path, Set.empty[File]) } // TODO: Region exceptions
     }
 
   val findFile = findFiles.map(e ⇒ FileVersions.mostRecent(e._2))
@@ -52,7 +50,7 @@ final class RegionStreams(val regionSupervisor: ActorRef, val parallelism: Paral
   }
 
   val addFile: Flow[(String, Path, FileIndexer.Result), File, NotUsed] = {
-    val graph = GraphDSL.create() { implicit builder ⇒
+    val findFilesGraph = GraphDSL.create() { implicit builder ⇒
       import GraphDSL.Implicits._
 
       val input = builder.add(Broadcast[(String, Path, FileIndexer.Result)](2))
@@ -63,19 +61,24 @@ final class RegionStreams(val regionSupervisor: ActorRef, val parallelism: Paral
     }
 
     Flow[(String, Path, FileIndexer.Result)]
-      .via(graph)
+      .via(findFilesGraph)
       .mapAsync(1) { case ((regionId, path, result), (path1, files)) ⇒
-        require(path == path1)
+        require(path == path1, "Invalid file path")
+
         val newFile = if (files.nonEmpty) {
-          val last = FileVersions.mostRecent(files)
-          if (last.checksum == result.checksum && last.chunks == result.chunks) {
-            last
+          val lastRevision = FileVersions.mostRecent(files)
+          if (lastRevision.checksum == result.checksum && lastRevision.chunks == result.chunks) {
+            // Not modified
+            lastRevision
           } else {
-            last.copy(timestamp = last.timestamp.modifiedNow, revision = last.revision + 1, checksum = result.checksum, chunks = result.chunks)
+            // Modified
+            File.modified(lastRevision, result.checksum, result.chunks)
           }
         } else {
-          File(path, Timestamp.now, 0, result.checksum, result.chunks)
+          // New file
+          File.create(path, result.checksum, result.chunks)
         }
+
         if (!files.contains(newFile)) {
           val future = regionSupervisor ? RegionEnvelope(regionId, RegionDispatcher.WriteIndex(FolderIndexDiff.createFiles(newFile)))
           RegionDispatcher.WriteIndex.unwrapFuture(future).map(_ ⇒ newFile)

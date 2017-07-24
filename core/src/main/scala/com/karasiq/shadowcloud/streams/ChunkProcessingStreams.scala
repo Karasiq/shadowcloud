@@ -10,7 +10,7 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.{CryptoConfig, ParallelismConfig, SCConfig}
 import com.karasiq.shadowcloud.crypto._
-import com.karasiq.shadowcloud.index.Chunk
+import com.karasiq.shadowcloud.index.{Chunk, Data}
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.utils.{MemorySize, ProviderInstantiator}
 
@@ -44,9 +44,17 @@ final class ChunkProcessingStreams(val modules: SCModules, val crypto: CryptoCon
   }
 
   def encrypt: ChunkFlow = parallelFlow(parallelism.encryption) { chunk ⇒
-    require(chunk.data.plain.nonEmpty)
-    val module = modules.crypto.encryptionModule(chunk.encryption.method)
-    chunk.copy(data = chunk.data.copy(encrypted = module.encrypt(chunk.data.plain, chunk.encryption)))
+    chunk.data match {
+      case Data(plain, ByteString.empty) if plain.nonEmpty ⇒
+        val module = modules.crypto.encryptionModule(chunk.encryption.method)
+        chunk.copy(data = chunk.data.copy(encrypted = module.encrypt(plain, chunk.encryption)))
+
+      case Data(_, encrypted) if encrypted.nonEmpty ⇒
+        chunk
+
+      case _ ⇒
+        throw new IllegalArgumentException("Chunk data is empty")
+    }
   }
 
   def createHashes(plainMethod: HashingMethod = crypto.hashing.chunks,
@@ -61,10 +69,18 @@ final class ChunkProcessingStreams(val modules: SCModules, val crypto: CryptoCon
   }
 
   def decrypt: ChunkFlow = parallelFlow(parallelism.encryption) { chunk ⇒
-    require(chunk.data.encrypted.nonEmpty)
-    val decryptor = modules.crypto.encryptionModule(chunk.encryption.method)
-    val decryptedData = decryptor.decrypt(chunk.data.encrypted, chunk.encryption)
-    chunk.copy(data = chunk.data.copy(plain = decryptedData))
+    chunk.data match {
+      case Data(ByteString.empty, encrypted) if encrypted.nonEmpty ⇒
+        val decryptor = modules.crypto.encryptionModule(chunk.encryption.method)
+        val decryptedData = decryptor.decrypt(encrypted, chunk.encryption)
+        chunk.copy(data = chunk.data.copy(plain = decryptedData))
+
+      case Data(plain, _) if plain.nonEmpty ⇒
+        chunk
+
+      case _ ⇒
+        throw new IllegalArgumentException("Chunk data is empty")
+    }
   }
 
   def verify: ChunkFlow = parallelFlow(parallelism.hashing) { chunk ⇒
@@ -93,7 +109,7 @@ final class ChunkProcessingStreams(val modules: SCModules, val crypto: CryptoCon
 
   def index(plainHashing: HashingMethod = crypto.hashing.files,
             encHashing: HashingMethod = crypto.hashing.filesEncrypted): Sink[Chunk, Future[FileIndexer.Result]] = {
-    Sink.fromGraph(FileIndexer(modules, plainHashing, encHashing).async)
+    FileIndexer(modules.crypto, plainHashing, encHashing).async
   }
 
   protected def parallelFlow(parallelism: Int)(func: Chunk ⇒ Chunk): ChunkFlow = {

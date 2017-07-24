@@ -7,7 +7,7 @@ import akka.NotUsed
 import akka.stream.{ActorAttributes, Attributes, Supervision}
 import akka.stream.scaladsl.{Flow, Sink, Source}
 
-import com.karasiq.shadowcloud.ShadowCloudExtension
+import com.karasiq.shadowcloud.config.ParallelismConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
@@ -25,7 +25,7 @@ object RegionRepairStream {
 
   case class Request(regionId: String, strategy: Strategy, chunks: Seq[Chunk] = Nil, result: Promise[Seq[Chunk]] = Promise())
 
-  def apply(sc: ShadowCloudExtension): Sink[Request, NotUsed] = {
+  def apply(parallelism: ParallelismConfig, regionOps: RegionOps): Sink[Request, NotUsed] = {
     def createNewAffinity(status: ChunkStatus, strategy: Strategy): Option[ChunkWriteAffinity] = {
       strategy match {
         case AutoAffinity ⇒
@@ -39,15 +39,13 @@ object RegionRepairStream {
       }
     }
 
-    val readParallelism = sc.config.parallelism.read
-    val writeParallelism = sc.config.parallelism.write
     Flow[Request]
       .log("region-repair-request")
       .flatMapConcat { request ⇒
         val chunksSource: Source[Chunk, NotUsed] = if (request.chunks.nonEmpty) {
           Source(request.chunks.toVector)
         } else {
-          Source.fromFuture(sc.ops.region.getIndex(request.regionId))
+          Source.fromFuture(regionOps.getIndex(request.regionId))
             .mapConcat { state ⇒
               val index = IndexMerger.restore(RegionKey.zero, state)
               index.chunks.chunks
@@ -55,13 +53,13 @@ object RegionRepairStream {
         }
 
         chunksSource
-          .mapAsyncUnordered(readParallelism)(sc.ops.region.getChunkStatus(request.regionId, _))
+          .mapAsyncUnordered(parallelism.read)(regionOps.getChunkStatus(request.regionId, _))
           .flatMapConcat { status ⇒
             val newAffinity = createNewAffinity(status, request.strategy)
             Source.single(status)
               .filterNot(status ⇒ newAffinity.exists(_.isFinished(status)))
-              .mapAsyncUnordered(readParallelism)(status ⇒ sc.ops.region.readChunk(request.regionId, status.chunk))
-              .mapAsyncUnordered(writeParallelism)(chunk ⇒ sc.ops.region.rewriteChunk(request.regionId, chunk, newAffinity))
+              .mapAsyncUnordered(parallelism.read)(status ⇒ regionOps.readChunk(request.regionId, status.chunk))
+              .mapAsyncUnordered(parallelism.write)(chunk ⇒ regionOps.rewriteChunk(request.regionId, chunk, newAffinity))
               .map(_.withoutData)
               .log("region-repair-chunk", chunk ⇒ chunk.toString + " at " + request.regionId)
               .addAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))

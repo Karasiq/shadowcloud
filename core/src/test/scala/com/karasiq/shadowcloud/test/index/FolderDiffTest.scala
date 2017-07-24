@@ -60,7 +60,7 @@ class FolderDiffTest extends FlatSpec with Matchers {
   it should "delete folder with children" in {
     val index = FolderIndex.empty
       .patch(FolderIndexDiff.create(Folder.create("/test1/test2/test3/test4")))
-      .patch(FolderIndexDiff.delete("/test1"))
+      .patch(FolderIndexDiff.deleteFolderPaths("/test1"))
     index.folders("/").folders shouldBe empty
     intercept[NoSuchElementException](index.folders("/test1"))
     intercept[NoSuchElementException](index.folders("/test1/test2"))

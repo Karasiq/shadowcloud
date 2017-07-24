@@ -5,7 +5,20 @@ import com.karasiq.shadowcloud.storage.StoragePlugin
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.utils.ProviderInstantiator
 
-private[shadowcloud] class StorageModuleRegistry(providers: ProvidersConfig[StorageProvider])(implicit inst: ProviderInstantiator) {
+private[shadowcloud] trait StorageModuleRegistry {
+  def storageTypes: Set[String]
+  def storagePlugin(storageProps: StorageProps): StoragePlugin
+}
+
+private[shadowcloud] object StorageModuleRegistry {
+  def apply(providers: ProvidersConfig[StorageProvider])(implicit inst: ProviderInstantiator): StorageModuleRegistry = {
+    new StorageModuleRegistryImpl(providers)
+  }
+}
+
+private[shadowcloud] final class StorageModuleRegistryImpl(providers: ProvidersConfig[StorageProvider])
+                                                    (implicit inst: ProviderInstantiator) extends StorageModuleRegistry {
+
   private[this] val providerInstances = providers.instances
   private[this] val providerMap = providerInstances.toMap
   private[this] val storages = providerInstances

@@ -1,12 +1,13 @@
 package com.karasiq.shadowcloud.storage.inmem
 
+import scala.collection.concurrent.{Map ⇒ CMap}
+import scala.language.postfixOps
+
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.util.ByteString
-import com.karasiq.shadowcloud.storage.Repository
-import com.karasiq.shadowcloud.streams.ByteStringConcat
 
-import scala.collection.concurrent.{Map => CMap}
-import scala.language.postfixOps
+import com.karasiq.shadowcloud.storage.Repository
+import com.karasiq.shadowcloud.streams.utils.ByteStringConcat
 
 /**
   * Stores data in [[scala.collection.concurrent.TrieMap TrieMap]]

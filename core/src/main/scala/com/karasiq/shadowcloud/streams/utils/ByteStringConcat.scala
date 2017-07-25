@@ -1,12 +1,12 @@
-package com.karasiq.shadowcloud.streams
-
-import akka.NotUsed
-import akka.stream.scaladsl.Flow
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import akka.util.ByteString
+package com.karasiq.shadowcloud.streams.utils
 
 import scala.language.postfixOps
+
+import akka.NotUsed
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+import akka.stream.scaladsl.Flow
+import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import akka.util.ByteString
 
 object ByteStringConcat {
   def apply(): Flow[ByteString, ByteString, NotUsed] = {

@@ -18,7 +18,7 @@ import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperation}
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.storage.{CategorizedRepository, StorageIOResult}
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
-import com.karasiq.shadowcloud.streams.ByteStringConcat
+import com.karasiq.shadowcloud.streams.utils.ByteStringConcat
 import com.karasiq.shadowcloud.utils.HexString
 
 object ChunkIODispatcher {

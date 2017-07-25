@@ -22,6 +22,7 @@ import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.serialization.{SerializationModules, StreamSerialization}
 import com.karasiq.shadowcloud.serialization.protobuf.index.{EncryptedIndexData, SerializedIndexData}
+import com.karasiq.shadowcloud.streams.utils.ByteStringConcat
 
 object IndexProcessingStreams {
   def apply(modules: SCModules, config: SCConfig, keyProvider: KeyProvider)

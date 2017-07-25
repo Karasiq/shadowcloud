@@ -2,9 +2,12 @@ package com.karasiq.shadowcloud.test.utils
 
 import java.util.UUID
 
+import scala.concurrent.Future
 import scala.language.postfixOps
 import scala.util.{Random, Try}
 
+import akka.stream.IOResult
+import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
 import com.typesafe.config.{Config, ConfigFactory}
 
@@ -99,6 +102,14 @@ object TestUtils extends TestImplicits {
     val folder = randomFolder()
     val chunks = folder.files.flatMap(_.chunks)
     IndexDiff(folder.timestamp.lastModified, FolderIndexDiff.create(folder), ChunkIndexDiff(chunks))
+  }
+
+  def getResource(name: String): java.nio.file.Path = {
+    new java.io.File(getClass.getClassLoader.getResource(name).toURI).toPath
+  }
+
+  def getResourceStream(name: String): Source[ByteString, Future[IOResult]] = {
+    FileIO.fromPath(getResource(name))
   }
 
   private[this] final class TestProviderInstantiator extends ProviderInstantiator {

@@ -13,7 +13,7 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.utils.MemorySize
 
 object ByteStringLimit {
-  def apply(limit: Long, truncate: Boolean = true): Flow[ByteString, ByteString, NotUsed] = {
+  def apply(limit: Long, truncate: Boolean = false): Flow[ByteString, ByteString, NotUsed] = {
     Flow.fromGraph(new ByteStringLimit(limit, truncate))
   }
 }
@@ -27,7 +27,7 @@ private final class ByteStringLimit(limit: Long, truncate: Boolean) extends Grap
     private[this] var written = 0L
 
     private[this] def isLimitReached(size: Long): Boolean = {
-      size >= limit
+      size > limit
     }
 
     def onPull(): Unit = {
@@ -41,7 +41,7 @@ private final class ByteStringLimit(limit: Long, truncate: Boolean) extends Grap
         val truncated = bytes.take(size)
         written += size
         push(outlet, truncated)
-        if (isLimitReached(written)) completeStage()
+        if (isLimitReached(written + 1)) completeStage()
       } else if (isLimitReached(written + bytes.length)) {
         failStage(new IOException(s"Write limit reached: ${MemorySize.toString(limit)}"))
       } else {

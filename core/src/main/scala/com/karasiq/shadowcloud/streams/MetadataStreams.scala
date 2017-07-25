@@ -51,6 +51,7 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
     Source.fromFuture(regionOps.getFolder(regionId, MetadataStreams.metadataFolderPath))
       .recover { case _ ⇒ Folder(MetadataStreams.metadataFolderPath) }
       .mapConcat(_.folders.map(UUID.fromString))
+      .named("metadataFileKeys")
   }
   
   def write(regionId: String, fileId: File.ID, disposition: MDDisposition): Flow[Metadata, File, NotUsed] = {
@@ -62,7 +63,9 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
         .via(fileStreams.write(regionId, path))
     }
 
-    Flow[Metadata].via(writeMetadataFile(regionId, MetadataStreams.getFilePath(fileId, disposition)))
+    Flow[Metadata]
+      .via(writeMetadataFile(regionId, MetadataStreams.getFilePath(fileId, disposition)))
+      .named("metadataWrite")
   }
 
   def write(regionId: String, fileId: File.ID): Flow[Metadata, File, NotUsed] = {
@@ -74,6 +77,7 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
         Source(values).via(write(regionId, fileId, disposition))
       }
       .mergeSubstreams
+      .named("metadataAutoWrite")
   }
 
   def list(regionId: String, fileId: File.ID): Future[Folder] = {
@@ -90,7 +94,7 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
         .recoverWithRetries(1, { case _ ⇒ Source.empty })
     }
 
-    readMetadataFile(regionId, fileId, disposition)
+    readMetadataFile(regionId, fileId, disposition).named("metadataRead")
   }
 
   def delete(regionId: String, fileId: File.ID): Future[Folder] = {
@@ -126,7 +130,7 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
       FlowShape(bytesInput.in, parseMetadata.out)
     }
 
-    ByteStringLimit(sizeLimit, truncate = false)
+    ByteStringLimit(sizeLimit)
       .via(graph)
       .recoverWithRetries(1, { case _ ⇒ Source.empty })
       .named("metadataCreate")
@@ -147,6 +151,7 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
       val zipSourceAndFile = builder.add(Zip[Source[Metadata, NotUsed], File])
       val writeMetadata = builder.add(Flow[(Source[Metadata, NotUsed], File)]
         .flatMapConcat { case (metadataIn, file) ⇒ metadataIn.via(write(regionId, file.id)) }
+        .recoverWithRetries(1, { case _ ⇒ Source.empty })
         .fold(Vector.empty[File])(_ :+ _)
       )
       val zipFileAndMetadata = builder.add(Zip[File, Seq[File]])
@@ -164,6 +169,6 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
       FlowShape(bytesInput.in, zipFileAndMetadata.out)
     }
 
-    Flow.fromGraph(graph)
+    Flow.fromGraph(graph).named("fileWithMetadataWrite")
   }
 }

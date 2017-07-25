@@ -41,13 +41,12 @@ private final class ByteStringLimit(limit: Long, truncate: Boolean) extends Grap
         val truncated = bytes.take(size)
         written += size
         push(outlet, truncated)
-      } else if (!isLimitReached(written + bytes.length)) {
+        if (isLimitReached(written)) completeStage()
+      } else if (isLimitReached(written + bytes.length)) {
+        failStage(new IOException(s"Write limit reached: ${MemorySize.toString(limit)}"))
+      } else {
         written += bytes.length
         push(outlet, bytes)
-      }
-
-      if (isLimitReached(written)) {
-        failStage(new IOException(s"Write limit reached: ${MemorySize.toString(limit)}"))
       }
     }
 

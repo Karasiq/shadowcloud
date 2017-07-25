@@ -18,7 +18,7 @@ import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperation}
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.storage.{CategorizedRepository, StorageIOResult}
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
-import com.karasiq.shadowcloud.streams.utils.ByteStringConcat
+import com.karasiq.shadowcloud.streams.utils.{ByteStringConcat, ByteStringLimit}
 import com.karasiq.shadowcloud.utils.HexString
 
 object ChunkIODispatcher {
@@ -52,7 +52,7 @@ private final class ChunkIODispatcher(repository: CategorizedRepository[String, 
   import context.dispatcher
 
   import ChunkIODispatcher._
-  implicit val actorMaterializer = ActorMaterializer()
+  implicit val materializer: Materializer = ActorMaterializer()
   private[this] val sc = ShadowCloud()
   private[this] val chunksWrite = PendingOperation.withRegionChunk
   private[this] val chunksRead = PendingOperation.withRegionChunk
@@ -78,6 +78,7 @@ private final class ChunkIODispatcher(repository: CategorizedRepository[String, 
     .flatMapConcat { case (path, chunk, promise) ⇒
       val localRepository = subRepository(path.region)
       val readSource = localRepository.read(path.id)
+        .via(ByteStringLimit(chunk.checksum.encSize))
         .via(ByteStringConcat())
         .map(bs ⇒ chunk.copy(data = chunk.data.copy(encrypted = bs)))
         .recover { case _ ⇒ chunk }

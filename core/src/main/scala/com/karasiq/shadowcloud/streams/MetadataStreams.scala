@@ -6,17 +6,17 @@ import scala.concurrent.Future
 
 import akka.NotUsed
 import akka.stream._
-import akka.stream.scaladsl.{Broadcast, Compression, Flow, GraphDSL, Keep, Source, Zip}
+import akka.stream.scaladsl.{Broadcast, Compression, Flow, Framing, GraphDSL, Keep, Source, Zip}
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.MetadataConfig
 import com.karasiq.shadowcloud.index.{File, Folder, Path}
-import com.karasiq.shadowcloud.metadata.{Metadata, MetadataContainer}
+import com.karasiq.shadowcloud.metadata.Metadata
 import Metadata.Tag.{Disposition ⇒ MDDisposition}
 import com.karasiq.shadowcloud.providers.MetadataModuleRegistry
 import com.karasiq.shadowcloud.serialization.{SerializationModule, StreamSerialization}
 import com.karasiq.shadowcloud.streams.metadata.MimeDetectorStream
-import com.karasiq.shadowcloud.streams.utils.{ByteStringConcat, ByteStringLimit}
+import com.karasiq.shadowcloud.streams.utils.ByteStringLimit
 import com.karasiq.shadowcloud.utils.Utils
 
 private[shadowcloud] object MetadataStreams {
@@ -55,20 +55,14 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
   
   def write(regionId: String, fileId: File.ID, disposition: MDDisposition): Flow[Metadata, File, NotUsed] = {
     def writeMetadataFile(regionId: String, path: Path) = {
-      Flow[MetadataContainer]
+      Flow[Metadata]
         .via(StreamSerialization(serialization).toBytes)
+        .via(Framing.simpleFramingProtocolEncoder(config.metadataFrameLimit))
         .via(Compression.gzip)
         .via(fileStreams.write(regionId, path))
     }
 
-    Flow[Metadata]
-      .fold(Vector.empty[Metadata])(_ :+ _)
-      .filter(_.nonEmpty)
-      .map(MetadataContainer(Some(Metadata.Tag(disposition = disposition)), fileId, _))
-      .flatMapConcat { mc ⇒
-        val path = MetadataStreams.getFilePath(mc.fileId, MetadataStreams.getDisposition(mc.tag))
-        Source.single(mc).via(writeMetadataFile(regionId, path))
-      }
+    Flow[Metadata].via(writeMetadataFile(regionId, MetadataStreams.getFilePath(fileId, disposition)))
   }
 
   def write(regionId: String, fileId: File.ID): Flow[Metadata, File, NotUsed] = {
@@ -91,14 +85,12 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
     def readMetadataFile(regionId: String, fileId: File.ID, disposition: MDDisposition) = {
       fileStreams.readMostRecent(regionId, MetadataStreams.getFilePath(fileId, disposition))
         .via(Compression.gunzip())
-        .via(ByteStringConcat())
-        .via(StreamSerialization(serialization).fromBytes[MetadataContainer])
-        .recover { case _ ⇒ MetadataContainer(Some(Metadata.Tag(disposition = disposition)), fileId) }
+        .via(Framing.simpleFramingProtocolDecoder(config.metadataFrameLimit))
+        .via(StreamSerialization(serialization).fromBytes[Metadata])
+        .recoverWithRetries(1, { case _ ⇒ Source.empty })
     }
 
     readMetadataFile(regionId, fileId, disposition)
-      .filter(mc ⇒ mc.fileId == fileId && MetadataStreams.getDisposition(mc.tag) == disposition)
-      .mapConcat(_.metadata.toVector)
   }
 
   def delete(regionId: String, fileId: File.ID): Future[Folder] = {
@@ -106,7 +98,7 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
     regionOps.deleteFolder(regionId, path)
   }
 
-  def create(fileName: String, sizeLimit: Long = config.sizeLimit): Flow[ByteString, Metadata, NotUsed] = {
+  def create(fileName: String, sizeLimit: Long = config.fileSizeLimit): Flow[ByteString, Metadata, NotUsed] = {
     val graph = GraphDSL.create() { implicit builder ⇒
       import GraphDSL.Implicits._
       val bytesInput = builder.add(Broadcast[ByteString](2))
@@ -134,16 +126,16 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
       FlowShape(bytesInput.in, parseMetadata.out)
     }
 
-    ByteStringLimit(sizeLimit)
+    ByteStringLimit(sizeLimit, truncate = false)
       .via(graph)
       .recoverWithRetries(1, { case _ ⇒ Source.empty })
       .named("metadataCreate")
   }
 
   def writeFileAndMetadata(regionId: String, path: Path,
-                           metadataSizeLimit: Long = config.sizeLimit): Flow[ByteString, (File, Seq[File]), NotUsed] = {
+                           metadataSizeLimit: Long = config.fileSizeLimit): Flow[ByteString, (File, Seq[File]), NotUsed] = {
     val writeStream = fileStreams.write(regionId, path)
-    val createMetadataStream = create(path.name, metadataSizeLimit).buffer(100, OverflowStrategy.dropNew)
+    val createMetadataStream = create(path.name, metadataSizeLimit).buffer(20, OverflowStrategy.dropNew)
 
     val graph = GraphDSL.create(writeStream, createMetadataStream)(Keep.none) { implicit builder ⇒ (writeFile, createMetadata) ⇒
       import GraphDSL.Implicits._

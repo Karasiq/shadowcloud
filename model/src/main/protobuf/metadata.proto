@@ -7,12 +7,6 @@ option (scalapb.options) = {
   import: "com.karasiq.shadowcloud.utils.ProtobufUtils._"
 };
 
-message MetadataContainer {
-    Metadata.Tag tag = 1;
-    bytes fileId = 2 [(scalapb.field).type = "java.util.UUID"];
-    repeated Metadata metadata = 3;
-}
-
 message Metadata {
     // Tag
     message Tag {

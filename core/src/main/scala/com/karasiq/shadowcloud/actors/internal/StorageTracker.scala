@@ -7,8 +7,8 @@ import akka.actor.{ActorContext, ActorRef}
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.storage.StorageHealth
-import com.karasiq.shadowcloud.storage.replication.StorageStatusProvider
-import com.karasiq.shadowcloud.storage.replication.StorageStatusProvider.StorageStatus
+import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider
+import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 
 private[actors] object StorageTracker {
   def apply()(implicit context: ActorContext): StorageTracker = {
@@ -16,14 +16,14 @@ private[actors] object StorageTracker {
   }
 }
 
-private[actors] final class StorageTracker(implicit context: ActorContext) extends StorageStatusProvider {
+private[actors] final class StorageTracker(implicit context: ActorContext) extends RegionStorageProvider {
 
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
   private[this] val sc = ShadowCloud()
-  private[this] val storagesById = mutable.AnyRefMap[String, StorageStatus]()
-  private[this] val storagesByAR = mutable.AnyRefMap[ActorRef, StorageStatus]()
+  private[this] val storagesById = mutable.AnyRefMap[String, RegionStorage]()
+  private[this] val storagesByAR = mutable.AnyRefMap[ActorRef, RegionStorage]()
 
   // -----------------------------------------------------------------------
   // Contains
@@ -41,7 +41,7 @@ private[actors] final class StorageTracker(implicit context: ActorContext) exten
   // -----------------------------------------------------------------------
   def register(storageId: String, dispatcher: ActorRef, health: StorageHealth): Unit = {
     context.watch(dispatcher)
-    val storage = StorageStatus(storageId, dispatcher, health, sc.storageConfig(storageId))
+    val storage = RegionStorage(storageId, dispatcher, health, sc.storageConfig(storageId))
     storagesById += storageId → storage
     storagesByAR += dispatcher → storage
     sc.eventStreams.storage.subscribe(context.self, storageId)
@@ -58,11 +58,11 @@ private[actors] final class StorageTracker(implicit context: ActorContext) exten
   // -----------------------------------------------------------------------
   // Get storages
   // -----------------------------------------------------------------------
-  def storages: Seq[StorageStatus] = {
+  def storages: Seq[RegionStorage] = {
     storagesById.values.toVector
   }
 
-  override def getStorage(storageId: String): StorageStatus = {
+  override def getStorage(storageId: String): RegionStorage = {
     storagesById(storageId)
   }
 

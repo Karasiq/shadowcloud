@@ -43,6 +43,22 @@ final class RegionSupervisorOps(regionSupervisor: ActorRef)(implicit ec: Executi
     regionSupervisor ! DeleteRegion(regionId)
   }
 
+  def suspendStorage(storageId: String): Unit = {
+    regionSupervisor ! SuspendStorage(storageId)
+  }
+
+  def suspendRegion(regionId: String): Unit = {
+    regionSupervisor ! SuspendRegion(regionId)
+  }
+
+  def resumeStorage(storageId: String): Unit = {
+    regionSupervisor ! ResumeStorage(storageId)
+  }
+
+  def resumeRegion(regionId: String): Unit = {
+    regionSupervisor ! ResumeRegion(regionId)
+  }
+
   def getSnapshot(): Future[RegionTracker.Snapshot] = {
     GetSnapshot.unwrapFuture(regionSupervisor ? GetSnapshot)
   }

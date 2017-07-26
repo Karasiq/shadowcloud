@@ -26,7 +26,7 @@ import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
-import com.karasiq.shadowcloud.storage.replication.StorageStatusProvider.StorageStatus
+import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.utils.Utils
@@ -36,7 +36,7 @@ object RegionDispatcher {
   sealed trait Message
   case class Register(storageId: String, dispatcher: ActorRef, health: StorageHealth = StorageHealth.empty) extends Message
   case class Unregister(storageId: String) extends Message
-  case object GetStorages extends Message with MessageStatus[String, Seq[StorageStatus]]
+  case object GetStorages extends Message with MessageStatus[String, Seq[RegionStorage]]
   case class GetChunkStatus(chunk: Chunk) extends Message
   object GetChunkStatus extends MessageStatus[Chunk, ChunkStatus]
 

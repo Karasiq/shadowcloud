@@ -16,7 +16,7 @@ import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
 import com.karasiq.shadowcloud.storage.replication.{ChunkAvailability, ChunkStatusProvider, ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.{ChunkStatus, WriteStatus}
-import com.karasiq.shadowcloud.storage.replication.StorageStatusProvider.StorageStatus
+import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.utils.Utils
 
 private[actors] object ChunksTracker {
@@ -42,7 +42,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
   // Read/write
   // -----------------------------------------------------------------------
   def readChunk(chunk: Chunk, receiver: ActorRef)(implicit storageSelector: StorageSelector): Option[ChunkStatus] = {
-    def enqueueRead(status: ChunkStatus): Option[StorageStatus] = {
+    def enqueueRead(status: ChunkStatus): Option[RegionStorage] = {
       val chunk = status.chunk.withoutData
       val storage = storageSelector.forRead(status)
       storage match {
@@ -244,7 +244,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
     chunksMap.values
   }
 
-  private[this] def getChunkPath(storage: StorageStatus, chunk: Chunk): ChunkPath = {
+  private[this] def getChunkPath(storage: RegionStorage, chunk: Chunk): ChunkPath = {
     ChunkPath(regionId, storage.config.chunkKey(chunk))
   }
 
@@ -298,7 +298,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
   }
 
   private[this] def startWriteChunk(status: ChunkStatus)(implicit storageSelector: StorageSelector): ChunkStatus = {
-    def enqueueWrites(status: ChunkStatus): Seq[StorageStatus] = {
+    def enqueueWrites(status: ChunkStatus): Seq[RegionStorage] = {
       val storageIds = status.writeStatus match {
         case WriteStatus.Pending(affinity) ⇒
           affinity.selectForWrite(status)

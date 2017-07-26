@@ -21,7 +21,7 @@ import com.karasiq.shadowcloud.config.StorageConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.StorageIOResult
-import com.karasiq.shadowcloud.storage.replication.StorageStatusProvider.StorageStatus
+import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
@@ -34,7 +34,7 @@ object RegionGC {
   case class Defer(time: FiniteDuration) extends Message with NotInfluenceReceiveTimeout
 
   private sealed trait InternalMessage extends Message with PossiblyHarmful
-  private case class DeleteGarbage(states: Seq[(StorageStatus, GCState)]) extends InternalMessage
+  private case class DeleteGarbage(states: Seq[(RegionStorage, GCState)]) extends InternalMessage
 
   // Props
   def props(regionId: String): Props = {
@@ -122,8 +122,8 @@ private final class RegionGC(regionId: String) extends Actor with ActorLogging {
   // -----------------------------------------------------------------------
   // Orphaned chunks deletion
   // -----------------------------------------------------------------------
-  private[this] def collectGarbage(): Future[Seq[(StorageStatus, GCState)]] = {
-    def createGCState(index: IndexMerger[_], storage: StorageStatus): Future[(StorageStatus, GCState)] = {
+  private[this] def collectGarbage(): Future[Seq[(RegionStorage, GCState)]] = {
+    def createGCState(index: IndexMerger[_], storage: RegionStorage): Future[(RegionStorage, GCState)] = {
       sc.ops.storage.getChunkKeys(storage.id).map { storageKeys ⇒
         val gcUtil = GarbageCollectUtil(storage.config)
         (storage, gcUtil.collect(index, storageKeys.filter(_.region == regionId).map(_.id)))
@@ -137,7 +137,7 @@ private final class RegionGC(regionId: String) extends Actor with ActorLogging {
     } yield states
   }
 
-  private[this] def deleteGarbage(gcStates: Seq[(StorageStatus, GCState)], delete: Boolean): Future[StorageIOResult] = {
+  private[this] def deleteGarbage(gcStates: Seq[(RegionStorage, GCState)], delete: Boolean): Future[StorageIOResult] = {
     def toDeleteFromStorage(config: StorageConfig, state: GCState): Set[ByteString] = {
       @inline def keys(chunks: Set[Chunk]): Set[ByteString] = chunks.map(config.chunkKey)
 
@@ -148,7 +148,7 @@ private final class RegionGC(regionId: String) extends Actor with ActorLogging {
       state.orphaned ++ state.notExisting
     }
 
-    def deleteFromStorages(chunks: Seq[(StorageStatus, Set[ByteString])]): Future[StorageIOResult] = {
+    def deleteFromStorages(chunks: Seq[(RegionStorage, Set[ByteString])]): Future[StorageIOResult] = {
       val futures = chunks.map { case (storage, chunks) ⇒
         val paths = chunks.map(ChunkPath(regionId, _))
         if (log.isDebugEnabled) log.debug("Deleting chunks from storage {}: [{}]", storage.id, Utils.printHashes(chunks))
@@ -157,7 +157,7 @@ private final class RegionGC(regionId: String) extends Actor with ActorLogging {
       StorageUtils.foldIOFutures(futures: _*)
     }
 
-    def deleteFromIndexes(chunks: Seq[(StorageStatus, Set[Chunk])]): Future[Done] = {
+    def deleteFromIndexes(chunks: Seq[(RegionStorage, Set[Chunk])]): Future[Done] = {
       val futures = chunks.map { case (storage, chunks) ⇒
         if (log.isDebugEnabled) log.debug("Deleting chunks from index {}: [{}]", storage.id, Utils.printChunkHashes(chunks))
         WriteDiff.unwrapFuture(storage.dispatcher ?

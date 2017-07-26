@@ -69,23 +69,11 @@ final class StorageOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext
   // Utils
   // -----------------------------------------------------------------------
   private[this] def askStorage[V](storageId: String, status: MessageStatus[_, V], message: Any): Future[V] = {
-    (regionSupervisor ? StorageEnvelope(storageId, message)).flatMap {
-      case status.Success(_, value) ⇒
-        Future.successful(value)
-
-      case status.Failure(_, error) ⇒
-        Future.failed(error)
-    }
+    status.unwrapFuture(regionSupervisor ? StorageEnvelope(storageId, message))
   }
 
   private[this] def askStorageIndex[V](storageId: String, regionId: String,
                              status: MessageStatus[_, V], message: RegionIndex.Message): Future[V] = {
-    (regionSupervisor ? StorageEnvelope(storageId, StorageIndex.Envelope(regionId, message))).flatMap {
-      case status.Success(_, value) ⇒
-        Future.successful(value)
-
-      case status.Failure(_, error) ⇒
-        Future.failed(error)
-    }
+    askStorage(storageId, status, StorageIndex.Envelope(regionId, message))
   }
 }

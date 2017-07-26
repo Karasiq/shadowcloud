@@ -1,12 +1,11 @@
 package com.karasiq.shadowcloud.serialization
 
-import akka.util.ByteString
-
 import scala.language.postfixOps
 import scala.reflect.ClassTag
 
+import akka.util.ByteString
+
 trait SerializationModule {
-  type Serializable = AnyRef
-  def toBytes[T <: Serializable](value: T): ByteString
-  def fromBytes[T <: Serializable : ClassTag](value: ByteString): T
+  def toBytes[T <: AnyRef](value: T): ByteString
+  def fromBytes[T <: AnyRef : ClassTag](value: ByteString): T
 }

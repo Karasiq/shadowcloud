@@ -6,7 +6,7 @@ import scala.concurrent.Future
 
 import akka.NotUsed
 import akka.stream._
-import akka.stream.scaladsl.{Broadcast, Compression, Flow, Framing, GraphDSL, Keep, Source, Zip}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Source, Zip}
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.MetadataConfig
@@ -57,9 +57,7 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
   def write(regionId: String, fileId: File.ID, disposition: MDDisposition): Flow[Metadata, File, NotUsed] = {
     def writeMetadataFile(regionId: String, path: Path) = {
       Flow[Metadata]
-        .via(StreamSerialization(serialization).toBytes)
-        .via(Framing.simpleFramingProtocolEncoder(config.metadataFrameLimit))
-        .via(Compression.gzip)
+        .via(StreamSerialization.serializeFramedGzip(serialization, config.metadataFrameLimit))
         .via(fileStreams.write(regionId, path))
     }
 
@@ -88,9 +86,7 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
   def read(regionId: String, fileId: File.ID, disposition: MDDisposition): Source[Metadata, NotUsed] = {
     def readMetadataFile(regionId: String, fileId: File.ID, disposition: MDDisposition) = {
       fileStreams.readMostRecent(regionId, MetadataStreams.getFilePath(fileId, disposition))
-        .via(Compression.gunzip())
-        .via(Framing.simpleFramingProtocolDecoder(config.metadataFrameLimit))
-        .via(StreamSerialization(serialization).fromBytes[Metadata])
+        .via(StreamSerialization.deserializeFramedGzip[Metadata](serialization, config.metadataFrameLimit))
         .recoverWithRetries(1, { case _ ⇒ Source.empty })
     }
 

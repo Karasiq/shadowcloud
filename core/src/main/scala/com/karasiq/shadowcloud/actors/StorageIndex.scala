@@ -11,6 +11,7 @@ import akka.util.Timeout
 
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.storage.CategorizedRepository
+import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 
 object StorageIndex {
@@ -25,12 +26,12 @@ object StorageIndex {
   case class Envelope(regionId: String, message: RegionIndex.Message) extends Message
 
   // Props
-  def props(storageId: String, repository: CategorizedRepository[String, Long]): Props = {
-    Props(new StorageIndex(storageId, repository))
+  def props(storageId: String, storageProps: StorageProps, repository: CategorizedRepository[String, Long]): Props = {
+    Props(new StorageIndex(storageId, storageProps, repository))
   }
 }
 
-private final class StorageIndex(storageId: String, repository: CategorizedRepository[String, Long])
+private final class StorageIndex(storageId: String, storageProps: StorageProps, repository: CategorizedRepository[String, Long])
   extends Actor with ActorLogging {
 
   import StorageIndex._
@@ -83,7 +84,7 @@ private final class StorageIndex(storageId: String, repository: CategorizedRepos
   // -----------------------------------------------------------------------
   private[this] def startRegionDispatcher(regionId: String): Unit = {
     if (subIndexes.contains(regionId)) return
-    val newDispatcher = context.actorOf(RegionIndex.props(storageId, regionId, repository.subRepository(regionId)))
+    val newDispatcher = context.actorOf(RegionIndex.props(storageId, regionId, storageProps, repository.subRepository(regionId)))
     subIndexes += (regionId, newDispatcher)
   }
 

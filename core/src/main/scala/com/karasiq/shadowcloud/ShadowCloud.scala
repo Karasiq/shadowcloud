@@ -18,6 +18,7 @@ import com.karasiq.shadowcloud.config.keys.KeySet
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.serialization.SerializationModules
+import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams._
 import com.karasiq.shadowcloud.utils.{ProviderInstantiator, SCProviderInstantiator}
 
@@ -62,8 +63,12 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     RegionConfig.forId(regionId, rootConfig)
   }
 
-  def storageConfig(storageId: String): StorageConfig = {
+  def storageConfig(storageId: String): StorageConfig = { // Uses only static config
     StorageConfig.forId(storageId, rootConfig)
+  }
+
+  def storageConfig(storageId: String, storageProps: StorageProps): StorageConfig = {
+    StorageConfig.forProps(storageId, storageProps, rootConfig)
   }
 
   object keys {

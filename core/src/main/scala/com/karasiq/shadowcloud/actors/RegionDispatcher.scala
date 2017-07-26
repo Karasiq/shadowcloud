@@ -24,6 +24,7 @@ import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.StorageHealth
+import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
@@ -34,8 +35,9 @@ import com.karasiq.shadowcloud.utils.Utils
 object RegionDispatcher {
   // Messages
   sealed trait Message
-  case class Register(storageId: String, dispatcher: ActorRef, health: StorageHealth = StorageHealth.empty) extends Message
-  case class Unregister(storageId: String) extends Message
+  case class AttachStorage(storageId: String, storageProps: StorageProps,
+                           dispatcher: ActorRef, health: StorageHealth = StorageHealth.empty) extends Message
+  case class DetachStorage(storageId: String) extends Message
   case object GetStorages extends Message with MessageStatus[String, Seq[RegionStorage]]
   case class GetChunkStatus(chunk: Chunk) extends Message
   object GetChunkStatus extends MessageStatus[Chunk, ChunkStatus]
@@ -183,9 +185,9 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
     // -----------------------------------------------------------------------
     // Storage events
     // -----------------------------------------------------------------------
-    case Register(storageId, dispatcher, health) if !storages.contains(storageId) ⇒
+    case AttachStorage(storageId, props, dispatcher, health) if !storages.contains(storageId) ⇒
       log.info("Registered storage: {} -> {} [{}]", storageId, dispatcher, health)
-      storages.register(storageId, dispatcher, health)
+      storages.register(storageId, props, dispatcher, health)
       if (health == StorageHealth.empty) dispatcher ! StorageDispatcher.CheckHealth
 
       val indexFuture = RegionIndex.GetIndex.unwrapFuture(dispatcher ?
@@ -206,7 +208,7 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
           log.error(error, "Error fetching index: {}", dispatcher)
       }
 
-    case Unregister(storageId) if storages.contains(storageId) ⇒
+    case DetachStorage(storageId) if storages.contains(storageId) ⇒
       val dispatcher = storages.getDispatcher(storageId)
       dropStorageDiffs(storageId)
       storages.unregister(dispatcher)

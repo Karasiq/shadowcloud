@@ -21,8 +21,8 @@ private[storage] final class FileStoragePlugin extends StoragePlugin {
     Files.createDirectories(chunksDir)
     val chunks = Repository.forChunks(Repositories.fromDirectory(chunksDir))
     val health = StorageHealthProviders.fromDirectory(path, props.quota)
-    val indexSynchronizer = context.actorOf(StorageIndex.props(storageId, index), "index")
+    val indexSynchronizer = context.actorOf(StorageIndex.props(storageId, props, index), "index")
     val chunkIO = context.actorOf(ChunkIODispatcher.props(chunks), "chunks")
-    context.actorOf(StorageDispatcher.props(storageId, indexSynchronizer, chunkIO, health), "dispatcher")
+    context.actorOf(StorageDispatcher.props(storageId, props, indexSynchronizer, chunkIO, health), "dispatcher")
   }
 }

@@ -15,6 +15,7 @@ import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperation}
 import com.karasiq.shadowcloud.actors.RegionIndex.{Compact, WriteDiff}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
+import com.karasiq.shadowcloud.storage.props.StorageProps
 
 object StorageDispatcher {
   // Messages
@@ -22,12 +23,13 @@ object StorageDispatcher {
   object CheckHealth extends Message with NotInfluenceReceiveTimeout with MessageStatus[String, StorageHealth]
 
   // Props
-  def props(storageId: String, index: ActorRef, chunkIO: ActorRef, health: StorageHealthProvider): Props = {
-    Props(new StorageDispatcher(storageId, index, chunkIO, health))
+  def props(storageId: String, storageProps: StorageProps, index: ActorRef, chunkIO: ActorRef, health: StorageHealthProvider): Props = {
+    Props(new StorageDispatcher(storageId, storageProps, index, chunkIO, health))
   }
 }
 
-private final class StorageDispatcher(storageId: String, index: ActorRef, chunkIO: ActorRef, health: StorageHealthProvider) extends Actor with ActorLogging {
+private final class StorageDispatcher(storageId: String, storageProps: StorageProps, index: ActorRef,
+                                      chunkIO: ActorRef, health: StorageHealthProvider) extends Actor with ActorLogging {
   import StorageDispatcher._
 
   // -----------------------------------------------------------------------
@@ -38,13 +40,14 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
   private[this] implicit val timeout: Timeout = Timeout(10 seconds)
   private[this] val schedule = context.system.scheduler.schedule(Duration.Zero, 30 seconds, self, CheckHealth)
   private[this] val sc = ShadowCloud()
+  private[this] val config = sc.storageConfig(storageId, storageProps)
 
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
   private[this] val writingChunks = PendingOperation.withRegionChunk
   private[this] val readingChunks = PendingOperation.withRegionChunk
-  private[this] val stats = StorageStatsTracker(storageId, health)
+  private[this] val stats = StorageStatsTracker(storageId, config, health)
 
   // -----------------------------------------------------------------------
   // Receive

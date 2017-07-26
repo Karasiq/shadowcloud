@@ -21,6 +21,7 @@ import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
+import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.props.StorageProps.Quota
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
@@ -36,16 +37,17 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   val indexRepository = Repository.forIndex(Repositories.fromDirectory(Files.createTempDirectory("vrt-index")))
   val chunksDir = Files.createTempDirectory("vrt-chunks")
   val fileRepository = Repository.forChunks(Repositories.fromDirectory(chunksDir))
-  val index = system.actorOf(StorageIndex.props("testStorage", indexRepository), "index")
+  val storageProps = StorageProps.fromDirectory(chunksDir.getParent)
+  val index = system.actorOf(StorageIndex.props("testStorage", storageProps, indexRepository), "index")
   val chunkIO = TestActorRef(ChunkIODispatcher.props(fileRepository), "chunkIO")
   val healthProvider = StorageHealthProviders.fromDirectory(chunksDir, Quota.empty.copy(limitSpace = Some(100L * 1024 * 1024)))
   val initialHealth = healthProvider.health.futureValue
-  val storage = TestActorRef(StorageDispatcher.props("testStorage", index, chunkIO, healthProvider), "storage")
+  val storage = TestActorRef(StorageDispatcher.props("testStorage", storageProps, index, chunkIO, healthProvider), "storage")
   val testRegion = TestActorRef(RegionDispatcher.props("testRegion", TestUtils.regionConfig("testRegion")), "testRegion")
 
   "Virtual region" should "register storage" in {
     storage ! StorageIndex.OpenIndex("testRegion")
-    testRegion ! RegionDispatcher.Register("testStorage", storage, initialHealth)
+    testRegion ! RegionDispatcher.AttachStorage("testStorage", storageProps, storage, initialHealth)
     expectNoMsg(100 millis)
   }
 
@@ -97,12 +99,12 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     val chunksMap = TrieMap.empty[(String, String), ByteString]
     val indexRepository = Repository.forIndex(Repository.toCategorized(Repositories.fromConcurrentMap(indexMap)))
     val chunkRepository = Repository.forChunks(Repository.toCategorized(Repositories.fromConcurrentMap(chunksMap)))
-    val index = system.actorOf(StorageIndex.props("testMemStorage", indexRepository), "index1")
+    val index = system.actorOf(StorageIndex.props("testMemStorage", storageProps, indexRepository), "index1")
     val chunkIO = TestActorRef(ChunkIODispatcher.props(chunkRepository), "chunkIO1")
     val healthProvider = StorageHealthProviders.fromMaps(indexMap, chunksMap)
     val initialHealth = healthProvider.health.futureValue
-    val newStorage = TestActorRef(StorageDispatcher.props("testMemStorage", index, chunkIO, healthProvider), "storage1")
-    testRegion ! RegionDispatcher.Register("testMemStorage", newStorage, initialHealth)
+    val newStorage = TestActorRef(StorageDispatcher.props("testMemStorage", storageProps, index, chunkIO, healthProvider), "storage1")
+    testRegion ! RegionDispatcher.AttachStorage("testMemStorage", storageProps, newStorage, initialHealth)
     expectNoMsg(100 millis)
 
     // Replicate chunk
@@ -111,7 +113,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     chunksMap.head shouldBe (("testRegion", HexString.encode(chunk.checksum.hash)), chunk.data.encrypted)
 
     // Drop storage
-    testRegion ! RegionDispatcher.Unregister("testMemStorage")
+    testRegion ! RegionDispatcher.DetachStorage("testMemStorage")
     newStorage.stop()
     expectNoMsg(1 second)
   }

@@ -95,7 +95,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     storages.get(storageId) match {
       case Some(status @ StorageStatus(`storageId`, _, State.Active(dispatcher), regions)) ⇒
         regions.flatMap(this.regions.get)
-          .foreach(region ⇒ State.ifActive(region.actorState, _ ! RegionDispatcher.Unregister(storageId)))
+          .foreach(region ⇒ State.ifActive(region.actorState, _ ! RegionDispatcher.DetachStorage(storageId)))
         context.stop(dispatcher)
         storages += storageId → status.copy(actorState = State.Suspended)
 
@@ -166,7 +166,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     regions.foreach { case (regionId, region) ⇒
       if (region.storages.contains(storageId)) {
         regions += regionId → region.copy(storages = region.storages - storageId)
-        State.ifActive(region.actorState, _ ! RegionDispatcher.Unregister(storageId))
+        State.ifActive(region.actorState, _ ! RegionDispatcher.DetachStorage(storageId))
       }
     }
     val status = storages.remove(storageId).get
@@ -192,9 +192,9 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     storages += storageId → storage.copy(regions = storage.regions + regionId)
 
     (storage.actorState, region.actorState) match {
-      case (State.Active(storage), State.Active(region)) ⇒
-        storage ! StorageIndex.OpenIndex(regionId)
-        region ! RegionDispatcher.Register(storageId, storage, StorageHealth.empty)
+      case (State.Active(storageDispatcher), State.Active(regionDispatcher)) ⇒
+        storageDispatcher ! StorageIndex.OpenIndex(regionId)
+        regionDispatcher ! RegionDispatcher.AttachStorage(storageId, storage.props, storageDispatcher, StorageHealth.empty)
 
       case _ ⇒
         // Pass
@@ -207,7 +207,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     val storage = storages(storageId)
     regions += regionId → region.copy(storages = region.storages - storageId)
     storages += storageId → storage.copy(regions = storage.regions - regionId)
-    State.ifActive(region.actorState, _ ! RegionDispatcher.Unregister(storageId))
+    State.ifActive(region.actorState, _ ! RegionDispatcher.DetachStorage(storageId))
     State.ifActive(storage.actorState, _ ! StorageIndex.CloseIndex(regionId))
   }
 }

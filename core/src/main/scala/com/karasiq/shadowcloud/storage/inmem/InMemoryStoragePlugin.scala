@@ -17,8 +17,8 @@ private[storage] final class InMemoryStoragePlugin extends StoragePlugin {
     val chunkMap = TrieMap.empty[(String, ByteString), ByteString]
     val chunks = Repository.toCategorized(Repositories.fromConcurrentMap(chunkMap))
     val health = StorageHealthProviders.fromMaps(props.quota, indexMap, chunkMap)
-    val indexSynchronizer = context.actorOf(StorageIndex.props(storageId, index), "index")
+    val indexSynchronizer = context.actorOf(StorageIndex.props(storageId, props, index), "index")
     val chunkIO = context.actorOf(ChunkIODispatcher.props(chunks), "chunks")
-    context.actorOf(StorageDispatcher.props(storageId, indexSynchronizer, chunkIO, health), "dispatcher")
+    context.actorOf(StorageDispatcher.props(storageId, props, indexSynchronizer, chunkIO, health), "dispatcher")
   }
 }

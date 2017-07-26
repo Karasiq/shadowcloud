@@ -9,20 +9,23 @@ import akka.event.Logging
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.events.StorageEvents
+import com.karasiq.shadowcloud.config.StorageConfig
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
 
 private[actors] object StorageStatsTracker {
-  def apply(storageId: String, healthProvider: StorageHealthProvider)(implicit context: ActorContext): StorageStatsTracker = {
-    new StorageStatsTracker(storageId, healthProvider)
+  def apply(storageId: String, config: StorageConfig,
+            healthProvider: StorageHealthProvider)
+           (implicit context: ActorContext): StorageStatsTracker = {
+    new StorageStatsTracker(storageId, config, healthProvider)
   }
 }
 
-private[actors] final class StorageStatsTracker(storageId: String, healthProvider: StorageHealthProvider)
+private[actors] final class StorageStatsTracker(storageId: String, config: StorageConfig,
+                                                healthProvider: StorageHealthProvider)
                                                (implicit context: ActorContext) {
 
   private[this] val log = Logging(context.system, context.self)
   private[this] val sc = ShadowCloud()
-  private[this] val config = sc.storageConfig(storageId)
   private[this] var health = StorageHealth.empty
   private[this] var stats = mutable.AnyRefMap.empty[String, DiffStats]
     .withDefaultValue(DiffStats.empty)

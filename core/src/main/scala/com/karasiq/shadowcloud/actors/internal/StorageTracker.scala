@@ -7,6 +7,7 @@ import akka.actor.{ActorContext, ActorRef}
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.storage.StorageHealth
+import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 
@@ -39,9 +40,9 @@ private[actors] final class StorageTracker(implicit context: ActorContext) exten
   // -----------------------------------------------------------------------
   // Register/unregister
   // -----------------------------------------------------------------------
-  def register(storageId: String, dispatcher: ActorRef, health: StorageHealth): Unit = {
+  def register(storageId: String, props: StorageProps, dispatcher: ActorRef, health: StorageHealth): Unit = {
     context.watch(dispatcher)
-    val storage = RegionStorage(storageId, dispatcher, health, sc.storageConfig(storageId))
+    val storage = RegionStorage(storageId, props, sc.storageConfig(storageId, props), dispatcher, health)
     storagesById += storageId → storage
     storagesByAR += dispatcher → storage
     sc.eventStreams.storage.subscribe(context.self, storageId)

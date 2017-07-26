@@ -18,6 +18,7 @@ import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.{Repository, StorageIOResult}
+import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 
 object RegionIndex {
@@ -44,12 +45,12 @@ object RegionIndex {
   private case class Snapshot(state: IndexMerger.State[Long])
 
   // Props
-  def props(storageId: String, regionId: String, repository: Repository[Long]): Props = {
-    Props(new RegionIndex(storageId, regionId, repository))
+  def props(storageId: String, regionId: String, storageProps: StorageProps, repository: Repository[Long]): Props = {
+    Props(new RegionIndex(storageId, regionId, storageProps, repository))
   }
 }
 
-private final class RegionIndex(storageId: String, regionId: String, repository: Repository[Long])
+private final class RegionIndex(storageId: String, regionId: String, storageProps: StorageProps, repository: Repository[Long])
   extends PersistentActor with ActorLogging {
   import context.dispatcher
 
@@ -64,7 +65,7 @@ private final class RegionIndex(storageId: String, regionId: String, repository:
   private[this] implicit val materializer: Materializer = ActorMaterializer()
   private[this] val sc = ShadowCloud()
   private[this] val index = IndexMerger()
-  private[this] val config = sc.storageConfig(storageId)
+  private[this] val config = sc.storageConfig(storageId, storageProps)
   private[this] val streams = IndexRepositoryStreams(config)
   private[this] var compactRequested = false
 

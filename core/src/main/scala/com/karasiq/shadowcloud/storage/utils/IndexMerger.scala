@@ -1,12 +1,12 @@
 package com.karasiq.shadowcloud.storage.utils
 
-import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.index.utils.HasEmpty
-import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
-import com.karasiq.shadowcloud.storage.internal.DefaultIndexMerger
-
 import scala.collection.SortedMap
 import scala.language.postfixOps
+
+import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
+import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.index.utils.HasEmpty
+import com.karasiq.shadowcloud.storage.internal.DefaultIndexMerger
 
 private[shadowcloud] trait IndexMerger[T] extends HasEmpty {
   def lastSequenceNr: T
@@ -19,6 +19,7 @@ private[shadowcloud] trait IndexMerger[T] extends HasEmpty {
   def delete(sequenceNrs: Set[T]): Unit
   def addPending(diff: IndexDiff): Unit
   def deletePending(diff: IndexDiff): Unit
+  def load(state: IndexMerger.State[T]): Unit
   def clear(): Unit
 
   override def isEmpty: Boolean = diffs.isEmpty
@@ -56,8 +57,7 @@ private[shadowcloud] object IndexMerger {
 
   def restore[T: Ordering](zeroKey: T, state: State[T]): IndexMerger[T] = {
     val index = create(zeroKey)
-    state.diffs.foreach { case (key, value) ⇒ index.add(key, value) }
-    index.addPending(index.pending)
+    index.load(state)
     index
   }
 

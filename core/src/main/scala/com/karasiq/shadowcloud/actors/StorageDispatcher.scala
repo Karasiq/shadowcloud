@@ -12,6 +12,7 @@ import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.internal.{DiffStats, StorageStatsTracker}
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperation}
+import com.karasiq.shadowcloud.actors.RegionIndex.{Compact, WriteDiff}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
 
@@ -22,7 +23,7 @@ object StorageDispatcher {
 
   // Props
   def props(storageId: String, index: ActorRef, chunkIO: ActorRef, health: StorageHealthProvider): Props = {
-    Props(classOf[StorageDispatcher], storageId, index, chunkIO, health)
+    Props(new StorageDispatcher(storageId, index, chunkIO, health))
   }
 }
 
@@ -34,7 +35,7 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
   // -----------------------------------------------------------------------
   import context.dispatcher
 
-  private[this] implicit val timeout = Timeout(10 seconds)
+  private[this] implicit val timeout: Timeout = Timeout(10 seconds)
   private[this] val schedule = context.system.scheduler.schedule(Duration.Zero, 30 seconds, self, CheckHealth)
   private[this] val sc = ShadowCloud()
 
@@ -74,7 +75,7 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
       log.debug("Chunk written, appending to index: {}", chunk)
       writingChunks.finish((path, chunk), msg)
       sc.eventStreams.publishStorageEvent(storageId, StorageEvents.ChunkWritten(path, chunk))
-      index ! IndexDispatcher.AddPending(path.region, IndexDiff.newChunks(chunk.withoutData))
+      index ! StorageIndex.Envelope(path.region, WriteDiff(IndexDiff.newChunks(chunk.withoutData)))
 
     case msg @ ChunkIODispatcher.WriteChunk.Failure((region, chunk), error) ⇒
       log.error(error, "Chunk write failure: {}/{}", region, chunk)
@@ -86,7 +87,7 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
     // -----------------------------------------------------------------------
     // Index commands
     // -----------------------------------------------------------------------
-    case msg: IndexDispatcher.Message ⇒
+    case msg: StorageIndex.Message ⇒
       index.forward(msg)
 
     // -----------------------------------------------------------------------
@@ -109,11 +110,9 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
     // Storage events
     // -----------------------------------------------------------------------
     case StorageEnvelope(`storageId`, event: StorageEvents.Event) ⇒ event match {
-      case StorageEvents.IndexLoaded(diffMap) ⇒
-        diffMap.foreach { case (region, diffs) ⇒
-          val newStats = DiffStats(diffs.diffs.map(_._2): _*)
-          stats.updateStats(region, newStats)
-        }
+      case StorageEvents.IndexLoaded(region, state) ⇒
+        val newStats = DiffStats(state.diffs.map(_._2): _*)
+        stats.updateStats(region, newStats)
 
       case StorageEvents.IndexUpdated(region, _, diff, _) ⇒
         stats.appendStats(region, DiffStats(diff))
@@ -122,7 +121,7 @@ private final class StorageDispatcher(storageId: String, index: ActorRef, chunkI
           log.debug("Requesting compaction of indexes: {}", forCompact)
           forCompact.foreach { region ⇒
             stats.clear(region)
-            index ! IndexDispatcher.CompactIndex(region)
+            index ! StorageIndex.Envelope(region, Compact)
           }
         }
 

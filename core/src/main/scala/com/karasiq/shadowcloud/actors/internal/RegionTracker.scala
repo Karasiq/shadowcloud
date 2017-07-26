@@ -8,7 +8,7 @@ import akka.actor.{ActorContext, ActorRef}
 import akka.pattern.BackoffSupervisor
 
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.actors.{RegionContainer, RegionDispatcher, StorageContainer}
+import com.karasiq.shadowcloud.actors.{RegionContainer, RegionDispatcher, StorageContainer, StorageIndex}
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
@@ -112,6 +112,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     val storage = storages(storageId)
     regions += regionId → region.copy(storages = region.storages + storageId)
     storages += storageId → storage.copy(regions = storage.regions + regionId)
+    storage.dispatcher ! StorageIndex.OpenIndex(regionId)
     region.dispatcher ! RegionDispatcher.Register(storageId, storage.dispatcher, StorageHealth.empty)
   }
 
@@ -122,5 +123,6 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     regions += regionId → region.copy(storages = region.storages - storageId)
     storages += storageId → storage.copy(regions = storage.regions - regionId)
     region.dispatcher ! RegionDispatcher.Unregister(storageId)
+    storage.dispatcher ! StorageIndex.CloseIndex(regionId)
   }
 }

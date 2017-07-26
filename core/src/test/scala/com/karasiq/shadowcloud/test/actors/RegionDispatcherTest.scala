@@ -36,7 +36,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   val indexRepository = Repository.forIndex(Repositories.fromDirectory(Files.createTempDirectory("vrt-index")))
   val chunksDir = Files.createTempDirectory("vrt-chunks")
   val fileRepository = Repository.forChunks(Repositories.fromDirectory(chunksDir))
-  val index = system.actorOf(IndexDispatcher.props("testStorage", indexRepository), "index")
+  val index = system.actorOf(StorageIndex.props("testStorage", indexRepository), "index")
   val chunkIO = TestActorRef(ChunkIODispatcher.props(fileRepository), "chunkIO")
   val healthProvider = StorageHealthProviders.fromDirectory(chunksDir, Quota.empty.copy(limitSpace = Some(100L * 1024 * 1024)))
   val initialHealth = healthProvider.health.futureValue
@@ -44,6 +44,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   val testRegion = TestActorRef(RegionDispatcher.props("testRegion", TestUtils.regionConfig("testRegion")), "testRegion")
 
   "Virtual region" should "register storage" in {
+    storage ! StorageIndex.OpenIndex("testRegion")
     testRegion ! RegionDispatcher.Register("testStorage", storage, initialHealth)
     expectNoMsg(100 millis)
   }
@@ -96,7 +97,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     val chunksMap = TrieMap.empty[(String, String), ByteString]
     val indexRepository = Repository.forIndex(Repository.toCategorized(Repositories.fromConcurrentMap(indexMap)))
     val chunkRepository = Repository.forChunks(Repository.toCategorized(Repositories.fromConcurrentMap(chunksMap)))
-    val index = system.actorOf(IndexDispatcher.props("testMemStorage", indexRepository), "index1")
+    val index = system.actorOf(StorageIndex.props("testMemStorage", indexRepository), "index1")
     val chunkIO = TestActorRef(ChunkIODispatcher.props(chunkRepository), "chunkIO1")
     val healthProvider = StorageHealthProviders.fromMaps(indexMap, chunksMap)
     val initialHealth = healthProvider.health.futureValue
@@ -161,8 +162,8 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     expectNoMsg(1 second)
 
     // Verify
-    storage ! IndexDispatcher.GetIndex("testRegion")
-    val IndexDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((1, firstDiff), (2, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
+    storage ! StorageIndex.Envelope("testRegion", RegionIndex.GetIndex)
+    val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((1, firstDiff), (2, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
     firstDiff.folders shouldBe folderDiff
     firstDiff.chunks.newChunks shouldBe Set(chunk)
     firstDiff.chunks.deletedChunks shouldBe empty
@@ -173,8 +174,8 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
       testRegion ! RegionDispatcher.Synchronize
       val StorageEnvelope("testStorage", StorageEvents.IndexDeleted("testRegion", sequenceNrs)) = receiveOne(5 seconds)
       sequenceNrs shouldBe Set[Long](1)
-      storage ! IndexDispatcher.GetIndex("testRegion")
-      val IndexDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((2, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
+      storage ! StorageIndex.Envelope("testRegion", RegionIndex.GetIndex)
+      val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((2, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
       expectNoMsg(1 second)
       testRegion ! RegionDispatcher.GetIndex
       val RegionDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((RegionKey(_, "testStorage", 2), `remoteDiff`)), _)) = receiveOne(1 second)
@@ -185,8 +186,8 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
 
   it should "compact index" in {
     // Read
-    storage ! IndexDispatcher.GetIndex("testRegion")
-    val IndexDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((2, oldDiff)), IndexDiff.empty)) = receiveOne(1 second)
+    storage ! StorageIndex.Envelope("testRegion", RegionIndex.GetIndex)
+    val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((2, oldDiff)), IndexDiff.empty)) = receiveOne(1 second)
 
     // Write diff #3
     val newDiff = TestUtils.randomDiff.folders
@@ -194,13 +195,13 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     val RegionDispatcher.WriteIndex.Success(`newDiff`, _) = receiveOne(1 second)
 
     // Compact
-    storage ! IndexDispatcher.CompactIndex("testRegion")
-    storage ! IndexDispatcher.Synchronize
+    storage ! StorageIndex.Envelope("testRegion", RegionIndex.Compact)
+    storage ! StorageIndex.Envelope("testRegion", RegionIndex.Synchronize)
     expectNoMsg(3 second)
 
     // Verify
-    storage ! IndexDispatcher.GetIndexes
-    val IndexDispatcher.GetIndexes.Success("testStorage", states) = receiveOne(1 seconds)
+    storage ! StorageIndex.GetIndexes
+    val StorageIndex.GetIndexes.Success("testStorage", states) = receiveOne(1 seconds)
     states.keySet shouldBe Set("testRegion")
     val IndexMerger.State(Seq((4, resultDiff)), IndexDiff.empty) = states("testRegion")
     resultDiff.folders shouldBe oldDiff.folders.merge(newDiff)

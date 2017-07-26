@@ -1,13 +1,13 @@
 package com.karasiq.shadowcloud.storage.internal
 
+import scala.collection.{mutable, SortedMap}
+import scala.language.postfixOps
+
+import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.index.utils.FolderDecider
-import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.utils.MergeUtil.Decider
-
-import scala.collection.{SortedMap, mutable}
-import scala.language.postfixOps
 
 private[storage] final class DefaultIndexMerger[@specialized(Long) T](firstKey: T)(implicit ord: Ordering[T]) extends IndexMerger[T] {
   private[this] var _diffs = mutable.SortedMap.empty[T, IndexDiff]
@@ -54,6 +54,13 @@ private[storage] final class DefaultIndexMerger[@specialized(Long) T](firstKey: 
 
   def deletePending(diff: IndexDiff): Unit = {
     _pending = pending.diffWith(diff, Decider.keepLeft, FolderDecider.mutualExclude, Decider.keepLeft)
+  }
+
+  def load(state: IndexMerger.State[T]): Unit = {
+    this.clear()
+    _pending = state.pending
+    _diffs ++= state.diffs
+    this.rebuildIndex()
   }
 
   def clear(): Unit = {

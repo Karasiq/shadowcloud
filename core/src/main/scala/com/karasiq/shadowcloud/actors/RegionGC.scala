@@ -15,8 +15,8 @@ import akka.util.{ByteString, Timeout}
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.internal.GarbageCollectUtil
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, DeleteChunks ⇒ SDeleteChunks}
-import com.karasiq.shadowcloud.actors.IndexDispatcher.{AddPending ⇒ SWriteIndex}
 import com.karasiq.shadowcloud.actors.utils.{GCState, MessageStatus}
+import com.karasiq.shadowcloud.actors.RegionIndex.WriteDiff
 import com.karasiq.shadowcloud.config.StorageConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
@@ -38,7 +38,7 @@ object RegionGC {
 
   // Props
   def props(regionId: String): Props = {
-    Props(classOf[RegionGC], regionId)
+    Props(new RegionGC(regionId))
   }
 }
 
@@ -50,7 +50,7 @@ private final class RegionGC(regionId: String) extends Actor with ActorLogging {
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
-  private[this] implicit val timeout = Timeout(30 seconds)
+  private[this] implicit val timeout: Timeout = Timeout(30 seconds)
   private[this] val sc = ShadowCloud()
   private[this] val config = sc.regionConfig(regionId)
   private[this] val gcSchedule = context.system.scheduler.schedule(5 minutes, 5 minutes, self, CollectGarbage())(dispatcher, self)
@@ -160,7 +160,8 @@ private final class RegionGC(regionId: String) extends Actor with ActorLogging {
     def deleteFromIndexes(chunks: Seq[(StorageStatus, Set[Chunk])]): Future[Done] = {
       val futures = chunks.map { case (storage, chunks) ⇒
         if (log.isDebugEnabled) log.debug("Deleting chunks from index {}: [{}]", storage.id, Utils.printChunkHashes(chunks))
-        SWriteIndex.unwrapFuture(storage.dispatcher ? SWriteIndex(regionId, IndexDiff.deleteChunks(chunks.toSeq: _*)))
+        WriteDiff.unwrapFuture(storage.dispatcher ?
+          StorageIndex.Envelope(regionId, WriteDiff(IndexDiff.deleteChunks(chunks.toSeq: _*))))
       }
       Future.foldLeft(futures.toList)(Done)((_, _) ⇒ Done)
     }

@@ -6,7 +6,7 @@ import scala.language.postfixOps
 
 import akka.actor.{ActorContext, ActorRef}
 
-import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, IndexDispatcher, StorageDispatcher}
+import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, StorageDispatcher, StorageIndex}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
@@ -21,7 +21,7 @@ private[storage] final class FileStoragePlugin extends StoragePlugin {
     Files.createDirectories(chunksDir)
     val chunks = Repository.forChunks(Repositories.fromDirectory(chunksDir))
     val health = StorageHealthProviders.fromDirectory(path, props.quota)
-    val indexSynchronizer = context.actorOf(IndexDispatcher.props(storageId, index), "index")
+    val indexSynchronizer = context.actorOf(StorageIndex.props(storageId, index), "index")
     val chunkIO = context.actorOf(ChunkIODispatcher.props(chunks), "chunks")
     context.actorOf(StorageDispatcher.props(storageId, indexSynchronizer, chunkIO, health), "dispatcher")
   }

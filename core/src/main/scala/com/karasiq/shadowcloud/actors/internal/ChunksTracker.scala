@@ -7,7 +7,6 @@ import akka.actor.{ActorContext, ActorRef}
 import akka.event.LoggingAdapter
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk ⇒ SReadChunk, WriteChunk ⇒ SWriteChunk}
 import com.karasiq.shadowcloud.actors.RegionDispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors.utils.PendingOperation
@@ -26,7 +25,6 @@ private[actors] object ChunksTracker {
   }
 }
 
-// TODO: Refactor
 private[actors] final class ChunksTracker(regionId: String, config: RegionConfig, storages: StorageTracker,
                                           log: LoggingAdapter)(implicit context: ActorContext) extends ChunkStatusProvider {
 
@@ -34,7 +32,6 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
   // State
   // -----------------------------------------------------------------------
   private[this] implicit val sender: ActorRef = context.self
-  private[this] val sc = ShadowCloud()
   private[this] val chunksMap = mutable.AnyRefMap[ByteString, ChunkStatus]()
   private[this] val readingChunks = PendingOperation.withChunk
 
@@ -97,7 +94,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
 
       case None ⇒
         // context.watch(receiver)
-        val status = ChunkStatus(WriteStatus.Pending(ChunkWriteAffinity.empty), Utils.timestamp, chunk, waitingChunk = Set(receiver))
+        val status = ChunkStatus(WriteStatus.Pending(ChunkWriteAffinity.empty), chunk, waitingChunk = Set(receiver))
         val affinity = storageSelector.forWrite(status)
         val statusWithAffinity = status.copy(WriteStatus.Pending(affinity))
         startWriteChunk(statusWithAffinity)
@@ -144,7 +141,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
 
   def retryPendingChunks()(implicit storageSelector: StorageSelector): Unit = {
     chunksMap.foreachValue {
-      case chunkStatus @ ChunkStatus(WriteStatus.Pending(_), _, _, _, _) ⇒
+      case chunkStatus @ ChunkStatus(WriteStatus.Pending(_), _, _, _) ⇒
         val affinity = storageSelector.forWrite(chunkStatus) // Try refresh affinity
         if (affinity.isFinished(chunkStatus)) {
           log.debug("Marking chunk as finished: {}", chunkStatus)
@@ -183,8 +180,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
         }
 
       case None ⇒
-        putStatus(ChunkStatus(WriteStatus.Finished, Utils.timestamp,
-          chunk.withoutData, ChunkAvailability.empty.withFinished(storageId)))
+        putStatus(ChunkStatus(WriteStatus.Finished, chunk.withoutData, ChunkAvailability.empty.withFinished(storageId)))
     }
   }
 
@@ -240,7 +236,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
     chunksMap.get(chunk.checksum.hash)
   }
 
-  override def chunksStatus: Iterable[ChunkStatus] = {
+  override def getChunkStatusList(): Iterable[ChunkStatus] = {
     chunksMap.values
   }
 

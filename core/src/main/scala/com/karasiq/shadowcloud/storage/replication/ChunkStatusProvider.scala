@@ -13,7 +13,7 @@ object ChunkStatusProvider {
     case object Finished extends WriteStatus
   }
 
-  case class ChunkStatus(writeStatus: WriteStatus, time: Long, chunk: Chunk,
+  case class ChunkStatus(writeStatus: WriteStatus, chunk: Chunk,
                          availability: ChunkAvailability = ChunkAvailability.empty,
                          waitingChunk: Set[ActorRef] = Set.empty) {
     def finished: ChunkStatus = {
@@ -24,5 +24,5 @@ object ChunkStatusProvider {
 
 trait ChunkStatusProvider {
   def getChunkStatus(chunk: Chunk): Option[ChunkStatus]
-  def chunksStatus: Iterable[ChunkStatus]
+  def getChunkStatusList(): Iterable[ChunkStatus]
 }

@@ -8,6 +8,7 @@ import com.karasiq.shadowcloud.actors.utils.ContainerActor
 import com.karasiq.shadowcloud.actors.StorageContainer.SetProps
 import com.karasiq.shadowcloud.actors.internal.StorageInstantiator
 import com.karasiq.shadowcloud.storage.props.StorageProps
+import com.karasiq.shadowcloud.utils.Utils
 
 object StorageContainer {
   sealed trait Message
@@ -29,7 +30,7 @@ class StorageContainer(instantiator: StorageInstantiator, storageId: String) ext
   }
 
   def startActor(): Unit = {
-    val actor = context.actorOf(Props(new Actor {
+    val props = Props(new Actor {
       private[this] val storage = instantiator.createStorage(storageId, storageProps)
 
       override def preStart(): Unit = {
@@ -47,7 +48,8 @@ class StorageContainer(instantiator: StorageInstantiator, storageId: String) ext
         case msg ⇒
           storage.forward(msg)
       }
-    }))
+    })
+    val actor = context.actorOf(props, Utils.uniqueActorName(storageId))
     afterStart(actor)
   }
 }

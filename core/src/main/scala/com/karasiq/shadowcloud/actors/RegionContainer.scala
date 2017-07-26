@@ -8,6 +8,7 @@ import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.utils.ContainerActor
 import com.karasiq.shadowcloud.actors.RegionContainer.SetConfig
 import com.karasiq.shadowcloud.config.RegionConfig
+import com.karasiq.shadowcloud.utils.Utils
 
 object RegionContainer {
   sealed trait Message
@@ -29,7 +30,7 @@ class RegionContainer(regionId: String) extends Actor with Stash with ContainerA
   }
 
   def startActor(): Unit = {
-    val dispatcher = context.actorOf(RegionDispatcher.props(regionId, regionConfig))
+    val dispatcher = context.actorOf(RegionDispatcher.props(regionId, regionConfig), Utils.uniqueActorName(regionId))
     afterStart(dispatcher)
   }
 }

@@ -121,8 +121,8 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     storages.get(storageId) match {
       case Some(StorageStatus(`storageId`, props, State.Suspended, regions)) ⇒
         val dispatcherProps = StorageContainer.props(instantiator, storageId)
-        val supervisorProps = BackoffSupervisor.props(dispatcherProps, storageId, 1 second, 1 minute, 0.2)
-        val dispatcher = context.actorOf(supervisorProps, Utils.uniqueActorName(s"$storageId-supervisor"))
+        val supervisorProps = BackoffSupervisor.props(dispatcherProps, "container", 1 second, 1 minute, 0.2)
+        val dispatcher = context.actorOf(supervisorProps, Utils.uniqueActorName(s"$storageId-sv"))
         dispatcher ! StorageContainer.SetProps(props)
         storages += storageId → StorageStatus(storageId, props, State.Active(dispatcher))
         regions.foreach(registerStorage(_, storageId))
@@ -135,7 +135,9 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   def resumeRegion(regionId: String): Unit = {
     regions.get(regionId) match {
       case Some(RegionStatus(`regionId`, config, State.Suspended, storages)) ⇒
-        val dispatcher = context.actorOf(RegionContainer.props(regionId), Utils.uniqueActorName(s"region-$regionId"))
+        val dispatcherProps = RegionContainer.props(regionId)
+        val supervisorProps = BackoffSupervisor.props(dispatcherProps, "container", 1 second, 1 minute, 0.2)
+        val dispatcher = context.actorOf(supervisorProps, Utils.uniqueActorName(s"$regionId-sv"))
         dispatcher ! RegionContainer.SetConfig(config)
         regions += regionId → RegionStatus(regionId, config, State.Active(dispatcher))
         storages.foreach(registerStorage(regionId, _))

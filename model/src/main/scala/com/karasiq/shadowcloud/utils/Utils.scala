@@ -71,8 +71,12 @@ private[shadowcloud] object Utils {
     indexOfExtension(path).fold("")(index ⇒ path.substring(index + 1))
   }
 
+  def toSafeIdentifier(str: String): String = {
+    str.replaceAll("[^A-Za-z0-9-_]", "_")
+  }
+
   def uniqueActorName(name: String): String = {
-    name + "-" + java.lang.Long.toHexString(System.nanoTime())
+    toSafeIdentifier(name) + "-" + java.lang.Long.toHexString(System.nanoTime())
   }
 
   val emptyConfig = ConfigFactory.empty()

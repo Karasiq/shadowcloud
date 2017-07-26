@@ -56,12 +56,15 @@ private final class StorageIndex(storageId: String, repository: CategorizedRepos
       }
 
     case SynchronizeAll ⇒
+      log.debug("Synchronizing all indexes")
       subIndexes.values.foreach(_.forward(RegionIndex.Synchronize))
 
     case OpenIndex(regionId) ⇒
+      log.debug("Starting region index dispatcher: {}", regionId)
       startRegionDispatcher(regionId)
 
     case CloseIndex(regionId) ⇒
+      log.debug("Stopping region index dispatcher: {}", regionId)
       stopRegionDispatcher(regionId)
 
     case GetIndexes ⇒

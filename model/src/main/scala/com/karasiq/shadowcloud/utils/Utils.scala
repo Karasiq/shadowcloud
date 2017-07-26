@@ -71,5 +71,9 @@ private[shadowcloud] object Utils {
     indexOfExtension(path).fold("")(index ⇒ path.substring(index + 1))
   }
 
+  def uniqueActorName(name: String): String = {
+    name + "-" + java.lang.Long.toHexString(System.nanoTime())
+  }
+
   val emptyConfig = ConfigFactory.empty()
 }

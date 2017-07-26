@@ -9,17 +9,14 @@ import akka.actor.{ActorLogging, OneForOneStrategy, Props, Status, SupervisorStr
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import akka.util.Timeout
 
+import com.karasiq.shadowcloud.actors.events.SupervisorEvents._
 import com.karasiq.shadowcloud.actors.internal.RegionTracker
-import com.karasiq.shadowcloud.actors.internal.RegionTracker.{RegionStatus, StorageStatus}
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
-import com.karasiq.shadowcloud.actors.utils.MessageStatus
+import com.karasiq.shadowcloud.actors.utils.{ActorState, MessageStatus}
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
 object RegionSupervisor {
-  // Types
-  case class State(regions: Map[String, RegionStatus], storages: Map[String, StorageStatus])
-
   // Messages
   sealed trait Message
   case class AddRegion(regionId: String, regionConfig: RegionConfig) extends Message
@@ -28,41 +25,39 @@ object RegionSupervisor {
   case class DeleteStorage(storageId: String) extends Message
   case class RegisterStorage(regionId: String, storageId: String) extends Message
   case class UnregisterStorage(regionId: String, storageId: String) extends Message
-  case object GetState extends Message with MessageStatus[NotUsed, State]
-
-  // Events
-  sealed trait Event
-  case class RegionAdded(regionId: String, regionConfig: RegionConfig) extends Event
-  case class RegionDeleted(regionId: String) extends Event
-  case class StorageAdded(storageId: String, props: StorageProps) extends Event
-  case class StorageDeleted(storageId: String) extends Event
-  case class StorageRegistered(regionId: String, storageId: String) extends Event
-  case class StorageUnregistered(regionId: String, storageId: String) extends Event
+  case class SuspendStorage(storageId: String) extends Message
+  case class SuspendRegion(regionId: String) extends Message
+  case class ResumeStorage(storageId: String) extends Message
+  case class ResumeRegion(regionId: String) extends Message
+  case object GetSnapshot extends Message with MessageStatus[NotUsed, RegionTracker.Snapshot]
 
   // Snapshot
-  private case class Snapshot(regions: Map[String, (RegionConfig, Set[String])], storages: Map[String, StorageProps])
+  private[actors] case class RegionSnapshot(config: RegionConfig, storages: Set[String], active: Boolean)
+  private[actors] case class StorageSnapshot(props: StorageProps, active: Boolean)
+  private[actors] case class Snapshot(regions: Map[String, RegionSnapshot], storages: Map[String, StorageSnapshot])
 
   // Props
   def props: Props = {
-    Props(classOf[RegionSupervisor])
+    Props(new RegionSupervisor())
   }
 }
 
 private final class RegionSupervisor extends PersistentActor with ActorLogging with RegionSupervisorState {
   import RegionSupervisor._
+  import com.karasiq.shadowcloud.actors.events.SupervisorEvents._
 
   // -----------------------------------------------------------------------
   // Settings
   // -----------------------------------------------------------------------
-  private[this] implicit val timeout = Timeout(10 seconds)
+  private[this] implicit val timeout: Timeout = Timeout(10 seconds)
   val persistenceId: String = "regions"
 
   // -----------------------------------------------------------------------
   // Recover
   // -----------------------------------------------------------------------
   def receiveRecover: Receive = { // TODO: Create snapshots
-    val storages = mutable.AnyRefMap.empty[String, StorageProps]
-    val regions = mutable.AnyRefMap.empty[String, (RegionConfig, Set[String])]
+    val storages = mutable.AnyRefMap.empty[String, StorageSnapshot]
+    val regions = mutable.AnyRefMap.empty[String, RegionSnapshot]
     val recoverFunc: Receive = {
       case SnapshotOffer(_, snapshot: Snapshot) ⇒
         regions.clear()
@@ -70,26 +65,34 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
         storages.clear()
         storages ++= snapshot.storages
 
-      case RegionAdded(regionId, regionConfig) ⇒
-        val storages = regions.get(regionId).fold(Set.empty[String])(_._2)
-        regions += regionId → (regionConfig, storages)
+      case RegionAdded(regionId, regionConfig, active) ⇒
+        val storages = regions.get(regionId).fold(Set.empty[String])(_.storages)
+        regions += regionId → RegionSnapshot(regionConfig, storages, active)
 
       case RegionDeleted(regionId) ⇒
         regions -= regionId
 
-      case StorageAdded(storageId, props) ⇒
-        storages += storageId → props
+      case StorageAdded(storageId, props, active) ⇒
+        storages += storageId → StorageSnapshot(props, active)
 
       case StorageDeleted(storageId) ⇒
         storages -= storageId
 
       case StorageRegistered(regionId, storageId) if regions.contains(regionId) && storages.contains(storageId) ⇒
-        val (regionConfig, storages) = regions(regionId)
-        regions += regionId → (regionConfig, storages + storageId)
+        val snapshot = regions(regionId)
+        regions += regionId → snapshot.copy(storages = snapshot.storages + storageId)
 
       case StorageUnregistered(regionId, storageId) if regions.contains(regionId) && storages.contains(storageId) ⇒
-        val (regionConfig, storages) = regions(regionId)
-        regions += regionId → (regionConfig, storages - storageId)
+        val snapshot = regions(regionId)
+        regions += regionId → snapshot.copy(storages = snapshot.storages - storageId)
+
+      case StorageStateChanged(storageId, active) if storages.contains(storageId) ⇒
+        val snapshot = storages(storageId)
+        storages += storageId → snapshot.copy(active = active)
+
+      case RegionStateChanged(regionId, active) if regions.contains(regionId) ⇒
+        val snapshot = regions(regionId)
+        regions += regionId → snapshot.copy(active = active)
 
       case RecoveryCompleted ⇒
         if (log.isDebugEnabled) log.debug("Recovery completed: {} storages, {} regions", storages.size, regions.size)
@@ -109,7 +112,7 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
     // Regions
     // -----------------------------------------------------------------------
     case AddRegion(regionId, regionConfig) ⇒
-      persist(RegionAdded(regionId, regionConfig))(updateState)
+      persist(RegionAdded(regionId, regionConfig, active = true))(updateState)
 
     case DeleteRegion(regionId) if state.containsRegion(regionId) ⇒
       persist(RegionDeleted(regionId))(updateState)
@@ -118,7 +121,7 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
     // Storages
     // -----------------------------------------------------------------------
     case AddStorage(storageId, props) ⇒
-      persist(StorageAdded(storageId, props))(updateState)
+      persist(StorageAdded(storageId, props, active = true))(updateState)
 
     case DeleteStorage(storageId) if state.containsStorage(storageId) ⇒
       persist(StorageDeleted(storageId))(updateState)
@@ -135,22 +138,46 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
     // -----------------------------------------------------------------------
     // State actions
     // -----------------------------------------------------------------------
-    case GetState ⇒
-      sender() ! GetState.Success(NotUsed, State(state.regions.toMap, state.storages.toMap))
+    case SuspendStorage(storageId) ⇒
+      persist(StorageStateChanged(storageId, active = false))(updateState)
+
+    case ResumeStorage(storageId) ⇒
+      persist(StorageStateChanged(storageId, active = true))(updateState)
+
+    case SuspendRegion(regionId) ⇒
+      persist(RegionStateChanged(regionId, active = false))(updateState)
+
+    case ResumeRegion(regionId) ⇒
+      persist(RegionStateChanged(regionId, active = true))(updateState)
+
+    case GetSnapshot ⇒
+      sender() ! GetSnapshot.Success(NotUsed, state.getSnapshot())
 
     // -----------------------------------------------------------------------
     // Envelopes
     // -----------------------------------------------------------------------
     case RegionEnvelope(regionId, message) ⇒
       if (state.containsRegion(regionId)) {
-        state.regions(regionId).dispatcher.forward(message)
+        state.getRegion(regionId).actorState match {
+          case ActorState.Active(dispatcher) ⇒
+            dispatcher.forward(message)
+
+          case ActorState.Suspended ⇒
+            sender() ! Status.Failure(new IllegalStateException("Region is suspended"))
+        }
       } else {
         sender() ! Status.Failure(new NoSuchElementException(regionId))
       }
 
     case StorageEnvelope(storageId, message) ⇒
       if (state.containsStorage(storageId)) {
-        state.storages(storageId).dispatcher.forward(message)
+        state.getStorage(storageId).actorState match {
+          case ActorState.Active(dispatcher) ⇒
+            dispatcher.forward(message)
+
+          case ActorState.Suspended ⇒
+            sender() ! Status.Failure(new IllegalStateException("Storage is suspended"))
+        }
       } else {
         sender() ! Status.Failure(new NoSuchElementException(storageId))
       }
@@ -174,9 +201,10 @@ private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
     // -----------------------------------------------------------------------
     // Virtual regions
     // -----------------------------------------------------------------------
-    case RegionAdded(regionId, regionConfig) ⇒
+    case RegionAdded(regionId, regionConfig, active) ⇒
       log.info("Region added: {}", regionId)
       state.addRegion(regionId, regionConfig)
+      if (active) state.resumeRegion(regionId) else state.suspendRegion(regionId)
 
     case RegionDeleted(regionId) if state.containsRegion(regionId) ⇒
       log.debug("Region deleted: {}", regionId)
@@ -185,9 +213,10 @@ private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
     // -----------------------------------------------------------------------
     // Storages
     // -----------------------------------------------------------------------
-    case StorageAdded(storageId, props) ⇒
+    case StorageAdded(storageId, props, active) ⇒
       log.info("Storage added: {} (props = {})", storageId, props)
       state.addStorage(storageId, props)
+      if (active) state.resumeStorage(storageId) else state.suspendStorage(storageId)
 
     case StorageDeleted(storageId) if state.containsStorage(storageId) ⇒
       log.info("Storage deleted: {}", storageId)
@@ -204,15 +233,28 @@ private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
       log.info("Storage {} unregistered from {}", storageId, regionId)
       state.unregisterStorage(regionId, storageId)
 
+    // -----------------------------------------------------------------------
+    // Suspend/resume
+    // -----------------------------------------------------------------------
+    case RegionStateChanged(regionId, active) if state.containsRegion(regionId) ⇒
+      log.debug("Region {} state changed to {}", regionId, if (active) "active" else "suspended")
+      if (active) state.resumeRegion(regionId) else state.suspendRegion(regionId)
+
+    case StorageStateChanged(storageId, active) if state.containsStorage(storageId) ⇒
+      log.debug("Storage {} state changed to {}", storageId, if (active) "active" else "suspended")
+      if (active) state.resumeStorage(storageId) else state.suspendStorage(storageId)
+
     case _ ⇒
       log.warning("Unhandled event: {}", event)
   }
 
-  def loadState(storages: collection.Map[String, StorageProps], regions: collection.Map[String, (RegionConfig, Set[String])]): Unit = {
+  def loadState(storages: collection.Map[String, StorageSnapshot], regions: collection.Map[String, RegionSnapshot]): Unit = {
     state.clear()
-    storages.map(StorageAdded.tupled).foreach(updateState)
-    regions.foreach { case (regionId, (regionConfig, storages)) ⇒
-      updateState(RegionAdded(regionId, regionConfig))
+    storages.foreach { case (storageId, StorageSnapshot(props, active)) ⇒ 
+      updateState(StorageAdded(storageId, props, active))
+    }
+    regions.foreach { case (regionId, RegionSnapshot(regionConfig, storages, active)) ⇒
+      updateState(RegionAdded(regionId, regionConfig, active))
       storages.foreach(storageId ⇒ updateState(StorageRegistered(regionId, storageId)))
     }
   }

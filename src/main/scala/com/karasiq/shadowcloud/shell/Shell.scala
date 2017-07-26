@@ -27,7 +27,7 @@ object Shell extends ImplicitConversions {
     sc.passwords.masterPassword // Request password
     sc.actors.regionSupervisor // Start actor
 
-    val state = Await.result(sc.ops.supervisor.getState(), Duration.Inf)
+    val state = Await.result(sc.ops.supervisor.getSnapshot(), Duration.Inf)
     if (!state.regions.contains("test") && !state.storages.contains("test")) {
       val testRegion = createRegion("test")
       val testStorage = createStorage("test", StorageProps.fromDirectory(testDirectory))

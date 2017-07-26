@@ -4,37 +4,38 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-import akka.actor.{ActorContext, ActorRef}
+import akka.actor.ActorContext
 import akka.pattern.BackoffSupervisor
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.{RegionContainer, RegionDispatcher, StorageContainer, StorageIndex}
+import com.karasiq.shadowcloud.actors.utils.{ActorState ⇒ State}
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
+import com.karasiq.shadowcloud.utils.Utils
 
-private[actors] object RegionTracker {
+object RegionTracker {
+  case class RegionStatus(regionId: String, regionConfig: RegionConfig, actorState: State, storages: Set[String] = Set.empty)
+  case class StorageStatus(storageId: String, props: StorageProps, actorState: State, regions: Set[String] = Set.empty)
 
-  case class RegionStatus(regionId: String, regionConfig: RegionConfig, dispatcher: ActorRef, storages: Set[String] = Set.empty)
+  case class Snapshot(regions: Map[String, RegionStatus], storages: Map[String, StorageStatus])
 
-  case class StorageStatus(storageId: String, props: StorageProps, dispatcher: ActorRef, regions: Set[String] = Set.empty)
-
-  def apply()(implicit context: ActorContext): RegionTracker = {
+  private[actors] def apply()(implicit context: ActorContext): RegionTracker = {
     new RegionTracker
   }
 }
 
 private[actors] final class RegionTracker(implicit context: ActorContext) {
-
   import RegionTracker._
 
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
   private[this] val sc = ShadowCloud()
-  val instantiator = StorageInstantiator(sc.modules)
-  val regions = mutable.AnyRefMap.empty[String, RegionStatus]
-  val storages = mutable.AnyRefMap.empty[String, StorageStatus]
+  private[this] val instantiator = StorageInstantiator(sc.modules)
+  private[this] val regions = mutable.AnyRefMap.empty[String, RegionStatus]
+  private[this] val storages = mutable.AnyRefMap.empty[String, StorageStatus]
 
   // -----------------------------------------------------------------------
   // Contains
@@ -52,21 +53,96 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   }
 
   // -----------------------------------------------------------------------
+  // Get
+  // -----------------------------------------------------------------------
+  def getStorage(storageId: String): StorageStatus = {
+    storages(storageId)
+  }
+
+  def getRegion(regionId: String): RegionStatus = {
+    regions(regionId)
+  }
+
+  def getSnapshot(): Snapshot = {
+    Snapshot(regions.toMap, storages.toMap)
+  }
+
+  // -----------------------------------------------------------------------
   // Add
   // -----------------------------------------------------------------------
   def addRegion(regionId: String, config: RegionConfig): Unit = {
-    val dispatcher = regions.get(regionId)
-      .fold(context.actorOf(RegionContainer.props(regionId), s"region-$regionId"))(_.dispatcher)
-    dispatcher ! RegionContainer.SetConfig(config)
-    regions += regionId → RegionStatus(regionId, config, dispatcher)
+    val state = regions.get(regionId)
+      .map(_.actorState)
+      .getOrElse(State.Suspended)
+
+    State.ifActive(state, _ ! RegionContainer.SetConfig(config))
+    regions += regionId → RegionStatus(regionId, config, state)
   }
 
   def addStorage(storageId: String, props: StorageProps): Unit = {
-    val dispatcherProps = StorageContainer.props(instantiator, storageId)
-    val supervisorProps = BackoffSupervisor.props(dispatcherProps, storageId, 1 second, 1 minute, 0.2)
-    val dispatcher = storages.get(storageId).fold(context.actorOf(supervisorProps, s"$storageId-supervisor"))(_.dispatcher)
-    dispatcher ! StorageContainer.SetProps(props)
-    storages += storageId → StorageStatus(storageId, props, dispatcher)
+    val state = storages.get(storageId)
+      .map(_.actorState)
+      .getOrElse(State.Suspended)
+
+    State.ifActive(state, _ ! StorageContainer.SetProps(props))
+    storages += storageId → StorageStatus(storageId, props, state)
+  }
+
+  // -----------------------------------------------------------------------
+  // State
+  // -----------------------------------------------------------------------
+  def suspendStorage(storageId: String): Unit = {
+    storages.get(storageId) match {
+      case Some(status @ StorageStatus(`storageId`, _, State.Active(dispatcher), regions)) ⇒
+        regions.flatMap(this.regions.get)
+          .foreach(region ⇒ State.ifActive(region.actorState, _ ! RegionDispatcher.Unregister(storageId)))
+        context.stop(dispatcher)
+        storages += storageId → status.copy(actorState = State.Suspended)
+
+      case _ ⇒
+        // Pass
+    }
+  }
+
+  def suspendRegion(regionId: String): Unit = {
+    regions.get(regionId) match {
+      case Some(status @ RegionStatus(`regionId`, _, State.Active(dispatcher), storages)) ⇒
+        storages.flatMap(this.storages.get)
+          .foreach(storage ⇒ State.ifActive(storage.actorState, _ ! StorageIndex.CloseIndex(regionId)))
+        context.stop(dispatcher)
+        regions += regionId → status.copy(actorState = State.Suspended)
+
+      case _ ⇒
+        // Pass
+    }
+  }
+
+  def resumeStorage(storageId: String): Unit = {
+    storages.get(storageId) match {
+      case Some(StorageStatus(`storageId`, props, State.Suspended, regions)) ⇒
+        val dispatcherProps = StorageContainer.props(instantiator, storageId)
+        val supervisorProps = BackoffSupervisor.props(dispatcherProps, storageId, 1 second, 1 minute, 0.2)
+        val dispatcher = context.actorOf(supervisorProps, Utils.uniqueActorName(s"$storageId-supervisor"))
+        dispatcher ! StorageContainer.SetProps(props)
+        storages += storageId → StorageStatus(storageId, props, State.Active(dispatcher))
+        regions.foreach(registerStorage(_, storageId))
+
+      case _ ⇒
+        // Pass
+    }
+  }
+
+  def resumeRegion(regionId: String): Unit = {
+    regions.get(regionId) match {
+      case Some(RegionStatus(`regionId`, config, State.Suspended, storages)) ⇒
+        val dispatcher = context.actorOf(RegionContainer.props(regionId), Utils.uniqueActorName(s"region-$regionId"))
+        dispatcher ! RegionContainer.SetConfig(config)
+        regions += regionId → RegionStatus(regionId, config, State.Active(dispatcher))
+        storages.foreach(registerStorage(regionId, _))
+
+      case _ ⇒
+        // Pass
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -79,7 +155,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
         storages += storageId → storage.copy(regions = storage.regions - regionId)
     }
     val status = regions.remove(regionId).get
-    context.stop(status.dispatcher)
+    State.ifActive(status.actorState, context.stop)
     status
   }
 
@@ -88,17 +164,17 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     regions.foreach { case (regionId, region) ⇒
       if (region.storages.contains(storageId)) {
         regions += regionId → region.copy(storages = region.storages - storageId)
-        region.dispatcher ! RegionDispatcher.Unregister(storageId)
+        State.ifActive(region.actorState, _ ! RegionDispatcher.Unregister(storageId))
       }
     }
     val status = storages.remove(storageId).get
-    context.stop(status.dispatcher)
+    State.ifActive(status.actorState, context.stop)
     status
   }
 
   def clear(): Unit = {
-    regions.foreachValue(region ⇒ context.stop(region.dispatcher))
-    storages.foreachValue(storage ⇒ context.stop(storage.dispatcher))
+    regions.foreachValue(region ⇒ State.ifActive(region.actorState, context.stop))
+    storages.foreachValue(storage ⇒ State.ifActive(storage.actorState, context.stop))
     regions.clear()
     storages.clear()
   }
@@ -112,8 +188,15 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     val storage = storages(storageId)
     regions += regionId → region.copy(storages = region.storages + storageId)
     storages += storageId → storage.copy(regions = storage.regions + regionId)
-    storage.dispatcher ! StorageIndex.OpenIndex(regionId)
-    region.dispatcher ! RegionDispatcher.Register(storageId, storage.dispatcher, StorageHealth.empty)
+
+    (storage.actorState, region.actorState) match {
+      case (State.Active(storage), State.Active(region)) ⇒
+        storage ! StorageIndex.OpenIndex(regionId)
+        region ! RegionDispatcher.Register(storageId, storage, StorageHealth.empty)
+
+      case _ ⇒
+        // Pass
+    }
   }
 
   def unregisterStorage(regionId: String, storageId: String): Unit = {
@@ -122,7 +205,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     val storage = storages(storageId)
     regions += regionId → region.copy(storages = region.storages - storageId)
     storages += storageId → storage.copy(regions = storage.regions - regionId)
-    region.dispatcher ! RegionDispatcher.Unregister(storageId)
-    storage.dispatcher ! StorageIndex.CloseIndex(regionId)
+    State.ifActive(region.actorState, _ ! RegionDispatcher.Unregister(storageId))
+    State.ifActive(storage.actorState, _ ! StorageIndex.CloseIndex(regionId))
   }
 }

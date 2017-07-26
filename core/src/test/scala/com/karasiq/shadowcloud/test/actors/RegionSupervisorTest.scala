@@ -6,6 +6,9 @@ import scala.language.postfixOps
 import org.scalatest.{FlatSpecLike, Matchers}
 
 import com.karasiq.shadowcloud.actors.RegionSupervisor
+import com.karasiq.shadowcloud.actors.internal.RegionTracker
+import com.karasiq.shadowcloud.actors.internal.RegionTracker.{RegionStatus, StorageStatus}
+import com.karasiq.shadowcloud.actors.utils.ActorState
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 
@@ -18,7 +21,7 @@ class RegionSupervisorTest extends ActorSpec with FlatSpecLike with Matchers {
 
   "Region supervisor" should "add region" in {
     supervisor ! AddRegion(testRegion, TestUtils.regionConfig("testRegion"))
-    val (regions, storages) = requestState
+    val (regions, storages) = requestState()
     regions.keySet shouldBe Set(testRegion)
     val region = regions(testRegion)
     region.storages shouldBe empty
@@ -28,7 +31,7 @@ class RegionSupervisorTest extends ActorSpec with FlatSpecLike with Matchers {
 
   it should "add storage" in {
     supervisor ! AddStorage(testStorage, StorageProps.inMemory)
-    val (regions, storages) = requestState
+    val (regions, storages) = requestState()
     regions.keySet shouldBe Set(testRegion)
     storages.keySet shouldBe Set(testStorage)
     val storage = storages(testStorage)
@@ -39,7 +42,7 @@ class RegionSupervisorTest extends ActorSpec with FlatSpecLike with Matchers {
 
   it should "register storage" in {
     supervisor ! RegisterStorage(testRegion, testStorage)
-    val (regions, storages) = requestState
+    val (regions, storages) = requestState()
     regions.keySet shouldBe Set(testRegion)
     storages.keySet shouldBe Set(testStorage)
     regions(testRegion).storages shouldBe Set(testStorage)
@@ -48,7 +51,7 @@ class RegionSupervisorTest extends ActorSpec with FlatSpecLike with Matchers {
 
   it should "unregister storage" in {
     supervisor ! UnregisterStorage(testRegion, testStorage)
-    val (regions, storages) = requestState
+    val (regions, storages) = requestState()
     regions.keySet shouldBe Set(testRegion)
     storages.keySet shouldBe Set(testStorage)
     regions(testRegion).storages shouldBe empty
@@ -58,26 +61,60 @@ class RegionSupervisorTest extends ActorSpec with FlatSpecLike with Matchers {
   it should "delete storage" in {
     supervisor ! RegisterStorage(testRegion, testStorage)
     supervisor ! DeleteStorage(testStorage)
-    val (regions, storages) = requestState
+    val (regions, storages) = requestState()
     regions.keySet shouldBe Set(testRegion)
     storages shouldBe empty
     regions(testRegion).storages shouldBe empty
     expectNoMsg(500 millis) // Wait for storage actor stop
   }
 
-  it should "delete region" in {
+  it should "suspend storage" in {
     supervisor ! AddStorage(testStorage, StorageProps.inMemory)
     supervisor ! RegisterStorage(testRegion, testStorage)
+    supervisor ! SuspendStorage(testStorage)
+    val (regions, storages) = requestState()
+    storages(testStorage) shouldBe StorageStatus(testStorage, StorageProps.inMemory, ActorState.Suspended, Set(testRegion))
+    regions.keySet shouldBe Set(testRegion)
+    regions(testRegion).storages shouldBe Set(testStorage)
+  }
+
+  it should "resume storage" in {
+    supervisor ! ResumeStorage(testStorage)
+    val (regions, storages) = requestState()
+    val StorageStatus(`testStorage`, _, ActorState.Active(_), storageRegions) = storages(testStorage)
+    storageRegions shouldBe Set(testRegion)
+    regions.keySet shouldBe Set(testRegion)
+    regions(testRegion).storages shouldBe Set(testStorage)
+  }
+
+  it should "suspend region" in {
+    supervisor ! SuspendRegion(testRegion)
+    val (regions, storages) = requestState()
+    regions(testRegion) shouldBe RegionStatus(testRegion, TestUtils.regionConfig("testRegion"), ActorState.Suspended, Set(testStorage))
+    storages.keySet shouldBe Set(testStorage)
+    storages(testStorage).regions shouldBe Set(testRegion)
+  }
+
+  it should "resume region" in {
+    supervisor ! ResumeRegion(testRegion)
+    val (regions, storages) = requestState()
+    val RegionStatus(`testRegion`, _, ActorState.Active(_), regionStorages) = regions(testRegion)
+    regionStorages shouldBe Set(testStorage)
+    storages.keySet shouldBe Set(testStorage)
+    storages(testStorage).regions shouldBe Set(testRegion)
+  }
+
+  it should "delete region" in {
     supervisor ! DeleteRegion(testRegion)
-    val (regions, storages) = requestState
+    val (regions, storages) = requestState()
     regions shouldBe empty
     storages.keySet shouldBe Set(testStorage)
     storages(testStorage).regions shouldBe empty
   }
 
-  private[this] def requestState = {
-    supervisor ! GetState
-    val GetState.Success(_, State(regions, storages)) = receiveOne(1 second)
+  private[this] def requestState() = {
+    supervisor ! GetSnapshot
+    val GetSnapshot.Success(_, RegionTracker.Snapshot(regions, storages)) = receiveOne(1 second)
     (regions, storages)
   }
 }

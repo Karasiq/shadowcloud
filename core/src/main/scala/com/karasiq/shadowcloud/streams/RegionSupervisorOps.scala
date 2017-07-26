@@ -7,8 +7,8 @@ import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 
-import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.actors.RegionSupervisor._
+import com.karasiq.shadowcloud.actors.internal.RegionTracker
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
@@ -18,7 +18,6 @@ object RegionSupervisorOps {
   }
 }
 
-//noinspection AccessorLikeMethodIsEmptyParen
 final class RegionSupervisorOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext, timeout: Timeout) {
   def addStorage(storageId: String, storageProps: StorageProps): Unit = {
     regionSupervisor ! AddStorage(storageId, storageProps)
@@ -44,7 +43,7 @@ final class RegionSupervisorOps(regionSupervisor: ActorRef)(implicit ec: Executi
     regionSupervisor ! DeleteRegion(regionId)
   }
 
-  def getState(): Future[RegionSupervisor.State] = {
-    GetState.unwrapFuture(regionSupervisor ? GetState)
+  def getSnapshot(): Future[RegionTracker.Snapshot] = {
+    GetSnapshot.unwrapFuture(regionSupervisor ? GetSnapshot)
   }
 }

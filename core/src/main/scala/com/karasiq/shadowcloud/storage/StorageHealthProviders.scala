@@ -3,6 +3,7 @@ package com.karasiq.shadowcloud.storage
 import java.nio.file.Path
 
 import scala.collection.mutable
+import scala.concurrent.ExecutionContext
 import scala.language.postfixOps
 
 import akka.util.ByteString
@@ -12,7 +13,9 @@ import com.karasiq.shadowcloud.storage.inmem.InMemoryStorageHealthProvider
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
 private[shadowcloud] object StorageHealthProviders {
-  def fromDirectory(directory: Path, quota: StorageProps.Quota = StorageProps.Quota.empty): StorageHealthProvider = {
+  def fromDirectory(directory: Path, quota: StorageProps.Quota = StorageProps.Quota.empty)
+                   (implicit ec: ExecutionContext): StorageHealthProvider = {
+
     if (quota.isEmpty) {
       // Quickly checks drive free space
       new FileStorageEstimateHealthProvider(directory)

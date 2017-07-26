@@ -9,7 +9,8 @@ import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
 import org.scalatest.FlatSpecLike
 
-import com.karasiq.shadowcloud.storage.{BaseRepository, Repositories, RepositoryKeys, StorageIOResult}
+import com.karasiq.shadowcloud.index.Path
+import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.streams.utils.ByteStringConcat
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 
@@ -19,7 +20,7 @@ class RepositoryTest extends ActorSpec with FlatSpecLike {
   }
 
   "File repository" should "store chunk" in {
-    testRepository(Repositories.fromDirectory(Files.createTempDirectory("crp-test")).subRepository("default"))
+    testRepository(PathTreeRepository.toFlatRepository(Repositories.fromDirectory(Files.createTempDirectory("crp-test")), Path.root / "default"))
   }
 
   it should "validate path" in {

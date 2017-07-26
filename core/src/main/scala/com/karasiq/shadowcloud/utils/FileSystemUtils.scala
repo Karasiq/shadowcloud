@@ -1,26 +1,47 @@
 package com.karasiq.shadowcloud.utils
 
+import java.io.IOException
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
 
 import scala.language.postfixOps
 
-private[shadowcloud] object FileSystemUtils {
-  def listSubItems(folder: Path, includeFiles: Boolean = true, includeDirs: Boolean = true): Vector[Path] = concurrent.blocking {
-    if (!Files.exists(folder)) return Vector.empty
-    val builder = Vector.newBuilder[Path]
-    Files.walkFileTree(folder, new SimpleFileVisitor[Path] {
-      override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
-        if (includeFiles) builder += file
-        FileVisitResult.CONTINUE
-      }
+import akka.NotUsed
+import akka.stream.{ActorAttributes, Attributes}
+import akka.stream.scaladsl.Source
 
-      override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult = {
-        if (includeDirs) builder += dir
-        if (dir == folder) FileVisitResult.CONTINUE else FileVisitResult.SKIP_SUBTREE
+private[shadowcloud] object FileSystemUtils {
+  def walkFileTree(folder: Path, walkUntil: Path ⇒ Boolean = _ ⇒ true,
+                   includeFiles: Boolean = true, includeDirs: Boolean = true): Source[Path, NotUsed] = {
+    Source.single(folder)
+      .mapConcat { path ⇒
+        val builder = Vector.newBuilder[Path]
+        Files.walkFileTree(path, new SimpleFileVisitor[Path] {
+          override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
+            if (includeFiles) builder += file
+            FileVisitResult.CONTINUE
+          }
+
+          override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult = {
+            if (includeDirs) builder += dir
+            if (walkUntil(dir)) FileVisitResult.CONTINUE else FileVisitResult.SKIP_SUBTREE
+          }
+
+          override def postVisitDirectory(dir: Path, exc: IOException): FileVisitResult = {
+            FileVisitResult.CONTINUE
+          }
+
+          override def visitFileFailed(file: Path, exc: IOException): FileVisitResult = {
+            FileVisitResult.CONTINUE
+          }
+        })
+        builder.result()
       }
-    })
-    builder.result()
+      .addAttributes(Attributes.name("walkFileTree") and ActorAttributes.IODispatcher)
+  }
+
+  def listSubItems(folder: Path, includeFiles: Boolean = true, includeDirs: Boolean = true): Source[Path, NotUsed] = {
+    walkFileTree(folder, _ == folder, includeFiles, includeDirs).named("listSubItems")
   }
 
   def getFolderSize(folder: Path): Long = concurrent.blocking {

@@ -1,11 +1,12 @@
 package com.karasiq.shadowcloud.storage
 
+import scala.concurrent.{ExecutionContext, Future}
+
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
+
 import com.karasiq.shadowcloud.storage.wrappers.{RepositoryKeyMapper, RepositoryWrapper, SubRepositoriesWrapper}
 import com.karasiq.shadowcloud.utils.HexString
-
-import scala.concurrent.{ExecutionContext, Future}
 
 trait Repository[Key] {
   final type Data = ByteString

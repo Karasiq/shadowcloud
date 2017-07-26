@@ -11,6 +11,18 @@ case class Path(nodes: Seq[String]) {
     if (node.nonEmpty) copy(nodes :+ node) else this
   }
 
+  def /(relPath: Path): Path = {
+    copy(nodes ++ relPath.nodes)
+  }
+
+  def toRelative(root: Path): Path = {
+    if (startsWith(root)) copy(nodes.drop(root.nodes.length)) else this
+  }
+
+  def startsWith(path: Path): Boolean = {
+    nodes.startsWith(path.nodes)
+  }
+
   def parent: Path = {
     if (nodes.length <= 1) Path.root else copy(nodes.dropRight(1))
   }

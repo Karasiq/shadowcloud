@@ -8,7 +8,7 @@ import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import org.scalatest.FlatSpecLike
 
-import com.karasiq.shadowcloud.index.IndexData
+import com.karasiq.shadowcloud.index.{IndexData, Path}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
@@ -19,7 +19,7 @@ class IndexRepositoryStreamsTest extends ActorSpec with FlatSpecLike {
   }
 
   "File repository" should "store diff" in {
-    testRepository(Repositories.fromDirectory(Files.createTempDirectory("irp-test")).subRepository("default"))
+    testRepository(PathTreeRepository.toFlatRepository(Repositories.fromDirectory(Files.createTempDirectory("irp-test")), Path.root / "default"))
   }
 
   it should "validate path" in {

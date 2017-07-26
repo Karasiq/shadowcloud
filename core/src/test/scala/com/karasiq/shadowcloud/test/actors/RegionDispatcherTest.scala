@@ -34,9 +34,10 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
   val folder = TestUtils.randomFolder()
   val folderDiff = FolderIndexDiff.create(folder)
-  val indexRepository = Repository.forIndex(Repositories.fromDirectory(Files.createTempDirectory("vrt-index")))
+  val indexRepository = Repository.forIndex(PathTreeRepository.toCategorized(
+    Repositories.fromDirectory(Files.createTempDirectory("vrt-index"))))
   val chunksDir = Files.createTempDirectory("vrt-chunks")
-  val fileRepository = Repository.forChunks(Repositories.fromDirectory(chunksDir))
+  val fileRepository = Repository.forChunks(PathTreeRepository.toCategorized(Repositories.fromDirectory(chunksDir)))
   val storageProps = StorageProps.fromDirectory(chunksDir.getParent)
   val index = system.actorOf(StorageIndex.props("testStorage", storageProps, indexRepository), "index")
   val chunkIO = TestActorRef(ChunkIODispatcher.props(fileRepository), "chunkIO")

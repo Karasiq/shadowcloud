@@ -1,5 +1,6 @@
 package com.karasiq.shadowcloud.streams
 
+import scala.concurrent.Future
 import scala.language.postfixOps
 
 import akka.NotUsed
@@ -45,7 +46,7 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
     readBy(regionId, path, FileVersions.mostRecent)
   }
 
-  def write(regionId: String, path: Path): Flow[ByteString, File, NotUsed] = {
+  def writeChunkStream(regionId: String): Flow[ByteString, FileIndexer.Result, NotUsed] = {
     val matSink = Flow.fromGraph(chunkProcessing.split()) // TODO: Chunk size config
       .via(chunkProcessing.beforeWrite())
       .map((regionId, _))
@@ -54,16 +55,21 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
 
     val graph = GraphDSL.create(matSink) { implicit builder ⇒ matSink ⇒
       import GraphDSL.Implicits._
-      val addFileFlow = builder.add(
-        Flow[FileIndexer.Result]
-          .map((regionId, path, _))
-          .via(regionStreams.addFile)
-      )
+      val extractResult = builder.add(Flow[Future[FileIndexer.Result]].flatMapConcat(Source.fromFuture))
 
-      builder.materializedValue.flatMapConcat(Source.fromFuture) ~> addFileFlow
-      FlowShape(matSink.in, addFileFlow.out)
+      builder.materializedValue ~> extractResult
+      FlowShape(matSink.in, extractResult.out)
     }
 
-    Flow.fromGraph(graph).mapMaterializedValue(_ ⇒ NotUsed)
+    Flow.fromGraph(graph)
+      .mapMaterializedValue(_ ⇒ NotUsed)
+      .named("writeChunkStream")
+  }
+
+  def write(regionId: String, path: Path): Flow[ByteString, File, NotUsed] = {
+    writeChunkStream(regionId)
+      .map((regionId, path, _))
+      .via(regionStreams.createFile)
+      .named("writeFile")
   }
 }

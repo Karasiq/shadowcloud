@@ -69,10 +69,12 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
   def write(regionId: String, fileId: File.ID): Flow[Metadata, File, NotUsed] = {
     Flow[Metadata]
       .groupBy(10, v ⇒ MetadataStreams.getDisposition(v.tag))
-      .fold(Vector.empty[Metadata])(_ :+ _)
-      .flatMapConcat { values ⇒
-        val disposition = MetadataStreams.getDisposition(values.head.tag)
-        Source(values).via(write(regionId, fileId, disposition))
+      .prefixAndTail(1)
+      .flatMapConcat { case (head, stream) ⇒
+        val disposition = MetadataStreams.getDisposition(head.head.tag)
+        Source(head)
+          .concat(stream)
+          .via(write(regionId, fileId, disposition))
       }
       .mergeSubstreams
       .named("metadataAutoWrite")
@@ -134,8 +136,30 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
 
   def writeFileAndMetadata(regionId: String, path: Path,
                            metadataSizeLimit: Long = config.fileSizeLimit): Flow[ByteString, (File, Seq[File]), NotUsed] = {
+    // Writes the chunk stream before actual file path is known
+    val preWrite: Flow[Metadata, (MDDisposition, FileIndexer.Result), NotUsed] = {
+      val preWriteFile = Flow[Metadata]
+        .via(StreamSerialization.serializeFramedGzip(serialization, config.metadataFrameLimit))
+        .via(fileStreams.writeChunkStream(regionId))
+        .named("metadataPreWriteFile")
+
+      Flow[Metadata]
+        .groupBy(10, v ⇒ MetadataStreams.getDisposition(v.tag))
+        .prefixAndTail(1)
+        .flatMapConcat { case (head, stream) ⇒
+          val disposition = MetadataStreams.getDisposition(head.head.tag)
+          Source(head)
+            .concat(stream)
+            .via(preWriteFile)
+            .map((disposition, _))
+            .recoverWithRetries(1, { case _ ⇒ Source.empty })
+        }
+        .mergeSubstreams
+        .named("metadataPreWrite")
+    }
+
     val writeStream = fileStreams.write(regionId, path)
-    val createMetadataStream = create(path.name, metadataSizeLimit).buffer(20, OverflowStrategy.dropNew)
+    val createMetadataStream = create(path.name, metadataSizeLimit).buffer(5, OverflowStrategy.backpressure)
 
     val graph = GraphDSL.create(writeStream, createMetadataStream)(Keep.none) { implicit builder ⇒ (writeFile, createMetadata) ⇒
       import GraphDSL.Implicits._
@@ -143,18 +167,24 @@ private[shadowcloud] final class MetadataStreams(config: MetadataConfig,
       val bytesInput = builder.add(Broadcast[ByteString](2))
       val fileInput = builder.add(Broadcast[File](2))
 
-      val extractMetadataSource = builder.add(Flow[Metadata].prefixAndTail(0).map(_._2))
-      val zipSourceAndFile = builder.add(Zip[Source[Metadata, NotUsed], File])
-      val writeMetadata = builder.add(Flow[(Source[Metadata, NotUsed], File)]
-        .flatMapConcat { case (metadataIn, file) ⇒ metadataIn.via(write(regionId, file.id)) }
+      val writeMetadataChunks = builder.add(preWrite)
+      val extractMetadataSource = builder.add(Flow[(MDDisposition, FileIndexer.Result)].prefixAndTail(0).map(_._2))
+      val zipSourceAndFile = builder.add(Zip[Source[(MDDisposition, FileIndexer.Result), NotUsed], File])
+      val writeMetadata = builder.add(Flow[(Source[(MDDisposition, FileIndexer.Result), NotUsed], File)]
+        .flatMapConcat { case (metadataIn, file) ⇒
+          metadataIn.flatMapConcat { case (disposition, chunkStream) ⇒
+            val path = MetadataStreams.getFilePath(file.id, disposition)
+            val newFile = File.create(path, chunkStream.checksum, chunkStream.chunks)
+            Source.fromFuture(regionOps.createFile(regionId, newFile))
+          }
+        }
         .recoverWithRetries(1, { case _ ⇒ Source.empty })
         .fold(Vector.empty[File])(_ :+ _)
       )
       val zipFileAndMetadata = builder.add(Zip[File, Seq[File]])
 
       bytesInput ~> writeFile
-      bytesInput ~> createMetadata
-      createMetadata ~> extractMetadataSource ~> zipSourceAndFile.in0
+      bytesInput ~> createMetadata ~> writeMetadataChunks ~> extractMetadataSource ~> zipSourceAndFile.in0
 
       writeFile ~> fileInput
       fileInput ~> zipSourceAndFile.in1

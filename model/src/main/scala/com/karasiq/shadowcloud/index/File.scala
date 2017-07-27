@@ -57,4 +57,8 @@ object File {
       chunks = newChunks
     )
   }
+
+  def isBinaryEquals(f1: File, f2: File): Boolean = {
+    f1.checksum == f2.checksum && f1.chunks == f2.chunks
+  }
 }

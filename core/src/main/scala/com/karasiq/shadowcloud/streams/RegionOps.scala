@@ -13,7 +13,7 @@ import com.karasiq.shadowcloud.actors.RegionDispatcher._
 import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.actors.utils.{GCState, MessageStatus}
 import com.karasiq.shadowcloud.index.{Chunk, File, Folder, Path}
-import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.index.diffs.{FileVersions, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
@@ -72,6 +72,34 @@ final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext,
 
   def getChunkStatus(regionId: String, chunk: Chunk): Future[ChunkStatus] = {
     askRegion(regionId, GetChunkStatus, GetChunkStatus(chunk))
+  }
+
+  def createFile(regionId: String, newFile: File): Future[File] = {
+    val filesWithSamePath = getFiles(regionId, newFile.path)
+      .recover { case _ ⇒ Set.empty[File] }
+
+    filesWithSamePath.flatMap { files ⇒
+      val newOrModifiedFile: File = if (files.nonEmpty) {
+        val lastRevision = FileVersions.mostRecent(files)
+        if (File.isBinaryEquals(lastRevision, newFile)) {
+          // Not modified
+          lastRevision
+        } else {
+          // Modified
+          File.modified(lastRevision, newFile.checksum, newFile.chunks)
+        }
+      } else {
+        // New file
+        newFile
+      }
+
+      if (!files.contains(newOrModifiedFile)) {
+        val future = regionSupervisor ? RegionEnvelope(regionId, RegionDispatcher.WriteIndex(FolderIndexDiff.createFiles(newOrModifiedFile)))
+        RegionDispatcher.WriteIndex.unwrapFuture(future).map(_ ⇒ newOrModifiedFile)
+      } else {
+        Future.successful(newOrModifiedFile)
+      }
+    }
   }
 
   // -----------------------------------------------------------------------

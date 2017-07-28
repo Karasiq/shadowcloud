@@ -15,8 +15,9 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCSymmetricKeys
 private[bouncycastle] object AEADBlockCipherModule extends ConfigImplicits {
   def apply(method: EncryptionMethod): AEADBlockCipherModule = {
     val config = ConfigProps.toConfig(method.config)
-    val ivSize = config.withDefault(12, _.getInt("iv-size"))
-    new AEADBlockCipherModule(method, BCBlockCiphers.createAEADCipher(method.algorithm), ivSize)
+    val customBlockSize = config.optional(_.getInt("block-size"))
+    val nonceSize = config.withDefault(BCBlockCiphers.getNonceSize(method.algorithm, customBlockSize), _.getInt("nonce-size"))
+    new AEADBlockCipherModule(method, BCBlockCiphers.createAEADCipher(method.algorithm, customBlockSize), nonceSize)
   }
 
   def AES_GCM(): AEADBlockCipherModule = {
@@ -36,31 +37,31 @@ private[bouncycastle] object AEADBlockCipherModule extends ConfigImplicits {
   }
 }
 
-private[bouncycastle] final class AEADBlockCipherModule(val method: EncryptionMethod,
-                                                        private[this] val cipher: AEADBlockCipher,
-                                                        protected val nonceSize: Int)
+private[bouncycastle] class AEADBlockCipherModule(val method: EncryptionMethod,
+                                                  protected val aeadCipher: AEADBlockCipher,
+                                                  protected val nonceSize: Int)
   extends StreamEncryptionModule with BCSymmetricKeys {
 
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
     val sp = EncryptionParameters.symmetric(parameters)
     val keyParams = new ParametersWithIV(new KeyParameter(sp.key.toArray), sp.nonce.toArray)
     try {
-      cipher.init(encrypt, keyParams)
+      aeadCipher.init(encrypt, keyParams)
     } catch { case _: IllegalArgumentException ⇒
-      cipher.init(encrypt, new ParametersWithIV(keyParams.getParameters, Array[Byte](0)))
-      cipher.init(encrypt, keyParams)
+      aeadCipher.init(encrypt, new ParametersWithIV(keyParams.getParameters, Array[Byte](0)))
+      aeadCipher.init(encrypt, keyParams)
     }
   }
 
   def process(data: ByteString): ByteString = {
-    val output = new Array[Byte](cipher.getUpdateOutputSize(data.length))
-    val length = cipher.processBytes(data.toArray, 0, data.length, output, 0)
+    val output = new Array[Byte](aeadCipher.getUpdateOutputSize(data.length))
+    val length = aeadCipher.processBytes(data.toArray, 0, data.length, output, 0)
     ByteString.fromArray(output, 0, length)
   }
 
   def finish(): ByteString = {
-    val output = new Array[Byte](cipher.getOutputSize(0))
-    val length = cipher.doFinal(output, 0)
+    val output = new Array[Byte](aeadCipher.getOutputSize(0))
+    val length = aeadCipher.doFinal(output, 0)
     ByteString.fromArray(output, 0, length)
   }
 }

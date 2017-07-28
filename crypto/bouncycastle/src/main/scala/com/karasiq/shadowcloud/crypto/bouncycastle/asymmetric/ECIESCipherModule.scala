@@ -104,7 +104,10 @@ private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
 
     def createBlockCipher(config: Config): Option[BufferedBlockCipher] = {
       val bcMethod = getBlockCipherMethod(config)
-      bcMethod.map(m ⇒ BCBlockCiphers.buffered(BCBlockCiphers.createBlockCipher(m.algorithm, m.keySize)))
+      val blockSize = bcMethod
+        .map(m ⇒ ConfigProps.toConfig(m.config))
+        .flatMap(_.optional(_.getInt("block-size")))
+      bcMethod.map(m ⇒ BCBlockCiphers.buffered(BCBlockCiphers.createBlockCipher(m.algorithm, blockSize)))
     }
 
     val config = ConfigProps.toConfig(method.config)

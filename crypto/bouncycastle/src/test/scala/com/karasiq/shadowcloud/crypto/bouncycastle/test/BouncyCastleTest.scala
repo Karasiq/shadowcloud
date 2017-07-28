@@ -13,7 +13,7 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.BouncyCastleCryptoProvider
 import com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric.{ECIESCipherModule, RSACipherModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigests, MessageDigestModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.{ECDSASignModule, RSASignModule}
-import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, StreamCipherModule}
+import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, BCBlockCiphers, BlockCipherModule, StreamCipherModule}
 import com.karasiq.shadowcloud.utils.HexString
 
 //noinspection RedundantDefaultArgument
@@ -24,10 +24,23 @@ class BouncyCastleTest extends FlatSpec with Matchers {
   // -----------------------------------------------------------------------
   // Encryption
   // -----------------------------------------------------------------------
-  testSymmetricEncryption("AES/GCM", AEADBlockCipherModule.AES_GCM(), 32, 12)
-  testSymmetricEncryption("AES/CCM", AEADBlockCipherModule.AES_CCM(), 32, 12)
-  testSymmetricEncryption("AES/EAX", AEADBlockCipherModule.AES_EAX(), 32, 12)
-  testSymmetricEncryption("AES/OCB", AEADBlockCipherModule.AES_OCB(), 32, 12)
+  // testSymmetricEncryption("AES/GCM", AEADBlockCipherModule.AES_GCM(), 32, 12)
+  testSymmetricEncryption("Threefish (1024)", BlockCipherModule(EncryptionMethod("Threefish/CBC", 1024, config = ConfigProps("block-size" → 1024))), 128, 128)
+
+  BCBlockCiphers.blockAlgorithms.foreach { algorithm ⇒
+    val keySize = BCBlockCiphers.getKeySize(algorithm)
+    val nonceSize = BCBlockCiphers.getNonceSize(algorithm)
+    testSymmetricEncryption(algorithm, BlockCipherModule(EncryptionMethod(algorithm, keySize)), keySize / 8, nonceSize)
+  }
+
+  BCBlockCiphers.aeadAlgorithms.foreach { algorithm ⇒
+    val keySize = BCBlockCiphers.getKeySize(algorithm)
+    val blockSize = BCBlockCiphers.getBlockSize(algorithm)
+    val nonceSize = BCBlockCiphers.getNonceSize(algorithm)
+
+    if (blockSize == 128) testSymmetricEncryption(algorithm, AEADBlockCipherModule(EncryptionMethod(algorithm, keySize)), keySize / 8, nonceSize)
+  }
+  
   testSymmetricEncryption("Salsa20", StreamCipherModule.Salsa20(), 32, 8)
   testSymmetricEncryption("XSalsa20", StreamCipherModule.XSalsa20(), 32, 24)
   testSymmetricEncryption("ChaCha20", StreamCipherModule.ChaCha20(), 32, 8)
@@ -87,7 +100,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
   // -----------------------------------------------------------------------
   // Tests specification
   // -----------------------------------------------------------------------
-  private[this] def testSymmetricEncryption(name: String, module: EncryptionModule, keySize: Int, nonceSize: Int): Unit = {
+  private[this] def testSymmetricEncryption(name: String, module: ⇒ EncryptionModule, keySize: Int, nonceSize: Int): Unit = {
     s"$name module" should "generate key" in {
       val parameters = EncryptionParameters.symmetric(module.createParameters())
       parameters.key.length shouldBe keySize

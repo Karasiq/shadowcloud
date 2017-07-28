@@ -3,11 +3,10 @@ package com.karasiq.shadowcloud.crypto.bouncycastle
 import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric.{ECIESCipherModule, RSACipherModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigests, MessageDigestModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.{ECDSASignModule, RSASignModule}
-import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, BCBlockCiphers, BCStreamCiphers, StreamCipherModule}
+import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric._
 import com.karasiq.shadowcloud.providers.CryptoProvider
 
 final class BouncyCastleCryptoProvider extends CryptoProvider with ConfigImplicits {
@@ -21,15 +20,20 @@ final class BouncyCastleCryptoProvider extends CryptoProvider with ConfigImplici
   }
 
   override val encryptionAlgorithms: Set[String] = {
-    Set("AES/GCM", "Salsa20", "XSalsa20", "ChaCha20", "ECIES", "RSA")
+    BCBlockCiphers.blockAlgorithms ++
+    BCBlockCiphers.aeadAlgorithms ++
+    Set("ChaCha20", "ECIES", "RSA")
   }
 
-  // TODO: AESFastEngine, Poly1305, Non-AEAD block ciphers
+  // TODO: AESFastEngine, Poly1305
   override def encryption: EncryptionPF = {
-    case method @ EncryptionMethod(algorithm, 128 | 256, _, _, _) if BCBlockCiphers.isAEADAlgorithm(algorithm) ⇒
+    case method if BCBlockCiphers.isAEADAlgorithm(method.algorithm) ⇒
       AEADBlockCipherModule(method)
 
-    case method @ EncryptionMethod(algorithm, 128 | 256, _, _, _) if BCStreamCiphers.isStreamAlgorithm(algorithm) ⇒
+    case method if BCBlockCiphers.isBlockAlgorithm(method.algorithm) ⇒
+      BlockCipherModule(method)
+
+    case method if BCStreamCiphers.isStreamAlgorithm(method.algorithm) ⇒
       StreamCipherModule(method)
 
     case method if method.algorithm == "ECIES" ⇒

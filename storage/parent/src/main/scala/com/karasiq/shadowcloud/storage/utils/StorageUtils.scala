@@ -3,14 +3,15 @@ package com.karasiq.shadowcloud.storage.utils
 import java.io.FileNotFoundException
 import java.nio.file.FileAlreadyExistsException
 
-import akka.Done
-import akka.stream.{IOResult => AkkaIOResult}
-import com.karasiq.shadowcloud.exceptions.StorageException
-import com.karasiq.shadowcloud.storage.StorageIOResult
-
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
+
+import akka.Done
+import akka.stream.{IOResult ⇒ AkkaIOResult}
+
+import com.karasiq.shadowcloud.exceptions.StorageException
+import com.karasiq.shadowcloud.storage.StorageIOResult
 
 object StorageUtils {
   def wrapException(path: String, error: Throwable): StorageException = error match {
@@ -51,19 +52,18 @@ object StorageUtils {
     }
   }
 
+  def foldIOResultsIgnoreErrors(results: StorageIOResult*): StorageIOResult = {
+    if (results.isEmpty) return StorageIOResult.Success("", 0L)
+    val path = results.headOption.fold("")(_.path)
+    val count = results
+      .collect { case StorageIOResult.Success(_, count) ⇒ count }
+      .sum
+    StorageIOResult.Success(path, count)
+  }
+
   def foldIOResults(results: StorageIOResult*): StorageIOResult = {
     if (results.isEmpty) return StorageIOResult.Success("", 0L)
-    results.find(_.isFailure) match {
-      case Some(failure) ⇒
-        failure
-
-      case None ⇒
-        val path = results.headOption.fold("")(_.path)
-        val count = results
-          .collect { case StorageIOResult.Success(_, count) ⇒ count }
-          .sum
-        StorageIOResult.Success(path, count)
-    }
+    results.find(_.isFailure).getOrElse(foldIOResultsIgnoreErrors(results:_*))
   }
 
   def foldIOFutures(fs: Future[StorageIOResult]*)(implicit ec: ExecutionContext): Future[StorageIOResult] = {

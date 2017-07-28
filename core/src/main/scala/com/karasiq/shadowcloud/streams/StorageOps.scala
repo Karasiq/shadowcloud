@@ -13,7 +13,6 @@ import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 
 object StorageOps {
@@ -61,7 +60,7 @@ final class StorageOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext
     askStorage(storageId, ChunkIODispatcher.GetKeys, ChunkIODispatcher.GetKeys)
   }
 
-  def deleteChunks(storageId: String, paths: Set[ChunkPath]): Future[StorageIOResult] = {
+  def deleteChunks(storageId: String, paths: Set[ChunkPath]): Future[Set[ChunkPath]] = {
     askStorage(storageId, ChunkIODispatcher.DeleteChunks, ChunkIODispatcher.DeleteChunks(paths))
   }
 

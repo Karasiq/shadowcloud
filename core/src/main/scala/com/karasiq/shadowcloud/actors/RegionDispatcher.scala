@@ -86,7 +86,7 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
   // -----------------------------------------------------------------------
   // Actors
   // -----------------------------------------------------------------------
-  private[this] val gcActor = context.actorOf(RegionGC.props(regionId), "region-gc")
+  private[this] val gcActor = context.actorOf(RegionGC.props(regionId, regionConfig.garbageCollector), "region-gc")
 
   // -----------------------------------------------------------------------
   // Receive

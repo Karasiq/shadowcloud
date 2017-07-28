@@ -31,10 +31,18 @@ private[shadowcloud] object Utils {
   // -----------------------------------------------------------------------
   // toString() utils
   // -----------------------------------------------------------------------
+  def printValues[T](values: Traversable[T], limit: Int = 10): String = {
+    val sb = new StringBuilder(100)
+    val size = values.size
+    values.take(limit).foreach(v ⇒ sb.append(v.toString))
+    if (size > limit) sb.append(", (").append(size - limit).append(" more)")
+    sb.result()
+  }
+
   def printHashes(hashes: Traversable[ByteString], limit: Int = 20): String = {
     if (hashes.isEmpty) return ""
     val size = hashes.size
-    val sb = new StringBuilder(math.min(limit, size) * 22 + 10)
+    val sb = new StringBuilder(math.min(limit, size) * (hashes.head.length * 2) + 10)
     hashes.filter(_.nonEmpty).take(limit).foreach { hash ⇒
       if (sb.nonEmpty) sb.append(", ")
       sb.append(HexString.encode(hash))

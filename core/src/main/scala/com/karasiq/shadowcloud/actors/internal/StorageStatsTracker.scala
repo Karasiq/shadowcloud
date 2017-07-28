@@ -55,6 +55,7 @@ private[actors] final class StorageStatsTracker(storageId: String, config: Stora
   }
 
   def requiresCompaction(): Iterable[String] = {
+    if (config.indexCompactThreshold <= 0) return Nil
     this.stats.filter(_._2.deletes > config.indexCompactThreshold).keys
   }
 

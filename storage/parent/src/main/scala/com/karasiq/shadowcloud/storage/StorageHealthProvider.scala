@@ -8,6 +8,10 @@ import com.karasiq.shadowcloud.utils.MemorySize
 case class StorageHealth(canWrite: Long, totalSpace: Long, usedSpace: Long, online: Boolean = true) {
   require(canWrite >= 0 && totalSpace >= 0 && usedSpace >= 0, "Invalid sizes")
 
+  def freeSpace: Long = {
+    math.max(0L, totalSpace - usedSpace)
+  }
+
   def -(bytes: Long): StorageHealth = {
     val newUsedSpace = usedSpace + bytes
     copy(canWrite = math.max(0L, canWrite - bytes), usedSpace = if (newUsedSpace >= 0) newUsedSpace else Long.MaxValue)

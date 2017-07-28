@@ -17,7 +17,6 @@ import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperation}
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.storage.{CategorizedRepository, StorageIOResult}
-import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.streams.utils.{ByteStringConcat, ByteStringLimit}
 import com.karasiq.shadowcloud.utils.HexString
 
@@ -38,13 +37,13 @@ object ChunkIODispatcher {
   object ReadChunk extends MessageStatus[(ChunkPath, Chunk), Chunk]
 
   case class DeleteChunks(chunks: Set[ChunkPath]) extends Message
-  object DeleteChunks extends MessageStatus[Set[ChunkPath], StorageIOResult]
+  object DeleteChunks extends MessageStatus[Set[ChunkPath], Set[ChunkPath]]
 
   case object GetKeys extends Message with MessageStatus[NotUsed, Set[ChunkPath]]
 
   // Props
   def props(repository: CategorizedRepository[String, ByteString]): Props = {
-    Props(classOf[ChunkIODispatcher], repository)
+    Props(new ChunkIODispatcher(repository))
   }
 }
 
@@ -221,12 +220,18 @@ private final class ChunkIODispatcher(repository: CategorizedRepository[String, 
       chunks.map(localRepository → _)
     }
 
-    val result = Source(byRegion)
-      .mapAsync(sc.config.parallelism.write) { case (lr, path) ⇒ lr.delete(path.id) }
-      .toMat(Sink.seq)(Keep.right)
-      .mapMaterializedValue(_.map(StorageUtils.foldIOResults))
+    val deleted = Source(byRegion)
+      .mapAsync(sc.config.parallelism.write) { case (lr, path) ⇒
+        lr.delete(path.id)
+          .filter(_.isSuccess)
+          .map(_ ⇒ path)
+      }
+      .addAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+      .fold(Set.empty[ChunkPath])(_ + _)
+      .toMat(Sink.head)(Keep.right)
+      .named("deleteChunks")
       .run()
 
-    DeleteChunks.wrapFuture(paths, StorageUtils.unwrapFuture(result))
+    DeleteChunks.wrapFuture(paths, deleted)
   }
 }

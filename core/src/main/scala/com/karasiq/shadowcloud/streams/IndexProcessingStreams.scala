@@ -1,9 +1,6 @@
 package com.karasiq.shadowcloud.streams
 
-import java.util.UUID
-
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
 import akka.NotUsed
@@ -15,7 +12,7 @@ import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.{CryptoConfig, SCConfig, StorageConfig}
-import com.karasiq.shadowcloud.config.keys.{KeyProvider, KeySet}
+import com.karasiq.shadowcloud.config.keys.{KeyChain, KeyProvider}
 import com.karasiq.shadowcloud.crypto.index.IndexEncryption
 import com.karasiq.shadowcloud.exceptions.CryptoException
 import com.karasiq.shadowcloud.index.IndexData
@@ -59,66 +56,54 @@ final class IndexProcessingStreams(val modules: SCModules, val config: SCConfig,
         .via(StreamSerialization(serializer).fromBytes[IndexData])
     }
 
-  val encrypt = Flow.fromGraph(new IndexEncryptStage(modules, config.crypto, keyProvider))
-  val decrypt = Flow.fromGraph(new IndexDecryptStage(modules, config.crypto, keyProvider))
+  val encrypt = Flow[ByteString]
+    .prefixAndTail(0)
+    .map(_._2)
+    .zip(Source.fromFuture(keyProvider.getKeyChain()))
+    .flatMapConcat { case (source, keyChain) ⇒
+      source.via(new IndexEncryptStage(modules, config.crypto, keyChain))
+    }
+
+  val decrypt = Flow[EncryptedIndexData]
+    .prefixAndTail(0)
+    .map(_._2)
+    .zip(Source.fromFuture(keyProvider.getKeyChain()))
+    .flatMapConcat { case (source, keyChain) ⇒
+      source.via(new IndexDecryptStage(modules, config.crypto, keyChain))
+    }
 
   def preWrite(storageConfig: StorageConfig): Flow[IndexData, ByteString, NotUsed] = {
     Flow[IndexData]
       .via(serialize(storageConfig))
       .via(encrypt)
       .map(ed ⇒ ByteString(ed.toByteArray))
+      .named("indexPreWrite")
   }
 
+  // TODO: Limit index frame size
   val postRead: Flow[ByteString, IndexData, NotUsed] = Flow[ByteString]
     .map(bs ⇒ EncryptedIndexData.parseFrom(bs.toArray))
     .via(decrypt)
     .via(deserialize)
     .addAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+    .named("indexPostRead")
 
   // -----------------------------------------------------------------------
   // Encryption stages
   // -----------------------------------------------------------------------
-  private final class IndexEncryptStage(modules: SCModules, config: CryptoConfig, keyProvider: KeyProvider)
+  private final class IndexEncryptStage(modules: SCModules, config: CryptoConfig, keyChain: KeyChain)
     extends GraphStage[FlowShape[ByteString, EncryptedIndexData]] {
-
-    import as.dispatcher
 
     val inlet = Inlet[ByteString]("IndexEncrypt.in")
     val outlet = Outlet[EncryptedIndexData]("IndexEncrypt.out")
     val shape = FlowShape(inlet, outlet)
 
     def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
-      private[this] val encryption = new IndexEncryption(modules, config.encryption.keys, config.signing.index, serializer)
-      private[this] var waitingKey = false
-      private[this] var cachedKey: Option[KeySet] = None
+      private[this] val encryption = IndexEncryption(modules, config.encryption.keys, config.signing.index, serializer)
 
       private[this] def encryptData(data: ByteString): Unit = {
-        def encryptWith(key: KeySet): Unit = {
-          val result = encryption.encrypt(data, config.encryption.index, key)
-          push(outlet, result)
-        }
-
-        cachedKey match {
-          case Some(key) ⇒
-            encryptWith(key)
-
-          case None ⇒
-            val callback = getAsyncCallback[Try[KeySet]] {
-              case Success(key) ⇒
-                waitingKey = false
-                cachedKey = Some(key)
-                encryptWith(key)
-
-              case Failure(exc) ⇒
-                failStage(CryptoException.EncryptError(exc))
-            }
-            waitingKey = true
-            keyProvider.forEncryption().onComplete(callback.invoke)
-        }
-      }
-
-      override def onUpstreamFinish(): Unit = {
-        if (!waitingKey) super.onUpstreamFinish()
+        val result = encryption.encrypt(data, config.encryption.index, keyChain)
+        push(outlet, result)
       }
 
       def onPull(): Unit = {
@@ -138,7 +123,7 @@ final class IndexProcessingStreams(val modules: SCModules, val config: SCConfig,
     }
   }
 
-  private final class IndexDecryptStage(modules: SCModules, config: CryptoConfig, keyProvider: KeyProvider)
+  private final class IndexDecryptStage(modules: SCModules, config: CryptoConfig, keyChain: KeyChain)
     extends GraphStage[FlowShape[EncryptedIndexData, ByteString]] {
 
     val inlet = Inlet[EncryptedIndexData]("IndexDecrypt.in")
@@ -146,12 +131,8 @@ final class IndexProcessingStreams(val modules: SCModules, val config: SCConfig,
     val shape = FlowShape(inlet, outlet)
 
     def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
-      import as.dispatcher
-
       private[this] val log = Logging(as, "IndexDecryptStage")
-      private[this] val encryption = new IndexEncryption(modules, config.encryption.keys, config.signing.index, serializer)
-      private[this] var cachedKeys = Map.empty[UUID, KeySet]
-      private[this] var waitingKey = false
+      private[this] val encryption = IndexEncryption(modules, config.encryption.keys, config.signing.index, serializer)
 
       private[this] def pullInlet(): Unit = {
         if (isClosed(inlet)) {
@@ -162,39 +143,13 @@ final class IndexProcessingStreams(val modules: SCModules, val config: SCConfig,
       }
 
       private[this] def tryDecrypt(data: EncryptedIndexData): Unit = {
-        def decryptWith(key: KeySet): Unit = {
-          val result = encryption.decrypt(data, key)
+        try {
+          val result = encryption.decrypt(data, keyChain)
           push(outlet, result)
+        } catch { case NonFatal(exc) ⇒
+          log.error(CryptoException.DecryptError(exc), "Index file decrypt error")
+          pullInlet()
         }
-
-        cachedKeys.get(data.keysId) match {
-          case Some(key) ⇒
-            decryptWith(key)
-
-          case None ⇒
-            val callback = getAsyncCallback[Try[KeySet]] {
-              case Success(key) ⇒
-                try {
-                  waitingKey = false
-                  cachedKeys += key.id → key
-                  decryptWith(key)
-                } catch {
-                  case NonFatal(exc) ⇒
-                    log.error(CryptoException.DecryptError(exc), "Index file decrypt error")
-                    pullInlet()
-                }
-
-              case Failure(exc) ⇒
-                log.error(exc, "Key not found: {}", data.keysId)
-                pullInlet()
-            }
-            waitingKey = true
-            keyProvider.forDecryption(data.keysId).onComplete(callback.invoke)
-        }
-      }
-
-      override def onUpstreamFinish(): Unit = {
-        if (!waitingKey) super.onUpstreamFinish()
       }
 
       def onPull(): Unit = {

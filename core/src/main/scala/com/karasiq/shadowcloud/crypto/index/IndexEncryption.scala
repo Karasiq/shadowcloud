@@ -1,34 +1,71 @@
 package com.karasiq.shadowcloud.crypto.index
 
+import java.util.UUID
+
 import scala.language.postfixOps
+import scala.util.hashing.MurmurHash3
 
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.config.keys.KeySet
+import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.exceptions.CryptoException
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.serialization.SerializationModule
 import com.karasiq.shadowcloud.serialization.protobuf.index.EncryptedIndexData
+import com.karasiq.shadowcloud.utils.UUIDUtils
 
-private[shadowcloud] final class IndexEncryption(modules: SCModules, keyEncryption: EncryptionMethod,
-                                                 sign: SignMethod, serialization: SerializationModule) {
-  private[this] val keyEncryptionModule = modules.crypto.encryptionModule(keyEncryption)
-  private[this] val signModule = modules.crypto.signModule(sign)
-
-  def encrypt(data: ByteString, method: EncryptionMethod, keys: KeySet): EncryptedIndexData = {
-    val encryption = modules.crypto.encryptionModule(method)
-    val parameters = encryption.createParameters()
-    val encrypted = encryption.encrypt(data, parameters)
-    val header = keyEncryptionModule.encrypt(serialization.toBytes(parameters), keys.encryption)
-    IndexSignatures.sign(EncryptedIndexData(keys.id, header, encrypted, ByteString.empty), signModule, keys.sign)
+private[shadowcloud] object IndexEncryption {
+  def getKeyHash(dataId: UUID, keyId: UUID): Int = {
+    MurmurHash3.arrayHash((UUIDUtils.uuidToBytes(keyId) ++ UUIDUtils.uuidToBytes(dataId)).toArray)
   }
 
-  def decrypt(data: EncryptedIndexData, keys: KeySet): ByteString = {
-    if (data.keysId != keys.id || !IndexSignatures.verify(data, signModule, keys.sign)) {
-      throw CryptoException.InvalidSignature()
+  def apply(modules: SCModules, keyEncMethod: EncryptionMethod,
+            signMethod: SignMethod, serialization: SerializationModule): IndexEncryption = {
+    new IndexEncryption(modules, keyEncMethod, signMethod, serialization)
+  }
+}
+
+private[shadowcloud] final class IndexEncryption(modules: SCModules, keyEncMethod: EncryptionMethod,
+                                                 signMethod: SignMethod, serialization: SerializationModule) {
+  def encrypt(payload: ByteString, method: EncryptionMethod, keys: KeyChain): EncryptedIndexData = {
+    val keyEncModule = modules.crypto.encryptionModule(keyEncMethod)
+    val signModule = modules.crypto.signModule(signMethod)
+
+    def createEncryptedData(data: ByteString, method: EncryptionMethod): (EncryptedIndexData, EncryptionParameters) = {
+      val dataId = UUID.randomUUID()
+      val encryption = modules.crypto.encryptionModule(method)
+      val parameters = encryption.createParameters()
+      val encrypted = encryption.encrypt(data, parameters)
+      (EncryptedIndexData(dataId, data = encrypted), parameters)
     }
-    val parameters = serialization.fromBytes[EncryptionParameters](keyEncryptionModule.decrypt(data.header, keys.encryption))
+
+    def createHeader(data: EncryptedIndexData, parameters: EncryptionParameters, keys: KeySet): EncryptedIndexData.Header = {
+      val headerData = keyEncModule.encrypt(serialization.toBytes(parameters), keys.encryption)
+      val header = EncryptedIndexData.Header(IndexEncryption.getKeyHash(data.id, keys.id), headerData)
+      IndexSignatures.sign(data, header, signModule, keys.sign)
+    }
+
+    val (encData, encParameters) = createEncryptedData(payload, method)
+    val headers = keys.encKeys.values.map(keySet ⇒ createHeader(encData, encParameters, keySet))
+    encData.copy(headers = headers.toVector)
+  }
+
+  def decrypt(data: EncryptedIndexData, keys: KeyChain): ByteString = {
+    val keyEncModule = modules.crypto.encryptionModule(keyEncMethod)
+    val signModule = modules.crypto.signModule(signMethod)
+
+    val matchingKeys = data.headers.iterator.flatMap { header ⇒
+      keys.decKeys.keys
+        .find(IndexEncryption.getKeyHash(data.id, _) == header.keyHash)
+        .map(keyId ⇒ (keys.decKeys(keyId), header))
+        .filter { case (keySet, header) ⇒ IndexSignatures.verify(data, header, signModule, keySet.sign) }
+    }
+
+    if (matchingKeys.isEmpty) throw CryptoException.KeyMissing()
+    val (keySet, header) = matchingKeys.next()
+
+    val parameters = serialization.fromBytes[EncryptionParameters](keyEncModule.decrypt(header.data, keySet.encryption))
     val encryption = modules.crypto.encryptionModule(parameters.method)
     encryption.decrypt(data.data, parameters)
   }

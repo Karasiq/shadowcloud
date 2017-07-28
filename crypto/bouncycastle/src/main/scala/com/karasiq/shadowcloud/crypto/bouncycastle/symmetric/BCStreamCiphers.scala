@@ -23,19 +23,17 @@ private[bouncycastle] object BCStreamCiphers {
       throw new NoSuchAlgorithmException(algorithm)
   }
 
-  def createStreamCipher(algorithm: String): StreamCipher = {
-    algorithm match {
-      case "Salsa20" ⇒
-        new Salsa20Engine()
+  def createStreamCipher(algorithm: String): StreamCipher = algorithm match {
+    case "Salsa20" ⇒
+      new Salsa20Engine()
 
-      case "XSalsa20" ⇒
-        new XSalsa20Engine()
+    case "XSalsa20" ⇒
+      new XSalsa20Engine()
 
-      case "ChaCha20" ⇒
-        new ChaChaEngine()
+    case "ChaCha20" ⇒
+      new ChaChaEngine()
 
-      case _ ⇒
-        throw new NoSuchAlgorithmException(algorithm)
-    }
+    case _ ⇒
+      throw new NoSuchAlgorithmException(algorithm)
   }
 }

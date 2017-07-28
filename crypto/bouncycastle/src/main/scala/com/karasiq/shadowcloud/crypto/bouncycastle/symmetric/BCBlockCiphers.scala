@@ -11,149 +11,114 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCUtils
 
 //noinspection SpellCheckingInspection
 private[bouncycastle] object BCBlockCiphers {
-  val algorithms = Set(
-    "AES", "Blowfish", "Camellia", "CAST5", "CAST6", "DES", "DESede", "GOST28147", "IDEA", "Noekeon", "RC2", /* "RC532", "RC564", */
-    "RC6", "Rijndael", "SEED", "Serpent", "Shacal2", "Skipjack", "TEA", "Twofish", "Threefish", "XTEA"
-  )
+  private[this] sealed trait BlockCipherSpec {
+    def algorithm: String
+    def createInstance(): BlockCipher
+    def createInstanceWithBlockSize(blockSize: Int): BlockCipher
+    def keySize: Int
+    def blockSize: Int
+  }
+
+  private[this] val blockCipherSpecs = {
+    def baseCipher(_algorithm: String, _createInstance: ⇒ BlockCipher, _keySize: Int, _blockSize: Int): BlockCipherSpec = new BlockCipherSpec {
+      def algorithm: String = _algorithm
+      def createInstance(): BlockCipher = _createInstance
+      def createInstanceWithBlockSize(blockSize: Int): BlockCipher = throw new NotImplementedError()
+      def keySize: Int = _keySize
+      def blockSize: Int = _blockSize
+    }
+
+    def tweakableCipher(_algorithm: String, _createInstance: Int ⇒ BlockCipher, _keySize: Int, _blockSize: Int): BlockCipherSpec = new BlockCipherSpec {
+      def algorithm: String = _algorithm
+      def createInstance(): BlockCipher = createInstanceWithBlockSize(this.blockSize)
+      def createInstanceWithBlockSize(blockSize: Int): BlockCipher = _createInstance(blockSize)
+      def keySize: Int = _keySize
+      def blockSize: Int = _blockSize
+    }
+
+    // https://www.bouncycastle.org/specifications.html
+    // (\w+)Engine\t(?:[0 ,..]+)?([\d]+)(?:[\d ,..]+)?\t(\d+)(?:.*) => baseCipher("$1", new $1Engine, $2, $3),
+    val specs = Seq(
+      baseCipher("AES", new AESEngine, 256, 128),
+      // baseCipher("AESWrap", new AESWrapEngine, 256, 128),
+      baseCipher("Blowfish", new BlowfishEngine, 256, 64),
+      baseCipher("Camellia", new CamelliaEngine, 256, 128),
+      // baseCipher("CamelliaWrap", new CamelliaWrapEngine, 128, 128),
+      baseCipher("CAST5", new CAST5Engine, 128, 64),
+      baseCipher("CAST6", new CAST6Engine, 256, 128),
+      baseCipher("DES", new DESEngine, 64, 64),
+      baseCipher("DESede", new DESedeEngine, 192, 64),
+      // baseCipher("DESedeWrap", new DESedeWrapEngine, 128, 64),
+      baseCipher("GOST28147", new GOST28147Engine, 256, 64),
+      baseCipher("IDEA", new IDEAEngine, 128, 64),
+      baseCipher("Noekeon", new NoekeonEngine, 128, 128),
+      baseCipher("RC2", new RC2Engine, 256, 64),
+      // baseCipher("RC532", new RC532Engine, 128, 64),
+      // baseCipher("RC564", new RC564Engine, 128, 128),
+      baseCipher("RC6", new RC6Engine, 256, 128),
+      tweakableCipher("Rijndael", new RijndaelEngine(_), 256, 128),
+      baseCipher("SEED", new SEEDEngine, 128, 128),
+      // baseCipher("SEEDWrap", new SEEDWrapEngine, 128, 128),
+      baseCipher("Shacal2", new Shacal2Engine, 512, 256),
+      baseCipher("Serpent", new SerpentEngine, 256, 128),
+      baseCipher("Skipjack", new SkipjackEngine, 128, 64),
+      baseCipher("TEA", new TEAEngine, 128, 64),
+      tweakableCipher("Threefish", new ThreefishEngine(_), 256, 256),
+      baseCipher("Twofish", new TwofishEngine, 256, 128),
+      baseCipher("XTEA", new XTEAEngine, 128, 64)
+    )
+
+    specs.map(spec ⇒ (spec.algorithm, spec)).toMap
+  }
+
+  val algorithms = blockCipherSpecs.keySet
   val blockModes = Set("CBC", "CFB", "OFB")
   val aeadModes = Set("GCM", "CCM", "EAX", "OCB")
 
-  val blockAlgorithms = algorithms.flatMap(alg ⇒ blockModes.map(alg + "/" + _))
-  val aeadAlgorithms = algorithms.flatMap(alg ⇒ aeadModes.map(alg + "/" + _))
-
-  private[this] def testAlgorithm(algorithm: String, algorithms: Set[String], modes: Set[String]): Boolean = {
-    algorithm.split("/", 2) match {
-      case Array(alg, mode) ⇒
-        algorithms.contains(alg) && modes.contains(mode)
-
-      case _ ⇒
-        false
-    }
-  }
+  val blockAlgorithms = for (alg ← algorithms; mode ← blockModes) yield s"$alg/$mode"
+  val aeadAlgorithms = for (alg ← algorithms; mode ← aeadModes) yield s"$alg/$mode"
 
   def isBlockAlgorithm(algorithm: String): Boolean = {
-    testAlgorithm(algorithm, algorithms, blockModes)
+    blockAlgorithms.contains(algorithm)
   }
 
   def isAEADAlgorithm(algorithm: String): Boolean = {
-    testAlgorithm(algorithm, algorithms, aeadModes)
+    aeadAlgorithms.contains(algorithm)
   }
 
   /**
     * @see [[org.bouncycastle.jce.provider.BouncyCastleProvider#SYMMETRIC_CIPHERS]]
     *     [[https://www.bouncycastle.org/specifications.html]]
     */
-  def createBaseEngine(algorithm: String, blockSize: Option[Int] = None): BlockCipher = algorithm match {
-    case "AES" ⇒
-      new AESEngine // new AESFastEngine
+  def createBaseEngine(algorithm: String, blockSize: Option[Int] = None): BlockCipher = {
+    blockCipherSpecs.get(algorithm) match {
+      case Some(spec) ⇒
+        blockSize.fold(spec.createInstance())(bs ⇒ spec.createInstanceWithBlockSize(bs))
 
-    case "IDEA" ⇒
-      new IDEAEngine
-
-    case "Camellia" ⇒
-      new CamelliaEngine
-
-    case "Blowfish" ⇒
-      new BlowfishEngine
-
-    case "Twofish" ⇒
-      new TwofishEngine
-
-    case "XTEA" ⇒
-      new XTEAEngine
-
-    case "Rijndael" ⇒
-      new RijndaelEngine(blockSize.getOrElse(getBlockSize("Rijndael")))
-
-    case "SEED" ⇒
-      new SEEDEngine
-
-    case "Shacal2" ⇒
-      new Shacal2Engine
-
-    case "Serpent" ⇒
-      new SerpentEngine
-
-    case "Skipjack" ⇒
-      new SkipjackEngine
-
-    case "TEA" ⇒
-      new TEAEngine
-
-    case "Threefish" ⇒
-      new ThreefishEngine(blockSize.getOrElse(ThreefishEngine.BLOCKSIZE_256))
-
-    case "CAST5" ⇒
-      new CAST5Engine
-
-    case "CAST6" ⇒
-      new CAST6Engine
-
-    case "Noekeon" ⇒
-      new NoekeonEngine
-
-    case "RC2" ⇒
-      new RC2Engine
-
-    /* case "RC532" ⇒
-      new RC532Engine
-
-    case "RC564" ⇒
-      new RC564Engine */
-
-    case "RC6" ⇒
-      new RC6Engine
-
-    case "DESede" ⇒
-      new DESedeEngine
-
-    case "GOST28147" ⇒
-      new GOST28147Engine
-
-    case "DES" ⇒
-      new DESEngine
-
-    case _ ⇒
-      throw new NoSuchAlgorithmException(algorithm)
+      case None ⇒
+        throw new NoSuchAlgorithmException(algorithm)
+    }
   }
 
   def getBlockSize(algorithm: String): Int = {
     val (baseAlgorithm, _) = BCUtils.algorithmAndMode(algorithm)
-    baseAlgorithm match {
-      case "AES" | "Camellia" | "Twofish" | "Rijndael" | "SEED" | "Serpent" | "CAST6" | "Noekeon" | "RC564" | "RC6" ⇒
-        128
+    blockCipherSpecs.get(baseAlgorithm) match {
+      case Some(spec) ⇒
+        spec.blockSize
 
-      case "Threefish" | "Shacal2" ⇒
-        256
-
-      case "IDEA" | "Blowfish" | "XTEA" | "TEA" | "Skipjack" | "CAST5" | "RC2" | "RC532" | "DES" | "DESede" | "GOST28147" ⇒
-        64
-
-      case _ ⇒
-        128 // throw new NoSuchAlgorithmException(algorithm)
+      case None ⇒
+        throw new NoSuchAlgorithmException(algorithm)
     }
   }
 
   def getKeySize(algorithm: String): Int = {
     val (baseAlgorithm, _) = BCUtils.algorithmAndMode(algorithm)
-    baseAlgorithm match {
-      case "AES" | "Camellia" | "Threefish" | "Twofish" | "Rijndael" | "Serpent" | "CAST6"  | "RC6" | "GOST28147" ⇒
-        256
+    blockCipherSpecs.get(baseAlgorithm) match {
+      case Some(spec) ⇒
+        spec.keySize
 
-      case "CAST5" | "RC532" | "RC564" | "XTEA" | "TEA" | "SEED" | "Skipjack" ⇒
-        128 
-
-      case "Shacal2" ⇒
-        512
-
-      case "DESede" ⇒
-        192 
-
-      case "DES" ⇒
-        64
-
-      case _ ⇒
-        128 // throw new NoSuchAlgorithmException(algorithm)
+      case None ⇒
+        throw new NoSuchAlgorithmException(algorithm)
     }
   }
 

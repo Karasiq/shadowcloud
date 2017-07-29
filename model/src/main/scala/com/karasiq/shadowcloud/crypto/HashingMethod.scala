@@ -1,8 +1,8 @@
 package com.karasiq.shadowcloud.crypto
 
-import com.karasiq.shadowcloud.config.SerializedProps
-
 import scala.language.postfixOps
+
+import com.karasiq.shadowcloud.config.SerializedProps
 
 case class HashingMethod(algorithm: String, stream: Boolean = false, provider: String = "",
                          config: SerializedProps = SerializedProps.empty) extends CryptoMethod {
@@ -17,5 +17,5 @@ case class HashingMethod(algorithm: String, stream: Boolean = false, provider: S
 
 object HashingMethod {
   val none = HashingMethod("")
-  val default = HashingMethod("SHA1")
+  val default = HashingMethod("Blake2b")
 }

@@ -13,6 +13,7 @@ private[bouncycastle] trait BCDSAModule extends BCSignerModule {
   protected def dsaSigner: DSA
 
   override def init(sign: Boolean, parameters: SignParameters): Unit = {
+    val dsaSigner = this.dsaSigner
     require(dsaSigner.ne(null), "No DSA signer")
     this.signer = new DSADigestSigner(dsaSigner, BCDigests.createDigest(parameters.method.hashingMethod))
     super.init(sign, parameters)

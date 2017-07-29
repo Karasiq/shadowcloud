@@ -1,8 +1,8 @@
 package com.karasiq.shadowcloud.crypto
 
-import com.karasiq.shadowcloud.config.SerializedProps
-
 import scala.language.postfixOps
+
+import com.karasiq.shadowcloud.config.SerializedProps
 
 case class EncryptionMethod(algorithm: String, keySize: Int = 256, stream: Boolean = false,
                             provider: String = "", config: SerializedProps = SerializedProps.empty) extends CryptoMethod {
@@ -17,5 +17,5 @@ case class EncryptionMethod(algorithm: String, keySize: Int = 256, stream: Boole
 
 object EncryptionMethod {
   val none = EncryptionMethod("", 0)
-  val default = EncryptionMethod("AES", 256)
+  val default = EncryptionMethod("ChaCha20", 256)
 }

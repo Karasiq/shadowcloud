@@ -7,7 +7,7 @@ import com.twitter.chill
 import com.twitter.chill.{IKryoRegistrar, _}
 
 import com.karasiq.shadowcloud.config.SerializedProps
-import com.karasiq.shadowcloud.config.keys.KeySet
+import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
@@ -18,10 +18,12 @@ private[kryo] final class SCKryoRegistrar extends IKryoRegistrar {
     register(kryo, new ConfigSerializer(json = false))
     register(kryo, new WrappedConfigSerializer)
     register(kryo, new GeneratedMessageSerializer)
-    kryo.registerClasses(Iterator(classOf[Checksum], classOf[Chunk], classOf[ChunkIndex],
+    register(kryo, new TimestampSerializer)
+    kryo.registerClasses(Iterator(classOf[Checksum], classOf[Chunk], classOf[ChunkIndex], classOf[Timestamp],
       classOf[FolderIndex], classOf[ChunkIndexDiff], classOf[Data], classOf[File], classOf[Folder], classOf[FolderDiff],
       classOf[FolderIndexDiff], classOf[IndexDiff], classOf[Path], classOf[SerializedProps], classOf[HashingMethod], classOf[EncryptionMethod],
-      classOf[SignMethod], classOf[SymmetricEncryptionParameters], classOf[AsymmetricEncryptionParameters], classOf[SignParameters], classOf[KeySet]
+      classOf[SignMethod], classOf[SymmetricEncryptionParameters], classOf[AsymmetricEncryptionParameters], classOf[SignParameters], classOf[KeySet],
+      classOf[KeyChain]
     ))
   }
   

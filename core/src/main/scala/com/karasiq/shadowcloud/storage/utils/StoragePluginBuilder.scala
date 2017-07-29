@@ -10,14 +10,18 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository._
 
 object StoragePluginBuilder {
-  val defaultDelimiter = "__SCD__"
+  val defaultDelimiter = "__scd__"
 
-  def defaultIndexPath(props: StorageProps): Path = {
-    Path.root / s".sci-${props.address.postfix}"
+  def getIndexPath(props: StorageProps): Path = {
+    getRootPath(props) / "index"
   }
 
-  def defaultChunksPath(props: StorageProps): Path = {
-    Path.root / s".scc-${props.address.postfix}"
+  def getChunksPath(props: StorageProps): Path = {
+    getRootPath(props) / "data"
+  }
+
+  private[this] def getRootPath(props: StorageProps) = {
+    Path.root / (".sc-" + props.address.postfix)
   }
 }
 
@@ -32,7 +36,7 @@ case class StoragePluginBuilder(storageId: String,
   }
 
   def withIndexTree(repository: PathTreeRepository): StoragePluginBuilder = {
-    val indexRepo = PathTreeRepository.toCategorized(repository, StoragePluginBuilder.defaultIndexPath(props))
+    val indexRepo = PathTreeRepository.toCategorized(repository, StoragePluginBuilder.getIndexPath(props))
     withIndex(Repository.forIndex(indexRepo))
   }
 
@@ -46,7 +50,7 @@ case class StoragePluginBuilder(storageId: String,
   }
 
   def withChunksTree(repository: PathTreeRepository): StoragePluginBuilder = {
-    val indexRepo = PathTreeRepository.toCategorized(repository, StoragePluginBuilder.defaultChunksPath(props))
+    val indexRepo = PathTreeRepository.toCategorized(repository, StoragePluginBuilder.getChunksPath(props))
     withChunks(Repository.forChunks(indexRepo))
   }
 
@@ -62,10 +66,10 @@ case class StoragePluginBuilder(storageId: String,
   def createStorage()(implicit context: ActorContext): ActorRef = {
     require(index.nonEmpty, "Index repository not provided")
     require(chunks.nonEmpty, "Chunks repository not provided")
-    require(health.nonEmpty, "Health provider not provided")
+    // require(health.nonEmpty, "Health provider not provided")
 
     val indexSynchronizer = context.actorOf(StorageIndex.props(storageId, props, index.get), "index")
     val chunkIO = context.actorOf(ChunkIODispatcher.props(chunks.get), "chunks")
-    context.actorOf(StorageDispatcher.props(storageId, props, indexSynchronizer, chunkIO, health.get), "storageDispatcher")
+    context.actorOf(StorageDispatcher.props(storageId, props, indexSynchronizer, chunkIO, health.getOrElse(StorageHealthProvider.unlimited)), "storageDispatcher")
   }
 }

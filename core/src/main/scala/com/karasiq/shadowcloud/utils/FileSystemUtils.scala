@@ -11,7 +11,7 @@ import akka.stream.{ActorAttributes, Attributes}
 import akka.stream.scaladsl.Source
 
 private[shadowcloud] object FileSystemUtils {
-  def walkFileTree(folder: Path, walkUntil: Path ⇒ Boolean = _ ⇒ true,
+  def walkFileTree(folder: Path, walkUntil: Path ⇒ Boolean = dir ⇒ !Files.isSymbolicLink(dir),
                    includeFiles: Boolean = true, includeDirs: Boolean = true): Source[Path, NotUsed] = {
     Source.single(folder)
       .mapConcat { path ⇒

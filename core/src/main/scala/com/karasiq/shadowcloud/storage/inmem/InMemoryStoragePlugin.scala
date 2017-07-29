@@ -6,19 +6,21 @@ import scala.language.postfixOps
 import akka.actor.{ActorContext, ActorRef}
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, StorageDispatcher, StorageIndex}
+import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.props.StorageProps
+import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
+import com.karasiq.shadowcloud.storage.utils.StoragePluginBuilder
 
 private[storage] final class InMemoryStoragePlugin extends StoragePlugin {
   def createStorage(storageId: String, props: StorageProps)(implicit context: ActorContext): ActorRef = {
-    val indexMap = TrieMap.empty[(String, String), ByteString]
-    val index = Repository.forIndex(Repository.toCategorized(Repositories.fromConcurrentMap(indexMap)))
-    val chunkMap = TrieMap.empty[(String, ByteString), ByteString]
-    val chunks = Repository.toCategorized(Repositories.fromConcurrentMap(chunkMap))
-    val health = StorageHealthProviders.fromMaps(props.quota, indexMap, chunkMap)
-    val indexSynchronizer = context.actorOf(StorageIndex.props(storageId, props, index), "index")
-    val chunkIO = context.actorOf(ChunkIODispatcher.props(chunks), "chunks")
-    context.actorOf(StorageDispatcher.props(storageId, props, indexSynchronizer, chunkIO, health), "dispatcher")
+    val indexMap = TrieMap.empty[Path, ByteString]
+    val chunkMap = TrieMap.empty[Path, ByteString]
+
+    StoragePluginBuilder(storageId, props)
+      .withIndexTree(PathTreeRepository(Repositories.fromConcurrentMap(indexMap)))
+      .withChunksTree(PathTreeRepository(Repositories.fromConcurrentMap(chunkMap)))
+      .withHealth(StorageHealthProviders.fromMaps(props.quota, indexMap, chunkMap))
+      .createStorage()
   }
 }

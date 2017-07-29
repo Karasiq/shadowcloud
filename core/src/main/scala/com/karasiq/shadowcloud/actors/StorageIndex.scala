@@ -10,8 +10,8 @@ import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
-import com.karasiq.shadowcloud.storage.CategorizedRepository
 import com.karasiq.shadowcloud.storage.props.StorageProps
+import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 
 object StorageIndex {

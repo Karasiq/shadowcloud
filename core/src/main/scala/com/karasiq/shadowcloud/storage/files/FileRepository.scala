@@ -11,6 +11,7 @@ import akka.stream.scaladsl.{FileIO, Sink, Source}
 
 import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.storage._
+import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.utils.FileSystemUtils
 

@@ -6,7 +6,7 @@ import scala.language.postfixOps
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.storage.Repository
+import com.karasiq.shadowcloud.storage.repository.Repository
 import com.karasiq.shadowcloud.streams.utils.ByteStringConcat
 
 /**

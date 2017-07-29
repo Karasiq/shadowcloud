@@ -9,7 +9,8 @@ import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Source, ZipWith}
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.index.IndexData
-import com.karasiq.shadowcloud.storage.{Repository, StorageIOResult}
+import com.karasiq.shadowcloud.storage.StorageIOResult
+import com.karasiq.shadowcloud.storage.repository.Repository
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams, StorageUtils}
 
 private[storage] final class DefaultIndexRepositoryStreams(breadth: Int, writeFlow: Flow[IndexData, ByteString, _],

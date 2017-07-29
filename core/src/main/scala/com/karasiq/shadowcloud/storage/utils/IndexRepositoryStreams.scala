@@ -11,8 +11,8 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.config.StorageConfig
 import com.karasiq.shadowcloud.index.IndexData
-import com.karasiq.shadowcloud.storage.Repository
 import com.karasiq.shadowcloud.storage.internal.DefaultIndexRepositoryStreams
+import com.karasiq.shadowcloud.storage.repository.Repository
 
 private[shadowcloud] trait IndexRepositoryStreams {
   def write[Key](repository: Repository[Key]): Flow[(Key, IndexData), IndexIOResult[Key], NotUsed]

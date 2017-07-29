@@ -16,7 +16,8 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperation}
 import com.karasiq.shadowcloud.index.Chunk
-import com.karasiq.shadowcloud.storage.{CategorizedRepository, StorageIOResult}
+import com.karasiq.shadowcloud.storage.StorageIOResult
+import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.streams.utils.{ByteStringConcat, ByteStringLimit}
 import com.karasiq.shadowcloud.utils.HexString
 

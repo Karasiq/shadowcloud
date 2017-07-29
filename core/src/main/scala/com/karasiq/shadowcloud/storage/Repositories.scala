@@ -11,6 +11,7 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.storage.files.FileRepository
 import com.karasiq.shadowcloud.storage.inmem.ConcurrentMapRepository
+import com.karasiq.shadowcloud.storage.repository.{PathTreeRepository, Repository}
 
 /**
   * Standard repositories

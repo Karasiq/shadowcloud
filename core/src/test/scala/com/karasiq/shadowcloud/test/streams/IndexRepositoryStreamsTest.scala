@@ -10,6 +10,7 @@ import org.scalatest.FlatSpecLike
 
 import com.karasiq.shadowcloud.index.{IndexData, Path}
 import com.karasiq.shadowcloud.storage._
+import com.karasiq.shadowcloud.storage.repository.{KeyValueRepository, PathTreeRepository, RepositoryKeys}
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 
@@ -19,14 +20,14 @@ class IndexRepositoryStreamsTest extends ActorSpec with FlatSpecLike {
   }
 
   "File repository" should "store diff" in {
-    testRepository(PathTreeRepository.toFlatRepository(Repositories.fromDirectory(Files.createTempDirectory("irp-test")), Path.root / "default"))
+    testRepository(PathTreeRepository.toKeyValue(Repositories.fromDirectory(Files.createTempDirectory("irp-test")), Path.root / "default"))
   }
 
   it should "validate path" in {
     intercept[IllegalArgumentException](Repositories.fromDirectory(Files.createTempFile("irp-test", "file")))
   }
 
-  private[this] def testRepository(repository: BaseRepository): Unit = {
+  private[this] def testRepository(repository: KeyValueRepository): Unit = {
     val diff = TestUtils.randomDiff
     val testRepository = RepositoryKeys.toLong(repository)
 

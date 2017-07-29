@@ -24,6 +24,7 @@ import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.props.StorageProps.Quota
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
+import com.karasiq.shadowcloud.storage.repository.{PathTreeRepository, Repository}
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}

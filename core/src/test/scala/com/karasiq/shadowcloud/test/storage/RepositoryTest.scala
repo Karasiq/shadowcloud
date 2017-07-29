@@ -11,6 +11,7 @@ import org.scalatest.FlatSpecLike
 
 import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.storage._
+import com.karasiq.shadowcloud.storage.repository.{KeyValueRepository, PathTreeRepository, RepositoryKeys}
 import com.karasiq.shadowcloud.streams.utils.ByteStringConcat
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
 
@@ -20,14 +21,14 @@ class RepositoryTest extends ActorSpec with FlatSpecLike {
   }
 
   "File repository" should "store chunk" in {
-    testRepository(PathTreeRepository.toFlatRepository(Repositories.fromDirectory(Files.createTempDirectory("crp-test")), Path.root / "default"))
+    testRepository(PathTreeRepository.toKeyValue(Repositories.fromDirectory(Files.createTempDirectory("crp-test")), Path.root / "default"))
   }
 
   it should "validate path" in {
     intercept[IllegalArgumentException](Repositories.fromDirectory(Files.createTempFile("crp-test", "file")))
   }
 
-  private[this] def testRepository(repository: BaseRepository): Unit = {
+  private[this] def testRepository(repository: KeyValueRepository): Unit = {
     val chunk = TestUtils.randomChunk
     val testRepository = RepositoryKeys.toHexString(repository)
 

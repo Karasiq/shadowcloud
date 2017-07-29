@@ -1,9 +1,9 @@
-package com.karasiq.shadowcloud.storage
-
-import akka.stream.scaladsl.Source
+package com.karasiq.shadowcloud.storage.repository
 
 import scala.collection.immutable.TreeSet
 import scala.language.postfixOps
+
+import akka.stream.scaladsl.Source
 
 trait SeqRepository[Key] extends Repository[Key] {
   def sortedKeys(implicit ord: Ordering[Key]): Source[Key, Result] = {

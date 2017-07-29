@@ -17,8 +17,9 @@ import com.karasiq.shadowcloud.actors.events.StorageEvents._
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.storage.{Repository, StorageIOResult}
+import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.props.StorageProps
+import com.karasiq.shadowcloud.storage.repository.Repository
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 
 object RegionIndex {

@@ -1,8 +1,8 @@
-package com.karasiq.shadowcloud.storage.wrappers
+package com.karasiq.shadowcloud.storage.repository.wrappers
 
-import com.karasiq.shadowcloud.storage.{BaseRepository, CategorizedRepository}
+import com.karasiq.shadowcloud.storage.repository.{CategorizedRepository, KeyValueRepository}
 
-private[storage] final class PrefixedRepositoryWrapper(repository: BaseRepository, delimiter: String)
+private[repository] final class PrefixedRepositoryWrapper(repository: KeyValueRepository, delimiter: String)
   extends RepositoryKeyMapper[String, (String, String)](repository, PrefixedRepositoryWrapper.split(_, delimiter),
     PrefixedRepositoryWrapper.combine(_, delimiter)) with CategorizedRepository[String, String]
 

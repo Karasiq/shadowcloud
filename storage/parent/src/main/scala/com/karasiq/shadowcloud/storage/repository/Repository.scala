@@ -1,11 +1,14 @@
-package com.karasiq.shadowcloud.storage
+package com.karasiq.shadowcloud.storage.repository
 
 import scala.concurrent.{ExecutionContext, Future}
 
+import akka.NotUsed
+import akka.stream.Materializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.storage.wrappers.{RepositoryKeyMapper, RepositoryWrapper, SubRepositoriesWrapper}
+import com.karasiq.shadowcloud.storage.StorageIOResult
+import com.karasiq.shadowcloud.storage.repository.wrappers.{RepositoryKeyMapper, RepositoryWrapper, SubRepositoriesWrapper}
 import com.karasiq.shadowcloud.utils.HexString
 
 trait Repository[Key] {
@@ -52,8 +55,8 @@ object Repository {
     new RepositoryWrapper(repository) with CategorizedRepository[CatKey, Key]
   }
 
-  def fromSubRepositories[CatKey, Key](pathString: String, subRepositories: () ⇒ Map[CatKey, Repository[Key]])
-                                      (implicit ec: ExecutionContext): CategorizedRepository[CatKey, Key] = {
+  def fromSubRepositories[CatKey, Key](pathString: String, subRepositories: () ⇒ Source[(CatKey, Repository[Key]), NotUsed])
+                                      (implicit ec: ExecutionContext, mat: Materializer): CategorizedRepository[CatKey, Key] = {
     new SubRepositoriesWrapper(pathString, subRepositories)
   }
 }

@@ -7,6 +7,7 @@ import scala.util.Try
 import akka.persistence.{AtomicWrite, PersistentRepr}
 import akka.persistence.journal.{AsyncWriteJournal, Tagged}
 import akka.serialization.SerializationExtension
+import akka.stream.{ActorMaterializer, Materializer}
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 
@@ -17,10 +18,10 @@ final class H2AkkaJournal extends AsyncWriteJournal {
   // Context
   // -----------------------------------------------------------------------
   private[this] val h2DB = H2DB(context.system)
+  private[this] implicit val materializer: Materializer = ActorMaterializer()
 
   import context.dispatcher
   import h2DB.context.db.{run ⇒ runQuery, _}
-  import h2DB.sc.implicits.materializer
 
   // -----------------------------------------------------------------------
   // Schema

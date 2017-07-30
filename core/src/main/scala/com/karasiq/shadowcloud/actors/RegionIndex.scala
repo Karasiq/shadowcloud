@@ -51,7 +51,7 @@ object RegionIndex {
   }
 }
 
-private final class RegionIndex(storageId: String, regionId: String, storageProps: StorageProps, repository: Repository[Long])
+private[actors] final class RegionIndex(storageId: String, regionId: String, storageProps: StorageProps, repository: Repository[Long])
   extends PersistentActor with ActorLogging {
   import context.dispatcher
 
@@ -108,7 +108,7 @@ private final class RegionIndex(storageId: String, regionId: String, storageProp
   // -----------------------------------------------------------------------
   // Default receive
   // -----------------------------------------------------------------------
-  override def receiveRecover: Receive = {
+  override def receiveRecover: Receive = { // TODO: Faster recover, auto snapshots
     case SnapshotOffer(metadata, Snapshot(state)) ⇒
       log.debug("Loading snapshot: {}", metadata)
       updateState(IndexLoaded(regionId, state))

@@ -140,7 +140,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
         val dispatcher = context.actorOf(supervisorProps, Utils.uniqueActorName(s"$regionId-sv"))
         dispatcher ! RegionContainer.SetConfig(config)
         regions += regionId → RegionStatus(regionId, config, State.Active(dispatcher))
-        storages.foreach(registerStorage(regionId, _))
+        registerRegionStorages(regionId)
 
       case _ ⇒
         // Pass
@@ -209,5 +209,15 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     storages += storageId → storage.copy(regions = storage.regions - regionId)
     State.ifActive(region.actorState, _ ! RegionDispatcher.DetachStorage(storageId))
     State.ifActive(storage.actorState, _ ! StorageIndex.CloseIndex(regionId))
+  }
+
+  def registerRegionStorages(regionId: String): Unit = {
+    regions.get(regionId) match {
+      case Some(region) ⇒
+        region.storages.foreach(registerStorage(regionId, _))
+
+      case None ⇒
+        // Pass
+    }
   }
 }

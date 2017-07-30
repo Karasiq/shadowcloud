@@ -15,17 +15,22 @@ object H2DB extends ExtensionId[H2DBExtension] with ExtensionIdProvider {
 }
 
 class H2DBExtension(system: ExtendedActorSystem) extends Extension {
-  lazy val sc = ShadowCloud(system)
-  lazy val config = sc.rootConfig.getConfig("persistence.h2")
-  lazy val dispatcher = system.dispatchers.lookup("shadowcloud.persistence.h2.dispatcher")
+  object settings {
+    private[this] val sc = ShadowCloud(system)
+    val config = sc.rootConfig.getConfig("persistence.h2")
 
-  private[this] def getDbPassword: String = {
-    sc.passwords.masterPassword.replace(' ', '_')
+    private[H2DBExtension] def getDbPassword(): String = {
+      sc.passwords.getOrAsk("persistence.h2.password", "h2-db").replace(' ', '_')
+    }
   }
 
+  lazy val dispatcher = system.dispatchers.lookup("shadowcloud.persistence.h2.dispatcher")
+
   lazy val context = {
-    val context = new H2Context(config, getDbPassword)
+    val context = new H2Context(settings.config, settings.getDbPassword())
     system.registerOnTermination(context.db.close())
     context
   }
+
+
 }

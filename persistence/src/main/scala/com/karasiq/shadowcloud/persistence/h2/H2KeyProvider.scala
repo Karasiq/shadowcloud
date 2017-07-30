@@ -9,14 +9,15 @@ import scala.util.Try
 import akka.actor.ActorSystem
 import akka.util.ByteString
 
+import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.config.keys.{KeyChain, KeyManager, KeySet}
 import com.karasiq.shadowcloud.persistence.utils.SCQuillEncoders
 
 final class H2KeyProvider(actorSystem: ActorSystem) extends KeyManager {
   private[this] val h2 = H2DB(actorSystem)
+  private[this] implicit val sc = ShadowCloud(actorSystem)
   private[this] implicit val executionContext: ExecutionContext = h2.dispatcher
 
-  import h2.sc
   import h2.context.db
   import db._
 

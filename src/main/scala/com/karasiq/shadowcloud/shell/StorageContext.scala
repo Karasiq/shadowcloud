@@ -11,12 +11,12 @@ private[shell] object StorageContext {
 private[shell] final class StorageContext(val storageId: String)(implicit context: ShellContext) {
   import context.sc.ops.{storage, supervisor}
 
-  def sync(): Unit = {
-    storage.synchronize(storageId)
+  def sync(regionId: String): Unit = {
+    storage.synchronize(storageId, regionId)
   }
 
-  def compactIndex(region: String): Unit = {
-    storage.compactIndex(storageId, region)
+  def compactIndex(regionId: String): Unit = {
+    storage.compactIndex(storageId, regionId)
   }
 
   def terminate(): Unit = {

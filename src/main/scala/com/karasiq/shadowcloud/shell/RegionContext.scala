@@ -7,9 +7,9 @@ import scala.concurrent.duration.Duration
 import scala.language.postfixOps
 
 import akka.stream.IOResult
-import akka.stream.scaladsl.FileIO
+import akka.stream.scaladsl.{FileIO, Sink}
 
-import com.karasiq.shadowcloud.actors.utils.RegionGCState
+import com.karasiq.shadowcloud.actors.utils.{RegionGCState, StorageGCState}
 import com.karasiq.shadowcloud.index.{File, Folder, Path}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 
@@ -60,7 +60,11 @@ private[shell] final class RegionContext(val regionId: String)(implicit context:
   }
 
   def upload(localPath: FSPath, path: Path): File = {
-    val future = FileIO.fromPath(localPath).runWith(sc.streams.file.write(regionId, path))
+    val future = FileIO.fromPath(localPath)
+      .via(sc.streams.metadata.writeFileAndMetadata(regionId, path))
+      .map(_._1)
+      .runWith(Sink.head)
+
     // file.foreach(file ⇒ println(ShellUtils.toString(file)))
     await(future)
   }
@@ -72,7 +76,7 @@ private[shell] final class RegionContext(val regionId: String)(implicit context:
     await(future)
   }
 
-  def collectGarbage(delete: Boolean = false): Map[String, RegionGCState] = {
+  def collectGarbage(delete: Boolean = false): (RegionGCState, Map[String, StorageGCState]) = {
     await(sc.ops.region.collectGarbage(regionId, delete))
   }
 

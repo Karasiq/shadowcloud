@@ -10,21 +10,23 @@ import com.karasiq.shadowcloud.actors.internal.StorageInstantiator
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.utils.Utils
 
-object StorageContainer {
+private[actors] object StorageContainer {
   sealed trait Message
   case class SetProps(storageProps: StorageProps) extends Message
 
   def props(instantiator: StorageInstantiator, storageId: String): Props = {
-    Props(classOf[StorageContainer], instantiator, storageId)
+    Props(new StorageContainer(instantiator, storageId))
   }
 }
 
-class StorageContainer(instantiator: StorageInstantiator, storageId: String) extends Actor with ActorLogging with Stash with ContainerActor {
+private[actors] final class StorageContainer(instantiator: StorageInstantiator, storageId: String)
+  extends Actor with ActorLogging with Stash with ContainerActor {
+
   var storageProps: StorageProps = StorageProps.inMemory
 
   def receive: Receive = {
     case SetProps(props) ⇒
-      log.info("Storage props changed: {}", props)
+      log.warning("Storage props changed: {}", props)
       this.storageProps = props
       restartActor()
   }
@@ -50,6 +52,6 @@ class StorageContainer(instantiator: StorageInstantiator, storageId: String) ext
       }
     })
     val actor = context.actorOf(props, Utils.uniqueActorName(storageId))
-    afterStart(actor)
+    afterStart(actor) // TODO: Renew storage subscriptions
   }
 }

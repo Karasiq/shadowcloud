@@ -150,7 +150,7 @@ final class IndexProcessingStreams(val modules: SCModules, val config: SCConfig,
           log.error(CryptoException.DecryptError(exc), "Index file decrypt error")
           pullInlet()
         }
-      }
+      }                                        
 
       def onPull(): Unit = {
         pullInlet()

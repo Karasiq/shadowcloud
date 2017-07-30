@@ -4,8 +4,8 @@ val commonSettings = Seq(
   organization := "com.github.karasiq",
   version := "1.0.0-SNAPSHOT",
   isSnapshot := version.value.endsWith("SNAPSHOT"),
-  scalaVersion := "2.12.1",
-  crossScalaVersions := Seq("2.11.8", "2.12.1"),
+  scalaVersion := "2.12.3",
+  // crossScalaVersions := Seq("2.11.8", "2.12.3"),
   licenses := Seq("Apache License, Version 2.0" → url("http://opensource.org/licenses/Apache-2.0"))
 )
 
@@ -103,6 +103,16 @@ lazy val imageioMetadata = metadataPlugin("imageio")
 // -----------------------------------------------------------------------
 // HTTP
 // -----------------------------------------------------------------------
+lazy val autowireApi = (crossProject.crossType(CrossType.Pure) in (file("server") / "autowire-api"))
+  .settings(commonSettings)
+  .jvmSettings(libraryDependencies ++= ProjectDeps.autowire ++ ProjectDeps.playJson)
+  .jsSettings(ScalaJSDeps.autowire, ScalaJSDeps.playJson, ScalaJSDeps.browserDom)
+  .dependsOn(model)
+
+lazy val autowireApiJVM = autowireApi.jvm
+
+lazy val autowireApiJS = autowireApi.js
+
 lazy val server = project
   .settings(commonSettings)
   .settings(
@@ -113,11 +123,12 @@ lazy val server = project
     scalaJsBundlerCompile in Compile <<= (scalaJsBundlerCompile in Compile)
       .dependsOn(fastOptJS in Compile in webapp)
   )
-  .dependsOn(coreAssembly)
+  .dependsOn(coreAssembly, javafx, autowireApiJVM)
   .enablePlugins(ScalaJSBundlerPlugin, JavaAppPackaging)
 
 lazy val webapp = (project in file("server") / "webapp")
   .settings(commonSettings)
+  .dependsOn(autowireApiJS)
   .enablePlugins(ScalaJSPlugin)
 
 // -----------------------------------------------------------------------
@@ -141,7 +152,7 @@ lazy val shell = (project in file("."))
         |test()
         |""".stripMargin,
     liquibaseUsername := "sa",
-    liquibasePassword := s"${sys.props("shadowcloud.master-password").ensuring(_.ne(null), "No password").replace(' ', '_')} sa",
+    liquibasePassword := s"${sys.props("shadowcloud.persistence.h2.password").ensuring(_.ne(null), "No password").replace(' ', '_')} sa",
     liquibaseDriver := "org.h2.Driver",
     liquibaseUrl := {
       val path = sys.props.getOrElse("shadowcloud.persistence.h2.path", s"${sys.props("user.home")}/.shadowcloud/shadowcloud")

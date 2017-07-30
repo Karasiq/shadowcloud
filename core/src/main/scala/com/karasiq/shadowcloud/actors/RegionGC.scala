@@ -38,12 +38,12 @@ object RegionGC {
   private case class DeleteGarbage(regionState: RegionGCState, storageStates: Seq[(RegionStorage, StorageGCState)]) extends InternalMessage
 
   // Props
-  def props(regionId: String, config: GCConfig): Props = {
+  private[actors] def props(regionId: String, config: GCConfig): Props = {
     Props(new RegionGC(regionId, config))
   }
 }
 
-private final class RegionGC(regionId: String, config: GCConfig) extends Actor with ActorLogging {
+private[actors] final class RegionGC(regionId: String, config: GCConfig) extends Actor with ActorLogging {
   import context.dispatcher
 
   import RegionGC._
@@ -83,7 +83,7 @@ private final class RegionGC(regionId: String, config: GCConfig) extends Actor w
             log.error(error, "Error getting free space")
         }
       } else {
-        log.debug("Garbage collection will be started in {} minutes", gcDeadline.timeLeft.toMinutes)
+        // log.debug("Garbage collection will be started in {} minutes", gcDeadline.timeLeft.toMinutes)
       }
 
     case StartGCNow(delete) ⇒

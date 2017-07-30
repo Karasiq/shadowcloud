@@ -24,7 +24,6 @@ object Shell extends ImplicitConversions {
     }
 
     // TODO: sc.start() function
-    sc.passwords.masterPassword // Request password
     sc.actors.regionSupervisor // Start actor
 
     val state = Await.result(sc.ops.supervisor.getSnapshot(), Duration.Inf)
@@ -34,7 +33,7 @@ object Shell extends ImplicitConversions {
       testRegion.register(testStorage)
     }
 
-    println(Await.result(sc.keys.provider.forEncryption(), Duration.Inf))
+    println(Await.result(sc.keys.provider.getKeyChain(), Duration.Inf))
 
     sys.addShutdownHook(Await.result(actorSystem.terminate(), Duration.Inf))
   }
@@ -65,13 +64,13 @@ object Shell extends ImplicitConversions {
     val testRegion = openRegion("test")
     val testStorage = openStorage("test")
 
-    testStorage.sync()
+    testStorage.sync("test")
     Thread.sleep(5000)
 
     println("Uploading file")
     val testFile = "LICENSE"
     testRegion.upload(testFile, testFile)
-    testStorage.sync()
+    testStorage.sync("test")
     Thread.sleep(5000)
 
     println("Downloading file")
@@ -80,12 +79,12 @@ object Shell extends ImplicitConversions {
 
     println("Deleting file")
     testRegion.deleteFile(testFile)
-    testStorage.sync()
+    testStorage.sync("test")
     Thread.sleep(5000)
 
     testRegion.collectGarbage(delete = true)
     testStorage.compactIndex(testRegion.regionId)
-    testStorage.sync()
+    testStorage.sync("test")
   }
 
   def quit(): Unit = {

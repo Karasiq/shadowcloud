@@ -31,6 +31,8 @@ object RegionSupervisor {
   case class ResumeRegion(regionId: String) extends Message
   case object GetSnapshot extends Message with MessageStatus[NotUsed, RegionTracker.Snapshot]
 
+  private[actors] case class RenewRegionSubscriptions(regionId: String) extends Message
+
   // Snapshot
   private[actors] case class RegionSnapshot(config: RegionConfig, storages: Set[String], active: Boolean)
   private[actors] case class StorageSnapshot(props: StorageProps, active: Boolean)
@@ -151,7 +153,10 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
       persist(RegionStateChanged(regionId, active = true))(updateState)
 
     case GetSnapshot ⇒
-      sender() ! GetSnapshot.Success(NotUsed, state.getSnapshot())
+      deferAsync(NotUsed)(_ ⇒ sender() ! GetSnapshot.Success(NotUsed, state.getSnapshot()))
+
+    case RenewRegionSubscriptions(regionId) ⇒
+      deferAsync(NotUsed)(_ ⇒ state.registerRegionStorages(regionId))
 
     // -----------------------------------------------------------------------
     // Envelopes

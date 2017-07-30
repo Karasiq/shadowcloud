@@ -10,6 +10,7 @@ import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
+import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
@@ -31,7 +32,7 @@ object StorageIndex {
   }
 }
 
-private final class StorageIndex(storageId: String, storageProps: StorageProps, repository: CategorizedRepository[String, Long])
+private[actors] final class StorageIndex(storageId: String, storageProps: StorageProps, repository: CategorizedRepository[String, Long])
   extends Actor with ActorLogging {
 
   import StorageIndex._
@@ -53,7 +54,7 @@ private final class StorageIndex(storageId: String, storageProps: StorageProps, 
           dispatcher.forward(message)
 
         case None ⇒
-          sender() ! Status.Failure(new NoSuchElementException(regionId))
+          sender() ! Status.Failure(StorageException.NotFound(regionId))
       }
 
     case SynchronizeAll ⇒

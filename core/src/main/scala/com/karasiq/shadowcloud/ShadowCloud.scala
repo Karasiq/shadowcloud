@@ -87,10 +87,6 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     def getOrAsk(configPath: String, passwordId: String): String = {
       rootConfig.withDefault(provider.askPassword(passwordId), _.getString(configPath))
     }
-
-    lazy val masterPassword: String = {
-      getOrAsk("password", "master")
-    }
   }
 
   // -----------------------------------------------------------------------

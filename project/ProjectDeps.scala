@@ -5,28 +5,28 @@ object ProjectDeps {
   type Deps = Seq[ModuleID]
 
   object akka {
-    private val akkaV = "2.5.2"
-    private val akkaHttpV = "10.0.7"
+    val version = "2.5.2"
+    val httpVersion = "10.0.9"
 
     def actors: Deps = Seq(
-      "com.typesafe.akka" %% "akka-actor" % akkaV
+      "com.typesafe.akka" %% "akka-actor" % version
     )
 
     def streams: Deps = Seq(
-      "com.typesafe.akka" %% "akka-stream" % akkaV
+      "com.typesafe.akka" %% "akka-stream" % version
     )
 
     def http: Deps = Seq(
-      "com.typesafe.akka" %% "akka-http" % akkaHttpV
+      "com.typesafe.akka" %% "akka-http" % httpVersion
     )
 
     def persistence: Deps = Seq(
-      "com.typesafe.akka" %% "akka-persistence" % akkaV
+      "com.typesafe.akka" %% "akka-persistence" % version
     )
 
     def testKit: Deps = Seq(
-      "com.typesafe.akka" %% "akka-testkit" % akkaV % "test",
-      "com.typesafe.akka" %% "akka-stream-testkit" % akkaV % "test"
+      "com.typesafe.akka" %% "akka-testkit" % version % "test",
+      "com.typesafe.akka" %% "akka-stream-testkit" % version % "test"
     )
 
     def all: Deps = {
@@ -35,8 +35,8 @@ object ProjectDeps {
 
     def provided: Def.Setting[Seq[ModuleID]] = {
       libraryDependencies ++= Seq(
-        "com.typesafe.akka" %% "akka-actor" % akkaV % "provided",
-        "com.typesafe.akka" %% "akka-stream" % akkaV % "provided"
+        "com.typesafe.akka" %% "akka-actor" % version % "provided",
+        "com.typesafe.akka" %% "akka-stream" % version % "provided"
       )
     }
   }
@@ -54,6 +54,14 @@ object ProjectDeps {
   def protobuf: Deps = Seq(
     "com.trueaccord.scalapb" %% "scalapb-runtime" % com.trueaccord.scalapb.compiler.Version.scalapbVersion,
     "com.trueaccord.scalapb" %% "scalapb-runtime" % com.trueaccord.scalapb.compiler.Version.scalapbVersion % "protobuf"
+  )
+
+  def autowire: Deps = Seq(
+    "com.lihaoyi" %% "autowire" % "0.2.6"
+  )
+
+  def playJson: Deps = Seq(
+    "com.typesafe.play" %% "play-json" % "2.6.0"
   )
 
   def bouncyCastle: Deps = Seq(

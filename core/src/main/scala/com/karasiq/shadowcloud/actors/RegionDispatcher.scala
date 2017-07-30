@@ -7,7 +7,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props, Terminated}
+import akka.actor.{Actor, ActorLogging, ActorRef, PossiblyHarmful, Props, Terminated}
 import akka.pattern.ask
 import akka.util.Timeout
 
@@ -58,7 +58,9 @@ object RegionDispatcher {
   case class RewriteChunk(chunk: Chunk, newAffinity: Option[ChunkWriteAffinity]) extends Message
 
   // Internal messages
-  private case class PushDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)], pending: IndexDiff) extends Message
+  private sealed trait InternalMessage extends Message with PossiblyHarmful
+  private case class PushDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)], pending: IndexDiff) extends InternalMessage
+  private case class PullStorageIndex(storageId: String) extends InternalMessage
 
   // Props
   def props(regionId: String, regionProps: RegionConfig): Props = {
@@ -185,27 +187,22 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
     // -----------------------------------------------------------------------
     // Storage events
     // -----------------------------------------------------------------------
-    case AttachStorage(storageId, props, dispatcher, health) if !storages.contains(storageId) ⇒
-      log.info("Registered storage: {} -> {} [{}]", storageId, dispatcher, health)
-      storages.register(storageId, props, dispatcher, health)
-      if (health == StorageHealth.empty) dispatcher ! StorageDispatcher.CheckHealth
+    case AttachStorage(storageId, props, dispatcher, health) ⇒
+      if (storages.contains(storageId) && storages.getDispatcher(storageId) == dispatcher) {
+        // Ignore
+      } else {
+        if (storages.contains(storageId)) {
+          val oldDispatcher = storages.getDispatcher(storageId)
+          log.warning("Replacing storage {} with new dispatcher: {} -> {}", storageId, oldDispatcher, dispatcher)
+          dropStorageDiffs(storageId)
+          storages.unregister(oldDispatcher)
+          chunks.unregister(oldDispatcher)
+        }
 
-      val indexFuture = RegionIndex.GetIndex.unwrapFuture(dispatcher ?
-        StorageIndex.Envelope(regionId, RegionIndex.GetIndex))
-
-      indexFuture.onComplete {
-        case Success(IndexMerger.State(diffs, pending)) ⇒
-          self ! PushDiffs(storageId, diffs, pending)
-
-        case Failure(_: StorageException.NotFound) ⇒
-          val diff = globalIndex.mergedDiff.merge(globalIndex.pending)
-          if (diff.nonEmpty) {
-            log.info("Mirroring index to storage {}: {}", storageId, diff)
-            dispatcher ! StorageIndex.Envelope(regionId, WriteDiff(diff))
-          }
-
-        case Failure(error) ⇒
-          log.error(error, "Error fetching index: {}", dispatcher)
+        log.info("Registered storage {}: {}", storageId, dispatcher, health)
+        storages.register(storageId, props, dispatcher, health)
+        if (health == StorageHealth.empty) dispatcher ! StorageDispatcher.CheckHealth
+        self ! PullStorageIndex(storageId)
       }
 
     case DetachStorage(storageId) if storages.contains(storageId) ⇒
@@ -216,6 +213,32 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
 
     case GetStorages ⇒
       sender() ! GetStorages.Success(regionId, storages.storages)
+
+    case PullStorageIndex(storageId) if storages.contains(storageId) ⇒
+      gcActor ! RegionGC.Defer(1 minute)
+      val scheduler = context.system.scheduler
+      val storage = storages.getStorage(storageId)
+
+      storage.dispatcher ! StorageIndex.OpenIndex(regionId)
+      val indexFuture = RegionIndex.GetIndex.unwrapFuture(storage.dispatcher ?
+        StorageIndex.Envelope(regionId, RegionIndex.GetIndex))
+
+      indexFuture.onComplete {
+        case Success(IndexMerger.State(Nil, IndexDiff.empty)) | Failure(_: StorageException.NotFound) ⇒
+          val diff = globalIndex.mergedDiff.merge(globalIndex.pending)
+          if (diff.nonEmpty) {
+            log.info("Mirroring index to storage {}: {}", storageId, diff)
+            storage.dispatcher ! StorageIndex.Envelope(regionId, WriteDiff(diff))
+          }
+
+        case Success(IndexMerger.State(diffs, pending)) ⇒
+          log.debug("Storage {} index fetched: {} ({})", storageId, diffs, pending)
+          self ! PushDiffs(storageId, diffs, pending)
+
+        case Failure(error) ⇒
+          log.error(error, "Error fetching index from storage: {}", storageId)
+          scheduler.scheduleOnce(10 seconds, self, PullStorageIndex(storageId))
+      }
 
     case PushDiffs(storageId, diffs, pending) if storages.contains(storageId) ⇒
       globalIndex.addPending(pending)

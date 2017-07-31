@@ -62,7 +62,7 @@ case class FolderIndexDiff(folders: Seq[FolderDiff] = Vector.empty)
   }
 
   override def toString: String = {
-    if (isEmpty) "FolderTreeDiff.empty" else s"FolderTreeDiff(${folders.mkString(", ")})"
+    if (isEmpty) "FolderIndexDiff.empty" else s"FolderIndexDiff(${Utils.printValues(folders, 5)})"
   }
 
   private[this] def withFolders(folders: Seq[FolderDiff]): FolderIndexDiff = {

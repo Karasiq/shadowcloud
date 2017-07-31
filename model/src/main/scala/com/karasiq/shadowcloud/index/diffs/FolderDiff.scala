@@ -4,7 +4,7 @@ import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.utils._
-import com.karasiq.shadowcloud.utils.MergeUtil
+import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 import com.karasiq.shadowcloud.utils.MergeUtil.SplitDecider
 
 case class FolderDiff(path: Path, time: Long = 0, newFiles: Set[File] = Set.empty,
@@ -58,7 +58,7 @@ case class FolderDiff(path: Path, time: Long = 0, newFiles: Set[File] = Set.empt
 
   override def toString: String = {
     if (nonEmpty) {
-      s"FolderDiff($path, $time, new files = [${newFiles.mkString(", ")}], deleted files = [${deletedFiles.mkString(", ")}], new folders = [${newFolders.mkString(", ")}], deleted folders = [${deletedFolders.mkString(", ")}])"
+      s"FolderDiff($path, $time, new files = [${Utils.printValues(newFiles, 5)}], deleted files = [${Utils.printValues(deletedFiles, 10)}], new folders = [${Utils.printValues(newFolders, 10)}], deleted folders = [${Utils.printValues(deletedFolders, 10)}])"
     } else {
       s"FolderDiff.empty($path)"
     }

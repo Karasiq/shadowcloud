@@ -31,27 +31,32 @@ private[shadowcloud] object Utils {
   // -----------------------------------------------------------------------
   // toString() utils
   // -----------------------------------------------------------------------
+  private[this] val printValueDelimiter = ", "
+
   def printValues[T](values: Traversable[T], limit: Int = 10): String = {
     val sb = new StringBuilder(100)
     val size = values.size
-    values.take(limit).foreach(v ⇒ sb.append(v.toString))
-    if (size > limit) sb.append(", (").append(size - limit).append(" more)")
+    values.take(limit).foreach { v ⇒
+      if (sb.nonEmpty) sb.append(printValueDelimiter)
+      sb.append(v.toString)
+    }
+    if (size > limit) sb.append(printValueDelimiter).append("(").append(size - limit).append(" more)")
     sb.result()
   }
 
-  def printHashes(hashes: Traversable[ByteString], limit: Int = 20): String = {
+  def printHashes(hashes: Traversable[ByteString], limit: Int = 10): String = {
     if (hashes.isEmpty) return ""
     val size = hashes.size
     val sb = new StringBuilder(math.min(limit, size) * (hashes.head.length * 2) + 10)
     hashes.filter(_.nonEmpty).take(limit).foreach { hash ⇒
-      if (sb.nonEmpty) sb.append(", ")
+      if (sb.nonEmpty) sb.append(printValueDelimiter)
       sb.append(HexString.encode(hash))
     }
-    if (size > limit) sb.append(", (").append(size - limit).append(" more)")
+    if (size > limit) sb.append(printValueDelimiter + "(").append(size - limit).append(" more)")
     sb.result()
   }
 
-  def printChunkHashes(chunks: Traversable[Chunk], limit: Int = 20): String = {
+  def printChunkHashes(chunks: Traversable[Chunk], limit: Int = 10): String = {
     printHashes(chunks.map(_.checksum.hash))
   }
 

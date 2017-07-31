@@ -33,7 +33,7 @@ case class File(path: Path, id: File.ID = File.newFileId, timestamp: Timestamp =
   }
 
   override def toString: String = {
-    s"File($path#$revision, $checksum, chunks: [${Utils.printChunkHashes(chunks)}])"
+    s"File($path#$revision, $checksum, chunks: [${Utils.printChunkHashes(chunks, 5)}])"
   }
 }
 

@@ -4,7 +4,7 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 
-object HexString {
+object HexString extends ByteStringEncoding {
   private[this] val HEX_DIGITS = Array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f')
 
   def encode(data: ByteString): String = {

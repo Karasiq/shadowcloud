@@ -3,9 +3,17 @@ package com.karasiq.shadowcloud.persistence.h2
 import com.typesafe.config.{Config, ConfigFactory}
 import io.getquill.{H2JdbcContext, SnakeCase}
 
-private object H2Context {
-  def createJdbcConfig(config: Config, password: String): Config = {
+object H2Context {
+  type ContextT = H2JdbcContext[SnakeCase]
+
+  def apply(config: Config, password: String): ContextT = {
+    new ContextT(createJdbcConfig(config, password))
+  }
+
+  private[this] def createJdbcConfig(config: Config, password: String): Config = {
     import scala.collection.JavaConverters._
+    require(!password.contains(" "), "Space character is not allowed")
+
     val path = config.getString("path")
     val cipher = config.getString("cipher")
     val compress = config.getBoolean("compress")
@@ -19,8 +27,4 @@ private object H2Context {
       "dataSource.password" → s"$password sa"
     ).asJava)
   }
-}
-
-final class H2Context(config: Config, password: String) { // TODO: In-memory mode
-  lazy val db = new H2JdbcContext[SnakeCase](H2Context.createJdbcConfig(config, password))
 }

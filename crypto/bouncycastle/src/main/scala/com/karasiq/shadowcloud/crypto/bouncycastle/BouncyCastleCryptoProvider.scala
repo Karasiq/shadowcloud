@@ -22,7 +22,8 @@ final class BouncyCastleCryptoProvider extends CryptoProvider with ConfigImplici
   override val encryptionAlgorithms: Set[String] = {
     BCBlockCiphers.blockAlgorithms ++
     BCBlockCiphers.aeadAlgorithms ++
-    Set("ChaCha20", "ECIES", "RSA")
+    BCStreamCiphers.algorithms ++
+    Set("ECIES", "RSA")
   }
 
   // TODO: AESFastEngine, Poly1305

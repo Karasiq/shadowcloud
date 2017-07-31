@@ -21,7 +21,7 @@ final class H2AkkaJournal extends AsyncWriteJournal {
   private[this] implicit val materializer: Materializer = ActorMaterializer()
 
   import context.dispatcher
-  import h2DB.context.db.{run ⇒ runQuery, _}
+  import h2DB.context.{run ⇒ runQuery, _}
 
   // -----------------------------------------------------------------------
   // Schema

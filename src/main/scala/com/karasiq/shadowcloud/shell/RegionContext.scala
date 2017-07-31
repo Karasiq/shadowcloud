@@ -9,7 +9,7 @@ import scala.language.postfixOps
 import akka.stream.IOResult
 import akka.stream.scaladsl.{FileIO, Sink}
 
-import com.karasiq.shadowcloud.actors.utils.{RegionGCState, StorageGCState}
+import com.karasiq.shadowcloud.actors.RegionGC.GCReport
 import com.karasiq.shadowcloud.index.{File, Folder, Path}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 
@@ -76,7 +76,7 @@ private[shell] final class RegionContext(val regionId: String)(implicit context:
     await(future)
   }
 
-  def collectGarbage(delete: Boolean = false): (RegionGCState, Map[String, StorageGCState]) = {
+  def collectGarbage(delete: Boolean = false): GCReport = {
     await(sc.ops.region.collectGarbage(regionId, delete))
   }
 

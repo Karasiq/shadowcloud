@@ -199,7 +199,7 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
           chunks.unregister(oldDispatcher)
         }
 
-        log.info("Registered storage {}: {}", storageId, dispatcher, health)
+        log.info("Registered storage {}: {}", storageId, dispatcher)
         storages.register(storageId, props, dispatcher, health)
         if (health == StorageHealth.empty) dispatcher ! StorageDispatcher.CheckHealth
         self ! PullStorageIndex(storageId)

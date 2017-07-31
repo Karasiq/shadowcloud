@@ -2,11 +2,13 @@ package com.karasiq.shadowcloud.actors
 
 import scala.language.postfixOps
 
-import akka.actor.{Actor, ActorLogging, Props, Stash}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash}
 
+import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.utils.ContainerActor
 import com.karasiq.shadowcloud.actors.StorageContainer.SetProps
 import com.karasiq.shadowcloud.actors.internal.StorageInstantiator
+import com.karasiq.shadowcloud.actors.RegionSupervisor.RenewStorageSubscriptions
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.utils.Utils
 
@@ -22,7 +24,8 @@ private[actors] object StorageContainer {
 private[actors] final class StorageContainer(instantiator: StorageInstantiator, storageId: String)
   extends Actor with ActorLogging with Stash with ContainerActor {
 
-  var storageProps: StorageProps = StorageProps.inMemory
+  private[this] val sc = ShadowCloud()
+  private[this] var storageProps: StorageProps = StorageProps.inMemory
 
   def receive: Receive = {
     case SetProps(props) ⇒
@@ -52,6 +55,11 @@ private[actors] final class StorageContainer(instantiator: StorageInstantiator, 
       }
     })
     val actor = context.actorOf(props, Utils.uniqueActorName(storageId))
-    afterStart(actor) // TODO: Renew storage subscriptions
+    afterStart(actor)
+  }
+
+  override def afterStart(actor: ActorRef): Unit = {
+    sc.actors.regionSupervisor ! RenewStorageSubscriptions(storageId)
+    super.afterStart(actor)
   }
 }

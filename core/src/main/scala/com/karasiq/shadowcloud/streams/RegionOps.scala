@@ -11,7 +11,8 @@ import akka.util.Timeout
 import com.karasiq.shadowcloud.actors.{RegionDispatcher, RegionGC}
 import com.karasiq.shadowcloud.actors.RegionDispatcher._
 import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
-import com.karasiq.shadowcloud.actors.utils.{MessageStatus, RegionGCState, StorageGCState}
+import com.karasiq.shadowcloud.actors.utils.MessageStatus
+import com.karasiq.shadowcloud.actors.RegionGC.GCReport
 import com.karasiq.shadowcloud.index.{Chunk, File, Folder, Path}
 import com.karasiq.shadowcloud.index.diffs.{FileVersions, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
@@ -127,7 +128,7 @@ final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext,
   // -----------------------------------------------------------------------
   // Region GC
   // -----------------------------------------------------------------------
-  def collectGarbage(regionId: String, delete: Boolean = false): Future[(RegionGCState, Map[String, StorageGCState])] = {
+  def collectGarbage(regionId: String, delete: Boolean = false): Future[GCReport] = {
     askRegion(regionId, RegionGC.CollectGarbage, RegionGC.CollectGarbage(Some(delete)))
   }
 

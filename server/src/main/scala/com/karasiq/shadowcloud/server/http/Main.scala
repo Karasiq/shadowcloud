@@ -15,7 +15,7 @@ import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
 object Main extends HttpApp with App with PredefinedToResponseMarshallers with SCAkkaHttpApiServer {
-  import SCJsonEncoders._
+  import com.karasiq.shadowcloud.api.SCJsonEncoders._
 
   // Actor system
   private[this] val actorSystem: ActorSystem = ActorSystem("shadowcloud-server")

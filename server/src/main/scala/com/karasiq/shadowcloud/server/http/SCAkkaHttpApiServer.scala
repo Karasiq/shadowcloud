@@ -16,7 +16,7 @@ import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.server.http.api.ShadowCloudApiImpl
 
 private[server] trait SCAkkaHttpApiServer { self: Directives ⇒
-  import SCJsonEncoders._
+  import com.karasiq.shadowcloud.api.SCJsonEncoders._
   protected val sc: ShadowCloudExtension
 
   private[this] object scApiInternal {

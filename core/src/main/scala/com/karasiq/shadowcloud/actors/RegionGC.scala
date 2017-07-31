@@ -27,10 +27,13 @@ import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
 
 object RegionGC {
+  // Types
+  case class GCReport(regionId: String, regionState: RegionGCState, storageStates: Map[String, StorageGCState])
+
   // Messages
   sealed trait Message
   case class CollectGarbage(delete: Option[Boolean] = None) extends Message with NotInfluenceReceiveTimeout
-  object CollectGarbage extends MessageStatus[String, (RegionGCState, Map[String, StorageGCState])]
+  object CollectGarbage extends MessageStatus[String, GCReport]
   case class Defer(time: FiniteDuration) extends Message with NotInfluenceReceiveTimeout
 
   private sealed trait InternalMessage extends Message with PossiblyHarmful
@@ -100,11 +103,11 @@ private[actors] final class RegionGC(regionId: String, config: GCConfig) extends
 
   private[this] def finishCollecting(receivers: Set[ActorRef],
                                      statesFuture: Future[(RegionGCState, Seq[(RegionStorage, StorageGCState)])]): Unit = {
-    val statesMapFuture = statesFuture.map { case (regionState, storageStates) ⇒
-      (regionState, storageStates.filter(_._2.nonEmpty).map(kv ⇒ kv._1.id → kv._2).toMap)
+    val futureGcResult = statesFuture.map { case (regionState, storageStates) ⇒
+      GCReport(regionId, regionState, storageStates.filter(_._2.nonEmpty).map(kv ⇒ kv._1.id → kv._2).toMap)
     }
 
-    CollectGarbage.wrapFuture(regionId, statesMapFuture).foreach { status ⇒
+    CollectGarbage.wrapFuture(regionId, futureGcResult).foreach { status ⇒
       receivers
         .filter(rv ⇒ rv != self && rv != Actor.noSender)
         .foreach(_ ! status)

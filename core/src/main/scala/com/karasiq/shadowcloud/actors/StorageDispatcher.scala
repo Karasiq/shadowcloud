@@ -9,10 +9,9 @@ import akka.util.Timeout
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.events.StorageEvents
-import com.karasiq.shadowcloud.actors.internal.{DiffStats, StorageStatsTracker}
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperation}
-import com.karasiq.shadowcloud.actors.RegionIndex.{Compact, WriteDiff}
+import com.karasiq.shadowcloud.actors.RegionIndex.WriteDiff
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
 import com.karasiq.shadowcloud.storage.props.StorageProps
@@ -29,7 +28,7 @@ object StorageDispatcher {
 }
 
 private final class StorageDispatcher(storageId: String, storageProps: StorageProps, index: ActorRef,
-                                      chunkIO: ActorRef, health: StorageHealthProvider) extends Actor with ActorLogging {
+                                      chunkIO: ActorRef, healthProvider: StorageHealthProvider) extends Actor with ActorLogging {
   import StorageDispatcher._
 
   // -----------------------------------------------------------------------
@@ -40,14 +39,13 @@ private final class StorageDispatcher(storageId: String, storageProps: StoragePr
   private[this] implicit val timeout: Timeout = Timeout(10 seconds)
   private[this] val schedule = context.system.scheduler.schedule(Duration.Zero, 30 seconds, self, CheckHealth)
   private[this] val sc = ShadowCloud()
-  private[this] val config = sc.storageConfig(storageId, storageProps)
 
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
   private[this] val writingChunks = PendingOperation.withRegionChunk
   private[this] val readingChunks = PendingOperation.withRegionChunk
-  private[this] val stats = StorageStatsTracker(storageId, config, health)
+  private[this] var health: StorageHealth = StorageHealth.empty
 
   // -----------------------------------------------------------------------
   // Receive
@@ -97,48 +95,39 @@ private final class StorageDispatcher(storageId: String, storageProps: StoragePr
     // Storage health
     // -----------------------------------------------------------------------
     case CheckHealth ⇒
-      stats.checkHealth()
+      healthProvider.health
         .map(CheckHealth.Success(storageId, _))
         .recover(PartialFunction(CheckHealth.Failure(storageId, _)))
         .pipeTo(self)
 
     case CheckHealth.Success(`storageId`, health) ⇒
-      stats.updateHealth(_ ⇒ health)
+      updateHealth(_ ⇒ health)
 
     case CheckHealth.Failure(`storageId`, error) ⇒
-      stats.updateHealth(_.copy(online = false))
+      updateHealth(_.copy(online = false))
       log.error(error, "Health update failure: {}", storageId)
 
     // -----------------------------------------------------------------------
     // Storage events
     // -----------------------------------------------------------------------
     case StorageEnvelope(`storageId`, event: StorageEvents.Event) ⇒ event match {
-      case StorageEvents.IndexLoaded(region, state) ⇒
-        val newStats = DiffStats(state.diffs.map(_._2): _*)
-        stats.updateStats(region, newStats)
-
-      case StorageEvents.IndexUpdated(region, _, diff, _) ⇒
-        stats.appendStats(region, DiffStats(diff))
-        val forCompact = stats.requiresCompaction()
-        if (forCompact.nonEmpty) {
-          log.debug("Requesting compaction of indexes: {}", forCompact)
-          forCompact.foreach { region ⇒
-            stats.clear(region)
-            index ! StorageIndex.Envelope(region, Compact)
-          }
-        }
-
-      case StorageEvents.IndexDeleted(region, _) ⇒
-        stats.clear(region)
-
       case StorageEvents.ChunkWritten(_, chunk) ⇒
         val written = chunk.checksum.encSize
         log.debug("{} bytes written, updating storage health", written)
-        stats.updateHealth(_ - written)
+        updateHealth(_ - written)
 
       case _ ⇒
-      // Ignore
+        // Ignore
     }
+  }
+
+  // -----------------------------------------------------------------------
+  // Utils
+  // -----------------------------------------------------------------------
+  def updateHealth(func: StorageHealth ⇒ StorageHealth): Unit = {
+    this.health = func(this.health)
+    log.debug("Storage [{}] health updated: {}", storageId, health)
+    sc.eventStreams.publishStorageEvent(storageId, StorageEvents.HealthUpdated(health))
   }
 
   // -----------------------------------------------------------------------

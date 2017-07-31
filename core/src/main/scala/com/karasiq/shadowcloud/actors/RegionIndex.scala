@@ -2,7 +2,6 @@ package com.karasiq.shadowcloud.actors
 
 import java.util.concurrent.TimeoutException
 
-import scala.collection.mutable.{Set ⇒ MSet}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -21,6 +20,7 @@ import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.Repository
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.utils.DiffStats
 
 object RegionIndex {
   case class ID(storageId: String, regionId: String)
@@ -39,7 +39,7 @@ object RegionIndex {
   private case class KeysLoaded(keys: Set[LocalKey]) extends InternalMessage
   private case class ReadSuccess(result: IndexIOResult[LocalKey]) extends InternalMessage
   private case class WriteSuccess(result: IndexIOResult[LocalKey]) extends InternalMessage
-  private case class CompactSuccess(deleted: Set[LocalKey], result: IndexIOResult[LocalKey]) extends InternalMessage
+  private case class CompactSuccess(deleted: Set[LocalKey], created: Option[IndexIOResult[LocalKey]]) extends InternalMessage
   private case object StreamCompleted extends InternalMessage with DeadLetterSuppression
 
   // Snapshot
@@ -69,6 +69,8 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
   private[this] val config = sc.storageConfig(storageId, storageProps)
   private[this] val streams = IndexRepositoryStreams(config)
   private[this] var compactRequested = false
+  private[this] var diffsSaved = 0
+  private[this] var diffStats = DiffStats.empty
 
   // -----------------------------------------------------------------------
   // Local operations
@@ -81,8 +83,8 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
 
     case WriteDiff(diff) ⇒
       log.debug("Pending diff added: {}", diff)
-      persistAsync(PendingIndexUpdated(regionId, diff)) { e ⇒
-        updateState(e)
+      persistAsync(PendingIndexUpdated(regionId, diff)) { event ⇒
+        updateState(event)
         sender() ! WriteDiff.Success(diff, index.pending)
       }
 
@@ -108,7 +110,7 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
   // -----------------------------------------------------------------------
   // Default receive
   // -----------------------------------------------------------------------
-  override def receiveRecover: Receive = { // TODO: Faster recover, auto snapshots
+  override def receiveRecover: Receive = {
     case SnapshotOffer(metadata, Snapshot(state)) ⇒
       log.debug("Loading snapshot: {}", metadata)
       updateState(IndexLoaded(regionId, state))
@@ -131,17 +133,23 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
   private[this] def updateState(event: Event): Unit = {
     sc.eventStreams.publishStorageEvent(storageId, event)
     event match {
-      case IndexUpdated(`regionId`, sequenceNr, diff, _) ⇒
-        index.add(sequenceNr, diff)
-
       case PendingIndexUpdated(`regionId`, diff) ⇒
         index.addPending(diff)
+        diffsSaved += 1
 
-      case IndexLoaded(`regionId`, state) ⇒
-        index.load(state)
+      case IndexUpdated(`regionId`, sequenceNr, diff, _) ⇒
+        index.add(sequenceNr, diff)
+        diffStats += diff
+        diffsSaved += 1
 
       case IndexDeleted(`regionId`, sequenceNrs) ⇒
         index.delete(sequenceNrs)
+        diffStats = DiffStats.fromIndex(index)
+
+      case IndexLoaded(`regionId`, state) ⇒
+        index.load(state)
+        diffsSaved = 0
+        diffStats = DiffStats.fromIndex(index)
 
       case _ ⇒
         log.warning("Event not handled: {}", event)
@@ -279,14 +287,15 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
     def receiveCompact: Receive = {
       case CompactSuccess(deletedDiffs, newDiff) ⇒
         log.info("Compact success: deleted = {}, new = {}", deletedDiffs, newDiff)
-        val diff = newDiff.diff.diff
-        if (diff.isEmpty) {
-          persistAsync(IndexDeleted(regionId, deletedDiffs))(updateState)
-        } else {
-          persistAllAsync(List(
-            IndexDeleted(regionId, deletedDiffs),
-            IndexUpdated(regionId, newDiff.key, diff, remote = false)
-          ))(updateState)
+        newDiff match {
+          case Some(IndexIOResult(key, IndexData(_, _, diff), _)) if diff.nonEmpty ⇒
+            persistAllAsync(List(
+              IndexDeleted(regionId, deletedDiffs),
+              IndexUpdated(regionId, key, diff, remote = false)
+            ))(updateState)
+
+          case None ⇒
+            persistAsync(IndexDeleted(regionId, deletedDiffs))(updateState)
         }
 
       case Status.Failure(error) ⇒
@@ -296,7 +305,7 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
       case StreamCompleted ⇒
         log.debug("Indexes compaction completed")
         compactRequested = false
-        deferAsync(NotUsed)(_ ⇒ createSnapshot(() ⇒ scheduleSync()))
+        deferAsync(NotUsed)(_ ⇒ scheduleSync())
     }
 
     def becomeCompact(): Unit = {
@@ -327,7 +336,7 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
               .filter(_.ioResult.isSuccess)
               .map(_.key)
               .fold(Set.empty[Long])(_ + _)
-              .map(CompactSuccess(_, wr))
+              .map(CompactSuccess(_, Some(wr).filterNot(_.diff.isEmpty)))
 
           case StorageIOResult.Failure(_, error) ⇒
             Source.failed(error)
@@ -342,8 +351,10 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
       become(receiveCompact)
     }
 
-    if (compactRequested) {
+    if (isCompactRequired()) {
       becomeCompact()
+    } else if (isSnapshotRequired()) {
+      createSnapshot(() ⇒ scheduleSync())
     } else {
       scheduleSync()
     }
@@ -353,15 +364,19 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
   // Snapshots
   // -----------------------------------------------------------------------
   private[this] def createSnapshot(after: () ⇒ Unit): Unit = {
-    // TODO: Delete old messages
-    saveSnapshot(Snapshot(IndexMerger.state(index)))
+    val snapshot = Snapshot(IndexMerger.state(index))
+    log.info("Saving region index snapshot: {}", snapshot)
+    saveSnapshot(snapshot)
+
     become {
       case SaveSnapshotSuccess(snapshot) ⇒
-        log.debug("Snapshot saved: {}", snapshot)
+        log.info("Snapshot saved: {}", snapshot)
+        this.diffsSaved = 0
+        // deleteMessages(snapshot.sequenceNr - 1)
         after()
 
       case SaveSnapshotFailure(snapshot, error) ⇒
-        log.error(error, "Snapshot saving failed: {}", snapshot)
+        log.error(error, "Snapshot save failed: {}", snapshot)
         after()
     }
   }
@@ -369,6 +384,14 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
   // -----------------------------------------------------------------------
   // Utils
   // -----------------------------------------------------------------------
+  private[this] def isSnapshotRequired(): Boolean = {
+    config.indexSnapshotThreshold > 0 && diffsSaved > config.indexSnapshotThreshold
+  }
+
+  private[this] def isCompactRequired(): Boolean = {
+    compactRequested || (config.indexCompactThreshold > 0 && diffStats.deletes > config.indexCompactThreshold)
+  }
+
   private[this] def loadRepositoryKeys(): Unit = {
     repository.keys
       .fold(Set.empty[LocalKey])(_ + _)

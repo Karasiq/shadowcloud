@@ -9,7 +9,8 @@ import com.karasiq.shadowcloud.serialization.protobuf.index.SerializedIndexData
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
 case class StorageConfig(rootConfig: Config, syncInterval: FiniteDuration,
-                         indexCompactThreshold: Int, indexCompression: SerializedIndexData.Compression,
+                         indexCompactThreshold: Int, indexSnapshotThreshold: Int,
+                         indexCompression: SerializedIndexData.Compression,
                          chunkKey: ChunkKeyExtractor) extends WrappedConfig
 
 object StorageConfig extends WrappedConfigFactory[StorageConfig] with ConfigImplicits {
@@ -34,6 +35,7 @@ object StorageConfig extends WrappedConfigFactory[StorageConfig] with ConfigImpl
       config,
       config.getFiniteDuration("sync-interval"),
       config.getInt("index-compact-threshold"),
+      config.getInt("index-snapshot-threshold"),
       toCompressionType(config.getString("index-compression")),
       ChunkKeyExtractor.fromString(config.getString("chunk-key"))
     )

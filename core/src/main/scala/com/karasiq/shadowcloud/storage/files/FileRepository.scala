@@ -23,9 +23,9 @@ private[storage] object FileRepository {
 
 /**
   * Uses local filesystem to store data
-  * @param folder Root directory
+  * @param rootFolder Root directory
   */
-private[storage] final class FileRepository(folder: FSPath)(implicit ec: ExecutionContext, mat: Materializer) extends PathTreeRepository {
+private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: ExecutionContext, mat: Materializer) extends PathTreeRepository {
   def read(key: Path): Source[Data, Result] = {
     val path = toAbsolute(key)
     FileIO.fromPath(path)
@@ -47,7 +47,8 @@ private[storage] final class FileRepository(folder: FSPath)(implicit ec: Executi
 
   def write(key: Path): Sink[Data, Result] = {
     val path = toAbsolute(key)
-    Files.createDirectories(path.getParent)
+    val parentDir = path.getParent
+    if (!Files.isDirectory(parentDir)) Files.createDirectories(parentDir)
     FileIO.toPath(path, Set(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))
       .mapMaterializedValue(StorageUtils.wrapIOResult(path.toString, _))
   }
@@ -60,11 +61,17 @@ private[storage] final class FileRepository(folder: FSPath)(implicit ec: Executi
   }
 
   private[this] def toAbsolute(path: Path): FSPath = {
-    path.nodes.foldLeft(folder)((p, n) ⇒ p.resolve(n))
+    path.nodes.foldLeft(rootFolder) { (path, node) ⇒
+      require(FileSystemUtils.isValidFileName(node), "File name not supported: " + node)
+      path.resolve(node)
+    }
   }
 
   private[this] def toRelative(fsPath: FSPath): Path = {
-    Path(folder.relativize(fsPath).iterator().asScala.map(_.getFileName.toString).toVector)
+    val nodes = rootFolder.relativize(fsPath)
+      .iterator().asScala
+      .map(_.getFileName.toString)
+    Path(nodes.toVector)
   }
 
   private[this] def ioOperation(path: String, f: () ⇒ Long): Future[StorageIOResult] = {

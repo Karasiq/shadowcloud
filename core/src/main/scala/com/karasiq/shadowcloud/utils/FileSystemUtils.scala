@@ -4,6 +4,8 @@ import java.io.IOException
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
 
+import scala.collection.mutable.{Set ⇒ MSet}
+import scala.collection.JavaConverters._
 import scala.language.postfixOps
 
 import akka.NotUsed
@@ -11,20 +13,32 @@ import akka.stream.{ActorAttributes, Attributes}
 import akka.stream.scaladsl.Source
 
 private[shadowcloud] object FileSystemUtils {
-  def walkFileTree(folder: Path, walkUntil: Path ⇒ Boolean = dir ⇒ !Files.isSymbolicLink(dir),
-                   includeFiles: Boolean = true, includeDirs: Boolean = true): Source[Path, NotUsed] = {
+  private[this] val forbiddenChars = """[<>:"/\\|?*]""".r
+
+  def walkFileTree(folder: Path,
+                   walkUntil: Path ⇒ Boolean = _ ⇒ true,
+                   includeFiles: Boolean = true,
+                   includeDirs: Boolean = true,
+                   maxDepth: Int = Int.MaxValue,
+                   options: Set[FileVisitOption] = Set.empty): Source[Path, NotUsed] = {
     Source.single(folder)
       .mapConcat { path ⇒
         val builder = Vector.newBuilder[Path]
-        Files.walkFileTree(path, new SimpleFileVisitor[Path] {
+        val visited = MSet.empty[Path]
+        Files.walkFileTree(path, options.asJava, maxDepth, new SimpleFileVisitor[Path] {
           override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
             if (includeFiles) builder += file
             FileVisitResult.CONTINUE
           }
 
           override def preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult = {
-            if (includeDirs) builder += dir
-            if (walkUntil(dir)) FileVisitResult.CONTINUE else FileVisitResult.SKIP_SUBTREE
+            if (visited.contains(dir)) {
+              FileVisitResult.SKIP_SUBTREE
+            } else {
+              visited += dir
+              if (includeDirs) builder += dir
+              if (walkUntil(dir)) FileVisitResult.CONTINUE else FileVisitResult.SKIP_SUBTREE
+            }
           }
 
           override def postVisitDirectory(dir: Path, exc: IOException): FileVisitResult = {
@@ -58,5 +72,9 @@ private[shadowcloud] object FileSystemUtils {
       }
     })
     result
+  }
+
+  def isValidFileName(fileName: String): Boolean = {
+    forbiddenChars.findFirstIn(fileName).isEmpty
   }
 }

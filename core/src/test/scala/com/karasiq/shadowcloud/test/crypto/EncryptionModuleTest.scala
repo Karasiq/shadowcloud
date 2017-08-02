@@ -12,10 +12,11 @@ import com.karasiq.shadowcloud.test.utils.TestUtils.{modules, _}
 class EncryptionModuleTest extends FlatSpec with Matchers {
   runTest("", 0, 0)
   runTest("AES/GCM", 32, 12)
+  runTest("Salsa20", 32, 8)
+  runTest("ChaCha20", 32, 8)
+  runTest("XSalsa20", 32, 24)
+
   try {
-    runTest("Salsa20", 32, 8)
-    runTest("ChaCha20", 32, 8)
-    runTest("XSalsa20", 32, 24)
     runTest("ChaCha20/Poly1305", 32, 8)
     runTest("XSalsa20/Poly1305", 32, 24)
 

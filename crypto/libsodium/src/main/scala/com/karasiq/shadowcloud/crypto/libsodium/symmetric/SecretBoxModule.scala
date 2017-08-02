@@ -6,33 +6,27 @@ import org.abstractj.kalium.crypto.SecretBox
 import com.karasiq.shadowcloud.crypto._
 
 private[libsodium] object SecretBoxModule {
-  val KEY_BYTES = Sodium.CRYPTO_SECRETBOX_KEYBYTES
-  val NONCE_BYTES = Sodium.CRYPTO_SECRETBOX_NONCEBYTES
+  val KEY_BYTES: Int = Sodium.CRYPTO_SECRETBOX_KEYBYTES
+  val NONCE_BYTES: Int = Sodium.CRYPTO_SECRETBOX_NONCEBYTES
 
   def apply(method: EncryptionMethod = EncryptionMethod("XSalsa20/Poly1305", 256)): SecretBoxModule = {
     new SecretBoxModule(method)
   }
 }
 
-private[libsodium] final class SecretBoxModule(val method: EncryptionMethod) extends SymmetricCipherModule {
-  protected val keySize = SecretBoxModule.KEY_BYTES
-  protected val nonceSize = SecretBoxModule.NONCE_BYTES
-  private[this] var encryptMode = true
-  private[this] var secretBox: SecretBox = _
-  private[this] var nonce: Array[Byte] = _
+private[libsodium] final class SecretBoxModule(val method: EncryptionMethod)
+  extends SymmetricCipherModule with SymmetricCipherAtomic {
 
-  protected def init(encrypt: Boolean, key: Array[Byte], nonce: Array[Byte]): Unit = {
-    this.encryptMode = encrypt
-    this.secretBox = new SecretBox(key)
-    this.nonce = nonce
+  protected val keySize: Int = SecretBoxModule.KEY_BYTES
+  protected val nonceSize: Int = SecretBoxModule.NONCE_BYTES
+
+  protected def encrypt(data: Array[Byte], key: Array[Byte], nonce: Array[Byte]): Array[Byte] = {
+    val secretBox = new SecretBox(key)
+    secretBox.encrypt(nonce, data)
   }
 
-  protected def process(data: Array[Byte]): Array[Byte] = {
-    require(secretBox ne null, "Not initialized")
-    if (encryptMode) {
-      secretBox.encrypt(nonce, data)
-    } else {
-      secretBox.decrypt(nonce, data)
-    }
+  protected def decrypt(data: Array[Byte], key: Array[Byte], nonce: Array[Byte]): Array[Byte] = {
+    val secretBox = new SecretBox(key)
+    secretBox.decrypt(nonce, data)
   }
 }

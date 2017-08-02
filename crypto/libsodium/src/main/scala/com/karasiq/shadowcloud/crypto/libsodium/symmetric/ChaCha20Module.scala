@@ -1,9 +1,10 @@
 package com.karasiq.shadowcloud.crypto.libsodium.symmetric
 
-import com.karasiq.shadowcloud.crypto.EncryptionMethod
+import scala.language.postfixOps
+
 import org.abstractj.kalium.NaCl.Sodium
 
-import scala.language.postfixOps
+import com.karasiq.shadowcloud.crypto.EncryptionMethod
 
 private[libsodium] object ChaCha20Module {
   val KEY_BYTES = Sodium.CRYPTO_STREAM_CHACHA20_KEYBYTES

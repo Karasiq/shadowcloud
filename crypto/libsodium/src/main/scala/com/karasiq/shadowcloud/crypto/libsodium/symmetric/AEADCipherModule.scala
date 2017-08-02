@@ -8,10 +8,10 @@ import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto._
 
 private[libsodium] object AEADCipherModule extends ConfigImplicits {
-  val AES_KEY_BYTES = Sodium.CRYPTO_AEAD_AES256GCM_KEYBYTES
-  val AES_NONCE_BYTES = Sodium.CRYPTO_AEAD_AES256GCM_NPUBBYTES
-  val KEY_BYTES = Sodium.CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES
-  val NONCE_BYTES = Sodium.CRYPTO_AEAD_CHACHA20POLY1305_NPUBBYTES
+  val AES_KEY_BYTES: Int = Sodium.CRYPTO_AEAD_AES256GCM_KEYBYTES
+  val AES_NONCE_BYTES: Int = Sodium.CRYPTO_AEAD_AES256GCM_NPUBBYTES
+  val KEY_BYTES: Int = Sodium.CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES
+  val NONCE_BYTES: Int = Sodium.CRYPTO_AEAD_CHACHA20POLY1305_NPUBBYTES
 
   def AES_GCM(method: EncryptionMethod = EncryptionMethod("AES/GCM", AES_KEY_BYTES * 8)): AEADCipherModule = {
     new AEADCipherModule(method, true, getADSize(method.config))
@@ -27,37 +27,33 @@ private[libsodium] object AEADCipherModule extends ConfigImplicits {
   }
 }
 
-private[libsodium] final class AEADCipherModule(val method: EncryptionMethod, useAes: Boolean = false,
-                                                additionalDataSize: Int = 0) extends SymmetricCipherModule {
+private[libsodium] final class AEADCipherModule(val method: EncryptionMethod,
+                                                useAes: Boolean = false,
+                                                additionalDataSize: Int = 0)
+  extends SymmetricCipherModule with SymmetricCipherAtomic {
+  
   import AEADCipherModule._
-  protected val keySize = if (useAes) AES_KEY_BYTES else KEY_BYTES
-  private[this] val pNonceSize = if (useAes) AES_NONCE_BYTES else NONCE_BYTES
-  protected val nonceSize = pNonceSize + additionalDataSize
 
-  private[this] var encryptMode = true
-  private[this] var cipher: Aead = _
-  private[this] var nonce, additionalData: Array[Byte] = _
+  protected val keySize: Int = if (useAes) AES_KEY_BYTES else KEY_BYTES
+  private[this] val pNonceSize: Int = if (useAes) AES_NONCE_BYTES else NONCE_BYTES
+  protected val nonceSize: Int = pNonceSize + additionalDataSize
 
-  protected def init(encrypt: Boolean, key: Array[Byte], nonce: Array[Byte]): Unit = {
-    this.encryptMode = encrypt
-    cipher = new Aead(key)
+  protected def encrypt(data: Array[Byte], key: Array[Byte], nonce: Array[Byte]): Array[Byte] = {
+    val cipher = new Aead(key)
     if (useAes) cipher.useAesGcm()
-    setNonce(nonce)
+    val (pNonce, additionalData) = splitNonce(nonce)
+    cipher.encrypt(pNonce, data, additionalData)
   }
 
-  protected def process(data: Array[Byte]): Array[Byte] = {
-    require(cipher ne null, "Not initialized")
-    if (encryptMode) {
-      cipher.encrypt(nonce, data, additionalData) // TODO: Test streaming
-    } else {
-      cipher.decrypt(nonce, data, additionalData)
-    }
+  protected def decrypt(data: Array[Byte], key: Array[Byte], nonce: Array[Byte]): Array[Byte] = {
+    val cipher = new Aead(key)
+    if (useAes) cipher.useAesGcm()
+    val (pNonce, additionalData) = splitNonce(nonce)
+    cipher.decrypt(pNonce, data, additionalData)
   }
 
   @inline
-  private[this] def setNonce(value: Array[Byte]): Unit = {
-    val (part1, part2) = value.splitAt(pNonceSize)
-    this.nonce = part1
-    this.additionalData = part2
+  private[this] def splitNonce(value: Array[Byte]): (Array[Byte], Array[Byte]) = {
+    value.splitAt(pNonceSize)
   }
 }

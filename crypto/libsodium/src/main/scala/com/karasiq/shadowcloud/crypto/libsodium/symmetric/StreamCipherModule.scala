@@ -4,10 +4,12 @@ import com.karasiq.shadowcloud.crypto.EncryptionMethod
 
 private[libsodium] abstract class StreamCipherModule(val method: EncryptionMethod,
                                                      protected val keySize: Int,
-                                                     protected val nonceSize: Int) extends SymmetricCipherModule {
+                                                     protected val nonceSize: Int)
+  extends SymmetricCipherModule with SymmetricCipherStreaming {
+
   protected var encrypt = true
-  protected var key = Array.emptyByteArray
-  protected var nonce = Array.emptyByteArray
+  protected var key: Array[Byte] = Array.emptyByteArray
+  protected var nonce: Array[Byte] = Array.emptyByteArray
 
   protected def process(inArray: Array[Byte], outArray: Array[Byte]): Unit
 

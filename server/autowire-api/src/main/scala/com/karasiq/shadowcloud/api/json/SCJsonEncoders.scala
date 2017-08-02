@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.api
+package com.karasiq.shadowcloud.api.json
 
 import akka.util.ByteString
 import play.api.libs.json._
@@ -38,5 +38,3 @@ trait SCJsonEncoders {
   implicit val folderReads: Reads[Folder] = Json.reads[Folder]
   implicit val folderWrites: Writes[Folder] = Json.writes[Folder]
 }
-
-object SCJsonEncoders extends SCJsonEncoders

@@ -16,6 +16,10 @@ object FileVersions {
     files.find(_.id == id).getOrElse(throw new NoSuchElementException(s"File not found: $id"))
   }
 
+  def toFlatDirectory(files: Traversable[File]): Seq[File] = {
+    files.groupBy(_.path.name).mapValues(mostRecent).values.toVector
+  }
+
   private[this] def requireNonEmpty(files: GenTraversableOnce[File]): Unit = {
     if (files.isEmpty) throw new NoSuchElementException("File not found")
   }

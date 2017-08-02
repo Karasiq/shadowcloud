@@ -5,15 +5,18 @@ import scala.concurrent.{ExecutionContext, Future}
 import autowire._
 
 import com.karasiq.shadowcloud.api.ShadowCloudApi
-import com.karasiq.shadowcloud.api.js.JsonApiClient
+import com.karasiq.shadowcloud.api.js.SCAjaxApiClient
 import com.karasiq.shadowcloud.index.{Folder, Path}
 
-object AutowireApi extends ShadowCloudApi {
-  import com.karasiq.shadowcloud.api.SCJsonEncoders._
-  private[this] val jsonClient = JsonApiClient[ShadowCloudApi]
+object AjaxApi extends ShadowCloudApi with FileApi {
+  private[api] val clientFactory = SCAjaxApiClient
+  private[api] val encoding = clientFactory.encoding
+  import encoding.implicits._
+
+  private[this] val apiClient = clientFactory[ShadowCloudApi]
   private[this] implicit val ec: ExecutionContext = scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
   def getFolder(regionId: String, path: Path): Future[Folder] = {
-    jsonClient.getFolder(regionId, path).call()
+    apiClient.getFolder(regionId, path).call()
   }
 }

@@ -12,4 +12,6 @@ addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.19")
 
 addSbtPlugin("com.github.karasiq" % "sbt-scalajs-bundler" % "1.0.7")
 
+addSbtPlugin("pl.project13.sbt" % "sbt-jol" % "0.1.2")
+
 libraryDependencies += "com.lihaoyi" %% "scalatags" % "0.5.4"

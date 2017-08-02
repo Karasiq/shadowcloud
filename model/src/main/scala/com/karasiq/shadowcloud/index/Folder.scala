@@ -4,11 +4,11 @@ import scala.collection.GenTraversableOnce
 import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.index.diffs.FolderDiff
-import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasPath, HasWithoutData, Mergeable}
+import com.karasiq.shadowcloud.index.utils._
 
 case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,
                   folders: Set[String] = Set.empty, files: Set[File] = Set.empty)
-  extends HasPath with HasEmpty with HasWithoutData with Mergeable {
+  extends HasPath with HasEmpty with HasWithoutData with HasWithoutChunks with Mergeable {
 
   type Repr = Folder
   type DiffRepr = FolderDiff
@@ -76,6 +76,10 @@ case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,
 
   def withoutData: Folder = {
     copy(files = files.map(_.withoutData))
+  }
+
+  def withoutChunks: Folder = {
+    copy(files = files.map(_.withoutChunks))
   }
 
   override def hashCode(): Int = {

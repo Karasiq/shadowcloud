@@ -58,9 +58,13 @@ object RegionDispatcher {
   case class RewriteChunk(chunk: Chunk, newAffinity: Option[ChunkWriteAffinity]) extends Message
 
   // Internal messages
-  private sealed trait InternalMessage extends Message with PossiblyHarmful
-  private case class PushDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)], pending: IndexDiff) extends InternalMessage
-  private case class PullStorageIndex(storageId: String) extends InternalMessage
+  private[actors] sealed trait InternalMessage extends Message with PossiblyHarmful
+  private[actors] case class PushDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)], pending: IndexDiff) extends InternalMessage
+  private[actors] case class PullStorageIndex(storageId: String) extends InternalMessage
+  private[actors] case class ChunkReadSuccess(storageId: Option[String], chunk: Chunk) extends InternalMessage
+  private[actors] case class ChunkReadFailed(storageId: Option[String], chunk: Chunk, error: Throwable) extends InternalMessage
+  private[actors] case class ChunkWriteSuccess(storageId: String, chunk: Chunk) extends InternalMessage
+  private[actors] case class ChunkWriteFailed(storageId: String, chunk: Chunk, error: Throwable) extends InternalMessage
 
   // Props
   def props(regionId: String, regionProps: RegionConfig): Props = {
@@ -165,22 +169,18 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
     case RewriteChunk(chunk, newAffinity) ⇒
       chunks.repairChunk(chunk, newAffinity, sender())
 
-    case SReadChunk.Success((ChunkPath(`regionId`, _), _), chunk) ⇒
-      log.debug("Chunk read success: {}", chunk)
-      chunks.onReadSuccess(chunk)
+    case ChunkReadSuccess(storageId, chunk) ⇒
+      chunks.onReadSuccess(chunk, storageId)
 
-    case SReadChunk.Failure((ChunkPath(`regionId`, _), chunk), error) ⇒
-      log.error(error, "Chunk read failed: {}", chunk)
-      val storageId = storages.getStorageId(sender())
+    case ChunkReadFailed(storageId, chunk, error) ⇒
       chunks.onReadFailure(chunk, storageId, error)
 
-    case SWriteChunk.Success((ChunkPath(`regionId`, _), _), chunk) ⇒
+    case ChunkWriteSuccess(storageId, chunk) ⇒
       log.debug("Chunk write success: {}", chunk)
-      // chunks.registerChunk(sender(), chunk) // Wait for ChunkWritten event
+      chunks.onWriteSuccess(chunk, storageId)
 
-    case SWriteChunk.Failure((ChunkPath(`regionId`, _), chunk), error) ⇒
+    case ChunkWriteFailed(storageId, chunk, error) ⇒
       log.error(error, "Chunk write failed: {}", chunk)
-      val storageId = storages.getStorageId(sender())
       chunks.onWriteFailure(chunk, storageId, error)
       chunks.retryPendingChunks()
 
@@ -201,7 +201,6 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
 
         log.info("Registered storage {}: {}", storageId, dispatcher)
         storages.register(storageId, props, dispatcher, health)
-        if (health == StorageHealth.empty) dispatcher ! StorageDispatcher.CheckHealth
         self ! PullStorageIndex(storageId)
       }
 
@@ -220,6 +219,8 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
       val storage = storages.getStorage(storageId)
 
       storage.dispatcher ! StorageIndex.OpenIndex(regionId)
+      storage.dispatcher ! StorageDispatcher.CheckHealth
+
       val indexFuture = RegionIndex.GetIndex.unwrapFuture(storage.dispatcher ?
         StorageIndex.Envelope(regionId, RegionIndex.GetIndex))
 
@@ -267,7 +268,7 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
 
       case StorageEvents.ChunkWritten(ChunkPath(`regionId`, _), chunk) ⇒
         log.debug("Chunk written: {}", chunk)
-        chunks.onWriteSuccess(chunk, storageId)
+        // chunks.onWriteSuccess(chunk, storageId)
         sc.eventStreams.publishRegionEvent(regionId, RegionEvents.ChunkWritten(storageId, chunk))
         gcActor ! RegionGC.Defer(10 minutes)
 

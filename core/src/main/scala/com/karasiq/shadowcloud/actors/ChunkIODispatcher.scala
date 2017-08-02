@@ -14,9 +14,11 @@ import akka.stream.scaladsl.{Flow, GraphDSL, Keep, Sink, Source, Zip}
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.ShadowCloud
+import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperation}
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.storage.StorageIOResult
+import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.streams.utils.{ByteStringConcat, ByteStringLimit}
 import com.karasiq.shadowcloud.utils.HexString
@@ -43,12 +45,13 @@ object ChunkIODispatcher {
   case object GetKeys extends Message with MessageStatus[NotUsed, Set[ChunkPath]]
 
   // Props
-  def props(repository: CategorizedRepository[String, ByteString]): Props = {
-    Props(new ChunkIODispatcher(repository))
+  def props(storageId: String, storageProps: StorageProps, repository: CategorizedRepository[String, ByteString]): Props = {
+    Props(new ChunkIODispatcher(storageId, storageProps, repository))
   }
 }
 
-private final class ChunkIODispatcher(repository: CategorizedRepository[String, ByteString]) extends Actor with ActorLogging {
+private final class ChunkIODispatcher(storageId: String, storageProps: StorageProps,
+                                      repository: CategorizedRepository[String, ByteString]) extends Actor with ActorLogging {
   import context.dispatcher
 
   import ChunkIODispatcher._
@@ -63,6 +66,7 @@ private final class ChunkIODispatcher(repository: CategorizedRepository[String, 
       val repository = subRepository(path.region)
       Source.single(chunk.data.encrypted)
         .alsoToMat(repository.write(path.id))(Keep.right)
+        .completionTimeout(sc.config.timeouts.chunkWrite)
         .map(_ ⇒ NotUsed)
         .mapMaterializedValue { result ⇒
           promise.completeWith(result)
@@ -78,6 +82,7 @@ private final class ChunkIODispatcher(repository: CategorizedRepository[String, 
     .flatMapConcat { case (path, chunk, promise) ⇒
       val localRepository = subRepository(path.region)
       val readSource = localRepository.read(path.id)
+        .completionTimeout(sc.config.timeouts.chunkRead)
         .via(ByteStringLimit(chunk.checksum.encSize))
         .via(ByteStringConcat())
         .map(bs ⇒ chunk.copy(data = chunk.data.copy(encrypted = bs)))
@@ -173,6 +178,7 @@ private final class ChunkIODispatcher(repository: CategorizedRepository[String, 
     promise.future.onComplete {
       case Success(StorageIOResult.Success(storagePath, written)) ⇒
         log.debug("{} bytes written to {}, chunk: {} ({})", written, storagePath, chunk, path)
+        sc.eventStreams.publishStorageEvent(storageId, StorageEvents.ChunkWritten(path, chunk))
         self ! WriteChunk.Success((path, chunk), chunk)
 
       case Success(StorageIOResult.Failure(storagePath, error)) ⇒

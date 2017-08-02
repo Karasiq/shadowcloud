@@ -10,7 +10,7 @@ import akka.util.Timeout
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
-import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperation}
+import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.RegionIndex.WriteDiff
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
@@ -43,8 +43,6 @@ private final class StorageDispatcher(storageId: String, storageProps: StoragePr
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
-  private[this] val writingChunks = PendingOperation.withRegionChunk
-  private[this] val readingChunks = PendingOperation.withRegionChunk
   private[this] var health: StorageHealth = StorageHealth.empty
 
   // -----------------------------------------------------------------------
@@ -54,36 +52,8 @@ private final class StorageDispatcher(storageId: String, storageProps: StoragePr
     // -----------------------------------------------------------------------
     // Chunk commands
     // -----------------------------------------------------------------------
-    case msg @ ChunkIODispatcher.WriteChunk(region, chunk) ⇒
-      writingChunks.addWaiter((region, chunk), sender(), { () ⇒
-        log.debug("Writing chunk: {}", chunk)
-        chunkIO ! msg
-      })
-
-    case msg @ ChunkIODispatcher.ReadChunk(region, chunk) ⇒
-      readingChunks.addWaiter((region, chunk), sender(), { () ⇒
-        log.debug("Reading chunk: {}/{}", region, chunk)
-        chunkIO ! msg
-      })
-
     case msg: ChunkIODispatcher.Message ⇒
       chunkIO.forward(msg)
-
-    // -----------------------------------------------------------------------
-    // Chunk responses
-    // -----------------------------------------------------------------------
-    case msg @ ChunkIODispatcher.WriteChunk.Success((path, chunk), _) ⇒
-      log.debug("Chunk written, appending to index: {}", chunk)
-      writingChunks.finish((path, chunk), msg)
-      sc.eventStreams.publishStorageEvent(storageId, StorageEvents.ChunkWritten(path, chunk))
-      index ! StorageIndex.Envelope(path.region, WriteDiff(IndexDiff.newChunks(chunk.withoutData)))
-
-    case msg @ ChunkIODispatcher.WriteChunk.Failure((region, chunk), error) ⇒
-      log.error(error, "Chunk write failure: {}/{}", region, chunk)
-      writingChunks.finish((region, chunk), msg)
-
-    case msg: ChunkIODispatcher.ReadChunk.Status ⇒
-      readingChunks.finish(msg.key, msg)
 
     // -----------------------------------------------------------------------
     // Index commands
@@ -111,7 +81,10 @@ private final class StorageDispatcher(storageId: String, storageProps: StoragePr
     // Storage events
     // -----------------------------------------------------------------------
     case StorageEnvelope(`storageId`, event: StorageEvents.Event) ⇒ event match {
-      case StorageEvents.ChunkWritten(_, chunk) ⇒
+      case StorageEvents.ChunkWritten(path, chunk) ⇒
+        log.debug("Appending new chunk to index: {}", chunk)
+        index ! StorageIndex.Envelope(path.region, WriteDiff(IndexDiff.newChunks(chunk.withoutData)))
+
         val written = chunk.checksum.encSize
         log.debug("{} bytes written, updating storage health", written)
         updateHealth(_ - written)

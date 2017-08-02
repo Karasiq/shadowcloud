@@ -18,6 +18,7 @@ import com.karasiq.shadowcloud.actors.RegionDispatcher.{ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
+import com.karasiq.shadowcloud.actors.events.StorageEvents.HealthUpdated
 import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
@@ -41,7 +42,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   val fileRepository = Repository.forChunks(PathTreeRepository.toCategorized(Repositories.fromDirectory(chunksDir)))
   val storageProps = StorageProps.fromDirectory(chunksDir.getParent)
   val index = system.actorOf(StorageIndex.props("testStorage", storageProps, indexRepository), "index")
-  val chunkIO = TestActorRef(ChunkIODispatcher.props(fileRepository), "chunkIO")
+  val chunkIO = TestActorRef(ChunkIODispatcher.props("testStorage", storageProps, fileRepository), "chunkIO")
   val healthProvider = StorageHealthProviders.fromDirectory(chunksDir, Quota.empty.copy(limitSpace = Some(100L * 1024 * 1024)))
   val initialHealth = healthProvider.health.futureValue
   val storage = TestActorRef(StorageDispatcher.props("testStorage", storageProps, index, chunkIO, healthProvider), "storage")
@@ -59,13 +60,14 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     // Write chunk
     val result = testRegion ? WriteChunk(chunk)
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
-    expectMsg(StorageEnvelope("testStorage", StorageEvents.ChunkWritten(ChunkPath("testRegion", TestUtils.storageConfig("testStorage").chunkKey(chunk)), chunk)))
 
-    // Health update
-    val StorageEnvelope("testStorage", StorageEvents.HealthUpdated(health)) = receiveOne(1 second)
-    health.totalSpace shouldBe initialHealth.totalSpace
-    health.usedSpace shouldBe (initialHealth.usedSpace + chunk.checksum.encSize)
-    health.canWrite shouldBe (initialHealth.canWrite - chunk.checksum.encSize)
+
+    receiveN(2).map(_.asInstanceOf[StorageEnvelope]).map(_.message).sortBy(_.isInstanceOf[HealthUpdated]) match {
+      case StorageEvents.ChunkWritten(ChunkPath("testRegion", chunk.checksum.hash), chunk) +: StorageEvents.HealthUpdated(health) +: Nil ⇒
+        health.totalSpace shouldBe initialHealth.totalSpace
+        health.usedSpace shouldBe (initialHealth.usedSpace + chunk.checksum.encSize)
+        health.canWrite shouldBe (initialHealth.canWrite - chunk.checksum.encSize)
+    }
 
     // Chunk index update
     val StorageEnvelope("testStorage", StorageEvents.PendingIndexUpdated("testRegion", diff)) = receiveOne(1 second)
@@ -102,7 +104,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     val indexRepository = Repository.forIndex(Repository.toCategorized(Repositories.fromConcurrentMap(indexMap)))
     val chunkRepository = Repository.forChunks(Repository.toCategorized(Repositories.fromConcurrentMap(chunksMap)))
     val index = system.actorOf(StorageIndex.props("testMemStorage", storageProps, indexRepository), "index1")
-    val chunkIO = TestActorRef(ChunkIODispatcher.props(chunkRepository), "chunkIO1")
+    val chunkIO = TestActorRef(ChunkIODispatcher.props("testMemStorage", storageProps, chunkRepository), "chunkIO1")
     val healthProvider = StorageHealthProviders.fromMaps(indexMap, chunksMap)
     val initialHealth = healthProvider.health.futureValue
     val newStorage = TestActorRef(StorageDispatcher.props("testMemStorage", storageProps, index, chunkIO, healthProvider), "storage1")

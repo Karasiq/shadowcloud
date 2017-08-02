@@ -1,15 +1,18 @@
 package com.karasiq.shadowcloud.actors.internal
 
 import scala.collection.mutable
+import scala.concurrent.Future
 import scala.language.{implicitConversions, postfixOps}
 
 import akka.actor.{ActorContext, ActorRef}
 import akka.event.LoggingAdapter
-import akka.util.ByteString
+import akka.pattern.{ask, pipe}
+import akka.util.{ByteString, Timeout}
 
+import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk ⇒ SReadChunk, WriteChunk ⇒ SWriteChunk}
-import com.karasiq.shadowcloud.actors.RegionDispatcher.{ReadChunk, WriteChunk}
-import com.karasiq.shadowcloud.actors.utils.PendingOperation
+import com.karasiq.shadowcloud.actors.RegionDispatcher._
+import com.karasiq.shadowcloud.actors.internal.ChunksTracker.ChunkReadStatus
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
@@ -23,47 +26,79 @@ private[actors] object ChunksTracker {
             log: LoggingAdapter)(implicit context: ActorContext): ChunksTracker = {
     new ChunksTracker(regionId, config, storages, log)
   }
+
+  case class ChunkReadStatus(reading: Set[String], waiting: Set[ActorRef])
 }
 
 private[actors] final class ChunksTracker(regionId: String, config: RegionConfig, storages: StorageTracker,
                                           log: LoggingAdapter)(implicit context: ActorContext) extends ChunkStatusProvider {
+  import context.dispatcher
 
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
   private[this] implicit val sender: ActorRef = context.self
+  private[this] val sc = ShadowCloud()
   private[this] val chunksMap = mutable.AnyRefMap[ByteString, ChunkStatus]()
-  private[this] val readingChunks = PendingOperation.withChunk
+  private[this] val readingChunks = mutable.AnyRefMap[Chunk, ChunkReadStatus]()
 
   // -----------------------------------------------------------------------
   // Read/write
   // -----------------------------------------------------------------------
   def readChunk(chunk: Chunk, receiver: ActorRef)(implicit storageSelector: StorageSelector): Option[ChunkStatus] = {
-    def enqueueRead(status: ChunkStatus): Option[RegionStorage] = {
-      val chunk = status.chunk.withoutData
-      val storage = storageSelector.forRead(status)
-      storage match {
-        case Some(storage) ⇒
-          log.debug("Reading chunk from {}: {}", storage.id, chunk)
-          storage.dispatcher ! SReadChunk(getChunkPath(storage, status.chunk), chunk)
+    def getReadFuture(status: ChunkStatus): (Option[RegionStorage], Future[Chunk]) = {
+      implicit val readTimeout: Timeout = sc.config.timeouts.chunkRead
 
-        case None ⇒
-          readingChunks.finish(status.chunk, ReadChunk.Failure(chunk, new IllegalArgumentException("Chunk unavailable")))
+      if (status.chunk.data.nonEmpty) {
+        log.debug("Chunk extracted from cache: {}", status.chunk)
+        (None, Future.successful(status.chunk))
+      } else {
+        val chunk = status.chunk.withoutData
+        val storage = storageSelector.forRead(status)
+        storage match {
+          case Some(storage) ⇒
+            log.debug("Reading chunk from {}: {}", storage.id, chunk)
+            (Some(storage), SReadChunk.unwrapFuture(storage.dispatcher ? SReadChunk(getChunkPath(storage, status.chunk), chunk)))
+
+          case None ⇒
+            (None, Future.failed(new IllegalArgumentException("Chunk unavailable")))
+        }
       }
-      storage
+    }
+
+    def pipeReadFuture(storageId: Option[String], chunk: Chunk, future: Future[Chunk]): Unit = {
+      future
+        .map(ChunkReadSuccess(storageId, _))
+        .recover { case error ⇒ ChunkReadFailed(storageId, chunk, error) }
+        .pipeTo(context.self)
+    }
+
+    def addReader(chunk: Chunk, storageId: String): Unit = {
+      val status = readingChunks.getOrElse(chunk, ChunkReadStatus(Set.empty, Set.empty))
+      readingChunks += chunk → status.copy(reading = status.reading + storageId)
+    }
+
+    def addWaiter(chunk: Chunk, receiver: ActorRef): Unit = {
+      if (receiver == ActorRef.noSender) return
+      val status = readingChunks.getOrElse(chunk, ChunkReadStatus(Set.empty, Set.empty))
+      readingChunks += chunk → status.copy(waiting = status.waiting + receiver)
     }
 
     val statusOption = getChunkStatus(chunk)
     statusOption match {
       case Some(status) ⇒
-        if (!Utils.isSameChunk(status.chunk, chunk)) {
+        /* if (!Utils.isSameChunk(status.chunk, chunk)) {
           receiver ! ReadChunk.Failure(chunk, new IllegalArgumentException(s"Chunks conflict: ${status.chunk} / $chunk"))
-        } else if (status.chunk.data.nonEmpty) {
-          log.debug("Chunk extracted from cache: {}", status.chunk)
-          receiver ! ReadChunk.Success(chunk, status.chunk)
-        } else {
-          readingChunks.addWaiter(chunk, receiver, () ⇒ enqueueRead(status))
+        } */
+
+        val chunk = status.chunk.withoutData
+        val readStatus = readingChunks.getOrElse(chunk, ChunkReadStatus(Set.empty, Set.empty))
+        if (readStatus.reading.isEmpty) {
+          val (storageOption, future) = getReadFuture(status)
+          storageOption.foreach(storage ⇒ addReader(chunk, storage.id))
+          pipeReadFuture(storageOption.map(_.id), chunk, future)
         }
+        addWaiter(chunk, receiver)
 
       case None ⇒
         receiver ! ReadChunk.Failure(chunk, new IllegalArgumentException("Chunk not found"))
@@ -186,7 +221,10 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
 
   def unregister(dispatcher: ActorRef): Unit = {
     chunksMap.foreachValue(removeActorRef(_, dispatcher))
-    readingChunks.removeWaiter(dispatcher)
+    readingChunks.foreach { case (chunk, status) ⇒
+      if (status.waiting.contains(dispatcher))
+        readingChunks += chunk → status.copy(waiting = status.waiting - dispatcher)
+    }
   }
 
   def unregisterChunk(dispatcher: ActorRef, chunk: Chunk): Unit = {
@@ -211,13 +249,36 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
   // -----------------------------------------------------------------------
   // Callbacks
   // -----------------------------------------------------------------------
-  def onReadSuccess(chunk: Chunk): Unit = {
-    readingChunks.finish(chunk, ReadChunk.Success(chunk, chunk))
+  def onReadSuccess(chunk: Chunk, storageId: Option[String]): Unit = {
+    log.debug("Read success: {} from {}", chunk, storageId)
+    readingChunks.remove(chunk) match {
+      case Some(ChunkReadStatus(_, waiting)) ⇒
+        waiting.foreach(_ ! ReadChunk.Success(chunk.withoutData, chunk))
+
+      case None ⇒
+        // Ignore
+    }
   }
 
-  def onReadFailure(chunk: Chunk, storageId: String, error: Throwable): Unit = {
-    readingChunks.finish(chunk, ReadChunk.Failure(chunk, error))
-    getChunkStatus(chunk).foreach(markAsReadFailed(_, storageId))
+  def onReadFailure(chunk: Chunk, storageId: Option[String], error: Throwable)
+                   (implicit storageSelector: StorageSelector): Unit = {
+
+    log.error(error, "Read failure: {} from {}", chunk, storageId)
+    storageId.foreach(storageId ⇒ getChunkStatus(chunk).foreach(markAsReadFailed(_, storageId)))
+
+    readingChunks.get(chunk) match {
+      case Some(ChunkReadStatus(reading, waiting)) ⇒
+        if (waiting.isEmpty) {
+          log.warning("Cancelling chunk read: {}", chunk)
+          readingChunks -= chunk
+        } else {
+          readingChunks += chunk → ChunkReadStatus(reading -- storageId, waiting)
+          readChunk(chunk, ActorRef.noSender) // Retry
+        }
+
+      case None ⇒
+        // Ignore
+    }
   }
 
   def onWriteSuccess(chunk: Chunk, storageId: String): Unit = {
@@ -294,7 +355,8 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
   }
 
   private[this] def startWriteChunk(status: ChunkStatus)(implicit storageSelector: StorageSelector): ChunkStatus = {
-    def enqueueWrites(status: ChunkStatus): Seq[RegionStorage] = {
+    def enqueueWrites(status: ChunkStatus): Seq[(RegionStorage, Future[Chunk])] = {
+      implicit val timeout: Timeout = sc.config.timeouts.chunkWrite
       val storageIds = status.writeStatus match {
         case WriteStatus.Pending(affinity) ⇒
           affinity.selectForWrite(status)
@@ -303,17 +365,26 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
           Vector.empty
       }
       val selectedStorages = storageIds.map(storages.getStorage)
-      selectedStorages.foreach(storage ⇒ storage.dispatcher ! SWriteChunk(getChunkPath(storage, status.chunk), status.chunk))
-      selectedStorages
+      selectedStorages.map(storage ⇒ (storage, SWriteChunk.unwrapFuture(storage.dispatcher ?
+        SWriteChunk(getChunkPath(storage, status.chunk), status.chunk))))
     }
 
     require(status.chunk.nonEmpty, "Chunk is empty")
-    val writtenStorages = enqueueWrites(status)
+    val writes = enqueueWrites(status)
+    val writtenStorages = writes.map(_._1)
     if (writtenStorages.isEmpty) {
       log.warning("No storages available for write: {}", status.chunk)
     } else {
       log.debug("Writing chunk to {}: {}", writtenStorages, status.chunk)
     }
+
+    writes.foreach { case (storage, future) ⇒
+      future
+        .map(ChunkWriteSuccess(storage.id, _))
+        .recover { case error ⇒ ChunkWriteFailed(storage.id, status.chunk, error) }
+        .pipeTo(context.self)
+    }
+
     markAsWriting(status, writtenStorages.map(_.id):_*)
   }
 
@@ -345,6 +416,10 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
 
     def removeWaiter(status: ChunkStatus, actor: ActorRef): Unit = {
       if (status.waitingChunk.contains(actor)) putStatus(status.copy(waitingChunk = status.waitingChunk - actor))
+      readingChunks.get(status.chunk).foreach { readStatus ⇒
+        if (readStatus.waiting.contains(actor))
+          readingChunks += status.chunk → readStatus.copy(waiting = readStatus.waiting - actor)
+      }
     }
 
     val isStorage = storages.contains(actor)

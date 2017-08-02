@@ -69,7 +69,7 @@ case class StoragePluginBuilder(storageId: String,
     // require(health.nonEmpty, "Health provider not provided")
 
     val indexSynchronizer = context.actorOf(StorageIndex.props(storageId, props, index.get), "index")
-    val chunkIO = context.actorOf(ChunkIODispatcher.props(chunks.get), "chunks")
+    val chunkIO = context.actorOf(ChunkIODispatcher.props(storageId, props, chunks.get), "chunks")
     context.actorOf(StorageDispatcher.props(storageId, props, indexSynchronizer, chunkIO, health.getOrElse(StorageHealthProvider.unlimited)), "storageDispatcher")
   }
 }

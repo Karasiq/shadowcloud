@@ -33,7 +33,7 @@ object Shell extends ImplicitConversions {
       testRegion.register(testStorage)
     }
 
-    println(Await.result(sc.keys.provider.getKeyChain(), Duration.Inf))
+    println(Await.result(sc.keys.getOrGenerateChain(), Duration.Inf))
 
     sys.addShutdownHook(Await.result(actorSystem.terminate(), Duration.Inf))
   }

@@ -10,16 +10,15 @@ import akka.actor.ActorSystem
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.config.keys.{KeyChain, KeyManager, KeySet}
+import com.karasiq.shadowcloud.config.keys.{KeyChain, KeyProvider, KeySet}
 import com.karasiq.shadowcloud.persistence.utils.SCQuillEncoders
 
-final class H2KeyProvider(actorSystem: ActorSystem) extends KeyManager {
+final class H2KeyProvider(actorSystem: ActorSystem) extends KeyProvider {
   private[this] val h2 = H2DB(actorSystem)
   private[this] val sc = ShadowCloud(actorSystem)
 
   import h2.context
   import context._
-  import h2.settings.executionContext
 
   // -----------------------------------------------------------------------
   // Schema
@@ -27,6 +26,7 @@ final class H2KeyProvider(actorSystem: ActorSystem) extends KeyManager {
   private[this] object schema extends SCQuillEncoders {
     case class DBKey(id: UUID, forEncryption: Boolean, forDecryption: Boolean, key: ByteString)
 
+    //noinspection TypeAnnotation
     implicit val keySchemaMeta = schemaMeta[DBKey]("sc_keys", _.id → "key_id",
       _.forEncryption → "for_encryption", _.forDecryption → "for_decryption",
       _.key → "serialized_key")
@@ -69,9 +69,8 @@ final class H2KeyProvider(actorSystem: ActorSystem) extends KeyManager {
   // -----------------------------------------------------------------------
   // Key manager functions
   // -----------------------------------------------------------------------
-  def createKey(forEncryption: Boolean, forDecryption: Boolean): Future[KeySet] = {
+  def addKeySet(keySet: KeySet, forEncryption: Boolean, forDecryption: Boolean): Future[KeySet] = {
     Future.fromTry(Try {
-      val keySet = sc.keys.generateKeySet()
       context.run(queries.addKey(conversions.toDBKey(keySet, forEncryption, forDecryption)))
       keySet
     })
@@ -91,16 +90,12 @@ final class H2KeyProvider(actorSystem: ActorSystem) extends KeyManager {
 
   override def getKeyChain(): Future[KeyChain] = {
     def readKey(bs: ByteString): KeySet = sc.serialization.fromBytes[KeySet](bs)
-    def toMap(keys: List[DBKey]): Map[UUID, KeySet] = keys.map(k ⇒ (k.id, readKey(k.key))).toMap
-
-    val future = Future.fromTry(Try {
+    Future.fromTry(Try {
       val keys = context.run(queries.getKeys)
-      KeyChain(toMap(keys.filter(_.forEncryption)), toMap(keys.filter(_.forDecryption)))
+      KeyChain(
+        keys.filter(_.forEncryption).map(dk ⇒ readKey(dk.key)),
+        keys.filter(_.forDecryption).map(dk ⇒ readKey(dk.key))
+      )
     })
-
-    future.flatMap { keyChain ⇒
-      if (keyChain.encKeys.isEmpty) createKey().map(ks ⇒ keyChain.copy(encKeys = keyChain.encKeys + (ks.id → ks)))
-      else Future.successful(keyChain)
-    }
   }
 }

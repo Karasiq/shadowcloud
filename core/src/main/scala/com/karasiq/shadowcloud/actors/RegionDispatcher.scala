@@ -32,7 +32,7 @@ import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStat
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
-import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.utils.{AkkaStreamUtils, Utils}
 
 object RegionDispatcher {
   // Messages
@@ -82,7 +82,6 @@ object RegionDispatcher {
 //noinspection TypeAnnotation
 private final class RegionDispatcher(regionId: String, regionConfig: RegionConfig) extends Actor with ActorLogging {
   import RegionDispatcher._
-  import com.karasiq.shadowcloud.actors.utils.AkkaUtils.SourceOps
   require(regionId.nonEmpty, "Invalid region identifier")
 
   // -----------------------------------------------------------------------
@@ -107,7 +106,7 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
   // Streams
   // -----------------------------------------------------------------------
   private[this] val pendingIndexQueue = Source.queue[IndexDiff](sc.config.queues.regionDiffs, OverflowStrategy.dropNew)
-    .groupedOrInstant(sc.config.queues.regionDiffs, sc.config.queues.regionDiffsTime)
+    .via(AkkaStreamUtils.groupedOrInstant(sc.config.queues.regionDiffs, sc.config.queues.regionDiffsTime))
     .map(diffs ⇒ WriteIndexDiff(diffs.fold(IndexDiff.empty)(_ merge _)))
     .to(Sink.actorRef(self, Kill))
     .run()

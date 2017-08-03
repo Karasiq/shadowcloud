@@ -20,6 +20,7 @@ import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
 import com.karasiq.shadowcloud.storage.props.StorageProps
+import com.karasiq.shadowcloud.utils.AkkaStreamUtils
 
 object StorageDispatcher {
   // Messages
@@ -39,7 +40,6 @@ object StorageDispatcher {
 private final class StorageDispatcher(storageId: String, storageProps: StorageProps, index: ActorRef,
                                       chunkIO: ActorRef, healthProvider: StorageHealthProvider) extends Actor with ActorLogging {
   import StorageDispatcher._
-  import com.karasiq.shadowcloud.actors.utils.AkkaUtils.SourceOps
 
   // -----------------------------------------------------------------------
   // Context
@@ -60,7 +60,7 @@ private final class StorageDispatcher(storageId: String, storageProps: StoragePr
   // Streams
   // -----------------------------------------------------------------------
   private[this] val pendingIndexQueue = Source.queue[(ChunkPath, Chunk)](sc.config.queues.chunksIndex, OverflowStrategy.dropNew)
-    .groupedOrInstant(sc.config.queues.chunksIndex, sc.config.queues.chunksIndexTime)
+    .via(AkkaStreamUtils.groupedOrInstant(sc.config.queues.chunksIndex, sc.config.queues.chunksIndexTime))
     .mapConcat(_.groupBy(_._1.region).map { case (regionId, chunks) ⇒
       StorageIndex.Envelope(regionId, RegionIndex.WriteDiff(IndexDiff.newChunks(chunks.map(_._2):_*)))
     })

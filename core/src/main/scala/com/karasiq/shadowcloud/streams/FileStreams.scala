@@ -22,6 +22,7 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
     Source(chunks.toVector)
       .map((regionId, _))
       .via(regionStreams.readChunks)
+      .log("chunk-stream-read")
       .via(chunkProcessing.afterRead)
       .map(_.data.plain)
   }
@@ -51,6 +52,7 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
       .via(chunkProcessing.beforeWrite())
       .map((regionId, _))
       .via(regionStreams.writeChunks)
+      .log("chunk-stream-write")
       .toMat(chunkProcessing.index())(Keep.right)
 
     val graph = GraphDSL.create(matSink) { implicit builder ⇒ matSink ⇒

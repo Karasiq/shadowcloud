@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud
 
 import java.util.UUID
 
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -15,7 +15,7 @@ import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.StringEventBus
 import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, StorageConfig}
-import com.karasiq.shadowcloud.config.keys.{KeyProvider, KeySet}
+import com.karasiq.shadowcloud.config.keys.{KeyChain, KeyProvider, KeySet}
 import com.karasiq.shadowcloud.config.passwords.PasswordProvider
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.providers.SCModules
@@ -83,6 +83,20 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
       val sign = modules.crypto.signModule(config.crypto.signing.index).createParameters()
       KeySet(UUID.randomUUID(), sign, enc)
     }
+
+    def getOrGenerateChain(): Future[KeyChain] = {
+      provider.getKeyChain().flatMap { chain ⇒
+        if (chain.encKeys.isEmpty) {
+          val keySet = generateKeySet()
+          provider
+            .addKeySet(keySet)
+            .flatMap(_ ⇒ provider.getKeyChain())
+            .filter(_.encKeys.contains(keySet))
+        } else {
+          Future.successful(chain)
+        }
+      }
+    }
   }
 
   object passwords extends ConfigImplicits {
@@ -121,7 +135,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // -----------------------------------------------------------------------
   object streams {
     val chunk = ChunkProcessingStreams(config)
-    val index = IndexProcessingStreams(modules, config, keys.provider)
+    val index = IndexProcessingStreams(ShadowCloudExtension.this)
     val region = RegionStreams(actors.regionSupervisor, config.parallelism, config.timeouts)
     val file = FileStreams(region, chunk)
     val metadata = MetadataStreams(config.metadata, modules.metadata, file, ops.region, serialization)

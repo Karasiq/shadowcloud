@@ -43,11 +43,11 @@ private[shadowcloud] final class IndexEncryption(modules: SCModules, keyEncMetho
     def createHeader(data: EncryptedIndexData, parameters: EncryptionParameters, keys: KeySet): EncryptedIndexData.Header = {
       val headerData = keyEncModule.encrypt(serialization.toBytes(parameters), keys.encryption)
       val header = EncryptedIndexData.Header(IndexEncryption.getKeyHash(data.id, keys.id), headerData)
-      IndexSignatures.sign(data, header, signModule, keys.sign)
+      IndexSignatures.sign(data, header, signModule, keys.signing)
     }
 
     val (encData, encParameters) = createEncryptedData(payload, method)
-    val headers = keys.encKeys.values.map(keySet ⇒ createHeader(encData, encParameters, keySet))
+    val headers = keys.encKeys.map(keySet ⇒ createHeader(encData, encParameters, keySet))
     encData.copy(headers = headers.toVector)
   }
 
@@ -56,10 +56,10 @@ private[shadowcloud] final class IndexEncryption(modules: SCModules, keyEncMetho
     val signModule = modules.crypto.signModule(signMethod)
 
     val matchingKeys = data.headers.iterator.flatMap { header ⇒
-      keys.decKeys.keys
-        .find(IndexEncryption.getKeyHash(data.id, _) == header.keyHash)
-        .map(keyId ⇒ (keys.decKeys(keyId), header))
-        .filter { case (keySet, header) ⇒ IndexSignatures.verify(data, header, signModule, keySet.sign) }
+      keys.decKeys
+        .find(key ⇒ IndexEncryption.getKeyHash(data.id, key.id) == header.keyHash)
+        .map((_, header))
+        .filter { case (key, header) ⇒ IndexSignatures.verify(data, header, signModule, key.signing) }
     }
 
     if (matchingKeys.isEmpty) throw CryptoException.KeyMissing()

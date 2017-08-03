@@ -1,7 +1,6 @@
 package com.karasiq.shadowcloud.streams
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.actor.ActorRef
@@ -13,6 +12,7 @@ import com.karasiq.shadowcloud.actors.RegionDispatcher._
 import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.RegionGC.GCReport
+import com.karasiq.shadowcloud.config.TimeoutsConfig
 import com.karasiq.shadowcloud.index.{Chunk, File, Folder, Path}
 import com.karasiq.shadowcloud.index.diffs.{FileVersions, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
@@ -22,12 +22,12 @@ import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 
 object RegionOps {
-  def apply(regionSupervisor: ActorRef)(implicit ec: ExecutionContext, timeout: Timeout = Timeout(5 minutes)): RegionOps = {
-    new RegionOps(regionSupervisor)
+  def apply(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(implicit ec: ExecutionContext): RegionOps = {
+    new RegionOps(regionSupervisor, timeouts)
   }
 }
 
-final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext, timeout: Timeout) {
+final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(implicit ec: ExecutionContext) {
   // -----------------------------------------------------------------------
   // Index
   // -----------------------------------------------------------------------
@@ -95,8 +95,8 @@ final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext,
       }
 
       if (!files.contains(newOrModifiedFile)) {
-        val future = regionSupervisor ? RegionEnvelope(regionId, RegionDispatcher.WriteIndex(FolderIndexDiff.createFiles(newOrModifiedFile)))
-        RegionDispatcher.WriteIndex.unwrapFuture(future).map(_ ⇒ newOrModifiedFile)
+        val future = askRegion(regionId, WriteIndex, RegionDispatcher.WriteIndex(FolderIndexDiff.createFiles(newOrModifiedFile)))
+        future.map(_ ⇒ newOrModifiedFile)
       } else {
         Future.successful(newOrModifiedFile)
       }
@@ -107,11 +107,11 @@ final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext,
   // Chunk IO
   // -----------------------------------------------------------------------
   def writeChunk(regionId: String, chunk: Chunk): Future[Chunk] = {
-    askRegion(regionId, WriteChunk, WriteChunk(chunk))
+    askRegion(regionId, WriteChunk, WriteChunk(chunk))(timeouts.chunkWrite)
   }
 
   def readChunk(regionId: String, chunk: Chunk): Future[Chunk] = {
-    askRegion(regionId, ReadChunk, ReadChunk(chunk))
+    askRegion(regionId, ReadChunk, ReadChunk(chunk))(timeouts.chunkRead)
   }
 
   def rewriteChunk(regionId: String, chunk: Chunk, newAffinity: Option[ChunkWriteAffinity]): Future[Chunk] = {
@@ -135,7 +135,8 @@ final class RegionOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext,
   // -----------------------------------------------------------------------
   // Utils
   // -----------------------------------------------------------------------
-  private[this] def askRegion[V](regionId: String, status: MessageStatus[_, V], message: Any): Future[V] = {
+  private[this] def askRegion[V](regionId: String, status: MessageStatus[_, V], message: Any)
+                                (implicit timeout: Timeout = timeouts.query): Future[V] = {
     status.unwrapFuture(regionSupervisor ? RegionEnvelope(regionId, message))
   }
 }

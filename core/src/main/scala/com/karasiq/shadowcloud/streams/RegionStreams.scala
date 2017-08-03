@@ -1,29 +1,32 @@
 package com.karasiq.shadowcloud.streams
 
 import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.NotUsed
 import akka.actor.ActorRef
 import akka.stream.scaladsl.{Flow, Source}
-import akka.util.Timeout
 
-import com.karasiq.shadowcloud.config.ParallelismConfig
+import com.karasiq.shadowcloud.config.{ParallelismConfig, TimeoutsConfig}
 import com.karasiq.shadowcloud.index.{Chunk, File, Path}
 import com.karasiq.shadowcloud.index.diffs.FileVersions
 
 object RegionStreams {
-  def apply(regionSupervisor: ActorRef, parallelism: ParallelismConfig)
-           (implicit ec: ExecutionContext, timeout: Timeout = Timeout(5 minutes)): RegionStreams = {
-    new RegionStreams(regionSupervisor, parallelism)
+  def apply(regionSupervisor: ActorRef,
+            parallelism: ParallelismConfig,
+            timeouts: TimeoutsConfig)
+           (implicit ec: ExecutionContext): RegionStreams = {
+    new RegionStreams(regionSupervisor, parallelism, timeouts)
   }
 }
 
+//noinspection TypeAnnotation
 // RegionOps wrapped in flows
-final class RegionStreams(val regionSupervisor: ActorRef, val parallelism: ParallelismConfig)
-                         (implicit ec: ExecutionContext, timeout: Timeout) {
-  private[this] val regionOps = RegionOps(regionSupervisor)
+final class RegionStreams(regionSupervisor: ActorRef,
+                          parallelism: ParallelismConfig,
+                          timeouts: TimeoutsConfig)
+                         (implicit ec: ExecutionContext) {
+  private[this] val regionOps = RegionOps(regionSupervisor, timeouts)
 
   val writeChunks = Flow[(String, Chunk)]
     .mapAsync(parallelism.write) { case (regionId, chunk) ⇒ regionOps.writeChunk(regionId, chunk) }

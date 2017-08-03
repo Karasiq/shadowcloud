@@ -11,17 +11,18 @@ import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, RegionIndex, StorageIn
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
+import com.karasiq.shadowcloud.config.TimeoutsConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 
 object StorageOps {
-  def apply(regionSupervisor: ActorRef)(implicit ec: ExecutionContext, timeout: Timeout): StorageOps = {
-    new StorageOps(regionSupervisor)
+  def apply(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(implicit ec: ExecutionContext): StorageOps = {
+    new StorageOps(regionSupervisor, timeouts)
   }
 }
 
-final class StorageOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext, timeout: Timeout) {
+final class StorageOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(implicit ec: ExecutionContext) {
   // -----------------------------------------------------------------------
   // Index
   // -----------------------------------------------------------------------
@@ -49,25 +50,26 @@ final class StorageOps(regionSupervisor: ActorRef)(implicit ec: ExecutionContext
   // Chunk IO
   // -----------------------------------------------------------------------
   def writeChunk(storageId: String, path: ChunkPath, chunk: Chunk): Future[Chunk] = {
-    askStorage(storageId, ChunkIODispatcher.WriteChunk, ChunkIODispatcher.WriteChunk(path, chunk))
+    askStorage(storageId, ChunkIODispatcher.WriteChunk, ChunkIODispatcher.WriteChunk(path, chunk))(timeouts.chunkWrite)
   }
 
   def readChunk(storageId: String, path: ChunkPath, chunk: Chunk): Future[Chunk] = {
-    askStorage(storageId, ChunkIODispatcher.ReadChunk, ChunkIODispatcher.ReadChunk(path, chunk))
+    askStorage(storageId, ChunkIODispatcher.ReadChunk, ChunkIODispatcher.ReadChunk(path, chunk))(timeouts.chunkRead)
   }
 
   def getChunkKeys(storageId: String): Future[Set[ChunkPath]] = {
-    askStorage(storageId, ChunkIODispatcher.GetKeys, ChunkIODispatcher.GetKeys)
+    askStorage(storageId, ChunkIODispatcher.GetKeys, ChunkIODispatcher.GetKeys)(timeouts.chunkDelete)
   }
 
   def deleteChunks(storageId: String, paths: Set[ChunkPath]): Future[Set[ChunkPath]] = {
-    askStorage(storageId, ChunkIODispatcher.DeleteChunks, ChunkIODispatcher.DeleteChunks(paths))
+    askStorage(storageId, ChunkIODispatcher.DeleteChunks, ChunkIODispatcher.DeleteChunks(paths))(timeouts.chunkDelete)
   }
 
   // -----------------------------------------------------------------------
   // Utils
   // -----------------------------------------------------------------------
-  private[this] def askStorage[V](storageId: String, status: MessageStatus[_, V], message: Any): Future[V] = {
+  private[this] def askStorage[V](storageId: String, status: MessageStatus[_, V], message: Any)
+                                 (implicit timeout: Timeout = timeouts.query): Future[V] = {
     status.unwrapFuture(regionSupervisor ? StorageEnvelope(storageId, message))
   }
 

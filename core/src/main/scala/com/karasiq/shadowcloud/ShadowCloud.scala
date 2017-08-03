@@ -118,15 +118,15 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   object streams {
     val chunk = ChunkProcessingStreams(config)
     val index = IndexProcessingStreams(modules, config, keys.provider)
-    val region = RegionStreams(actors.regionSupervisor, config.parallelism)
+    val region = RegionStreams(actors.regionSupervisor, config.parallelism, config.timeouts)
     val file = FileStreams(region, chunk)
     val metadata = MetadataStreams(config.metadata, modules.metadata, file, ops.region, serialization)
   }
 
   object ops {
-    val supervisor = RegionSupervisorOps(actors.regionSupervisor)
-    val region = RegionOps(actors.regionSupervisor)
-    val storage = StorageOps(actors.regionSupervisor)
+    val supervisor = RegionSupervisorOps(actors.regionSupervisor, config.timeouts)
+    val region = RegionOps(actors.regionSupervisor, config.timeouts)
+    val storage = StorageOps(actors.regionSupervisor, config.timeouts)
     val background = BackgroundOps(config, this.region)
   }
 }

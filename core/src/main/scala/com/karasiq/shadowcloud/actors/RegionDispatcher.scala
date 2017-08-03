@@ -7,8 +7,10 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-import akka.actor.{Actor, ActorLogging, ActorRef, PossiblyHarmful, Props, Terminated}
-import akka.pattern.ask
+import akka.actor.{Actor, ActorLogging, ActorRef, Kill, PossiblyHarmful, Props, Status, Terminated}
+import akka.pattern.{ask, pipe}
+import akka.stream.{ActorMaterializer, Materializer, OverflowStrategy, QueueOfferResult}
+import akka.stream.scaladsl.{Sink, Source}
 import akka.util.Timeout
 
 import com.karasiq.shadowcloud.ShadowCloud
@@ -16,7 +18,7 @@ import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk �
 import com.karasiq.shadowcloud.actors.context.RegionContext
 import com.karasiq.shadowcloud.actors.events.{RegionEvents, StorageEvents}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, StorageTracker}
-import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
+import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.RegionIndex.WriteDiff
 import com.karasiq.shadowcloud.config.RegionConfig
@@ -61,10 +63,15 @@ object RegionDispatcher {
   private[actors] sealed trait InternalMessage extends Message with PossiblyHarmful
   private[actors] case class PushDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)], pending: IndexDiff) extends InternalMessage
   private[actors] case class PullStorageIndex(storageId: String) extends InternalMessage
+
   private[actors] case class ChunkReadSuccess(storageId: Option[String], chunk: Chunk) extends InternalMessage
   private[actors] case class ChunkReadFailed(storageId: Option[String], chunk: Chunk, error: Throwable) extends InternalMessage
   private[actors] case class ChunkWriteSuccess(storageId: String, chunk: Chunk) extends InternalMessage
   private[actors] case class ChunkWriteFailed(storageId: String, chunk: Chunk, error: Throwable) extends InternalMessage
+
+  private[actors] case class EnqueueIndexDiff(diff: IndexDiff) extends InternalMessage
+  private[actors] case class MarkAsPending(diff: IndexDiff) extends InternalMessage
+  private[actors] case class WriteIndexDiff(diff: IndexDiff) extends InternalMessage
 
   // Props
   def props(regionId: String, regionProps: RegionConfig): Props = {
@@ -75,6 +82,7 @@ object RegionDispatcher {
 //noinspection TypeAnnotation
 private final class RegionDispatcher(regionId: String, regionConfig: RegionConfig) extends Actor with ActorLogging {
   import RegionDispatcher._
+  import com.karasiq.shadowcloud.actors.utils.AkkaUtils.SourceOps
   require(regionId.nonEmpty, "Invalid region identifier")
 
   // -----------------------------------------------------------------------
@@ -82,6 +90,7 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
   // -----------------------------------------------------------------------
   private[this] implicit val executionContext: ExecutionContext = context.dispatcher
   private[this] implicit val timeout = Timeout(3 seconds)
+  private[this] implicit val materializer: Materializer = ActorMaterializer()
   private[this] val sc = ShadowCloud()
   private[this] val storages = StorageTracker()
   private[this] val chunks = ChunksTracker(regionId, regionConfig, storages, log)
@@ -95,6 +104,15 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
   private[this] val gcActor = context.actorOf(RegionGC.props(regionId, regionConfig.garbageCollector), "region-gc")
 
   // -----------------------------------------------------------------------
+  // Streams
+  // -----------------------------------------------------------------------
+  private[this] val pendingIndexQueue = Source.queue[IndexDiff](sc.config.queues.regionDiffs, OverflowStrategy.dropNew)
+    .groupedOrInstant(sc.config.queues.regionDiffs, sc.config.queues.regionDiffsTime)
+    .map(diffs ⇒ WriteIndexDiff(diffs.fold(IndexDiff.empty)(_ merge _)))
+    .to(Sink.actorRef(self, Kill))
+    .run()
+
+  // -----------------------------------------------------------------------
   // Receive
   // -----------------------------------------------------------------------
   def receive: Receive = {
@@ -102,20 +120,34 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
     // Global index commands
     // -----------------------------------------------------------------------
     case WriteIndex(folders) ⇒
-      if (folders.isEmpty) {
-        sender() ! WriteIndex.Failure(folders, new IllegalArgumentException("Diff is empty"))
+      val future = (self ? EnqueueIndexDiff(IndexDiff(Utils.timestamp, folders))).mapTo[IndexDiff]
+      WriteIndex.wrapFuture(folders, future).pipeTo(sender())
+
+    case EnqueueIndexDiff(diff) ⇒
+      val currentSender = sender()
+      pendingIndexQueue.offer(diff).onComplete {
+        case Success(QueueOfferResult.Enqueued) ⇒
+          self.tell(MarkAsPending(diff), currentSender)
+
+        case Success(otherQueueResult) ⇒
+          currentSender ! Status.Failure(new IllegalStateException(otherQueueResult.toString))
+
+        case Failure(error) ⇒
+          currentSender ! Status.Failure(error)
+      }
+
+    case MarkAsPending(diff) ⇒
+      globalIndex.addPending(diff)
+      sender() ! Status.Success(globalIndex.pending)
+
+    case WriteIndexDiff(diff) ⇒
+      val storages = storageSelector.forIndexWrite(diff)
+      if (storages.isEmpty) {
+        log.warning("No index storages available on {}", regionId)
+        context.system.scheduler.scheduleOnce(15 seconds, sc.actors.regionSupervisor, RegionEnvelope(regionId, WriteIndexDiff(diff)))
       } else {
-        val diff = IndexDiff(Utils.timestamp, folders)
-        val storages = storageSelector.forIndexWrite(diff)
-        if (storages.isEmpty) {
-          log.warning("No index storages available on {}", regionId)
-          sender() ! WriteIndex.Failure(folders, new IllegalStateException("No storages available"))
-        } else {
-          log.debug("Writing to virtual region [{}] index: {} (storages = {})", regionId, diff, storages)
-          storages.foreach(_.dispatcher ! StorageIndex.Envelope(regionId, WriteDiff(diff)))
-          globalIndex.addPending(diff)
-          sender() ! WriteIndex.Success(folders, globalIndex.pending)
-        }
+        log.debug("Writing to virtual region [{}] index: {} (storages = {})", regionId, diff, storages)
+        storages.foreach(_.dispatcher ! StorageIndex.Envelope(regionId, WriteDiff(diff)))
       }
 
     case GetFiles(path) ⇒
@@ -297,6 +329,9 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
       gcActor.forward(m)
   }
 
+  // -----------------------------------------------------------------------
+  // Utils
+  // -----------------------------------------------------------------------
   private[this] def addStorageDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)]): Unit = {
     val dispatcher = storages.getDispatcher(storageId)
     diffs.foreach { case (sequenceNr, diff) ⇒
@@ -333,8 +368,12 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
     globalIndex.folders.patch(globalIndex.pending.folders)
   }
 
+  // -----------------------------------------------------------------------
+  // Lifecycle
+  // -----------------------------------------------------------------------
   override def postStop(): Unit = {
     sc.eventStreams.storage.unsubscribe(self)
+    pendingIndexQueue.complete()
     super.postStop()
   }
 }

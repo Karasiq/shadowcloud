@@ -264,16 +264,32 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
                    (implicit storageSelector: StorageSelector): Unit = {
 
     log.error(error, "Read failure: {} from {}", chunk, storageId)
-    storageId.foreach(storageId ⇒ getChunkStatus(chunk).foreach(markAsReadFailed(_, storageId)))
+    for (storageId ← storageId; status ← getChunkStatus(chunk)) {
+      markAsReadFailed(status, storageId)
+    }
 
     readingChunks.get(chunk) match {
       case Some(ChunkReadStatus(reading, waiting)) ⇒
-        if (waiting.isEmpty) {
+        def cancelChunkRead(): Unit = {
           log.warning("Cancelling chunk read: {}", chunk)
+          waiting.foreach(_ ! ReadChunk.Failure(chunk, error))
           readingChunks -= chunk
+        }
+
+        if (waiting.isEmpty) {
+          cancelChunkRead()
         } else {
-          readingChunks += chunk → ChunkReadStatus(reading -- storageId, waiting)
-          readChunk(chunk, ActorRef.noSender) // Retry
+          val newReading = reading -- storageId
+          readingChunks += chunk → ChunkReadStatus(newReading, waiting)
+          if (newReading.isEmpty) {
+            if (storageId.nonEmpty) {
+              // Retry
+              readChunk(chunk, ActorRef.noSender)
+            } else {
+              // No storages left
+              cancelChunkRead()
+            }
+          }
         }
 
       case None ⇒

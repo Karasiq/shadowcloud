@@ -42,7 +42,7 @@ private[actors] final class StorageTracker(implicit context: ActorContext) exten
   // -----------------------------------------------------------------------
   def register(storageId: String, props: StorageProps, dispatcher: ActorRef, health: StorageHealth): Unit = {
     context.watch(dispatcher)
-    val storage = RegionStorage(storageId, props, sc.storageConfig(storageId, props), dispatcher, health)
+    val storage = RegionStorage(storageId, props, sc.configs.storageConfig(storageId, props), dispatcher, health)
     storagesById += storageId → storage
     storagesByAR += dispatcher → storage
     sc.eventStreams.storage.subscribe(context.self, storageId)

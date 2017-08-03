@@ -49,7 +49,7 @@ class RegionRepairTest extends ActorSpec with FlatSpecLike {
   }
 
   private[this] def registerRegionAndStorages(): Unit = {
-    sc.ops.supervisor.addRegion(testRegionId, sc.regionConfig(testRegionId))
+    sc.ops.supervisor.addRegion(testRegionId, sc.configs.regionConfig(testRegionId))
     sc.ops.supervisor.addStorage(testStorage1, StorageProps.inMemory)
     sc.ops.supervisor.addStorage(testStorage2, StorageProps.inMemory)
     sc.ops.supervisor.register(testRegionId, testStorage1)

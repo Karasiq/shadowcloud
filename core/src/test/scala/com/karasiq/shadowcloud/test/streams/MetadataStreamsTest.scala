@@ -108,7 +108,7 @@ class MetadataStreamsTest extends ActorSpec with FlatSpecLike {
   }
 
   private[this] def registerRegionAndStorages(): Unit = {
-    sc.ops.supervisor.addRegion(testRegionId, sc.regionConfig(testRegionId))
+    sc.ops.supervisor.addRegion(testRegionId, sc.configs.regionConfig(testRegionId))
     sc.ops.supervisor.addStorage(testStorageId, StorageProps.inMemory)
     sc.ops.supervisor.register(testRegionId, testStorageId)
     expectNoMsg(100 millis)

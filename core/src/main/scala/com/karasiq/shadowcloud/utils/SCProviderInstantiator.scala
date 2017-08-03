@@ -9,9 +9,9 @@ import com.karasiq.shadowcloud.config.SCConfig
 private[shadowcloud] final class SCProviderInstantiator(sc: ShadowCloudExtension) extends ProviderInstantiator {
   private[this] lazy val constructors = Array[(Array[Class[_]], Array[AnyRef])](
     (Array(classOf[ShadowCloudExtension]), Array(sc)),
-    (Array(classOf[SCConfig]), Array(sc.config)),
-    (Array(classOf[Config]), Array(sc.rootConfig)),
     (Array(classOf[ActorSystem]), Array(sc.implicits.actorSystem)),
+    (Array(classOf[SCConfig]), Array(sc.config)),
+    (Array(classOf[Config]), Array(sc.config.rootConfig)),
     (Array.empty, Array.empty)
   )
 

@@ -66,7 +66,7 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
   private[this] implicit val materializer: Materializer = ActorMaterializer()
   private[this] val sc = ShadowCloud()
   private[this] val index = IndexMerger()
-  private[this] val config = sc.storageConfig(storageId, storageProps)
+  private[this] val config = sc.configs.storageConfig(storageId, storageProps)
   private[this] val streams = IndexRepositoryStreams(config)
   private[this] var compactRequested = false
   private[this] var diffsSaved = 0

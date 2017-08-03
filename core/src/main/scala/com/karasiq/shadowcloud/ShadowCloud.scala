@@ -6,18 +6,20 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-import akka.actor.{ActorContext, ActorSystem, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
+import akka.actor.{ActorContext, ActorRef, ActorSystem, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
+import com.typesafe.config.Config
 
 import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.StringEventBus
 import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, StorageConfig}
-import com.karasiq.shadowcloud.config.keys.KeySet
+import com.karasiq.shadowcloud.config.keys.{KeyProvider, KeySet}
+import com.karasiq.shadowcloud.config.passwords.PasswordProvider
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.providers.SCModules
-import com.karasiq.shadowcloud.serialization.SerializationModules
+import com.karasiq.shadowcloud.serialization.{SerializationModule, SerializationModules}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams._
 import com.karasiq.shadowcloud.utils.{ProviderInstantiator, SCProviderInstantiator}
@@ -54,25 +56,27 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // Configuration
   // -----------------------------------------------------------------------
 
-  val rootConfig = actorSystem.settings.config.getConfig("shadowcloud")
-  val config = SCConfig(rootConfig)
-  val modules = SCModules(config)
-  val serialization = SerializationModules.forActorSystem(actorSystem)
+  private[this] val rootConfig: Config = actorSystem.settings.config.getConfig("shadowcloud")
+  val config: SCConfig = SCConfig(rootConfig)
+  val modules: SCModules = SCModules(config)
+  val serialization: SerializationModule = SerializationModules.forActorSystem(actorSystem)
 
-  def regionConfig(regionId: String): RegionConfig = {
-    RegionConfig.forId(regionId, rootConfig)
-  }
+  object configs {
+    def regionConfig(regionId: String): RegionConfig = {
+      RegionConfig.forId(regionId, rootConfig)
+    }
 
-  def storageConfig(storageId: String): StorageConfig = { // Uses only static config
-    StorageConfig.forId(storageId, rootConfig)
-  }
+    def storageConfig(storageId: String): StorageConfig = { // Uses only static config
+      StorageConfig.forId(storageId, rootConfig)
+    }
 
-  def storageConfig(storageId: String, storageProps: StorageProps): StorageConfig = {
-    StorageConfig.forProps(storageId, storageProps, rootConfig)
+    def storageConfig(storageId: String, storageProps: StorageProps): StorageConfig = {
+      StorageConfig.forProps(storageId, storageProps, rootConfig)
+    }
   }
 
   object keys {
-    val provider = pInst.getInstance(config.crypto.keyProvider)
+    val provider: KeyProvider = pInst.getInstance(config.crypto.keyProvider)
 
     def generateKeySet(): KeySet = {
       val enc = modules.crypto.encryptionModule(config.crypto.encryption.keys).createParameters()
@@ -82,7 +86,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   }
 
   object passwords extends ConfigImplicits {
-    val provider = pInst.getInstance(config.crypto.passwordProvider)
+    val provider: PasswordProvider = pInst.getInstance(config.crypto.passwordProvider)
 
     def getOrAsk(configPath: String, passwordId: String): String = {
       rootConfig.withDefault(provider.askPassword(passwordId), _.getString(configPath))
@@ -93,7 +97,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // Actors
   // -----------------------------------------------------------------------
   object actors {
-    val regionSupervisor = _actorSystem.actorOf(RegionSupervisor.props, "shadowcloud")
+    val regionSupervisor: ActorRef = _actorSystem.actorOf(RegionSupervisor.props, "shadowcloud")
   }
 
   // -----------------------------------------------------------------------

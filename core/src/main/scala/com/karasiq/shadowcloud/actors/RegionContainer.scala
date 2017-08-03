@@ -22,7 +22,7 @@ private[actors] object RegionContainer {
 
 private[actors] final class RegionContainer(regionId: String) extends Actor with Stash with ActorLogging with ContainerActor {
   private[this] val sc = ShadowCloud()
-  var regionConfig: RegionConfig = sc.regionConfig(regionId)
+  var regionConfig: RegionConfig = sc.configs.regionConfig(regionId)
 
   def receive: Receive = {
     case SetConfig(rc) ⇒

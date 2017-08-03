@@ -107,7 +107,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
   }
 
   def writeChunk(chunk: Chunk, receiver: ActorRef)(implicit storageSelector: StorageSelector): ChunkStatus = {
-    require(chunk.nonEmpty)
+    require(chunk.nonEmpty, "Chunk data is empty")
     getChunkStatus(chunk) match {
       case Some(status) ⇒
         status.writeStatus match {
@@ -122,7 +122,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
             } else {
               status.chunk.copy(data = chunk.data.copy(encrypted = ByteString.empty))
             }
-            receiver ! WriteChunk.Success(chunkWithData, chunkWithData)
+            receiver ! WriteChunk.Success(chunkWithData.withoutData, chunkWithData)
             log.debug("Chunk restored from index, write skipped: {}", chunkWithData)
             status.copy(chunk = chunkWithData)
         }
@@ -390,18 +390,17 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
     val writtenStorages = writes.map(_._1)
     if (writtenStorages.isEmpty) {
       log.warning("No storages available for write: {}", status.chunk)
+      status
     } else {
       log.debug("Writing chunk to {}: {}", writtenStorages, status.chunk)
+      writes.foreach { case (storage, future) ⇒
+        future
+          .map(ChunkWriteSuccess(storage.id, _))
+          .recover { case error ⇒ ChunkWriteFailed(storage.id, status.chunk, error) }
+          .pipeTo(context.self)
+      }
+      markAsWriting(status, writtenStorages.map(_.id):_*)
     }
-
-    writes.foreach { case (storage, future) ⇒
-      future
-        .map(ChunkWriteSuccess(storage.id, _))
-        .recover { case error ⇒ ChunkWriteFailed(storage.id, status.chunk, error) }
-        .pipeTo(context.self)
-    }
-
-    markAsWriting(status, writtenStorages.map(_.id):_*)
   }
 
   private[this] def removeStatus(status: ChunkStatus): Option[ChunkStatus] = {

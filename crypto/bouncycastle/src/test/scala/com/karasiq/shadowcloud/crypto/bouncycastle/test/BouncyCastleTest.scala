@@ -38,10 +38,10 @@ class BouncyCastleTest extends FlatSpec with Matchers {
 
   BCBlockCiphers.aeadAlgorithms.foreach { algorithm ⇒
     val keySize = BCBlockCiphers.getKeySize(algorithm)
-    val blockSize = BCBlockCiphers.getBlockSize(algorithm)
+    // val blockSize = BCBlockCiphers.getBlockSize(algorithm)
     val nonceSize = BCBlockCiphers.getNonceSize(algorithm)
 
-    if (blockSize == 128) testSymmetricEncryption(algorithm, AEADBlockCipherModule(EncryptionMethod(algorithm, keySize)), keySize / 8, nonceSize)
+    /* if (blockSize == 128) */ testSymmetricEncryption(algorithm, AEADBlockCipherModule(EncryptionMethod(algorithm, keySize)), keySize / 8, nonceSize)
   }
   
   testSymmetricEncryption("Salsa20", StreamCipherModule.Salsa20(), 32, 8)

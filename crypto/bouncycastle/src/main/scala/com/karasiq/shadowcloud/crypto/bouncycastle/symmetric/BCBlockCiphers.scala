@@ -71,12 +71,17 @@ private[bouncycastle] object BCBlockCiphers {
     specs.map(spec ⇒ (spec.algorithm, spec)).toMap
   }
 
-  val algorithms = blockCipherSpecs.keySet
-  val blockModes = Set("CBC", "CFB", "OFB")
-  val aeadModes = Set("GCM", "CCM", "EAX", "OCB")
+  val algorithms: Set[String] = blockCipherSpecs.keySet
+  val blockModes: Set[String] = Set("CBC", "CFB", "OFB")
+  val aeadModes: Set[String] = Set("GCM", "CCM", "EAX", "OCB")
 
-  val blockAlgorithms = for (alg ← algorithms; mode ← blockModes) yield s"$alg/$mode"
-  val aeadAlgorithms = for (alg ← algorithms; mode ← aeadModes) yield s"$alg/$mode"
+  val blockAlgorithms: Set[String] =
+    for (alg ← algorithms; mode ← blockModes)
+      yield s"$alg/$mode"
+
+  val aeadAlgorithms: Set[String] =
+    for (alg ← algorithms if getBlockSize(alg) == 128; mode ← aeadModes)
+      yield s"$alg/$mode"
 
   def isBlockAlgorithm(algorithm: String): Boolean = {
     blockAlgorithms.contains(algorithm)

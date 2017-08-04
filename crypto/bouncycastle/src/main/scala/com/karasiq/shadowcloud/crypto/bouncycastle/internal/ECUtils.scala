@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.internal
 
-import java.security.SecureRandom
-
 import scala.language.postfixOps
 import scala.util.control.NonFatal
 
@@ -64,7 +62,7 @@ private[bouncycastle] object ECUtils {
   def createKeyGenerator(method: CryptoMethod): AsymmetricCipherKeyPairGenerator = {
     val generator = new ECKeyPairGenerator
     val domainParameters = ECUtils.getCurveDomainParameters(method)
-    val secureRandom = new SecureRandom()
+    val secureRandom = BCUtils.createSecureRandom()
     generator.init(new ECKeyGenerationParameters(domainParameters, secureRandom))
     generator
   }

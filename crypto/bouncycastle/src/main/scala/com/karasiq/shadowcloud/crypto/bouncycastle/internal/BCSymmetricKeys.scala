@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.internal
 
-import java.security.SecureRandom
-
 import scala.language.postfixOps
 
 import akka.util.ByteString
@@ -9,7 +7,7 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule, EncryptionParameters, SymmetricEncryptionParameters}
 
 private[bouncycastle] trait BCSymmetricKeys { self: EncryptionModule ⇒
-  private[this] val secureRandom = new SecureRandom()
+  private[this] val secureRandom = BCUtils.createSecureRandom()
 
   protected def method: EncryptionMethod
   protected def keySize: Int = method.keySize / 8

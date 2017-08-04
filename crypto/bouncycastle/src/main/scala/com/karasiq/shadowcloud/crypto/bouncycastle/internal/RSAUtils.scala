@@ -1,7 +1,6 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.internal
 
 import java.math.BigInteger
-import java.security.SecureRandom
 
 import scala.util.control.NonFatal
 
@@ -29,7 +28,7 @@ private[bouncycastle] object RSAUtils {
 
   def createKeyGenerator(keySize: Int, publicExponent: Long = defaults.publicExponent): AsymmetricCipherKeyPairGenerator = {
     val generator = new RSAKeyPairGenerator
-    val secureRandom = new SecureRandom()
+    val secureRandom =  BCUtils.createSecureRandom()
     val rsaParameters = new RSAKeyGenerationParameters(BigInteger.valueOf(publicExponent), secureRandom, keySize, defaults.certainty)
     generator.init(rsaParameters)
     generator

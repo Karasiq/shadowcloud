@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric
 
-import java.security.SecureRandom
-
 import scala.language.postfixOps
 
 import akka.util.ByteString
@@ -18,7 +16,7 @@ import com.karasiq.shadowcloud.config.{ConfigProps, CryptoProps}
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.BCDigests
-import com.karasiq.shadowcloud.crypto.bouncycastle.internal.ECUtils
+import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{BCUtils, ECUtils}
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.BCECKeys
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.BCBlockCiphers
 import com.karasiq.shadowcloud.utils.HexString
@@ -73,7 +71,7 @@ private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
   }
 
   private def addIesParameters(parameters: AsymmetricEncryptionParameters): AsymmetricEncryptionParameters = {
-    val secureRandom = new SecureRandom()
+    val secureRandom = BCUtils.createSecureRandom()
 
     def randomBytes(size: Int): String = {
       val bytes = new Array[Byte](size)

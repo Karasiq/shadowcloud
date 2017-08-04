@@ -4,14 +4,19 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 import org.abstractj.kalium.NaCl
-import org.abstractj.kalium.NaCl.Sodium
-import org.abstractj.kalium.crypto.{Random ⇒ LSRandom}
 
 import com.karasiq.shadowcloud.crypto.{EncryptionModule, EncryptionParameters, StreamEncryptionModule, SymmetricEncryptionParameters}
+import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
+
+private[libsodium] object SymmetricCipherModule {
+  def requireValidParameters(module: SymmetricCipherModule, parameters: SymmetricEncryptionParameters): Unit = {
+    require(parameters.key.length == module.keySize && parameters.nonce.length == module.nonceSize, "Key/nonce size not match")
+  }
+}
 
 private[libsodium] trait SymmetricCipherModule extends EncryptionModule {
-  protected final val sodium: Sodium = NaCl.sodium()
-  protected final val random: LSRandom = new LSRandom
+  protected final val sodium = NaCl.sodium()
+  protected final val random = LSUtils.createSecureRandom()
 
   protected val keySize: Int
   protected val nonceSize: Int
@@ -34,14 +39,14 @@ private[libsodium] trait SymmetricCipherAtomic extends SymmetricCipherModule {
 
   override def encrypt(data: ByteString, parameters: EncryptionParameters): ByteString = {
     val sp = EncryptionParameters.symmetric(parameters)
-    require(sp.key.length == keySize && sp.nonce.length == nonceSize)
+    SymmetricCipherModule.requireValidParameters(this, sp)
     val result = encrypt(data.toArray, sp.key.toArray, sp.nonce.toArray)
     ByteString(result)
   }
 
   override def decrypt(data: ByteString, parameters: EncryptionParameters): ByteString = {
     val sp = EncryptionParameters.symmetric(parameters)
-    require(sp.key.length == keySize && sp.nonce.length == nonceSize)
+    SymmetricCipherModule.requireValidParameters(this, sp)
     val result = decrypt(data.toArray, sp.key.toArray, sp.nonce.toArray)
     ByteString(result)
   }
@@ -53,7 +58,7 @@ private[libsodium] trait SymmetricCipherStreaming extends SymmetricCipherModule 
 
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
     val sp = EncryptionParameters.symmetric(parameters)
-    require(sp.key.length == keySize && sp.nonce.length == nonceSize)
+    SymmetricCipherModule.requireValidParameters(this, sp)
     init(encrypt, sp.key.toArray, sp.nonce.toArray)
   }
 

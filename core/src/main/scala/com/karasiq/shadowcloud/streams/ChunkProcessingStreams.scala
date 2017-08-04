@@ -14,6 +14,7 @@ import com.karasiq.shadowcloud.index.{Chunk, Data}
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.utils.{MemorySize, ProviderInstantiator}
 
+// TODO: Separate execution context for crypto
 object ChunkProcessingStreams {
   def apply(modules: SCModules, crypto: CryptoConfig,
             parallelism: ParallelismConfig)(implicit ec: ExecutionContext): ChunkProcessingStreams = {

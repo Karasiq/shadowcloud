@@ -1,7 +1,8 @@
 package com.karasiq.shadowcloud.streams
 
+import java.security.SecureRandom
+
 import scala.language.postfixOps
-import scala.util.Random
 
 import akka.stream._
 import akka.stream.stage.{GraphStage, GraphStageLogic, OutHandler}
@@ -20,10 +21,11 @@ private[shadowcloud] final class ChunkKeyStream(modules: SCModules, method: Encr
   val shape = SourceShape(outlet)
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with OutHandler {
+    private[this] val secureRandom = new SecureRandom()
     private[this] val encryptionModule = modules.crypto.encryptionModule(method)
     private[this] var keyParameters = encryptionModule.createParameters()
     private[this] var encryptedCount = 0
-    private[this] var changeKeyIn = Random.nextInt(256)
+    private[this] var changeKeyIn = secureRandom.nextInt(256)
 
     // Update IV/key
     private[this] def updateKey(): Unit = {
@@ -31,7 +33,7 @@ private[shadowcloud] final class ChunkKeyStream(modules: SCModules, method: Encr
       if (encryptedCount > changeKeyIn) {
         // TODO: Log key changes
         keyParameters = encryptionModule.createParameters()
-        changeKeyIn = Random.nextInt(256)
+        changeKeyIn = secureRandom.nextInt(256)
         encryptedCount = 0
       } else {
         keyParameters = encryptionModule.updateParameters(keyParameters)

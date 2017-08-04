@@ -36,7 +36,7 @@ package object lz4 {
     }
   }
 
-  private class LZ4Compress extends GraphStage[FlowShape[ByteString, ByteString]] {
+  private final class LZ4Compress extends GraphStage[FlowShape[ByteString, ByteString]] {
     val inlet = Inlet[ByteString]("LZ4Compress.in")
     val outlet = Outlet[ByteString]("LZ4Compress.out")
     val shape = FlowShape(inlet, outlet)

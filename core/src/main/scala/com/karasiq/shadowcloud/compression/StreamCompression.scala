@@ -4,11 +4,13 @@ import akka.NotUsed
 import akka.stream.scaladsl.{Compression, Flow, Source}
 import akka.util.ByteString
 
+import com.karasiq.shadowcloud.compression.lz4.LZ4Streams
+
 object StreamCompression {
   object CompressionType extends Enumeration {
     val none = Value(0, "nonce")
     val gzip = Value(1, "gzip")
-    // TODO: LZ4
+    val lz4 = Value(2, "lz4")
   }
 
   def compress(compressionType: CompressionType.Value): Flow[ByteString, ByteString, NotUsed] = {
@@ -32,6 +34,9 @@ object StreamCompression {
 
     case CompressionType.gzip ⇒
       Compression.gzip
+
+    case CompressionType.lz4 ⇒
+      LZ4Streams.compress
   }
 
   private[this] def createDecompressionStream(compressionType: CompressionType.Value) = compressionType match {
@@ -40,5 +45,8 @@ object StreamCompression {
 
     case CompressionType.gzip ⇒
       Compression.gunzip()
+
+    case CompressionType.lz4 ⇒
+      LZ4Streams.decompress
   }
 }

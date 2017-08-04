@@ -28,4 +28,8 @@ class ByteStringOutputStream extends OutputStream {
   def toByteString: ByteString = {
     buffer
   }
+
+  def clear(): Unit = {
+    buffer = ByteString.empty
+  }
 }

@@ -72,13 +72,20 @@ object ProjectDeps {
     "com.github.karasiq" % "kalium-fork" % "0.6.2" % "compile"
   )
 
+  // http://h2database.com/html/main.html
   def h2: Deps = Seq(
     "com.h2database" % "h2" % "1.4.192",
     "io.getquill" %% "quill-jdbc" % "1.2.1"
   )
 
+  // https://tika.apache.org/
   def tika: Deps = Seq(
-    "org.apache.tika" % "tika-parsers" % "1.15",
-    "org.apache.tika" % "tika-core" % "1.15"
+    "org.apache.tika" % "tika-parsers" % "1.16",
+    "org.apache.tika" % "tika-core" % "1.16"
+  )
+
+  // https://github.com/lz4/lz4-java
+  def lz4: Deps = Seq(
+    "org.lz4" % "lz4-java" % "1.4.0"
   )
 }

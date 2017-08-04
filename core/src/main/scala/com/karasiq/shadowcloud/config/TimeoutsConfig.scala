@@ -9,7 +9,10 @@ case class TimeoutsConfig(rootConfig: Config,
                           query: FiniteDuration,
                           chunkWrite: FiniteDuration,
                           chunkRead: FiniteDuration,
-                          chunkDelete: FiniteDuration) extends WrappedConfig
+                          chunksList: FiniteDuration,
+                          chunksDelete: FiniteDuration,
+                          regionChunkWrite: FiniteDuration,
+                          regionChunkRead: FiniteDuration) extends WrappedConfig
 
 object TimeoutsConfig extends ConfigImplicits with WrappedConfigFactory[TimeoutsConfig] {
   def apply(config: Config): TimeoutsConfig = {
@@ -18,7 +21,10 @@ object TimeoutsConfig extends ConfigImplicits with WrappedConfigFactory[Timeouts
       config.getFiniteDuration("query"),
       config.getFiniteDuration("chunk-write"),
       config.getFiniteDuration("chunk-read"),
-      config.getFiniteDuration("chunk-delete")
+      config.getFiniteDuration("chunks-list"),
+      config.getFiniteDuration("chunks-delete"),
+      config.getFiniteDuration("region-chunk-write"),
+      config.getFiniteDuration("region-chunk-read")
     )
   }
 }

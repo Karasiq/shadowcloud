@@ -179,7 +179,7 @@ private[bouncycastle] object BCBlockCiphers {
     wrapEngine(() ⇒ createBaseEngine(engineAlg, blockSize), mode)
   }
 
-  def buffered(bc: BlockCipher): PaddedBufferedBlockCipher = bc match {
+  def toPaddedBufferedBlockCipher(bc: BlockCipher): PaddedBufferedBlockCipher = bc match {
     case bbc: PaddedBufferedBlockCipher ⇒
       bbc
 

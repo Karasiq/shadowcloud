@@ -38,7 +38,7 @@ private[bouncycastle] class BlockCipherModule(val method: EncryptionMethod,
                                               protected val nonceSize: Int)
   extends StreamEncryptionModule with BCSymmetricKeys {
 
-  protected val bufferedCipher = BCBlockCiphers.buffered(baseCipher)
+  protected val bufferedCipher = BCBlockCiphers.toPaddedBufferedBlockCipher(baseCipher)
 
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
     val sp = EncryptionParameters.symmetric(parameters)

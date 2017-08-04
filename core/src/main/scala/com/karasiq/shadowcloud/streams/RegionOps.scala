@@ -107,11 +107,11 @@ final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(impl
   // Chunk IO
   // -----------------------------------------------------------------------
   def writeChunk(regionId: String, chunk: Chunk): Future[Chunk] = {
-    askRegion(regionId, WriteChunk, WriteChunk(chunk))(timeouts.chunkWrite)
+    askRegion(regionId, WriteChunk, WriteChunk(chunk))(timeouts.regionChunkWrite)
   }
 
   def readChunk(regionId: String, chunk: Chunk): Future[Chunk] = {
-    askRegion(regionId, ReadChunk, ReadChunk(chunk))(timeouts.chunkRead)
+    askRegion(regionId, ReadChunk, ReadChunk(chunk))(timeouts.regionChunkRead)
   }
 
   def rewriteChunk(regionId: String, chunk: Chunk, newAffinity: Option[ChunkWriteAffinity]): Future[Chunk] = {

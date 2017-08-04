@@ -28,12 +28,7 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
   }
 
   def read(regionId: String, file: File): Source[ByteString, NotUsed] = { // TODO: Byte ranges
-    Source.single(file)
-      .mapConcat(_.chunks.toVector)
-      .map((regionId, _))
-      .via(regionStreams.readChunks)
-      .via(chunkProcessing.afterRead)
-      .map(_.data.plain)
+    readChunkStream(regionId, file.chunks)
   }
 
   def readBy(regionId: String, path: Path, select: Set[File] ⇒ File): Source[ByteString, NotUsed] = {

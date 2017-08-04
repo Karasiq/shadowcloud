@@ -107,7 +107,7 @@ private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
       val blockSize = bcMethod
         .map(m ⇒ ConfigProps.toConfig(m.config))
         .flatMap(_.optional(_.getInt("block-size")))
-      bcMethod.map(m ⇒ BCBlockCiphers.buffered(BCBlockCiphers.createBlockCipher(m.algorithm, blockSize)))
+      bcMethod.map(m ⇒ BCBlockCiphers.toPaddedBufferedBlockCipher(BCBlockCiphers.createBlockCipher(m.algorithm, blockSize)))
     }
 
     val config = ConfigProps.toConfig(method.config)
@@ -125,10 +125,11 @@ private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
   }
 
   //noinspection ConvertExpressionToSAM
-  private def createEphKeyGenerator(keyPairGenerator: AsymmetricCipherKeyPairGenerator): EphemeralKeyPairGenerator = {
+  private def createEphKeyGenerator(method: EncryptionMethod, keyPairGenerator: AsymmetricCipherKeyPairGenerator): EphemeralKeyPairGenerator = {
+    val compressPoints = ConfigProps.toConfig(method.config).withDefault(true, _.getBoolean("compress-ec-points"))
     new EphemeralKeyPairGenerator(keyPairGenerator, new KeyEncoder {
       def getEncoded(keyParameter: AsymmetricKeyParameter): Array[Byte] = {
-        keyParameter.asInstanceOf[ECPublicKeyParameters].getQ.getEncoded(false)
+        keyParameter.asInstanceOf[ECPublicKeyParameters].getQ.getEncoded(compressPoints)
       }
     })
   }
@@ -138,7 +139,7 @@ private[bouncycastle] final class ECIESCipherModule(val method: EncryptionMethod
   with BCAsymmetricCipherKeys with BCECKeys {
 
   private[this] val cipher = ECIESCipherModule.createIesEngine(method)
-  private[this] val ephKeyGenerator = ECIESCipherModule.createEphKeyGenerator(keyPairGenerator)
+  private[this] val ephKeyGenerator = ECIESCipherModule.createEphKeyGenerator(method, keyPairGenerator)
 
   override def createParameters(): EncryptionParameters = {
     val basicParameters = EncryptionParameters.asymmetric(super.createParameters())

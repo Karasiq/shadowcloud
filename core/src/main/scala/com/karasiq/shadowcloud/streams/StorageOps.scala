@@ -58,11 +58,11 @@ final class StorageOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(imp
   }
 
   def getChunkKeys(storageId: String): Future[Set[ChunkPath]] = {
-    askStorage(storageId, ChunkIODispatcher.GetKeys, ChunkIODispatcher.GetKeys)(timeouts.chunkDelete)
+    askStorage(storageId, ChunkIODispatcher.GetKeys, ChunkIODispatcher.GetKeys)(timeouts.chunksList)
   }
 
   def deleteChunks(storageId: String, paths: Set[ChunkPath]): Future[Set[ChunkPath]] = {
-    askStorage(storageId, ChunkIODispatcher.DeleteChunks, ChunkIODispatcher.DeleteChunks(paths))(timeouts.chunkDelete)
+    askStorage(storageId, ChunkIODispatcher.DeleteChunks, ChunkIODispatcher.DeleteChunks(paths))(timeouts.chunksDelete)
   }
 
   // -----------------------------------------------------------------------

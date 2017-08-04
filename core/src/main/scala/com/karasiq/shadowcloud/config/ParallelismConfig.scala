@@ -5,6 +5,7 @@ import com.typesafe.config.Config
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 
 private[shadowcloud] case class ParallelismConfig(rootConfig: Config,
+                                                  query: Int,
                                                   hashing: Int, encryption: Int,
                                                   write: Int, read: Int) extends WrappedConfig
 
@@ -22,6 +23,7 @@ private[shadowcloud] object ParallelismConfig extends WrappedConfigFactory[Paral
 
     ParallelismConfig(
       config,
+      getPositiveInt("query", 4),
       getCores("hashing"),
       getCores("encryption"),
       getPositiveInt("write", 4),

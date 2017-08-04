@@ -26,15 +26,15 @@ final class RegionStreams(regionSupervisor: ActorRef, parallelism: ParallelismCo
   private[this] val regionOps = RegionOps(regionSupervisor, timeouts)
 
   val writeChunks = Flow[(String, Chunk)]
-    .mapAsync(parallelism.write) { case (regionId, chunk) ⇒ regionOps.writeChunk(regionId, chunk) }
+    .mapAsync(parallelism.query) { case (regionId, chunk) ⇒ regionOps.writeChunk(regionId, chunk) }
     .named("writeChunks")
 
   val readChunks = Flow[(String, Chunk)]
-    .mapAsync(parallelism.read) { case (regionId, chunk) ⇒ regionOps.readChunk(regionId, chunk) }
+    .mapAsync(parallelism.query) { case (regionId, chunk) ⇒ regionOps.readChunk(regionId, chunk) }
     .named("readChunks")
 
   val findFiles = Flow[(String, Path)]
-    .mapAsync(parallelism.read) { case (regionId, path) ⇒
+    .mapAsync(parallelism.query) { case (regionId, path) ⇒
       regionOps.getFiles(regionId, path)
         .map((path, _))
         .recover { case _ ⇒ (path, Set.empty[File]) } // TODO: Region exceptions
@@ -46,7 +46,7 @@ final class RegionStreams(regionSupervisor: ActorRef, parallelism: ParallelismCo
     .named("findFile")
 
   val getFolder = Flow[(String, Path)]
-    .mapAsync(parallelism.read) { case (regionId, path) ⇒
+    .mapAsync(parallelism.query) { case (regionId, path) ⇒
       regionOps.getFolder(regionId, path)
     }
     .named("getFolder")

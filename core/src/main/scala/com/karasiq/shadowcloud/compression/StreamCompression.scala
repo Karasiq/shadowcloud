@@ -8,7 +8,7 @@ import com.karasiq.shadowcloud.compression.lz4.LZ4Streams
 
 object StreamCompression {
   object CompressionType extends Enumeration {
-    val none = Value(0, "nonce")
+    val none = Value(0, "none")
     val gzip = Value(1, "gzip")
     val lz4 = Value(2, "lz4")
   }

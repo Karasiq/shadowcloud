@@ -6,7 +6,8 @@ import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 
 private[shadowcloud] case class SCConfig(rootConfig: Config, crypto: CryptoConfig, storage: StoragesConfig,
                                          metadata: MetadataConfig, parallelism: ParallelismConfig,
-                                         queues: QueuesConfig, timeouts: TimeoutsConfig) extends WrappedConfig
+                                         queues: QueuesConfig, timeouts: TimeoutsConfig,
+                                         serialization: SerializationConfig) extends WrappedConfig
 
 private[shadowcloud] object SCConfig extends WrappedConfigFactory[SCConfig] with ConfigImplicits {
   def apply(config: Config): SCConfig = {
@@ -17,7 +18,8 @@ private[shadowcloud] object SCConfig extends WrappedConfigFactory[SCConfig] with
       MetadataConfig(config.getConfig("metadata")),
       ParallelismConfig(config.getConfig("parallelism")),
       QueuesConfig(config.getConfig("queues")),
-      TimeoutsConfig(config.getConfig("timeouts"))
+      TimeoutsConfig(config.getConfig("timeouts")),
+      SerializationConfig(config.getConfig("serialization"))
     )
   }
 }

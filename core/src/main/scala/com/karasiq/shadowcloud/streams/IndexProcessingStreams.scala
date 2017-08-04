@@ -6,11 +6,12 @@ import scala.util.control.NonFatal
 import akka.NotUsed
 import akka.event.Logging
 import akka.stream._
-import akka.stream.scaladsl.{Compression, Flow, Source}
+import akka.stream.scaladsl.{Flow, Source}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.ShadowCloudExtension
+import com.karasiq.shadowcloud.compression.StreamCompression
 import com.karasiq.shadowcloud.config.{CryptoConfig, StorageConfig}
 import com.karasiq.shadowcloud.config.keys.KeyChain
 import com.karasiq.shadowcloud.crypto.index.IndexEncryption
@@ -32,55 +33,67 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
   // -----------------------------------------------------------------------
   // Flows
   // -----------------------------------------------------------------------
-  def serialize(storageConfig: StorageConfig): Flow[IndexData, ByteString, NotUsed] = {
-    Flow[IndexData]
-      .flatMapConcat { indexData ⇒
-        val dataSrc = Source.single(indexData)
-          .via(StreamSerialization(sc.serialization).toBytes)
-        compress(storageConfig.indexCompression, dataSrc)
-          .via(ByteStringConcat())
-          .map(data ⇒ SerializedIndexData(storageConfig.indexCompression, data))
-      }
-      .map(sd ⇒ ByteString(sd.toByteArray))
-  }
-
-  val deserialize = Flow[ByteString]
-    .map(bs ⇒ SerializedIndexData.parseFrom(bs.toArray))
-    .flatMapConcat { data ⇒
-      decompress(data.compression, Source.single(data.data))
-        .via(ByteStringConcat())
-        .via(StreamSerialization(sc.serialization).fromBytes[IndexData])
-    }
-
-  val encrypt = Flow[ByteString]
-    .via(AkkaStreamUtils.extractStream)
-    .zip(Source.fromFuture(sc.keys.provider.getKeyChain()))
-    .flatMapConcat { case (source, keyChain) ⇒
-      source.via(new IndexEncryptStage(sc.modules, sc.config.crypto, keyChain))
-    }
-
-  val decrypt = Flow[EncryptedIndexData]
-    .via(AkkaStreamUtils.extractStream)
-    .zip(Source.fromFuture(sc.keys.provider.getKeyChain()))
-    .flatMapConcat { case (source, keyChain) ⇒
-      source.via(new IndexDecryptStage(sc.modules, sc.config.crypto, keyChain))
-    }
-
   def preWrite(storageConfig: StorageConfig): Flow[IndexData, ByteString, NotUsed] = {
     Flow[IndexData]
-      .via(serialize(storageConfig))
-      .via(encrypt)
+      .via(internalStreams.serialize)
+      .via(internalStreams.compress)
+      .via(internalStreams.encrypt)
       .map(ed ⇒ ByteString(ed.toByteArray))
       .named("indexPreWrite")
   }
 
-  // TODO: Limit index frame size
   val postRead: Flow[ByteString, IndexData, NotUsed] = Flow[ByteString]
     .map(bs ⇒ EncryptedIndexData.parseFrom(bs.toArray))
-    .via(decrypt)
-    .via(deserialize)
+    .via(internalStreams.decrypt)
+    .via(internalStreams.decompress)
+    .via(internalStreams.deserialize)
     .addAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
     .named("indexPostRead")
+
+  private[this] object internalStreams {
+    val serialize = Flow[IndexData].map { data ⇒
+      ByteString(SerializedIndexData(sc.serialization.toBytes(data)).toByteArray)
+    }
+
+    val deserialize = Flow[ByteString].map { data ⇒
+      val sd = SerializedIndexData.parseFrom(data.toArray)
+      sc.serialization.fromBytes[IndexData](sd.data)
+    }
+
+    val encrypt = Flow[ByteString]
+      .via(AkkaStreamUtils.extractUpstream)
+      .zip(Source.fromFuture(sc.keys.provider.getKeyChain()))
+      .flatMapConcat { case (source, keyChain) ⇒
+        source.via(new IndexEncryptStage(sc.modules, sc.config.crypto, keyChain))
+      }
+
+    val decrypt = Flow[EncryptedIndexData]
+      .via(AkkaStreamUtils.extractUpstream)
+      .zip(Source.fromFuture(sc.keys.provider.getKeyChain()))
+      .flatMapConcat { case (source, keyChain) ⇒
+        source.via(new IndexDecryptStage(sc.modules, sc.config.crypto, keyChain))
+      }
+
+    val framedWrite = Flow[ByteString]
+      .via(StreamSerialization.frame(sc.config.serialization.frameLimit))
+      .via(StreamCompression.compress(sc.config.serialization.compression))
+
+    val framedRead = Flow[ByteString]
+      .via(StreamCompression.decompress)
+      .via(StreamSerialization.deframe(sc.config.serialization.frameLimit))
+
+    val compress = Flow[ByteString].flatMapConcat { bytes ⇒
+      Source.single(bytes)
+        .via(framedWrite)
+        .via(ByteStringConcat())
+    }
+
+    val decompress = Flow[ByteString].flatMapConcat { compBytes ⇒
+      Source.single(compBytes)
+        .via(framedRead)
+        .via(ByteStringConcat())
+    }
+  }
 
   // -----------------------------------------------------------------------
   // Encryption stages
@@ -157,35 +170,6 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
       }
 
       setHandlers(inlet, outlet, this)
-    }
-  }
-
-  // -----------------------------------------------------------------------
-  // Compression
-  // -----------------------------------------------------------------------
-  private[this] def compress[Mat](compression: SerializedIndexData.Compression, src: Source[ByteString, Mat]): Source[ByteString, Mat] = {
-    compression match {
-      case SerializedIndexData.Compression.GZIP ⇒
-        src.via(Compression.gzip)
-
-      case SerializedIndexData.Compression.NONE ⇒
-        src
-
-      case SerializedIndexData.Compression.Unrecognized(c) ⇒
-        throw new IllegalArgumentException("Compression not supported: " + c)
-    }
-  }
-
-  private[this] def decompress[Mat](compression: SerializedIndexData.Compression, src: Source[ByteString, Mat]): Source[ByteString, Mat] = {
-    compression match {
-      case SerializedIndexData.Compression.GZIP ⇒
-        src.via(Compression.gunzip())
-
-      case SerializedIndexData.Compression.NONE ⇒
-        src
-
-      case SerializedIndexData.Compression.Unrecognized(c) ⇒
-        throw new IllegalArgumentException("Compression not supported: " + c)
     }
   }
 }

@@ -19,11 +19,5 @@ message EncryptedIndexData {
 }
 
 message SerializedIndexData {
-    enum Compression {
-        NONE = 0;
-        GZIP = 1;
-    }
-
-    Compression compression = 1;
-    bytes data = 16 [(scalapb.field).type = "akka.util.ByteString"];
+    bytes data = 1 [(scalapb.field).type = "akka.util.ByteString"];
 }

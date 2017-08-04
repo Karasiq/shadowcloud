@@ -138,7 +138,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     val index = IndexProcessingStreams(ShadowCloudExtension.this)
     val region = RegionStreams(actors.regionSupervisor, config.parallelism, config.timeouts)
     val file = FileStreams(region, chunk)
-    val metadata = MetadataStreams(config.metadata, modules.metadata, file, ops.region, serialization)
+    val metadata = MetadataStreams(ShadowCloudExtension.this)
   }
 
   object ops {

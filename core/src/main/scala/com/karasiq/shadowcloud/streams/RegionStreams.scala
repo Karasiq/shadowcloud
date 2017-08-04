@@ -12,9 +12,7 @@ import com.karasiq.shadowcloud.index.{Chunk, File, Path}
 import com.karasiq.shadowcloud.index.diffs.FileVersions
 
 object RegionStreams {
-  def apply(regionSupervisor: ActorRef,
-            parallelism: ParallelismConfig,
-            timeouts: TimeoutsConfig)
+  def apply(regionSupervisor: ActorRef, parallelism: ParallelismConfig, timeouts: TimeoutsConfig)
            (implicit ec: ExecutionContext): RegionStreams = {
     new RegionStreams(regionSupervisor, parallelism, timeouts)
   }
@@ -22,10 +20,9 @@ object RegionStreams {
 
 //noinspection TypeAnnotation
 // RegionOps wrapped in flows
-final class RegionStreams(regionSupervisor: ActorRef,
-                          parallelism: ParallelismConfig,
-                          timeouts: TimeoutsConfig)
+final class RegionStreams(regionSupervisor: ActorRef, parallelism: ParallelismConfig, timeouts: TimeoutsConfig)
                          (implicit ec: ExecutionContext) {
+
   private[this] val regionOps = RegionOps(regionSupervisor, timeouts)
 
   val writeChunks = Flow[(String, Chunk)]

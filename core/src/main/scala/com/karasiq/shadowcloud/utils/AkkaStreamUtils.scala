@@ -14,7 +14,7 @@ object AkkaStreamUtils {
     }
   }
 
-  def extractStream[T]: Flow[T, Source[T, NotUsed], NotUsed] = {
+  def extractUpstream[T]: Flow[T, Source[T, NotUsed], NotUsed] = {
     Flow[T].prefixAndTail(0).map(_._2)
   }
 }

@@ -39,7 +39,7 @@ class MetadataStreamsTest extends ActorSpec with FlatSpecLike {
     registerRegionAndStorages()
 
     val (testIn, testOut) = TestSource.probe[Metadata]
-      .via(sc.streams.metadata.write(testRegionId, testFileId))
+      .via(sc.streams.metadata.writeAll(testRegionId, testFileId))
       .toMat(TestSink.probe)(Keep.both)
       .run()
 

@@ -9,7 +9,8 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.BCDigests
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.RSAUtils
 
 private[bouncycastle] object RSASignModule {
-  def apply(method: SignMethod = SignMethod("RSA", HashingMethod.default, 4096)): RSASignModule = {
+  // Digest should be in org.bouncycastle.crypto.signers.RSADigestSigner.oidMap
+  def apply(method: SignMethod = SignMethod("RSA", HashingMethod("SHA3"), 4096)): RSASignModule = {
     new RSASignModule(method)
   }
 }

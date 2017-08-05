@@ -18,6 +18,7 @@ import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, StorageConfig}
 import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.config.passwords.PasswordProvider
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, SignMethod}
 import com.karasiq.shadowcloud.providers.{KeyProvider, SCModules}
 import com.karasiq.shadowcloud.serialization.{SerializationModule, SerializationModules}
 import com.karasiq.shadowcloud.storage.props.StorageProps
@@ -78,9 +79,10 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   object keys {
     val provider: KeyProvider = pInst.getInstance(config.crypto.keyProvider)
 
-    def generateKeySet(): KeySet = {
-      val enc = modules.crypto.encryptionModule(config.crypto.encryption.keys).createParameters()
-      val sign = modules.crypto.signModule(config.crypto.signing.index).createParameters()
+    def generateKeySet(encryption: EncryptionMethod = config.crypto.encryption.keys,
+                       signing: SignMethod = config.crypto.signing.index): KeySet = {
+      val enc = modules.crypto.encryptionModule(encryption).createParameters()
+      val sign = modules.crypto.signModule(signing).createParameters()
       KeySet(UUID.randomUUID(), sign, enc)
     }
 

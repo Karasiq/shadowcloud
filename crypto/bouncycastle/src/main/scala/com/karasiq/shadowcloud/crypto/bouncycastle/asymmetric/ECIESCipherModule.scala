@@ -4,7 +4,7 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 import com.typesafe.config.ConfigValueFactory
-import org.bouncycastle.crypto.{AsymmetricCipherKeyPairGenerator, BufferedBlockCipher, Digest, KeyEncoder}
+import org.bouncycastle.crypto._
 import org.bouncycastle.crypto.agreement.ECDHBasicAgreement
 import org.bouncycastle.crypto.engines.IESEngine
 import org.bouncycastle.crypto.generators.{EphemeralKeyPairGenerator, KDF2BytesGenerator}
@@ -131,6 +131,11 @@ private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
       }
     })
   }
+
+  private def createPublicKeyParser(method: EncryptionMethod): KeyParser = {
+    val domainParameters = ECUtils.getCurveDomainParameters(method)
+    new ECIESPublicKeyParser(domainParameters)
+  }
 }
 
 private[bouncycastle] final class ECIESCipherModule(val method: EncryptionMethod) extends StreamEncryptionModule
@@ -151,8 +156,7 @@ private[bouncycastle] final class ECIESCipherModule(val method: EncryptionMethod
     if (encrypt) {
       cipher.init(asymmetricKey, iesParameters, ephKeyGenerator)
     } else {
-      val domainParameters = ECUtils.getCurveDomainParameters(method)
-      cipher.init(asymmetricKey, iesParameters, new ECIESPublicKeyParser(domainParameters))
+      cipher.init(asymmetricKey, iesParameters, ECIESCipherModule.createPublicKeyParser(method))
     }
   }
 

@@ -1,13 +1,16 @@
 package com.karasiq.shadowcloud.test.index
 
+import java.util.UUID
+
 import scala.language.postfixOps
 
 import akka.util.ByteString
 import org.scalatest.{FlatSpec, Matchers}
 
+import com.karasiq.shadowcloud.crypto.index.IndexEncryption
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, TestUtils}
-import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.utils.{HexString, Utils}
 
 //noinspection RedundantDefaultArgument
 class HashCodesTest extends FlatSpec with Matchers {
@@ -71,5 +74,14 @@ class HashCodesTest extends FlatSpec with Matchers {
     key1.hashCode() should not be key3.hashCode()
     key1 shouldBe key2
     key1 should not be key3
+  }
+
+  "Index encryption" should "create stable hashes" in {
+    IndexEncryption.getKeyHash(UUID.fromString("fb390d6a-545e-4ea7-a3ac-45e4a9223ebb"),
+      UUID.fromString("1ac2ad29-3edb-4f65-9142-cde158f06d28")) shouldBe (-1060735836)
+
+    val nonce1 = TestUtils.indexedBytes._1.take(16)
+    val nonce2 = TestUtils.indexedBytes._1.drop(16).take(16)
+    IndexEncryption.getNonce(nonce1, nonce2) shouldBe HexString.decode("300c10444d171852010e0316000d0010")
   }
 }

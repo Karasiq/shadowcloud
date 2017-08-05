@@ -54,7 +54,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
   // Pre-encrypted data
   testVectors.list() foreach { name ⇒
     val (parameters, plain, encrypted) = testVectors.load(name)
-    testSymmetricEncryptionVector(name, parameters, plain, encrypted)
+    testEncryptionVector(name, parameters, plain, encrypted)
   }
 
   // -----------------------------------------------------------------------
@@ -100,10 +100,9 @@ class BouncyCastleTest extends FlatSpec with Matchers {
   // -----------------------------------------------------------------------
   // Signatures
   // -----------------------------------------------------------------------
-  val signHashing = HashingMethod("SHA3")
-  testSignature("RSA", RSASignModule(SignMethod("RSA", signHashing, 1024)))
-  testSignature("ECDSA", ECDSASignModule(SignMethod("ECDSA", signHashing, 521)))
-  testSignature("ECDSA (25519)", ECDSASignModule(SignMethod("ECDSA", signHashing, 128, config = ConfigProps("curve" → "curve25519"))))
+  testSignature("RSA", RSASignModule(SignMethod("RSA", HashingMethod("SHA3"), 1024)))
+  testSignature("ECDSA", ECDSASignModule(SignMethod("ECDSA", HashingMethod.default, 521)))
+  testSignature("ECDSA (25519)", ECDSASignModule(SignMethod("ECDSA", HashingMethod.default, config = ConfigProps("curve" → "curve25519"))))
 
   // -----------------------------------------------------------------------
   // Tests specification
@@ -128,29 +127,6 @@ class BouncyCastleTest extends FlatSpec with Matchers {
     }
   }
 
-  private[this] def testSymmetricEncryptionVector(name: String, parameters: EncryptionParameters, plain: ByteString, encrypted: ByteString): Unit = {
-    val module = provider.encryption(parameters.method)
-    s"$name test vector" should "be decrypted" in {
-      val newPlain = module.decrypt(encrypted, parameters)
-      newPlain shouldBe plain
-    }
-
-    it should "be re-encrypted" in {
-      val newEncrypted = module.encrypt(plain, parameters)
-      newEncrypted shouldBe encrypted
-    }
-  }
-
-  private[this] def testHashing(name: String, testHash: String): Unit = {
-    try {
-      val module = provider.hashing(HashingMethod(name))
-      testHashing(module.method.algorithm, module, testHash)
-    } catch {
-      case _: NoSuchAlgorithmException ⇒
-        println(s"No such algorithm: $name")
-    }
-  }
-
   private[this] def testAsymmetricEncryption(name: String, module: EncryptionModule): Unit = {
     s"$name module" should "generate key" in {
       val parameters = EncryptionParameters.asymmetric(module.createParameters())
@@ -165,6 +141,30 @@ class BouncyCastleTest extends FlatSpec with Matchers {
       encrypted.length should be >= testData.length
       val decrypted = module.decrypt(encrypted, parameters)
       decrypted shouldBe testData
+      // testVectors.save(name, parameters, testData, encrypted)
+    }
+  }
+
+  private[this] def testEncryptionVector(name: String, parameters: EncryptionParameters, plain: ByteString, encrypted: ByteString): Unit = {
+    val module = provider.encryption(parameters.method)
+    s"$name test vector" should "be decrypted" in {
+      val newPlain = module.decrypt(encrypted, parameters)
+      newPlain shouldBe plain
+    }
+
+    it should "be re-encrypted" in {
+      val newEncrypted = module.encrypt(plain, parameters)
+      if (parameters.method.algorithm != "ECIES" && parameters.method.algorithm != "RSA") newEncrypted shouldBe encrypted
+      else newEncrypted.length should be >= encrypted.length
+    }
+  }
+
+  private[this] def testHashing(name: String, testHash: String): Unit = {
+    try {
+      val module = provider.hashing(HashingMethod(name))
+      testHashing(module.method.algorithm, module, testHash)
+    } catch { case _: NoSuchAlgorithmException ⇒
+      println(s"No such algorithm: $name")
     }
   }
 

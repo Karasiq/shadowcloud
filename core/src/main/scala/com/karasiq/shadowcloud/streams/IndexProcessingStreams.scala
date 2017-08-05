@@ -106,7 +106,7 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
     val shape = FlowShape(inlet, outlet)
 
     def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
-      private[this] val encryption = IndexEncryption(modules, config.encryption.keys, config.signing.index, sc.serialization)
+      private[this] val encryption = IndexEncryption(modules, sc.serialization)
 
       private[this] def encryptData(data: ByteString): Unit = {
         require(keyChain.encKeys.nonEmpty, "No keys available")
@@ -140,7 +140,7 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
 
     def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
       private[this] val log = Logging(sc.implicits.actorSystem, "IndexDecryptStage")
-      private[this] val encryption = IndexEncryption(modules, config.encryption.keys, config.signing.index, sc.serialization)
+      private[this] val encryption = IndexEncryption(modules, sc.serialization)
 
       private[this] def pullInlet(): Unit = {
         if (isClosed(inlet)) {

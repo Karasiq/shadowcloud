@@ -47,7 +47,9 @@ private[bouncycastle] class AEADBlockCipherModule(val method: EncryptionMethod,
     val keyParams = new ParametersWithIV(new KeyParameter(sp.key.toArray), sp.nonce.toArray)
     try {
       aeadCipher.init(encrypt, keyParams)
-    } catch { case _: IllegalArgumentException ⇒
+    } catch { case error: IllegalArgumentException ⇒
+      // Fix com/karasiq/shadowcloud/test/crypto/EncryptionModuleTest.scala:53, com/karasiq/shadowcloud/crypto/bouncycastle/test/BouncyCastleTest.scala:139
+      System.err.println(error)
       aeadCipher.init(encrypt, new ParametersWithIV(keyParams.getParameters, Array[Byte](0)))
       aeadCipher.init(encrypt, keyParams)
     }

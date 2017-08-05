@@ -2,12 +2,15 @@ package com.karasiq.shadowcloud.test.streams
 
 import java.nio.file.Files
 
+import scala.concurrent.Await
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import org.scalatest.FlatSpecLike
 
+import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.index.{IndexData, Path}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.repository.{KeyValueRepository, PathTreeRepository, RepositoryKeys}
@@ -25,6 +28,13 @@ class IndexRepositoryStreamsTest extends SCExtensionSpec with FlatSpecLike {
 
   it should "validate path" in {
     intercept[IllegalArgumentException](Repositories.fromDirectory(Files.createTempFile("irp-test", "file")))
+  }
+
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+
+    // Test symmetric index encryption
+    Await.result(sc.keys.provider.addKeySet(sc.keys.generateKeySet(EncryptionMethod("AES/GCM", 256))), 5 seconds)
   }
 
   private[this] def testRepository(repository: KeyValueRepository): Unit = {

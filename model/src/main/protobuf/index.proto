@@ -10,8 +10,9 @@ option (scalapb.options) = {
 message EncryptedIndexData {
     message Header {
         uint32 keyHash = 1;
-        bytes data = 2 [(scalapb.field).type = "akka.util.ByteString"];
-        bytes signature = 3 [(scalapb.field).type = "akka.util.ByteString"];
+        bytes nonce = 2 [(scalapb.field).type = "akka.util.ByteString"];
+        bytes data = 3 [(scalapb.field).type = "akka.util.ByteString"];
+        bytes signature = 4 [(scalapb.field).type = "akka.util.ByteString"];
     }
     bytes id = 1 [(scalapb.field).type = "java.util.UUID"];
     repeated Header headers = 2;

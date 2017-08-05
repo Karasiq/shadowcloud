@@ -8,7 +8,7 @@ import com.karasiq.shadowcloud.utils.UUIDUtils
 
 private[shadowcloud] object IndexSignatures {
   private[this] def createPayload(data: EncryptedIndexData, header: EncryptedIndexData.Header): ByteString = {
-    UUIDUtils.uuidToBytes(data.id) ++ header.data ++ data.data
+    UUIDUtils.uuidToBytes(data.id) ++ header.nonce ++ header.data ++ data.data
   }
 
   def sign(data: EncryptedIndexData, header: EncryptedIndexData.Header,

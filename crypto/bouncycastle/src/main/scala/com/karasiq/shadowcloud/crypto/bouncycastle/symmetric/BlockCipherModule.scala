@@ -43,12 +43,7 @@ private[bouncycastle] class BlockCipherModule(val method: EncryptionMethod,
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
     val sp = EncryptionParameters.symmetric(parameters)
     val keyParams = new ParametersWithIV(new KeyParameter(sp.key.toArray), sp.nonce.toArray)
-    try {
-      bufferedCipher.init(encrypt, keyParams)
-    } catch { case _: IllegalArgumentException ⇒
-      bufferedCipher.init(encrypt, new ParametersWithIV(keyParams.getParameters, Array[Byte](0)))
-      bufferedCipher.init(encrypt, keyParams)
-    }
+    bufferedCipher.init(encrypt, keyParams)
   }
 
   def process(data: ByteString): ByteString = {

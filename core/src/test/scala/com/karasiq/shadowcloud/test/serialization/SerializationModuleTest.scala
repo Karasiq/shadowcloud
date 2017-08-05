@@ -12,7 +12,7 @@ import com.karasiq.shadowcloud.index.{Chunk, File, Folder}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.serialization.{SerializationModule, SerializationModules}
 import com.karasiq.shadowcloud.serialization.protobuf.index.SerializedIndexData
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, CoreTestUtils, TestUtils}
 
 class SerializationModuleTest extends ActorSpec with FlatSpecLike {
   testModule("Akka", SerializationModules.forActorSystem(system))
@@ -25,7 +25,7 @@ class SerializationModuleTest extends ActorSpec with FlatSpecLike {
     }
 
     it should "serialize wrapped config" in {
-      val config = TestUtils.config
+      val config = CoreTestUtils.config
       val bytes = module.toBytes(config)
       module.fromBytes[SCConfig](bytes) shouldBe config
     }
@@ -37,19 +37,19 @@ class SerializationModuleTest extends ActorSpec with FlatSpecLike {
     }
 
     it should "serialize chunk" in {
-      val chunk = TestUtils.randomChunk
+      val chunk = CoreTestUtils.randomChunk
       val bytes = module.toBytes(chunk)
       module.fromBytes[Chunk](bytes) shouldBe chunk
     }
 
     it should "serialize file" in {
-      val file = TestUtils.randomFile()
+      val file = CoreTestUtils.randomFile()
       val bytes = module.toBytes(file)
       module.fromBytes[File](bytes) shouldBe file
     }
 
     it should "serialize folder" in {
-      val folder = TestUtils.randomFolder()
+      val folder = CoreTestUtils.randomFolder()
       val bytes = module.toBytes(folder)
       module.fromBytes[Folder](bytes) shouldBe folder
     }

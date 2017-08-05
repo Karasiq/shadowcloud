@@ -1,13 +1,14 @@
 package com.karasiq.shadowcloud.test.index
 
-import com.karasiq.shadowcloud.index.ChunkIndex
-import com.karasiq.shadowcloud.test.utils.TestUtils
-import org.scalatest.{FlatSpec, Matchers}
-
 import scala.language.postfixOps
 
+import org.scalatest.{FlatSpec, Matchers}
+
+import com.karasiq.shadowcloud.index.ChunkIndex
+import com.karasiq.shadowcloud.test.utils.CoreTestUtils
+
 class ChunkIndexTest extends FlatSpec with Matchers {
-  val chunk = TestUtils.randomChunk
+  val chunk = CoreTestUtils.randomChunk
 
   "Chunk index" should "add chunk" in {
     val index = ChunkIndex.empty.addChunks(chunk)
@@ -28,7 +29,7 @@ class ChunkIndexTest extends FlatSpec with Matchers {
 
   it should "merge" in {
     val index = ChunkIndex(Set(chunk))
-    val chunk1 = TestUtils.randomChunk
+    val chunk1 = CoreTestUtils.randomChunk
     val index1 = ChunkIndex(Set(chunk1))
     val merged = index.merge(index1)
     merged.chunks shouldBe Set(chunk, chunk1)

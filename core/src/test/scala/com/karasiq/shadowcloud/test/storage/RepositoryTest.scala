@@ -13,7 +13,7 @@ import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.repository.{KeyValueRepository, PathTreeRepository, RepositoryKeys}
 import com.karasiq.shadowcloud.streams.utils.ByteStringConcat
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, CoreTestUtils, TestUtils}
 
 class RepositoryTest extends ActorSpec with FlatSpecLike {
   "In-memory repository" should "store chunk" in {
@@ -29,7 +29,7 @@ class RepositoryTest extends ActorSpec with FlatSpecLike {
   }
 
   private[this] def testRepository(repository: KeyValueRepository): Unit = {
-    val chunk = TestUtils.randomChunk
+    val chunk = CoreTestUtils.randomChunk
     val testRepository = RepositoryKeys.toHexString(repository)
 
     // Write chunk

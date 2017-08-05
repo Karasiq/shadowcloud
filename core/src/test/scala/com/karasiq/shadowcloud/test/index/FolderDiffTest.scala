@@ -6,11 +6,11 @@ import org.scalatest.{FlatSpec, Matchers}
 
 import com.karasiq.shadowcloud.index.{Folder, FolderIndex, Path}
 import com.karasiq.shadowcloud.index.diffs.FolderIndexDiff
-import com.karasiq.shadowcloud.test.utils.TestUtils
+import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, TestUtils}
 
 class FolderDiffTest extends FlatSpec with Matchers {
-  val folder1 = TestUtils.randomFolder()
-  val newFile = TestUtils.randomFile(folder1.path)
+  val folder1 = CoreTestUtils.randomFolder()
+  val newFile = CoreTestUtils.randomFile(folder1.path)
   val newFolder = TestUtils.randomString
   val folder2 = folder1.addFiles(newFile).addFolders(newFolder)
 
@@ -24,7 +24,7 @@ class FolderDiffTest extends FlatSpec with Matchers {
   }
 
   it should "find deleted files" in {
-    val folder3 = TestUtils.randomFolder(folder1.path)
+    val folder3 = CoreTestUtils.randomFolder(folder1.path)
     val diff = folder3.diff(folder2)
     diff.newFiles shouldBe folder3.files
     diff.newFolders shouldBe folder3.folders
@@ -82,7 +82,7 @@ class FolderDiffTest extends FlatSpec with Matchers {
   }
 
   it should "merge" in {
-    val folder3 = TestUtils.randomFolder(folder1.path)
+    val folder3 = CoreTestUtils.randomFolder(folder1.path)
     val diff = folder2.diff(folder1) // + Folder2 files
     val diff1 = folder3.diff(folder2) // - Folder1 files, - Folder2 files, + Folder3 files
     val merged = diff.merge(diff1) // - Folder1 files, + Folder3 files
@@ -93,7 +93,7 @@ class FolderDiffTest extends FlatSpec with Matchers {
   }
 
   it should "diff" in {
-    val folder3 = TestUtils.randomFolder(folder1.path)
+    val folder3 = CoreTestUtils.randomFolder(folder1.path)
     val diff = folder2.diff(folder1) // + Folder2 files
     val diff1 = folder3.diff(folder2) // - Folder1 files, - Folder2 files, + Folder3 files
     val diffDiff = diff.diff(diff1) // + Folder1 files, + Folder2 files, - Folder3 files
@@ -104,7 +104,7 @@ class FolderDiffTest extends FlatSpec with Matchers {
   }
 
   it should "extract deletes and creates" in {
-    val diff = TestUtils.randomFolder(folder1.path).diff(folder1)
+    val diff = CoreTestUtils.randomFolder(folder1.path).diff(folder1)
     diff.newFiles should not be empty
     diff.newFolders should not be empty
     diff.deletedFiles should not be empty

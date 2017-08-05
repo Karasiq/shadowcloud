@@ -7,7 +7,8 @@ import scala.language.postfixOps
 import org.scalatest.{FlatSpec, Matchers}
 
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule, EncryptionParameters}
-import com.karasiq.shadowcloud.test.utils.TestUtils.{modules, _}
+import com.karasiq.shadowcloud.test.utils.TestUtils
+import com.karasiq.shadowcloud.test.utils.CoreTestUtils.modules
 
 class EncryptionModuleTest extends FlatSpec with Matchers {
   runTest("", 0, 0)
@@ -42,7 +43,7 @@ class EncryptionModuleTest extends FlatSpec with Matchers {
   }
 
   private[this] def testEncryption(module: EncryptionModule): Unit = {
-    val data = randomBytes(100)
+    val data = TestUtils.randomBytes(100)
     val parameters = module.createParameters()
     val encrypted = module.encrypt(data, parameters)
     // encrypted should not be data
@@ -57,7 +58,7 @@ class EncryptionModuleTest extends FlatSpec with Matchers {
     val module1 = modules.crypto.encryptionModule(method1)
     val module2 = modules.crypto.encryptionModule(method2)
     s"${toString(method1)}" should s"create compatible data for ${toString(method2)}" in {
-      val data = randomBytes(100)
+      val data = TestUtils.randomBytes(100)
       val parameters = module1.createParameters()
       val encrypted = module1.encrypt(data, parameters)
       val decrypted = module2.decrypt(encrypted, parameters)

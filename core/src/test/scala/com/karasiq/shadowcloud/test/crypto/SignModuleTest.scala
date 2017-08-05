@@ -5,7 +5,8 @@ import scala.language.postfixOps
 import org.scalatest.{FlatSpec, Matchers}
 
 import com.karasiq.shadowcloud.crypto._
-import com.karasiq.shadowcloud.test.utils.TestUtils.{modules, randomBytes}
+import com.karasiq.shadowcloud.test.utils.TestUtils
+import com.karasiq.shadowcloud.test.utils.CoreTestUtils.modules
 
 class SignModuleTest extends FlatSpec with Matchers {
    val hashingMethod = HashingMethod("SHA-512")
@@ -29,7 +30,7 @@ class SignModuleTest extends FlatSpec with Matchers {
   }
 
   private[this] def testSignature(module: SignModule): Unit = {
-    val data = randomBytes(100)
+    val data = TestUtils.randomBytes(100)
     val parameters = module.createParameters()
     val signature = module.sign(data, parameters)
     module.verify(data, signature, parameters) shouldBe true
@@ -40,7 +41,7 @@ class SignModuleTest extends FlatSpec with Matchers {
     val module1 = modules.crypto.signModule(method1)
     val module2 = modules.crypto.signModule(method2)
     s"${toString(method1)}" should s"create compatible signature for ${toString(method2)}" in {
-      val data = randomBytes(100)
+      val data = TestUtils.randomBytes(100)
       val parameters = module1.createParameters()
       val signature = module1.sign(data, parameters)
       val result = module2.verify(data, signature, parameters)

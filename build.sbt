@@ -50,12 +50,20 @@ lazy val utilsJVM = utils.jvm
 
 lazy val utilsJS = utils.js
 
+lazy val testUtils = (crossProject.crossType(CrossType.Pure) in file("utils") / "test")
+  .settings(commonSettings, name := "shadowcloud-test-utils")
+  .dependsOn(utils)
+
+lazy val testUtilsJVM = testUtils.jvm
+
+lazy val testUtilsJS = testUtils.js 
+
 // -----------------------------------------------------------------------
 // Core
 // -----------------------------------------------------------------------
 lazy val core = project
   .settings(commonSettings)
-  .dependsOn(modelJVM, utilsJVM, storageParent, cryptoParent, metadataParent)
+  .dependsOn(modelJVM, utilsJVM, storageParent, cryptoParent, metadataParent, testUtilsJVM % "test")
 
 lazy val persistence = project
   .settings(commonSettings)
@@ -86,7 +94,7 @@ lazy val cryptoParent = Project("crypto-parent", file("crypto") / "parent")
   .dependsOn(modelJVM)
 
 lazy val bouncyCastleCrypto = cryptoPlugin("bouncycastle")
-  .dependsOn(utilsJVM % "test")
+  .dependsOn(testUtilsJVM % "test")
 
 lazy val libsodiumCrypto = cryptoPlugin("libsodium")
 

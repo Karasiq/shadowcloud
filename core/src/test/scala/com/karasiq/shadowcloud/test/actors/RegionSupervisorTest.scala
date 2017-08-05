@@ -10,7 +10,7 @@ import com.karasiq.shadowcloud.actors.internal.RegionTracker
 import com.karasiq.shadowcloud.actors.internal.RegionTracker.{RegionStatus, StorageStatus}
 import com.karasiq.shadowcloud.actors.utils.ActorState
 import com.karasiq.shadowcloud.storage.props.StorageProps
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, CoreTestUtils}
 
 class RegionSupervisorTest extends ActorSpec with FlatSpecLike with Matchers {
   import RegionSupervisor._
@@ -20,7 +20,7 @@ class RegionSupervisorTest extends ActorSpec with FlatSpecLike with Matchers {
   val supervisor = system.actorOf(props, "supervisor")
 
   "Region supervisor" should "add region" in {
-    supervisor ! AddRegion(testRegion, TestUtils.regionConfig("testRegion"))
+    supervisor ! AddRegion(testRegion, CoreTestUtils.regionConfig("testRegion"))
     val (regions, storages) = requestState()
     regions.keySet shouldBe Set(testRegion)
     val region = regions(testRegion)
@@ -90,7 +90,7 @@ class RegionSupervisorTest extends ActorSpec with FlatSpecLike with Matchers {
   it should "suspend region" in {
     supervisor ! SuspendRegion(testRegion)
     val (regions, storages) = requestState()
-    regions(testRegion) shouldBe RegionStatus(testRegion, TestUtils.regionConfig("testRegion"), ActorState.Suspended, Set(testStorage))
+    regions(testRegion) shouldBe RegionStatus(testRegion, CoreTestUtils.regionConfig("testRegion"), ActorState.Suspended, Set(testStorage))
     storages.keySet shouldBe Set(testStorage)
     storages(testStorage).regions shouldBe Set(testRegion)
   }

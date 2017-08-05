@@ -6,7 +6,7 @@ import akka.util.ByteString
 import org.scalatest.{FlatSpec, Matchers}
 
 import com.karasiq.shadowcloud.crypto.HashingMethod
-import com.karasiq.shadowcloud.test.utils.{TestImplicits, TestUtils}
+import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, TestImplicits}
 
 class HashingModuleTest extends FlatSpec with Matchers with TestImplicits {
   val testData = ByteString("The testing facilities described up to this point were aiming at formulating assertions about a system’s behavior. If a test fails, it is usually your job to find the cause, fix it and verify the test again. This process is supported by debuggers as well as logging, where the Akka toolkit offers the following options:")
@@ -22,7 +22,7 @@ class HashingModuleTest extends FlatSpec with Matchers with TestImplicits {
 
   private[this] def testModule(alg: String, testHash: String): Unit = {
     s"$alg module" should "calculate hash" in {
-      val module = TestUtils.modules.crypto.hashingModule(HashingMethod(alg))
+      val module = CoreTestUtils.modules.crypto.hashingModule(HashingMethod(alg))
       module.createHash(testData).toHexString shouldBe testHash
     }
   }

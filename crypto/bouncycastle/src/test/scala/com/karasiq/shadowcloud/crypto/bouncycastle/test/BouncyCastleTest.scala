@@ -1,9 +1,6 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.test
 
-import java.io.{ObjectInputStream, ObjectOutputStream}
-import java.net.{URLDecoder, URLEncoder}
 import java.security.NoSuchAlgorithmException
-import java.util.stream.Collectors
 
 import scala.language.postfixOps
 
@@ -17,10 +14,12 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric.{ECIESCipherModule
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigests, MessageDigestModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.{ECDSASignModule, RSASignModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, BCBlockCiphers, BlockCipherModule, StreamCipherModule}
-import com.karasiq.shadowcloud.utils.{ByteStringInputStream, ByteStringOutputStream, HexString}
+import com.karasiq.shadowcloud.crypto.test.utils.CryptoTestVectors
+import com.karasiq.shadowcloud.utils.HexString
 
 //noinspection RedundantDefaultArgument
 class BouncyCastleTest extends FlatSpec with Matchers {
+  val testVectors = CryptoTestVectors("bouncycastle")
   val provider = new BouncyCastleCryptoProvider
   val testData = ByteString("# First, make a nonce: A single-use value never repeated under the same key\n# The nonce isn't secret, and can be sent with the ciphertext.\n# The cipher instance has a nonce_bytes method for determining how many bytes should be in a nonce")
 
@@ -53,8 +52,8 @@ class BouncyCastleTest extends FlatSpec with Matchers {
   testAsymmetricEncryption("ECIES (Stream)", ECIESCipherModule(EncryptionMethod("ECIES", 521)))
 
   // Pre-encrypted data
-  BouncyCastleTest.getTestVectors() foreach { name ⇒
-    val (parameters, plain, encrypted) = BouncyCastleTest.loadTestVector(name)
+  testVectors.list() foreach { name ⇒
+    val (parameters, plain, encrypted) = testVectors.load(name)
     testSymmetricEncryptionVector(name, parameters, plain, encrypted)
   }
 
@@ -125,7 +124,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
       encrypted should not be testData
       val decrypted = module.decrypt(encrypted, parameters)
       decrypted shouldBe testData
-      // BouncyCastleTest.saveTestVector(name, parameters, testData, encrypted)
+      // testVectors.save(name, parameters, testData, encrypted)
     }
   }
 
@@ -189,56 +188,5 @@ class BouncyCastleTest extends FlatSpec with Matchers {
       // println('"' + hash + '"' + ",")
       hash shouldBe testHash
     }
-  }
-}
-
-object BouncyCastleTest {
-  import java.nio.file.{Files, Path, Paths}
-  private[this] val testVectorsFolder = Paths.get("./crypto/bouncycastle/src/test/resources/bc-test-vectors")
-
-  def saveTestVector(name: String, parameters: EncryptionParameters, plain: ByteString, encrypted: ByteString): Unit = {
-    val testVector = writeTestVector(parameters, plain, encrypted)
-    Files.createDirectories(testVectorsFolder)
-    Files.write(getVectorFilePath(name), testVector.toArray)
-  }
-
-  def loadTestVector(name: String): (EncryptionParameters, ByteString, ByteString) = {
-    val bytes = ByteString(Files.readAllBytes(getVectorFilePath(name)))
-    readTestVector(bytes)
-  }
-
-  def getTestVectors(): Seq[String] = {
-    import scala.collection.JavaConverters._
-    Files
-      .list(testVectorsFolder)
-      .collect(Collectors.toList[Path])
-      .asScala
-      .map(path ⇒ URLDecoder.decode(path.getFileName.toString, "UTF-8"))
-      .sorted
-  }
-
-  private def getVectorFilePath(name: String): Path = {
-    testVectorsFolder.resolve(URLEncoder.encode(name, "UTF-8"))
-  }
-
-  private[this] def writeTestVector(parameters: EncryptionParameters, plain: ByteString, encrypted: ByteString): ByteString = {
-    val bsOutput = ByteStringOutputStream()
-    val objOutput = new ObjectOutputStream(bsOutput)
-    objOutput.writeObject(parameters)
-    objOutput.writeObject(plain)
-    objOutput.writeObject(encrypted)
-    objOutput.flush()
-    objOutput.close()
-    bsOutput.toByteString
-  }
-
-  private[this] def readTestVector(str: ByteString): (EncryptionParameters, ByteString, ByteString) = {
-    val bsInput = ByteStringInputStream(str)
-    val objInput = new ObjectInputStream(bsInput)
-    val parameters = objInput.readObject().asInstanceOf[EncryptionParameters]
-    val plain = objInput.readObject().asInstanceOf[ByteString]
-    val encrypted = objInput.readObject().asInstanceOf[ByteString]
-    objInput.close()
-    (parameters, plain, encrypted)
   }
 }

@@ -7,7 +7,7 @@ import org.scalatest.{Matchers, WordSpec}
 import com.karasiq.shadowcloud.index.FolderIndex
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
-import com.karasiq.shadowcloud.test.utils.TestUtils
+import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, TestUtils}
 
 class IndexMergerTest extends WordSpec with Matchers {
   "Index" when {
@@ -43,7 +43,7 @@ class IndexMergerTest extends WordSpec with Matchers {
     "not empty" should {
       val index = IndexMerger()
       val diff1 = TestUtils.testDiff
-      val diff2 = TestUtils.randomDiff
+      val diff2 = CoreTestUtils.randomDiff
       val diff2Reverse = diff2.reverse.copy(time = diff2.time + 1)
 
       "add initial diff" in {
@@ -72,7 +72,7 @@ class IndexMergerTest extends WordSpec with Matchers {
       
       "throw exception on diff rewrite" in {
         intercept[IllegalArgumentException] {
-          index.add(diff1.time, diff1.merge(TestUtils.randomDiff))
+          index.add(diff1.time, diff1.merge(CoreTestUtils.randomDiff))
         }
       }
 

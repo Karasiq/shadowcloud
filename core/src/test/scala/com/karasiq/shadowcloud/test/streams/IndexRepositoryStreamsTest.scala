@@ -12,7 +12,7 @@ import com.karasiq.shadowcloud.index.{IndexData, Path}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.repository.{KeyValueRepository, PathTreeRepository, RepositoryKeys}
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, CoreTestUtils, TestUtils}
 
 class IndexRepositoryStreamsTest extends ActorSpec with FlatSpecLike {
   "In-memory repository" should "store diff" in {
@@ -28,11 +28,11 @@ class IndexRepositoryStreamsTest extends ActorSpec with FlatSpecLike {
   }
 
   private[this] def testRepository(repository: KeyValueRepository): Unit = {
-    val diff = TestUtils.randomDiff
+    val diff = CoreTestUtils.randomDiff
     val testRepository = RepositoryKeys.toLong(repository)
 
     // Write diff
-    val streams = IndexRepositoryStreams(TestUtils.storageConfig("testStorage"), system)
+    val streams = IndexRepositoryStreams(CoreTestUtils.storageConfig("testStorage"), system)
     val (write, writeResult) = TestSource.probe[(Long, IndexData)]
       .via(streams.write(testRepository))
       .toMat(TestSink.probe)(Keep.both)

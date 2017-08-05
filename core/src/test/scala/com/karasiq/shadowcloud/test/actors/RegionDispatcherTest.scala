@@ -28,13 +28,13 @@ import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.repository.{PathTreeRepository, Repository}
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, CoreTestUtils, TestUtils}
 import com.karasiq.shadowcloud.utils.HexString
 
 // Uses local filesystem
 class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
-  val folder = TestUtils.randomFolder()
+  val folder = CoreTestUtils.randomFolder()
   val folderDiff = FolderIndexDiff.create(folder)
   val indexRepository = Repository.forIndex(PathTreeRepository.toCategorized(
     Repositories.fromDirectory(Files.createTempDirectory("vrt-index"))))
@@ -46,7 +46,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   val healthProvider = StorageHealthProviders.fromDirectory(chunksDir, Quota.empty.copy(limitSpace = Some(100L * 1024 * 1024)))
   val initialHealth = healthProvider.health.futureValue
   val storage = TestActorRef(StorageDispatcher.props("testStorage", storageProps, index, chunkIO, healthProvider), "storage")
-  val testRegion = TestActorRef(RegionDispatcher.props("testRegion", TestUtils.regionConfig("testRegion")), "testRegion")
+  val testRegion = TestActorRef(RegionDispatcher.props("testRegion", CoreTestUtils.regionConfig("testRegion")), "testRegion")
 
   "Virtual region" should "register storage" in {
     storage ! StorageIndex.OpenIndex("testRegion")
@@ -91,7 +91,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   }
 
   it should "deduplicate chunk" in {
-    val wrongChunk = chunk.copy(encryption = TestUtils.aesEncryption.createParameters(), data = chunk.data.copy(encrypted = TestUtils.randomBytes(chunk.data.plain.length)))
+    val wrongChunk = chunk.copy(encryption = CoreTestUtils.aesEncryption.createParameters(), data = chunk.data.copy(encrypted = TestUtils.randomBytes(chunk.data.plain.length)))
     wrongChunk shouldNot be(chunk)
     val result = testRegion ? WriteChunk(wrongChunk)
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
@@ -147,11 +147,11 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
   }
 
   it should "read index" in {
-    val streams = IndexRepositoryStreams(TestUtils.storageConfig("testStorage"), system)
+    val streams = IndexRepositoryStreams(CoreTestUtils.storageConfig("testStorage"), system)
     val regionRepo = indexRepository.subRepository("testRegion")
 
     // Write #2
-    val remoteDiff = TestUtils.randomDiff
+    val remoteDiff = CoreTestUtils.randomDiff
     val (sideWrite, sideWriteResult) = TestSource.probe[(Long, IndexData)]
       .via(streams.write(regionRepo))
       .toMat(TestSink.probe)(Keep.both)
@@ -196,7 +196,7 @@ class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
     val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((2, oldDiff)), IndexDiff.empty)) = receiveOne(1 second)
 
     // Write diff #3
-    val newDiff = TestUtils.randomDiff.folders
+    val newDiff = CoreTestUtils.randomDiff.folders
     testRegion ! RegionDispatcher.WriteIndex(newDiff)
     val RegionDispatcher.WriteIndex.Success(`newDiff`, _) = receiveOne(1 second)
 

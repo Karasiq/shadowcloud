@@ -5,13 +5,13 @@ import scala.language.postfixOps
 import org.scalatest.{FlatSpec, Matchers}
 
 import com.karasiq.shadowcloud.index.{Folder, Timestamp}
-import com.karasiq.shadowcloud.test.utils.TestUtils
+import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, TestUtils}
 
 class FolderTest extends FlatSpec with Matchers {
   val folder = Folder(TestUtils.randomString, Timestamp(System.currentTimeMillis() - 1, System.currentTimeMillis() - 1))
 
   "Folder" should "add file" in {
-    val testFile = TestUtils.randomFile(folder.path)
+    val testFile = CoreTestUtils.randomFile(folder.path)
     val folder1 = folder.addFiles(testFile)
     folder1.timestamp.created shouldBe folder.timestamp.created
     folder1.timestamp.lastModified should be > folder.timestamp.lastModified
@@ -19,12 +19,12 @@ class FolderTest extends FlatSpec with Matchers {
   }
 
   it should "throw exception on invalid path" in {
-    val testFile = TestUtils.randomFile(folder.path / "test")
+    val testFile = CoreTestUtils.randomFile(folder.path / "test")
     intercept[IllegalArgumentException](folder.addFiles(testFile))
   }
 
   it should "remove file" in {
-    val testFile = TestUtils.randomFile(folder.path)
+    val testFile = CoreTestUtils.randomFile(folder.path)
     val folder1 = folder.addFiles(testFile)
     val folder2 = folder.deleteFiles(folder1.files.head)
     folder2.timestamp.lastModified should be > folder.timestamp.lastModified

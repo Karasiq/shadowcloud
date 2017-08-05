@@ -6,13 +6,13 @@ import akka.util.ByteString
 import org.scalatest.{FlatSpec, Matchers}
 
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
-import com.karasiq.shadowcloud.test.utils.TestUtils
+import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, TestUtils}
 import com.karasiq.shadowcloud.utils.Utils
 
 //noinspection RedundantDefaultArgument
 class HashCodesTest extends FlatSpec with Matchers {
   "Chunks" should "be compared" in {
-    val chunk1 = TestUtils.randomChunk
+    val chunk1 = CoreTestUtils.randomChunk
     val chunk2 = chunk1.withoutData
     val chunk3 = chunk2.copy(checksum = chunk2.checksum.copy(encSize = 0, encHash = ByteString.empty))
     val chunk4 = chunk2.copy(checksum = chunk2.checksum.copy(encSize = 0, encHash = TestUtils.randomBytes(20)))
@@ -31,12 +31,12 @@ class HashCodesTest extends FlatSpec with Matchers {
   }
 
   "Files" should "be compared" in {
-    val file1 = TestUtils.randomFile()
+    val file1 = CoreTestUtils.randomFile()
     val file2 = file1.copy(checksum = file1.checksum.copy(encSize = 0, encHash = ByteString.empty))
     val file3 = file1.copy(checksum = file1.checksum.copy(encSize = 0, encHash = TestUtils.randomBytes(20)))
     val file4 = file1.copy(checksum = file1.checksum.copy(hash = TestUtils.randomBytes(20)))
     val file5 = file1.copy(checksum = file1.checksum.copy(size = file1.checksum.size + 1))
-    val file6 = file1.copy(chunks = file1.chunks :+ TestUtils.randomChunk)
+    val file6 = file1.copy(chunks = file1.chunks :+ CoreTestUtils.randomChunk)
     file1 shouldBe file2
     file1 shouldNot be (file3)
     file1 shouldNot be (file4)
@@ -48,11 +48,11 @@ class HashCodesTest extends FlatSpec with Matchers {
   }
 
   "Folders" should "be compared" in {
-    val folder1 = TestUtils.randomFolder()
+    val folder1 = CoreTestUtils.randomFolder()
     val folder2 = folder1.copy(timestamp = folder1.timestamp.copy(lastModified = folder1.timestamp.lastModified + 1))
     val folder3 = folder1.withPath(folder1.path / "test")
     val folder4 = folder1.copy(folders = folder1.folders + TestUtils.randomString)
-    val folder5 = folder1.copy(files = folder1.files + TestUtils.randomFile(folder1.path))
+    val folder5 = folder1.copy(files = folder1.files + CoreTestUtils.randomFile(folder1.path))
     folder2 shouldBe folder1
     folder3 shouldNot be (folder1)
     folder4 shouldNot be (folder1)

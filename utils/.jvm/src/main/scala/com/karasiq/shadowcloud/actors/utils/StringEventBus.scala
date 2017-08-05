@@ -1,9 +1,9 @@
 package com.karasiq.shadowcloud.actors.utils
 
+import scala.language.postfixOps
+
 import akka.actor.ActorRef
 import akka.event.{ActorEventBus, LookupClassification}
-
-import scala.language.postfixOps
 
 final class StringEventBus[E](extract: E ⇒ String) extends ActorEventBus with LookupClassification {
   type Event = E

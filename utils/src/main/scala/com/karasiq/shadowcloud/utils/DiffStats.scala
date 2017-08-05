@@ -7,11 +7,12 @@ import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 
 case class DiffStats(diffs: Int, files: Int, folders: Int, chunks: Int,
-                                     fileDeletes: Int, folderDeletes: Int, chunkDeletes: Int,
-                                     createdBytes: Long, deletedBytes: Long) extends HasEmpty {
+                     fileDeletes: Int, folderDeletes: Int, chunkDeletes: Int,
+                     createdBytes: Long, deletedBytes: Long) extends HasEmpty {
+
   require(diffs >= 0 && files >= 0 && folders >= 0 && chunks >= 0 &&
     fileDeletes >= 0 && folderDeletes >= 0 && chunkDeletes >= 0 && createdBytes >= 0 && deletedBytes >= 0)
-  
+
   def +(stat: DiffStats): DiffStats = {
     DiffStats(diffs + stat.diffs, files + stat.files, folders + stat.folders, chunks + stat.chunks, fileDeletes + stat.fileDeletes,
       folderDeletes + stat.folderDeletes, chunkDeletes + stat.chunkDeletes, createdBytes + stat.createdBytes, deletedBytes + stat.deletedBytes)
@@ -62,6 +63,6 @@ object DiffStats {
   }
 
   def fromIndex(index: IndexMerger[_]): DiffStats = {
-    apply(index.diffs.values.toSeq:_*)
+    apply(index.diffs.values.toSeq: _*)
   }
 }

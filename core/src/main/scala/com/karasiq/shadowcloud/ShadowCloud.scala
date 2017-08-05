@@ -15,10 +15,10 @@ import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.StringEventBus
 import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, StorageConfig}
-import com.karasiq.shadowcloud.config.keys.{KeyChain, KeyProvider, KeySet}
+import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.config.passwords.PasswordProvider
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.providers.SCModules
+import com.karasiq.shadowcloud.providers.{KeyProvider, SCModules}
 import com.karasiq.shadowcloud.serialization.{SerializationModule, SerializationModules}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams._

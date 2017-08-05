@@ -4,8 +4,9 @@ import scala.concurrent.duration.FiniteDuration
 
 import com.typesafe.config.Config
 
-import com.karasiq.shadowcloud.config.utils.{ChunkKeyExtractor, ConfigImplicits}
+import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.storage.props.StorageProps
+import com.karasiq.shadowcloud.utils.ChunkKeyExtractor
 
 case class StorageConfig(rootConfig: Config, syncInterval: FiniteDuration,
                          indexCompactThreshold: Int, indexSnapshotThreshold: Int,

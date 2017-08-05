@@ -1,6 +1,5 @@
 package com.karasiq.shadowcloud.serialization
 
-import scala.language.postfixOps
 import scala.reflect.ClassTag
 
 import akka.util.ByteString

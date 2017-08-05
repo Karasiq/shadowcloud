@@ -5,9 +5,6 @@ import scala.language.postfixOps
 
 import akka.actor.ActorRef
 
-import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
-import com.karasiq.shadowcloud.index.Chunk
-
 private[actors] final class PendingOperation[Key <: AnyRef] {
   private[this] val subscribers = mutable.AnyRefMap[Key, mutable.Set[ActorRef]]()
 
@@ -37,9 +34,4 @@ private[actors] final class PendingOperation[Key <: AnyRef] {
   def finish(key: Key, result: AnyRef)(implicit sender: ActorRef = ActorRef.noSender): Unit = {
     subscribers.remove(key).foreach(_.foreach(_ ! result))
   }
-}
-
-private[actors] object PendingOperation {
-  def withChunk: PendingOperation[Chunk] = new PendingOperation
-  def withRegionChunk: PendingOperation[(ChunkPath, Chunk)] = new PendingOperation
 }

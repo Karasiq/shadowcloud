@@ -6,8 +6,9 @@ import scala.language.postfixOps
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.index.utils.HasEmpty
-import com.karasiq.shadowcloud.storage.internal.DefaultIndexMerger
+import com.karasiq.shadowcloud.storage.utils.internal.DefaultIndexMerger
 
+// TODO: UUID, time query
 private[shadowcloud] trait IndexMerger[T] extends HasEmpty {
   def lastSequenceNr: T
   def chunks: ChunkIndex

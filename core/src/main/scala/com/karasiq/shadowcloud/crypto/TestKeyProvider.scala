@@ -4,7 +4,8 @@ import scala.collection.concurrent.TrieMap
 import scala.concurrent.Future
 
 import com.karasiq.shadowcloud.ShadowCloudExtension
-import com.karasiq.shadowcloud.config.keys.{KeyChain, KeyProvider, KeySet}
+import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
+import com.karasiq.shadowcloud.providers.KeyProvider
 
 private[crypto] final class TestKeyProvider(sc: ShadowCloudExtension) extends KeyProvider {
   private[this] val keys = TrieMap.empty[KeySet.ID, (KeySet, Boolean, Boolean)]

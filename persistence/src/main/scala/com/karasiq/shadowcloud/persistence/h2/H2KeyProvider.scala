@@ -10,8 +10,9 @@ import akka.actor.ActorSystem
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.config.keys.{KeyChain, KeyProvider, KeySet}
+import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.persistence.utils.SCQuillEncoders
+import com.karasiq.shadowcloud.providers.KeyProvider
 
 final class H2KeyProvider(actorSystem: ActorSystem) extends KeyProvider {
   private[this] val h2 = H2DB(actorSystem)

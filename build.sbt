@@ -18,7 +18,7 @@ val testSettings = Seq(
 // -----------------------------------------------------------------------
 lazy val model = crossProject
   .crossType(CrossType.Pure)
-  .settings(commonSettings)
+  .settings(commonSettings, name := "shadowcloud-model")
   .settings(
     PB.targets in Compile := Seq(
       scalapb.gen() → (sourceManaged in Compile).value
@@ -35,19 +35,34 @@ lazy val modelJVM = model.jvm
 
 lazy val modelJS = model.js
 
+lazy val utils = crossProject
+  .crossType(CrossType.Pure)
+  .settings(commonSettings, name := "shadowcloud-utils")
+  .jvmSettings(
+    libraryDependencies ++=
+      ProjectDeps.akka.streams ++
+      ProjectDeps.lz4 ++
+      Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+  )
+  .dependsOn(model)
+
+lazy val utilsJVM = utils.jvm
+
+lazy val utilsJS = utils.js
+
 // -----------------------------------------------------------------------
 // Core
 // -----------------------------------------------------------------------
 lazy val core = project
   .settings(commonSettings)
-  .dependsOn(modelJVM, storageParent, cryptoParent, metadataParent)
+  .dependsOn(modelJVM, utilsJVM, storageParent, cryptoParent, metadataParent)
 
 lazy val persistence = project
   .settings(commonSettings)
   .dependsOn(core)
 
 lazy val coreAssembly = (project in file("target/core-assembly"))
-  .settings(commonSettings, testSettings)
+  .settings(commonSettings, testSettings, name := "shadowcloud-core-assembly")
   .dependsOn(core, persistence, bouncyCastleCrypto, libsodiumCrypto, tikaMetadata, imageioMetadata)
 
 // -----------------------------------------------------------------------
@@ -71,6 +86,7 @@ lazy val cryptoParent = Project("crypto-parent", file("crypto") / "parent")
   .dependsOn(modelJVM)
 
 lazy val bouncyCastleCrypto = cryptoPlugin("bouncycastle")
+  .dependsOn(utilsJVM % "test")
 
 lazy val libsodiumCrypto = cryptoPlugin("libsodium")
 
@@ -99,6 +115,7 @@ lazy val tikaMetadata = metadataPlugin("tika")
   .settings(libraryDependencies ++= ProjectDeps.tika)
 
 lazy val imageioMetadata = metadataPlugin("imageio")
+  .dependsOn(utilsJVM)
 
 // -----------------------------------------------------------------------
 // HTTP

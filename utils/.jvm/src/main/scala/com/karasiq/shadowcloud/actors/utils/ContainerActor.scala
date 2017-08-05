@@ -7,12 +7,12 @@ import scala.language.postfixOps
 
 import akka.actor.{Actor, ActorRef, ReceiveTimeout, Stash, Terminated}
 
-object ContainerActor {
+private[actors] object ContainerActor {
   sealed trait Message
   case object Restart extends Message
 }
 
-trait ContainerActor { self: Actor with Stash ⇒
+private[actors] trait ContainerActor { self: Actor with Stash ⇒
   import ContainerActor._
 
   protected var actorRef: Option[ActorRef] = None

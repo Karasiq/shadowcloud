@@ -40,11 +40,11 @@ class TikaMetadataProviderTest extends TestKit(ActorSystem("test")) with FlatSpe
 
     val text = output.requestNext(10 seconds)
     text.tag shouldBe Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.CONTENT))
-    text.value.text.exists(t ⇒ t.format == "txt" && t.data.contains("Type Classes as Objects and Implicits")) shouldBe true
+    text.value.text.exists(t ⇒ t.format == "text/plain" && t.data.contains("Type Classes as Objects and Implicits")) shouldBe true
 
     val xml = output.requestNext()
     xml.tag shouldBe Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.CONTENT))
-    xml.value.text.exists(t ⇒ t.format == "xhtml" && t.data.contains("<p>Adriaan Moors Martin Odersky\nEPFL\n</p>")) shouldBe true
+    xml.value.text.exists(t ⇒ t.format == "text/html" && t.data.contains("<p>Adriaan Moors Martin Odersky\nEPFL\n</p>")) shouldBe true
 
     val metaTable = output.requestNext()
     metaTable.tag shouldBe Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.METADATA))

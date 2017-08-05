@@ -22,7 +22,7 @@ private[imageio] object ImageIOThumbnailCreator {
 }
 
 private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataParser {
-  protected object thumbnailCreatorConfig extends ConfigImplicits {
+  protected object thumbnailCreatorSettings extends ConfigImplicits {
     val enabled = config.getBoolean("enabled")
     val extensions = config.getStringSet("extensions")
     val mimes = config.getStringSet("mimes")
@@ -33,10 +33,10 @@ private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataP
   }
 
   def canParse(name: String, mime: String): Boolean = {
-    thumbnailCreatorConfig.enabled &&
-      (thumbnailCreatorConfig.mimes.contains(mime) || thumbnailCreatorConfig.extensions.contains(Utils.getFileExtension(name)))
+    thumbnailCreatorSettings.enabled &&
+      (thumbnailCreatorSettings.mimes.contains(mime) || thumbnailCreatorSettings.extensions.contains(Utils.getFileExtension(name)))
   }
-  
+
   def parseMetadata(name: String, mime: String): Flow[ByteString, Metadata, NotUsed] = {
     val flow = Flow.fromGraph(GraphDSL.create() { implicit builder ⇒
       import GraphDSL.Implicits._
@@ -50,15 +50,15 @@ private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataP
       })
 
       val resizeImage = builder.add(Flow[BufferedImage].map { originalImage ⇒
-        val image = ImageIOResizer.resize(originalImage, thumbnailCreatorConfig.size)
+        val image = ImageIOResizer.resize(originalImage, thumbnailCreatorSettings.size)
         val outputStream = ByteStringOutputStream()
-        ImageIOResizer.compress(image, outputStream, thumbnailCreatorConfig.format, thumbnailCreatorConfig.quality)
+        ImageIOResizer.compress(image, outputStream, thumbnailCreatorSettings.format, thumbnailCreatorSettings.quality)
         outputStream.toByteString
       })
 
       val createPreview = builder.add(Flow[ByteString].map { data ⇒
         Metadata(Some(Metadata.Tag("imageio", "thumbnail", Metadata.Tag.Disposition.PREVIEW)),
-          Metadata.Value.Preview(Metadata.Preview(thumbnailCreatorConfig.format, data)))
+          Metadata.Value.Preview(Metadata.Preview(thumbnailCreatorSettings.format, data)))
       })
 
       val readImage = builder.add(Flow[ByteString].fold(ByteString.empty)(_ ++ _))

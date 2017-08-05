@@ -1,18 +1,17 @@
 package com.karasiq.shadowcloud.api
 
-import java.util.Base64
-
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.index.{File, Path}
+import com.karasiq.shadowcloud.utils.Base64
 
 object SCApiEncoding {
   def toUrlSafe(data: ByteString): String = {
-    Base64.getUrlEncoder.encodeToString(data.toArray)
+    Base64.encode(data)
   }
 
   def toBinary(string: String): ByteString = {
-    ByteString(Base64.getUrlDecoder.decode(string))
+    Base64.decode(string)
   }
 }
 

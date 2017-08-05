@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.storage.internal
+package com.karasiq.shadowcloud.storage.utils.internal
 
 import scala.collection.{mutable, SortedMap}
 import scala.language.postfixOps

@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.config.utils
+package com.karasiq.shadowcloud.utils
 
 import scala.language.postfixOps
 

@@ -23,7 +23,7 @@ private[tika] trait TikaMetadataParser extends BlockingMetadataParser {
   val parser: Parser
   val config: Config
 
-  protected object stdParserConfig extends ConfigImplicits {
+  protected object stdParserSettings extends ConfigImplicits {
     val enabled = config.getBoolean("enabled")
     val extensions = config.getStringSet("extensions")
     val mimes = {
@@ -40,7 +40,7 @@ private[tika] trait TikaMetadataParser extends BlockingMetadataParser {
   protected def parseStream(metadata: TikaMetadata, inputStream: InputStream): Seq[Metadata]
 
   def canParse(name: String, mime: String): Boolean = {
-    stdParserConfig.enabled && (stdParserConfig.mimes.contains(mime) || stdParserConfig.extensions.contains(FilenameUtils.getExtension(name)))
+    stdParserSettings.enabled && (stdParserSettings.mimes.contains(mime) || stdParserSettings.extensions.contains(FilenameUtils.getExtension(name)))
   }
 
   protected def parseMetadata(name: String, mime: String, inputStream: InputStream): Source[Metadata, NotUsed] = {

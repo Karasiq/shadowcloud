@@ -27,7 +27,7 @@ private[tika] object TikaAutoParser {
   */
 private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends TikaMetadataParser {
   // Configuration
-  private[this] object autoParserConfig extends ConfigImplicits {
+  private[this] object autoParserSettings extends ConfigImplicits {
     // Parser
     val recursive = config.getBoolean("recursive")
     val fb2Fix = config.getBoolean("fb2-fix")
@@ -43,7 +43,7 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
   override val parser = tika.getParser
 
   override def canParse(name: String, mime: String): Boolean = {
-    super.canParse(name, mime) || (autoParserConfig.fb2Fix && name.endsWith(".fb2.zip"))
+    super.canParse(name, mime) || (autoParserSettings.fb2Fix && name.endsWith(".fb2.zip"))
   }
 
   protected def parseStream(metadata: TikaMetadata, inputStream: InputStream): Seq[Metadata] = {
@@ -84,7 +84,7 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
           Metadata.Value.ArchiveFiles(Metadata.ArchiveFiles(files))))
     }
 
-    val (rawMetadatas, contentHandlers) = if (autoParserConfig.recursive) {
+    val (rawMetadatas, contentHandlers) = if (autoParserSettings.recursive) {
       // Recursive parser
       val handlers = new ArrayBuffer[Handlers]()
       val recursiveParserWrapper = new RecursiveParserWrapper(this.parser, new ContentHandlerFactory {
@@ -131,8 +131,8 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
 
   private[this] def createContentHandlers(): Handlers = {
     new Handlers(
-      Some(new BodyContentHandler(autoParserConfig.textLimit)).filter(_ ⇒ autoParserConfig.textEnabled),
-      Some(new ToXMLContentHandler()).filter(_ ⇒ autoParserConfig.xhtmlEnabled)
+      Some(new BodyContentHandler(autoParserSettings.textLimit)).filter(_ ⇒ autoParserSettings.textEnabled),
+      Some(new ToXMLContentHandler()).filter(_ ⇒ autoParserSettings.xhtmlEnabled)
     )
   }
 
@@ -154,7 +154,10 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
           .map(result ⇒ Metadata(Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.CONTENT)), Metadata.Value.Text(Metadata.Text(format, result))))
       }
 
-      Seq(extractText(textHandler, "txt"), extractText(xhtmlHandler, "xhtml")).flatten
+      Seq(
+        extractText(textHandler, "text/plain"),
+        extractText(xhtmlHandler, "text/html")
+      ).flatten
     }
   }
 }

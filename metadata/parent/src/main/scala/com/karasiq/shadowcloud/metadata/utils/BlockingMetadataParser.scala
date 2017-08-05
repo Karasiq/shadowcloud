@@ -19,7 +19,7 @@ trait BlockingMetadataParser extends MetadataParser {
   protected def parseMetadata(name: String, mime: String, inputStream: InputStream): Source[Metadata, NotUsed]
 
   def parseMetadata(name: String, mime: String): Flow[ByteString, Metadata, NotUsed] = {
-    val createInputStream = StreamConverters.asInputStream(15 seconds)
+    val createInputStream = StreamConverters.asInputStream(5 seconds)
     val parseInputStream = Flow[InputStream].flatMapConcat { inputStream ⇒
       parseMetadata(name, mime, inputStream)
         .alsoTo(Sink.onComplete(_ ⇒ inputStream.close()))

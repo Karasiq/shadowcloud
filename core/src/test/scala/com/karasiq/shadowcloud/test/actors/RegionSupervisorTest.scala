@@ -10,9 +10,9 @@ import com.karasiq.shadowcloud.actors.internal.RegionTracker
 import com.karasiq.shadowcloud.actors.internal.RegionTracker.{RegionStatus, StorageStatus}
 import com.karasiq.shadowcloud.actors.utils.ActorState
 import com.karasiq.shadowcloud.storage.props.StorageProps
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, CoreTestUtils}
+import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, SCExtensionSpec}
 
-class RegionSupervisorTest extends ActorSpec with FlatSpecLike with Matchers {
+class RegionSupervisorTest extends SCExtensionSpec with FlatSpecLike with Matchers {
   import RegionSupervisor._
 
   val testRegion = "testRegion"

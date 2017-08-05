@@ -20,7 +20,7 @@ import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.serialization.StreamSerialization
 import com.karasiq.shadowcloud.serialization.protobuf.index.{EncryptedIndexData, SerializedIndexData}
-import com.karasiq.shadowcloud.streams.utils.ByteStringConcat
+import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.utils.AkkaStreamUtils
 
 object IndexProcessingStreams {
@@ -85,13 +85,13 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
     val compress = Flow[ByteString].flatMapConcat { bytes ⇒
       Source.single(bytes)
         .via(framedWrite)
-        .via(ByteStringConcat())
+        .via(ByteStreams.concat)
     }
 
     val decompress = Flow[ByteString].flatMapConcat { compBytes ⇒
       Source.single(compBytes)
         .via(framedRead)
-        .via(ByteStringConcat())
+        .via(ByteStreams.concat)
     }
   }
 

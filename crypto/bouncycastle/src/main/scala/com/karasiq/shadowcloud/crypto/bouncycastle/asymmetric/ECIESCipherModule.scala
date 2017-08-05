@@ -24,8 +24,8 @@ import com.karasiq.shadowcloud.utils.HexString
 private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
   object defaults {
     val digest = HashingMethod("SHA-512") // HashingMethod("SHA3", config = ConfigProps("digest-size" → 512))
-    val encodingSize = 8
-    val derivationSize = 8
+    val encodingSize = 32
+    val derivationSize = 32
     val macKeySize = 256
   }
 

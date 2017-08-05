@@ -8,7 +8,7 @@ import scala.util.hashing.MurmurHash3
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
-import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, SignMethod}
 import com.karasiq.shadowcloud.exceptions.CryptoException
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.serialization.SerializationModule

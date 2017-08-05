@@ -9,7 +9,7 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.repository.wrappers.{RepositoryKeyMapper, RepositoryWrapper, SubRepositoriesWrapper}
-import com.karasiq.shadowcloud.utils.HexString
+import com.karasiq.shadowcloud.utils.{ByteStringEncoding, HexString}
 
 trait Repository[Key] {
   final type Data = ByteString
@@ -39,8 +39,9 @@ object Repository {
       key ⇒ key.copy(_2 = toOld(key._2))) with CategorizedRepository[CatKey, NewKey]
   }
 
-  def forChunks(repository: CategorizedRepository[String, String]): CategorizedRepository[String, ByteString] = {
-    mapItemKeys(repository, HexString.decode, HexString.encode)
+  def forChunks(repository: CategorizedRepository[String, String],
+                encoding: ByteStringEncoding = HexString): CategorizedRepository[String, ByteString] = {
+    mapItemKeys(repository, encoding.decode, encoding.encode)
   }
 
   def forIndex[CatKey](repository: CategorizedRepository[CatKey, String]): CategorizedRepository[CatKey, Long] = {

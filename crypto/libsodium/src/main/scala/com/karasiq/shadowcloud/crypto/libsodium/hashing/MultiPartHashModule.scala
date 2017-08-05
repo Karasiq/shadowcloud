@@ -1,8 +1,9 @@
 package com.karasiq.shadowcloud.crypto.libsodium.hashing
 
 import akka.util.ByteString
-import com.karasiq.shadowcloud.crypto.{HashingMethod, StreamHashingModule}
 import org.abstractj.kalium.crypto.Hash
+
+import com.karasiq.shadowcloud.crypto.{HashingMethod, StreamHashingModule}
 
 private[libsodium] object MultiPartHashModule {
   def SHA256(method: HashingMethod = HashingMethod("SHA256")): MultiPartHashModule = {

@@ -3,11 +3,12 @@ package com.karasiq.shadowcloud.crypto.libsodium.hashing
 import java.util
 
 import akka.util.ByteString
+import org.abstractj.kalium.NaCl
+import org.abstractj.kalium.crypto.Util
+
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.{HashingMethod, StreamHashingModule}
-import org.abstractj.kalium.NaCl
-import org.abstractj.kalium.crypto.Util
 
 private[libsodium] object Blake2bModule extends ConfigImplicits {
   def apply(method: HashingMethod = HashingMethod("Blake2b")): Blake2bModule = {

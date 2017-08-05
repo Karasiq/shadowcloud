@@ -1,8 +1,8 @@
 package com.karasiq.shadowcloud.crypto
 
-import com.karasiq.shadowcloud.config.SerializedProps
-
 import scala.language.postfixOps
+
+import com.karasiq.shadowcloud.config.SerializedProps
 
 trait CryptoMethod {
   def algorithm: String

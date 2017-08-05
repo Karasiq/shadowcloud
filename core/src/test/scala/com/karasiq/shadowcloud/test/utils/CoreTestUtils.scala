@@ -4,10 +4,10 @@ import scala.language.postfixOps
 import scala.util.{Random, Try}
 
 import akka.util.ByteString
-import com.typesafe.config.Config
+import com.typesafe.config.{Config, ConfigFactory}
 
 import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, StorageConfig}
-import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.providers.SCModules
@@ -16,7 +16,7 @@ import com.karasiq.shadowcloud.utils.ProviderInstantiator
 object CoreTestUtils extends TestImplicits {
   import TestUtils.{randomBytes, randomString}
 
-  val config = SCConfig(TestUtils.rootConfig)
+  val config = SCConfig(ConfigFactory.load().getConfig("shadowcloud"))
   val modules = SCModules(config)(new TestProviderInstantiator)
   val sha1Hashing = modules.crypto.hashingModule(HashingMethod("SHA1"))
   val aesEncryption = modules.crypto.encryptionModule(EncryptionMethod("AES/GCM", 256))

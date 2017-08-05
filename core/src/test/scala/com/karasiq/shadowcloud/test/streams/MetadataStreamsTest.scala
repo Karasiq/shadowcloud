@@ -11,14 +11,16 @@ import com.karasiq.shadowcloud.index.{File, Path}
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams.metadata.MimeDetectorStream
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
+import com.karasiq.shadowcloud.test.utils.{ResourceUtils, SCExtensionSpec, TestUtils}
 import com.karasiq.shadowcloud.utils.{HexString, Utils}
 
-class MetadataStreamsTest extends ActorSpec with FlatSpecLike {
-  val testJpegFileStream = TestUtils.getResourceStream("14935431092820.jpg")
+object MetadataStreamsTest {
+  def testJpegStream() = ResourceUtils.toStream("14935431092820.jpg")
+}
 
+class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike {
   "Mime detector" should "detect mime type" in {
-    val testOut = testJpegFileStream
+    val testOut = MetadataStreamsTest.testJpegStream()
       .via(MimeDetectorStream(sc.modules.metadata, "14935431092820.jpg", 10000))
       .runWith(TestSink.probe)
     
@@ -74,7 +76,7 @@ class MetadataStreamsTest extends ActorSpec with FlatSpecLike {
   }
 
   it should "create metadata" in {
-    val testFileStream = testJpegFileStream
+    val testFileStream = MetadataStreamsTest.testJpegStream()
       .via(sc.streams.metadata.create("test.jpg"))
       .runWith(TestSink.probe)
 
@@ -88,7 +90,7 @@ class MetadataStreamsTest extends ActorSpec with FlatSpecLike {
   }
 
   it should "write metadata on the fly" in {
-    val testFileStream = testJpegFileStream
+    val testFileStream = MetadataStreamsTest.testJpegStream()
       .via(sc.streams.metadata.writeFileAndMetadata(testRegionId, Path.root / "test.jpg"))
       .runWith(TestSink.probe)
 

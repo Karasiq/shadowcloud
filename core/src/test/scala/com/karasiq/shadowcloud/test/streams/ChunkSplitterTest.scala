@@ -9,10 +9,10 @@ import org.scalatest.FlatSpecLike
 
 import com.karasiq.shadowcloud.index.{Checksum, Chunk, Data}
 import com.karasiq.shadowcloud.streams._
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
+import com.karasiq.shadowcloud.test.utils.{SCExtensionSpec, TestUtils}
 
 //noinspection ZeroIndexToHead
-class ChunkSplitterTest extends ActorSpec with FlatSpecLike {
+class ChunkSplitterTest extends SCExtensionSpec with FlatSpecLike {
   val (sourceBytes, sourceFile) = TestUtils.indexedBytes
   val hashingMethod = sourceFile.checksum.method
   val sourceHashes = sourceFile.chunks.map(_.checksum.hash)

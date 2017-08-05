@@ -4,7 +4,7 @@ import scala.language.postfixOps
 
 import org.scalatest.{FlatSpec, Matchers}
 
-import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.crypto.{HashingMethod, SignMethod, SignModule}
 import com.karasiq.shadowcloud.test.utils.TestUtils
 import com.karasiq.shadowcloud.test.utils.CoreTestUtils.modules
 

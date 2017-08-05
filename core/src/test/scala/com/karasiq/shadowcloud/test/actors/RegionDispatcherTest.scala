@@ -28,11 +28,11 @@ import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.repository.{PathTreeRepository, Repository}
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, CoreTestUtils, TestUtils}
+import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, SCExtensionSpec, TestUtils}
 import com.karasiq.shadowcloud.utils.HexString
 
 // Uses local filesystem
-class RegionDispatcherTest extends ActorSpec with FlatSpecLike {
+class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
   val folder = CoreTestUtils.randomFolder()
   val folderDiff = FolderIndexDiff.create(folder)

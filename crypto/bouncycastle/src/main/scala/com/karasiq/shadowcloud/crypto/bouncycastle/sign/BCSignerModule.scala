@@ -11,7 +11,7 @@ private[bouncycastle] trait BCSignerModule extends StreamSignModule with BCSignK
   protected def signer: Signer
 
   def init(sign: Boolean, parameters: SignParameters): Unit = {
-    require(signer.ne(null), "No signer")
+    requireInitialized()
     signer.init(sign, getSignerKey(parameters, sign))
   }
 

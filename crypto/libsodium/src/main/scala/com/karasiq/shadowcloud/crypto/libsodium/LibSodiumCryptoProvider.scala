@@ -1,12 +1,12 @@
 package com.karasiq.shadowcloud.crypto.libsodium
 
-import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
-import com.karasiq.shadowcloud.crypto.libsodium.internal._
-import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
-import com.karasiq.shadowcloud.providers.CryptoProvider
-
 import scala.language.postfixOps
+
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
+import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
+import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
+import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
+import com.karasiq.shadowcloud.providers.CryptoProvider
 
 final class LibSodiumCryptoProvider extends CryptoProvider {
   override val hashingAlgorithms: Set[String] = ifLoaded(super.hashingAlgorithms) {

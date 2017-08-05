@@ -1,7 +1,8 @@
 package com.karasiq.shadowcloud.crypto.libsodium.symmetric
 
-import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import org.abstractj.kalium.NaCl.Sodium
+
+import com.karasiq.shadowcloud.crypto.EncryptionMethod
 
 private[libsodium] object XSalsa20Module {
   val KEY_BYTES = Sodium.CRYPTO_STREAM_KEYBYTES

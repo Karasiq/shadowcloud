@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.crypto.test.utils
+package com.karasiq.shadowcloud.test.crypto.utils
 
 import java.io.{ObjectInputStream, ObjectOutputStream}
 import java.net.{URLDecoder, URLEncoder}
@@ -8,6 +8,7 @@ import java.util.stream.Collectors
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.crypto.EncryptionParameters
+import com.karasiq.shadowcloud.test.utils.ResourceUtils
 import com.karasiq.shadowcloud.utils.{ByteStringInputStream, ByteStringOutputStream}
 
 class CryptoTestVectors(testVectorsFolder: FSPath) {
@@ -34,6 +35,10 @@ class CryptoTestVectors(testVectorsFolder: FSPath) {
 
   private[this] def getVectorFilePath(name: String): FSPath = {
     testVectorsFolder.resolve(URLEncoder.encode(name, "UTF-8"))
+  }
+
+  private[this] def getVectorResourcePath(name: String): FSPath = {
+    ResourceUtils.getPath(s"test-vectors/${URLEncoder.encode(name, "UTF-8")}")
   }
 
   private[this] def writeTestVector(parameters: EncryptionParameters, plain: ByteString, encrypted: ByteString): ByteString = {

@@ -9,7 +9,7 @@ import akka.stream.scaladsl.{Flow, GraphDSL, Sink, ZipWith}
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.{CryptoConfig, ParallelismConfig, SCConfig}
-import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod}
 import com.karasiq.shadowcloud.index.{Chunk, Data}
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.utils.{MemorySize, ProviderInstantiator}

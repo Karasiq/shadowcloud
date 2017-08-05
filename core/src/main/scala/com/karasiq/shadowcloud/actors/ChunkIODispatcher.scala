@@ -20,7 +20,7 @@ import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
-import com.karasiq.shadowcloud.streams.utils.{ByteStringConcat, ByteStringLimit}
+import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.utils.HexString
 
 object ChunkIODispatcher {
@@ -83,8 +83,8 @@ private final class ChunkIODispatcher(storageId: String, storageProps: StoragePr
       val localRepository = subRepository(path.region)
       val readSource = localRepository.read(path.id)
         .completionTimeout(sc.config.timeouts.chunkRead)
-        .via(ByteStringLimit(chunk.checksum.encSize))
-        .via(ByteStringConcat())
+        .via(ByteStreams.limit(chunk.checksum.encSize))
+        .via(ByteStreams.concat)
         .map(bs ⇒ chunk.copy(data = chunk.data.copy(encrypted = bs)))
         .recover { case _ ⇒ chunk }
 

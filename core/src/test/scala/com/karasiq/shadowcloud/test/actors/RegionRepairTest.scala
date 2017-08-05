@@ -11,9 +11,9 @@ import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.streams.RegionRepairStream
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
+import com.karasiq.shadowcloud.test.utils.{SCExtensionSpec, TestUtils}
 
-class RegionRepairTest extends ActorSpec with FlatSpecLike {
+class RegionRepairTest extends SCExtensionSpec with FlatSpecLike {
   val testRegionId = "repairTestRegion"
   val testStorage1 = "repairTestS1"
   val testStorage2 = "repairTestS2"

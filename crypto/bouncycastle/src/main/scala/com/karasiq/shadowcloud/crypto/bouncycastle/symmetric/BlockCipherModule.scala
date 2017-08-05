@@ -8,7 +8,7 @@ import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
 
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, StreamEncryptionModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCSymmetricKeys
 
 //noinspection RedundantDefaultArgument

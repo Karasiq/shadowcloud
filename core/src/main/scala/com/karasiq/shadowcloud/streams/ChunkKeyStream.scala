@@ -7,7 +7,7 @@ import scala.language.postfixOps
 import akka.stream._
 import akka.stream.stage.{GraphStage, GraphStageLogic, OutHandler}
 
-import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters}
 import com.karasiq.shadowcloud.providers.SCModules
 
 private[shadowcloud] object ChunkKeyStream {

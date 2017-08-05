@@ -25,12 +25,12 @@ object ProjectDeps {
     )
 
     def testKit: Deps = Seq(
-      "com.typesafe.akka" %% "akka-testkit" % version % "test",
-      "com.typesafe.akka" %% "akka-stream-testkit" % version % "test"
+      "com.typesafe.akka" %% "akka-testkit" % version,
+      "com.typesafe.akka" %% "akka-stream-testkit" % version
     )
 
     def all: Deps = {
-      actors ++ streams ++ http ++ persistence ++ testKit
+      actors ++ streams ++ http ++ persistence // ++ testKit.map(_ % "test")
     }
 
     def provided: Def.Setting[Seq[ModuleID]] = {
@@ -42,7 +42,7 @@ object ProjectDeps {
   }
 
   def scalaTest: Deps = Seq(
-    "org.scalatest" %% "scalatest" % "3.0.3" % "test"
+    "org.scalatest" %% "scalatest" % "3.0.3"
   )
 
   def kryo: Deps = Seq(

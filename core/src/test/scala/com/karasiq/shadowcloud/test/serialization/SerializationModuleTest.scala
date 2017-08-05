@@ -12,14 +12,14 @@ import com.karasiq.shadowcloud.index.{Chunk, File, Folder}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.serialization.{SerializationModule, SerializationModules}
 import com.karasiq.shadowcloud.serialization.protobuf.index.SerializedIndexData
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, CoreTestUtils, TestUtils}
+import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, SCExtensionSpec, TestUtils}
 
-class SerializationModuleTest extends ActorSpec with FlatSpecLike {
+class SerializationModuleTest extends SCExtensionSpec with FlatSpecLike {
   testModule("Akka", SerializationModules.forActorSystem(system))
 
   private[this] def testModule(name: String, module: SerializationModule): Unit = {
     name should "serialize config" in {
-      val config = TestUtils.rootConfig
+      val config = CoreTestUtils.config.rootConfig
       val bytes = module.toBytes(config)
       module.fromBytes[Config](bytes) shouldBe config
     }

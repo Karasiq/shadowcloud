@@ -12,9 +12,9 @@ import com.karasiq.shadowcloud.index.{IndexData, Path}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.repository.{KeyValueRepository, PathTreeRepository, RepositoryKeys}
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, CoreTestUtils, TestUtils}
+import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, SCExtensionSpec, TestUtils}
 
-class IndexRepositoryStreamsTest extends ActorSpec with FlatSpecLike {
+class IndexRepositoryStreamsTest extends SCExtensionSpec with FlatSpecLike {
   "In-memory repository" should "store diff" in {
     testRepository(Repositories.inMemory)
   }

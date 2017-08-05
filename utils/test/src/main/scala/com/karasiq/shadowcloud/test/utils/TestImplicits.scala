@@ -1,10 +1,11 @@
 package com.karasiq.shadowcloud.test.utils
 
+import scala.language.postfixOps
+
 import akka.util.ByteString
+
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.utils.HexString
-
-import scala.language.postfixOps
 
 trait TestImplicits {
   implicit class ByteStringOps(private val bs: ByteString) {

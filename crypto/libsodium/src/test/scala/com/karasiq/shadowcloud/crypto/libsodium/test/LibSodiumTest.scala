@@ -8,7 +8,7 @@ import org.scalatest.{FlatSpec, Matchers}
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto.{EncryptionModule, EncryptionParameters, HashingMethod, HashingModule}
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
-import com.karasiq.shadowcloud.crypto.libsodium.internal._
+import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
 import com.karasiq.shadowcloud.utils.HexString
 

@@ -50,8 +50,8 @@ case class StoragePluginBuilder(storageId: String,
   }
 
   def withChunksTree(repository: PathTreeRepository): StoragePluginBuilder = {
-    val indexRepo = PathTreeRepository.toCategorized(repository, StoragePluginBuilder.getChunksPath(props))
-    withChunks(Repository.forChunks(indexRepo))
+    val chunksRepo = PathTreeRepository.toCategorized(repository, StoragePluginBuilder.getChunksPath(props))
+    withChunks(Repository.forChunks(chunksRepo))
   }
 
   def withChunksKeyValue(repository: KeyValueRepository, delimiter: String = StoragePluginBuilder.defaultDelimiter): StoragePluginBuilder = {

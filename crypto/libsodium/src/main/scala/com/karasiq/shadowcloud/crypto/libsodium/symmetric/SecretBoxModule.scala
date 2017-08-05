@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.crypto.libsodium.symmetric
 import org.abstractj.kalium.NaCl.Sodium
 import org.abstractj.kalium.crypto.SecretBox
 
-import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.crypto.EncryptionMethod
 
 private[libsodium] object SecretBoxModule {
   val KEY_BYTES: Int = Sodium.CRYPTO_SECRETBOX_KEYBYTES

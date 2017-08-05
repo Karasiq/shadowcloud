@@ -1,15 +1,10 @@
 package com.karasiq.shadowcloud.test.utils
 
-import java.nio.file.Files
 import java.util.UUID
 
-import scala.concurrent.Future
 import scala.util.Random
 
-import akka.stream.IOResult
-import akka.stream.scaladsl.{FileIO, Source}
 import akka.util.ByteString
-import com.typesafe.config.ConfigFactory
 
 import com.karasiq.shadowcloud.crypto.{EncryptionParameters, HashingMethod}
 import com.karasiq.shadowcloud.index._
@@ -17,8 +12,6 @@ import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIn
 import com.karasiq.shadowcloud.utils.HexString
 
 object TestUtils {
-  val rootConfig = ConfigFactory.load().getConfig("shadowcloud")
-
   def randomBytes(length: Int): ByteString = {
     val array = new Array[Byte](length)
     Random.nextBytes(array)
@@ -55,17 +48,5 @@ object TestUtils {
   def testDiff: IndexDiff = {
     val (_, file) = indexedBytes
     IndexDiff(testTimestamp, FolderIndexDiff.seq(FolderDiff(Path.root, testTimestamp, newFiles = Set(file))), ChunkIndexDiff(file.chunks.toSet))
-  }
-
-  def getResource(name: String): java.nio.file.Path = {
-    new java.io.File(getClass.getClassLoader.getResource(name).toURI).toPath
-  }
-
-  def getResourceBytes(name: String): ByteString = {
-    ByteString(Files.readAllBytes(getResource(name)))
-  }
-
-  def getResourceStream(name: String): Source[ByteString, Future[IOResult]] = {
-    FileIO.fromPath(getResource(name))
   }
 }

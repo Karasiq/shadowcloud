@@ -16,7 +16,7 @@ import com.karasiq.shadowcloud.metadata.{Metadata, MetadataUtils}
 import Metadata.Tag.{Disposition ⇒ MDDisposition}
 import com.karasiq.shadowcloud.serialization.StreamSerialization
 import com.karasiq.shadowcloud.streams.metadata.MimeDetectorStream
-import com.karasiq.shadowcloud.streams.utils.ByteStringLimit
+import com.karasiq.shadowcloud.streams.utils.ByteStreams
 
 private[shadowcloud] object MetadataStreams {
   def apply(sc: ShadowCloudExtension): MetadataStreams = {
@@ -90,7 +90,8 @@ private[shadowcloud] final class MetadataStreams(sc: ShadowCloudExtension) {
       FlowShape(bytesInput.in, parseMetadata.out)
     }
 
-    ByteStringLimit(sizeLimit)
+    Flow[ByteString]
+      .via(ByteStreams.limit(sizeLimit))
       .via(graph)
       .recoverWithRetries(1, { case _ ⇒ Source.empty })
       .named("metadataCreate")

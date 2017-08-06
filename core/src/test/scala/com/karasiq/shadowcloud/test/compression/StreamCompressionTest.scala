@@ -42,7 +42,7 @@ class StreamCompressionTest extends ActorSpec with FlatSpecLike {
     s"$compType" should "compress bytes" in {
       val compressed = testCompression(testBytes)
       // println(s"$compType: ${MemorySize.toString(testBytes.length)} -> ${MemorySize.toString(compressed.length)}")
-      // StreamCompressionTest.writeTestVector(compType, testBytes, compressed)
+      StreamCompressionTest.writeTestVector(compType, testBytes, compressed)
       testDecompression(compressed, testBytes)
     }
 
@@ -67,11 +67,14 @@ object StreamCompressionTest {
   }
 
   def writeTestVector(compType: CompressionType.Value, uncompressed: ByteString, compressed: ByteString): Unit = {
-    if (!Files.isDirectory(testVectorsFolder)) Files.createDirectories(testVectorsFolder)
-    val outputStream = Files.newOutputStream(testVectorsFolder.resolve(compType.toString))
-    val objectOutputStream = new ObjectOutputStream(outputStream)
-    objectOutputStream.writeObject(uncompressed)
-    objectOutputStream.writeObject(compressed)
-    objectOutputStream.close()
+    val fileName = testVectorsFolder.resolve(compType.toString)
+    if (!Files.exists(fileName)) {
+      if (!Files.isDirectory(testVectorsFolder)) Files.createDirectories(testVectorsFolder)
+      val outputStream = Files.newOutputStream(fileName)
+      val objectOutputStream = new ObjectOutputStream(outputStream)
+      objectOutputStream.writeObject(uncompressed)
+      objectOutputStream.writeObject(compressed)
+      objectOutputStream.close()
+    }
   }
 }

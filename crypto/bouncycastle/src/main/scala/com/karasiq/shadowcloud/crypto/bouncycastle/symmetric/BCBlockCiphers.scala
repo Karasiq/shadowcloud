@@ -38,6 +38,7 @@ private[bouncycastle] object BCBlockCiphers {
 
     // https://www.bouncycastle.org/specifications.html
     // (\w+)Engine\t(?:[0 ,..]+)?([\d]+)(?:[\d ,..]+)?\t(\d+)(?:.*) => baseCipher("$1", new $1Engine, $2, $3),
+    // 256 bit keys is preferred
     val specs = Seq(
       baseCipher("AES", new AESEngine, 256, 128),
       // baseCipher("AESWrap", new AESWrapEngine, 256, 128),
@@ -72,7 +73,7 @@ private[bouncycastle] object BCBlockCiphers {
   }
 
   val algorithms: Set[String] = blockCipherSpecs.keySet
-  val blockModes: Set[String] = Set("CBC", "CFB", "OFB")
+  val blockModes: Set[String] = Set("CBC", "CFB", "OFB", "CTR")
   val aeadModes: Set[String] = Set("GCM", "CCM", "EAX", "OCB")
 
   val blockAlgorithms: Set[String] =
@@ -148,6 +149,9 @@ private[bouncycastle] object BCBlockCiphers {
 
       case "OFB" ⇒
         new OFBBlockCipher(baseCipher, blockSize.getOrElse(baseCipher.getBlockSize * 8))
+
+      case "CTR" | "SIC" ⇒
+        new SICBlockCipher(baseCipher)
 
       case _ ⇒
         throw new NoSuchAlgorithmException(s"No such encryption mode: $mode")

@@ -123,7 +123,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
       encrypted should not be testData
       val decrypted = module.decrypt(encrypted, parameters)
       decrypted shouldBe testData
-      // testVectors.save(name, parameters, testData, encrypted)
+      testVectors.save(name, parameters, testData, encrypted)
     }
   }
 
@@ -141,7 +141,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
       encrypted.length should be >= testData.length
       val decrypted = module.decrypt(encrypted, parameters)
       decrypted shouldBe testData
-      // testVectors.save(name, parameters, testData, encrypted)
+      testVectors.save(name, parameters, testData, encrypted)
     }
   }
 

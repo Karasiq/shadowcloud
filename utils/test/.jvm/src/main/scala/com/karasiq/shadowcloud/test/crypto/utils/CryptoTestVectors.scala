@@ -13,13 +13,15 @@ import com.karasiq.shadowcloud.utils.{ByteStringInputStream, ByteStringOutputStr
 
 class CryptoTestVectors(testVectorsFolder: FSPath) {
   def save(name: String, parameters: EncryptionParameters, plain: ByteString, encrypted: ByteString): Unit = {
-    val testVector = writeTestVector(parameters, plain, encrypted)
-    Files.createDirectories(testVectorsFolder)
-    Files.write(getVectorFilePath(name), testVector.toArray)
+    val filePath = getVectorFilePath(name)
+    if (!Files.exists(filePath)) {
+      Files.createDirectories(filePath.getParent)
+      Files.write(filePath, writeTestVector(parameters, plain, encrypted).toArray)
+    }
   }
 
   def load(name: String): (EncryptionParameters, ByteString, ByteString) = {
-    val bytes = ByteString(Files.readAllBytes(getVectorFilePath(name)))
+    val bytes = ByteString(Files.readAllBytes(getVectorResourcePath(name)))
     readTestVector(bytes)
   }
 

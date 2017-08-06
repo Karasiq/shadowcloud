@@ -31,6 +31,10 @@ private[bouncycastle] object BlockCipherModule extends ConfigImplicits {
   def AES_OFB(): BlockCipherModule = {
     apply(EncryptionMethod("AES/OFB", 256))
   }
+
+  def AES_CTR(): BlockCipherModule = {
+    apply(EncryptionMethod("AES/CTR", 256))
+  }
 }
 
 private[bouncycastle] class BlockCipherModule(val method: EncryptionMethod,

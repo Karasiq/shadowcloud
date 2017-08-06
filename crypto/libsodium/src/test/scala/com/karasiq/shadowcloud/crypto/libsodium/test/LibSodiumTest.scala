@@ -7,6 +7,7 @@ import org.scalatest.{FlatSpec, Matchers}
 
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto.{EncryptionModule, EncryptionParameters, HashingMethod, HashingModule}
+import com.karasiq.shadowcloud.crypto.libsodium.asymmetric.SealedBoxModule
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
 import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
@@ -19,14 +20,15 @@ class LibSodiumTest extends FlatSpec with Matchers {
 
   if (LSUtils.libraryAvailable) {
     // Encryption
-    testEncryption("XSalsa20/Poly1305", SecretBoxModule(), SecretBoxModule.KEY_BYTES, SecretBoxModule.NONCE_BYTES)
-    testEncryption("ChaCha20/Poly1305", AEADCipherModule.ChaCha20_Poly1305(), AEADCipherModule.KEY_BYTES, AEADCipherModule.NONCE_BYTES)
-    testEncryption("Salsa20", Salsa20Module(), Salsa20Module.KEY_BYTES, Salsa20Module.NONCE_BYTES)
-    testEncryption("XSalsa20", XSalsa20Module(), XSalsa20Module.KEY_BYTES, XSalsa20Module.NONCE_BYTES)
-    testEncryption("ChaCha20", ChaCha20Module(), ChaCha20Module.KEY_BYTES, ChaCha20Module.NONCE_BYTES)
+    testAsymmetricEncryption(SealedBoxModule.algorithm, SealedBoxModule())
+    testSymmetricEncryption("XSalsa20/Poly1305", SecretBoxModule(), SecretBoxModule.KEY_BYTES, SecretBoxModule.NONCE_BYTES)
+    testSymmetricEncryption("ChaCha20/Poly1305", AEADCipherModule.ChaCha20_Poly1305(), AEADCipherModule.KEY_BYTES, AEADCipherModule.NONCE_BYTES)
+    testSymmetricEncryption("Salsa20", Salsa20Module(), Salsa20Module.KEY_BYTES, Salsa20Module.NONCE_BYTES)
+    testSymmetricEncryption("XSalsa20", XSalsa20Module(), XSalsa20Module.KEY_BYTES, XSalsa20Module.NONCE_BYTES)
+    testSymmetricEncryption("ChaCha20", ChaCha20Module(), ChaCha20Module.KEY_BYTES, ChaCha20Module.NONCE_BYTES)
 
     if (LSUtils.aes256GcmAvailable) {
-      testEncryption("AES/GCM", AEADCipherModule.AES_GCM(), AEADCipherModule.AES_KEY_BYTES, AEADCipherModule.AES_NONCE_BYTES)
+      testSymmetricEncryption("AES/GCM", AEADCipherModule.AES_GCM(), AEADCipherModule.AES_KEY_BYTES, AEADCipherModule.AES_NONCE_BYTES)
     } else {
       System.err.println("Hardware AES not supported")
     }
@@ -44,7 +46,7 @@ class LibSodiumTest extends FlatSpec with Matchers {
     println("No libsodium found, tests skipped")
   }
 
-  private[this] def testEncryption(name: String, module: EncryptionModule, keySize: Int, nonceSize: Int): Unit = {
+  private[this] def testSymmetricEncryption(name: String, module: EncryptionModule, keySize: Int, nonceSize: Int): Unit = {
     s"$name module" should "generate key" in {
       val parameters = EncryptionParameters.symmetric(module.createParameters())
       parameters.key.length shouldBe keySize
@@ -68,6 +70,29 @@ class LibSodiumTest extends FlatSpec with Matchers {
       decrypted shouldBe plain
       val encrypted1 = module.encrypt(plain, parameters)
       encrypted1 shouldBe encrypted
+    }
+  }
+
+  private[this] def testAsymmetricEncryption(name: String, module: EncryptionModule): Unit = {
+    s"$name module" should "generate key" in {
+      val parameters = EncryptionParameters.asymmetric(module.createParameters())
+      val parameters1 = EncryptionParameters.asymmetric(module.updateParameters(parameters))
+      parameters1 shouldBe parameters
+    }
+
+    it should "encrypt data" in {
+      val parameters = module.createParameters()
+      val encrypted = module.encrypt(testData, parameters)
+      encrypted.length should be >= testData.length
+      val decrypted = module.decrypt(encrypted, parameters)
+      decrypted shouldBe testData
+      testVectors.save(name, parameters, testData, encrypted)
+    }
+
+    it should "decrypt test vector" in {
+      val (parameters, plain, encrypted) = testVectors.load(name)
+      val decrypted = module.decrypt(encrypted, parameters)
+      decrypted shouldBe plain
     }
   }
 

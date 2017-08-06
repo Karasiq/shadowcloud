@@ -3,6 +3,7 @@ package com.karasiq.shadowcloud.crypto.libsodium
 import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
+import com.karasiq.shadowcloud.crypto.libsodium.asymmetric.SealedBoxModule
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
 import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
@@ -27,11 +28,14 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
   override def encryptionAlgorithms: Set[String] = ifLoaded(super.encryptionAlgorithms) {
     @inline def onlyIf(cond: Boolean)(algorithms: String*): Seq[String] = if (cond) algorithms else Nil
 
-    Set("XSalsa20/Poly1305", "ChaCha20/Poly1305", "Salsa20", "XSalsa20", "ChaCha20") ++
+    Set("XSalsa20/Poly1305", "ChaCha20/Poly1305", "Salsa20", "XSalsa20", "ChaCha20", SealedBoxModule.algorithm) ++
       onlyIf(LSUtils.aes256GcmAvailable)("AES/GCM")
   }
 
   override def encryption: EncryptionPF = ifLoaded(super.encryption) {
+    case method if method.algorithm == SealedBoxModule.algorithm ⇒
+      SealedBoxModule(method)
+
     case method @ EncryptionMethod("XSalsa20/Poly1305", 256, _, _, _) ⇒
       SecretBoxModule(method)
 

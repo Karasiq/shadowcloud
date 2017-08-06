@@ -4,7 +4,7 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 import org.bouncycastle.crypto.modes.AEADBlockCipher
-import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
+import org.bouncycastle.crypto.params.{AEADParameters, KeyParameter, ParametersWithIV}
 
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
@@ -17,7 +17,9 @@ private[bouncycastle] object AEADBlockCipherModule extends ConfigImplicits {
     val config = ConfigProps.toConfig(method.config)
     val customBlockSize = config.optional(_.getInt("block-size"))
     val nonceSize = config.withDefault(BCBlockCiphers.getNonceSize(method.algorithm, customBlockSize), _.getInt("nonce-size"))
-    new AEADBlockCipherModule(method, BCBlockCiphers.createAEADCipher(method.algorithm, customBlockSize), nonceSize)
+    val additionalDataSize = config.withDefault(0, _.getInt("ad-size"))
+    val macSize = config.withDefault(BCBlockCiphers.getAeadMacSize(method.algorithm, customBlockSize), _.getInt("mac-size"))
+    new AEADBlockCipherModule(method, BCBlockCiphers.createAEADCipher(method.algorithm, customBlockSize), nonceSize, additionalDataSize, macSize)
   }
 
   def AES_GCM(): AEADBlockCipherModule = {
@@ -39,19 +41,33 @@ private[bouncycastle] object AEADBlockCipherModule extends ConfigImplicits {
 
 private[bouncycastle] class AEADBlockCipherModule(val method: EncryptionMethod,
                                                   protected val aeadCipher: AEADBlockCipher,
-                                                  protected val nonceSize: Int)
+                                                  pNonceSize: Int,
+                                                  additionalDataSize: Int,
+                                                  macSize: Int)
   extends StreamEncryptionModule with BCSymmetricKeys {
 
+  override protected val nonceSize: Int = pNonceSize + additionalDataSize
+
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
+    @inline def splitNonce(value: ByteString): (ByteString, ByteString) = value.splitAt(pNonceSize)
+
     val sp = EncryptionParameters.symmetric(parameters)
-    val keyParams = new ParametersWithIV(new KeyParameter(sp.key.toArray), sp.nonce.toArray)
+    val (nonce, additionalData) = splitNonce(sp.nonce)
+    // assert(nonce.length == pNonceSize && additionalData.length == additionalDataSize)
+
+    val aeadParameters = new AEADParameters(
+      new KeyParameter(sp.key.toArray),
+      macSize, nonce.toArray,
+      if (additionalData.nonEmpty) additionalData.toArray else null
+    ) // new ParametersWithIV(new KeyParameter(sp.key.toArray), nonce.toArray)
+
     try {
-      aeadCipher.init(encrypt, keyParams)
+      aeadCipher.init(encrypt, aeadParameters)
     } catch { case error: IllegalArgumentException ⇒
       // Fix com/karasiq/shadowcloud/test/crypto/EncryptionModuleTest.scala:53, com/karasiq/shadowcloud/crypto/bouncycastle/test/BouncyCastleTest.scala:139
       System.err.println(error)
-      aeadCipher.init(encrypt, new ParametersWithIV(keyParams.getParameters, Array[Byte](0)))
-      aeadCipher.init(encrypt, keyParams)
+      aeadCipher.init(encrypt, new ParametersWithIV(null, Array.ofDim[Byte](pNonceSize)))
+      aeadCipher.init(encrypt, aeadParameters)
     }
   }
 

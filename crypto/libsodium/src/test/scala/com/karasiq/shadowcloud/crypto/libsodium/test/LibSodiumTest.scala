@@ -10,9 +10,11 @@ import com.karasiq.shadowcloud.crypto.{EncryptionModule, EncryptionParameters, H
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
 import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
+import com.karasiq.shadowcloud.test.crypto.utils.CryptoTestVectors
 import com.karasiq.shadowcloud.utils.HexString
 
 class LibSodiumTest extends FlatSpec with Matchers {
+  val testVectors = CryptoTestVectors("libsodium")
   val testData = ByteString("# First, make a nonce: A single-use value never repeated under the same key\n# The nonce isn't secret, and can be sent with the ciphertext.\n# The cipher instance has a nonce_bytes method for determining how many bytes should be in a nonce")
 
   if (LSUtils.libraryAvailable) {
@@ -26,7 +28,7 @@ class LibSodiumTest extends FlatSpec with Matchers {
     if (LSUtils.aes256GcmAvailable) {
       testEncryption("AES/GCM", AEADCipherModule.AES_GCM(), AEADCipherModule.AES_KEY_BYTES, AEADCipherModule.AES_NONCE_BYTES)
     } else {
-      println("Hardware AES not supported")
+      System.err.println("Hardware AES not supported")
     }
 
     // Hashes
@@ -57,6 +59,15 @@ class LibSodiumTest extends FlatSpec with Matchers {
       encrypted.length should be >= testData.length
       val decrypted = module.decrypt(encrypted, parameters)
       decrypted shouldBe testData
+      testVectors.save(name, parameters, testData, encrypted)
+    }
+
+    it should "decrypt test vector" in {
+      val (parameters, plain, encrypted) = testVectors.load(name)
+      val decrypted = module.decrypt(encrypted, parameters)
+      decrypted shouldBe plain
+      val encrypted1 = module.encrypt(plain, parameters)
+      encrypted1 shouldBe encrypted
     }
   }
 

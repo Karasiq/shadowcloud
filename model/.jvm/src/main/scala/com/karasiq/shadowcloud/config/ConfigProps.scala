@@ -9,6 +9,8 @@ import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
 import com.karasiq.shadowcloud.utils.Utils
 
 private[shadowcloud] object ConfigProps {
+  private[this] val supportedFormats = Set("json", "hocon")
+
   def fromConfig(config: Config, json: Boolean = true): SerializedProps = {
     if (config.entrySet().size() == 0) {
       SerializedProps.empty
@@ -33,7 +35,7 @@ private[shadowcloud] object ConfigProps {
   }
 
   def toConfig(props: SerializedProps): Config = {
-    if (props.nonEmpty && (props.format == "json" || props.format == "hocon")) {
+    if (props.nonEmpty && supportedFormats.contains(props.format)) {
       ConfigFactory.parseString(props.data.utf8String)
     } else {
       Utils.emptyConfig

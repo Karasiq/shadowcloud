@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.crypto.libsodium
 
 import scala.language.postfixOps
 
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
+import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
 import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
@@ -14,21 +14,18 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
   }
 
   override def hashing: HashingPF = ifLoaded(super.hashing) {
-    case method @ HashingMethod("SHA256", _, _, _) ⇒
+    case method if method.algorithm == "Blake2b" ⇒
+      Blake2bModule(method)
+
+    case method if method.algorithm == "SHA256" ⇒
       MultiPartHashModule.SHA256(method)
 
-    case method @ HashingMethod("SHA512", _, _, _) ⇒
+    case method if method.algorithm == "SHA512" ⇒
       MultiPartHashModule.SHA512(method)
-
-    case method @ HashingMethod("Blake2b", _, _, _) ⇒
-      Blake2bModule(method)
   }
 
   override def encryptionAlgorithms: Set[String] = ifLoaded(super.encryptionAlgorithms) {
-    @inline
-    def onlyIf(cond: Boolean)(algorithms: String*): Seq[String] = {
-      if (cond) algorithms else Nil
-    }
+    @inline def onlyIf(cond: Boolean)(algorithms: String*): Seq[String] = if (cond) algorithms else Nil
 
     Set("XSalsa20/Poly1305", "ChaCha20/Poly1305", "Salsa20", "XSalsa20", "ChaCha20") ++
       onlyIf(LSUtils.aes256GcmAvailable)("AES/GCM")

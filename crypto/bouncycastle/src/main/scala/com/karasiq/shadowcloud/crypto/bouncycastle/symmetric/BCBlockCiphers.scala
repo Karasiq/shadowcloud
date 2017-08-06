@@ -139,6 +139,18 @@ private[bouncycastle] object BCBlockCiphers {
     }
   }
 
+  def getAeadMacSize(algorithm: String, blockSize: Option[Int] = None): Int = {
+    val (baseAlgorithm, mode) = BCUtils.algorithmAndMode(algorithm)
+    val cipherBlockBits = blockSize.getOrElse(getBlockSize(baseAlgorithm))
+    mode match {
+      case "CCM" | "EAX" ⇒
+        cipherBlockBits / 2
+
+      case _ ⇒
+        cipherBlockBits
+    }
+  }
+
   def createBlockCipher(algorithm: String, blockSize: Option[Int] = None): BlockCipher = {
     def wrapEngine(baseCipher: BlockCipher, blockSize: Option[Int], mode: String): BlockCipher = mode match {
       case "CBC" ⇒

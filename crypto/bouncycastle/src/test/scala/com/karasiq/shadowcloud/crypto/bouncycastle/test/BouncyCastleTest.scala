@@ -26,7 +26,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
   // -----------------------------------------------------------------------
   // Encryption
   // -----------------------------------------------------------------------
-  // testSymmetricEncryption("AES/GCM", AEADBlockCipherModule.AES_GCM(), 32, 12)
+  testSymmetricEncryption("AES/GCM (AD tag)", AEADBlockCipherModule(EncryptionMethod("AES/GCM", config = ConfigProps("ad-size" → 16))), 32, 12 + 16)
   testSymmetricEncryption("Threefish (1024)", BlockCipherModule(EncryptionMethod("Threefish/CBC", 1024, config = ConfigProps("block-size" → 1024))), 128, 128)
 
   BCBlockCiphers.blockAlgorithms.foreach { algorithm ⇒

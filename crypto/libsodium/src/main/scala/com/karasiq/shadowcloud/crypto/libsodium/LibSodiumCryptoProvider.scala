@@ -34,16 +34,16 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
   }
 
   override def encryption: EncryptionPF = ifLoaded(super.encryption) {
-    case method if method.algorithm == SealedBoxModule.algorithm ⇒
+    case method if method.algorithm == SealedBoxModule.algorithm && !method.stream ⇒
       SealedBoxModule(method)
 
-    case method @ EncryptionMethod("XSalsa20/Poly1305", 256, _, _, _) ⇒
+    case method @ EncryptionMethod("XSalsa20/Poly1305", 256, false, _, _) ⇒
       SecretBoxModule(method)
 
-    case method @ EncryptionMethod("ChaCha20/Poly1305", 256, _, _, _)  ⇒
+    case method @ EncryptionMethod("ChaCha20/Poly1305", 256, false, _, _)  ⇒
       AEADCipherModule.ChaCha20_Poly1305(method)
 
-    case method @ EncryptionMethod("AES/GCM", 256, _, _, _) if LSUtils.aes256GcmAvailable ⇒
+    case method @ EncryptionMethod("AES/GCM", 256, false, _, _) if LSUtils.aes256GcmAvailable ⇒
       AEADCipherModule.AES_GCM(method)
 
     case method @ EncryptionMethod("Salsa20", 256, _, _, _) ⇒
@@ -61,7 +61,7 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
   }
 
   override def signing = ifLoaded(super.signing) {
-    case method if method.algorithm == CryptoSignModule.algorithm ⇒
+    case method if method.algorithm == CryptoSignModule.algorithm && !method.stream ⇒
       CryptoSignModule(method)
   }
 

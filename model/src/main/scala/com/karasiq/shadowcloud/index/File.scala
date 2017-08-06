@@ -4,10 +4,14 @@ import java.util.UUID
 
 import scala.language.postfixOps
 
+import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasPath, HasWithoutChunks, HasWithoutData}
+import com.karasiq.shadowcloud.index.File.ID
 import com.karasiq.shadowcloud.utils.Utils
 
-case class File(path: Path, id: File.ID = File.newFileId, timestamp: Timestamp = Timestamp.now, revision: Long = 0,
+case class File(path: Path, id: ID = File.newFileId,
+                revision: Long = 0, timestamp: Timestamp = Timestamp.now,
+                props: SerializedProps = SerializedProps.empty,
                 checksum: Checksum = Checksum.empty, chunks: Seq[Chunk] = Nil)
   extends HasPath with HasEmpty with HasWithoutData with HasWithoutChunks {
 
@@ -32,8 +36,8 @@ case class File(path: Path, id: File.ID = File.newFileId, timestamp: Timestamp =
 
   override def equals(obj: scala.Any): Boolean = obj match {
     case f: File ⇒
-      // Timestamp is ignored
-      val chunksEqual = if (f.chunks.isEmpty || chunks.isEmpty) true else f.chunks == chunks
+      // Timestamp, props is ignored
+      @inline def chunksEqual: Boolean = (f.chunks.isEmpty || chunks.isEmpty) || (f.chunks == chunks)
       f.path == path && f.id == id && f.revision == revision && f.checksum == checksum && chunksEqual
   }
 
@@ -54,13 +58,7 @@ object File {
   }
 
   def modified(file: File, newChecksum: Checksum, newChunks: Seq[Chunk]): File = {
-    file.copy(
-      id = File.newFileId,
-      timestamp = file.timestamp.modifiedNow,
-      revision = file.revision + 1,
-      checksum = newChecksum,
-      chunks = newChunks
-    )
+    file.copy(id = File.newFileId, revision = file.revision + 1, timestamp = file.timestamp.modifiedNow, checksum = newChecksum, chunks = newChunks)
   }
 
   def isBinaryEquals(f1: File, f2: File): Boolean = {

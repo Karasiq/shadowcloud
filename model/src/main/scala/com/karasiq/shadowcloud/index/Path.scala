@@ -8,7 +8,8 @@ case class Path(nodes: Seq[String]) {
   }
 
   def /(node: String): Path = {
-    if (node.nonEmpty) copy(nodes :+ node) else this
+    // require(node.nonEmpty, "Node is empty")
+    copy(nodes :+ node)
   }
 
   def /(relPath: Path): Path = {
@@ -49,6 +50,7 @@ case class Path(nodes: Seq[String]) {
 object Path {
   val root = Path(Nil)
 
+  // Supports only conventional paths
   implicit def fromString(str: String): Path = {
     val nodes: Seq[String] = str.split("/").filter(_.nonEmpty)
     if (nodes.isEmpty) root else Path(nodes)

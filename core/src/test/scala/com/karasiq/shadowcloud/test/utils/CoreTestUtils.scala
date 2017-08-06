@@ -6,7 +6,7 @@ import scala.util.{Random, Try}
 import akka.util.ByteString
 import com.typesafe.config.{Config, ConfigFactory}
 
-import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, StorageConfig}
+import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, SerializedProps, StorageConfig}
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderIndexDiff, IndexDiff}
@@ -46,7 +46,7 @@ object CoreTestUtils extends TestImplicits {
     val encSize = chunks.map(_.checksum.encSize).sum
     val hash = sha1Hashing.createHash(ByteString.fromChunks(chunks))
     val encHash = sha1Hashing.createHash(ByteString.fromEncryptedChunks(chunks))
-    File(parent / s"$randomString.txt", File.newFileId, Timestamp.now, Random.nextInt(10),
+    File(parent / s"$randomString.txt", File.newFileId, Random.nextInt(10), Timestamp.now, SerializedProps.empty,
       Checksum(sha1Hashing.method, sha1Hashing.method, size, hash, encSize, encHash), chunks)
   }
 

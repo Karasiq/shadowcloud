@@ -6,6 +6,7 @@ import scala.util.Random
 
 import akka.util.ByteString
 
+import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.crypto.{EncryptionParameters, HashingMethod}
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
@@ -38,7 +39,7 @@ object TestUtils {
       Chunk(Checksum(hashingMethod, hashingMethod, 100, preCalcHashes(2), 100, preCalcHashes(2)), EncryptionParameters.empty, Data(text.slice(200, 300), text.slice(200, 300))),
       Chunk(Checksum(hashingMethod, hashingMethod, 56, preCalcHashes(3), 56, preCalcHashes(3)), EncryptionParameters.empty, Data(text.slice(300, 356), text.slice(300, 356)))
     )
-    (text, File(Path.root / "test.txt", UUID.fromString("c3cd9085-b2d5-43fb-b85c-a8448698f7a6"), Timestamp(testTimestamp, testTimestamp), 0, Checksum(hashingMethod, hashingMethod, 356, textHash, 356, textHash), chunks))
+    (text, File(Path.root / "test.txt", UUID.fromString("c3cd9085-b2d5-43fb-b85c-a8448698f7a6"), 0, Timestamp(testTimestamp, testTimestamp), SerializedProps.empty, Checksum(hashingMethod, hashingMethod, 356, textHash, 356, textHash), chunks))
   }
 
   def testChunk: Chunk = {

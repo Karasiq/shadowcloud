@@ -12,7 +12,7 @@ case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,
 
   type Repr = Folder
   type DiffRepr = FolderDiff
-  require(files.forall(_.path.parent == this.path), "Invalid file paths")
+  assert(files.forall(_.path.parent == this.path), "Invalid file paths")
 
   def addFiles(files: GenTraversableOnce[File]): Folder = {
     val newFiles = this.files ++ files

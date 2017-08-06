@@ -10,3 +10,9 @@ trait CryptoMethod {
   def provider: String
   def config: SerializedProps
 }
+
+object CryptoMethod {
+  def isNoOpMethod(m: CryptoMethod): Boolean = {
+    m.algorithm.isEmpty
+  }
+}

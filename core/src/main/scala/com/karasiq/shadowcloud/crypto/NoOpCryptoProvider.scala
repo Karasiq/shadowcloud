@@ -14,17 +14,18 @@ private[crypto] final class NoOpCryptoProvider(config: Config) extends CryptoPro
   }
 
   override def hashing: HashingPF = {
-    case m if m.algorithm.isEmpty ⇒ new NoOpHashingModule
+    case m if CryptoMethod.isNoOpMethod(m) ⇒
+      new NoOpHashingModule
   }
 
   override def encryption: EncryptionPF = {
-    case m if m.algorithm.isEmpty ⇒
+    case m if CryptoMethod.isNoOpMethod(m) ⇒
       require(!settings.requireEncryption, "Valid encryption is required")
       new NoOpEncryptionModule
   }
 
   override def signing: SignPF = {
-    case m if m.algorithm.isEmpty ⇒
+    case m if CryptoMethod.isNoOpMethod(m) ⇒
       require(!settings.requireEncryption, "Valid signature is required")
       new NoOpSignModule
   }

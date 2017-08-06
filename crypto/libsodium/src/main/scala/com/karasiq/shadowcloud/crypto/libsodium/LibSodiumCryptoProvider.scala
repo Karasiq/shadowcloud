@@ -6,6 +6,7 @@ import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.crypto.libsodium.asymmetric.SealedBoxModule
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
 import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
+import com.karasiq.shadowcloud.crypto.libsodium.signing.CryptoSignModule
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
 import com.karasiq.shadowcloud.providers.CryptoProvider
 
@@ -53,6 +54,15 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
 
     case method @ EncryptionMethod("ChaCha20", 256, _, _, _) ⇒
       ChaCha20Module(method)
+  }
+
+  override def signingAlgorithms = ifLoaded(super.signingAlgorithms) {
+    Set(CryptoSignModule.algorithm)
+  }
+
+  override def signing = ifLoaded(super.signing) {
+    case method if method.algorithm == CryptoSignModule.algorithm ⇒
+      CryptoSignModule(method)
   }
 
   @inline

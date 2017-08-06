@@ -14,6 +14,8 @@ import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto.{CryptoMethod, EncryptionMethod, SignMethod}
 
 private[bouncycastle] object ECUtils {
+  // Curve list: org.bouncycastle.crypto.ec.CustomNamedCurves.getByName
+
   def getCurveForSize(keySize: Int): String = {
     "P-" + keySize
   }

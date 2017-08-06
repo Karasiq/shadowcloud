@@ -6,10 +6,11 @@ import akka.util.ByteString
 import org.scalatest.{FlatSpec, Matchers}
 
 import com.karasiq.shadowcloud.config.ConfigProps
-import com.karasiq.shadowcloud.crypto.{EncryptionModule, EncryptionParameters, HashingMethod, HashingModule}
+import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.libsodium.asymmetric.SealedBoxModule
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
 import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
+import com.karasiq.shadowcloud.crypto.libsodium.signing.CryptoSignModule
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
 import com.karasiq.shadowcloud.test.crypto.utils.CryptoTestVectors
 import com.karasiq.shadowcloud.utils.HexString
@@ -42,6 +43,9 @@ class LibSodiumTest extends FlatSpec with Matchers {
       "824396f4585a22b2c4b36df76f55e669d4edfb423970071b6b616ce454a95400")
     testHashing("Blake2b-512", Blake2bModule(HashingMethod("Blake2b", config = ConfigProps("digest-size" → 512))),
       "9f84251be0c325ad771696302e9ed3cd174f84ffdd0b8de49664e9a3ea934b89a4d008581cd5803b80b3284116174b3c4a79a5029996eb59edc1fbacfd18204e")
+
+    // Signatures
+    testSignature("Ed25519", CryptoSignModule())
   } else {
     println("No libsodium found, tests skipped")
   }
@@ -103,6 +107,20 @@ class LibSodiumTest extends FlatSpec with Matchers {
       hash shouldBe testHash
       val hash1 = HexString.encode(module.createHash(testData))
       hash1 shouldBe hash
+    }
+  }
+
+  private[this] def testSignature(name: String, module: SignModule): Unit = {
+    s"$name sign module" should "generate key" in {
+      val parameters = module.createParameters()
+      parameters.privateKey should not be empty
+      println(parameters)
+    }
+
+    it should "sign data" in {
+      val parameters = module.createParameters()
+      val signature = module.sign(testData, parameters)
+      module.verify(testData, signature, parameters) shouldBe true
     }
   }
 }

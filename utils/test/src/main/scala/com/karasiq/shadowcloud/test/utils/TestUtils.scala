@@ -7,7 +7,7 @@ import scala.util.Random
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.SerializedProps
-import com.karasiq.shadowcloud.crypto.{EncryptionParameters, HashingMethod}
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod, SymmetricEncryptionParameters}
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.utils.HexString
@@ -49,5 +49,13 @@ object TestUtils {
   def testDiff: IndexDiff = {
     val (_, file) = indexedBytes
     IndexDiff(testTimestamp, FolderIndexDiff.seq(FolderDiff(Path.root, testTimestamp, newFiles = Set(file))), ChunkIndexDiff(file.chunks.toSet))
+  }
+
+  def testSymmetricParameters: EncryptionParameters = {
+    SymmetricEncryptionParameters(
+      EncryptionMethod("ChaCha20"),
+      HexString.decode("911acc04d881733ca3eb74ca2dd11655ebae2cd94bf1596364c552705a8d5c62"),
+      HexString.decode("911acc04d881733c")
+    )
   }
 }

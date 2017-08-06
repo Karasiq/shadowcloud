@@ -1,16 +1,17 @@
 package com.karasiq.shadowcloud.config
 
 import scala.concurrent.duration.FiniteDuration
+import scala.util.Try
 
 import com.typesafe.config.Config
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.storage.props.StorageProps
-import com.karasiq.shadowcloud.utils.ChunkKeyExtractor
+import com.karasiq.shadowcloud.storage.utils.ChunkKeyMapper
 
 case class StorageConfig(rootConfig: Config, syncInterval: FiniteDuration,
                          indexCompactThreshold: Int, indexSnapshotThreshold: Int,
-                         chunkKey: ChunkKeyExtractor) extends WrappedConfig
+                         chunkKey: ChunkKeyMapper) extends WrappedConfig
 
 object StorageConfig extends WrappedConfigFactory[StorageConfig] with ConfigImplicits {
   private[this] def getConfigForId(storageId: String, rootConfig: Config): Config = {
@@ -35,7 +36,21 @@ object StorageConfig extends WrappedConfigFactory[StorageConfig] with ConfigImpl
       config.getFiniteDuration("sync-interval"),
       config.getInt("index-compact-threshold"),
       config.getInt("index-snapshot-threshold"),
-      ChunkKeyExtractor.fromString(config.getString("chunk-key"))
+      createChunkMapper(config, config.getString("chunk-key"))
     )
+  }
+
+  private[this] def createChunkMapper(config: Config, str: String): ChunkKeyMapper = str match {
+    // Predefined
+    case "hash" ⇒ ChunkKeyMapper.hash
+    case "encrypted-hash" ⇒ ChunkKeyMapper.encryptedHash
+    case "double-hash" ⇒ ChunkKeyMapper.doubleHash
+
+    // Custom class
+    case _ ⇒
+      val mapperClass = Class.forName(str).asSubclass(classOf[ChunkKeyMapper])
+      Try(mapperClass.getConstructor(classOf[Config]).newInstance(config))
+        .orElse(Try(mapperClass.newInstance()))
+        .getOrElse(throw new InstantiationException("No appropriate constructor found for " + mapperClass))
   }
 }

@@ -26,10 +26,11 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.props.StorageProps.Quota
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.repository.{PathTreeRepository, Repository}
+import com.karasiq.shadowcloud.storage.repository.wrappers.PathNodesMapper
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, SCExtensionSpec, TestUtils}
-import com.karasiq.shadowcloud.utils.HexString
+import com.karasiq.shadowcloud.utils.{Base64, HexString}
 
 // Uses local filesystem
 class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
@@ -37,7 +38,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
   val folder = CoreTestUtils.randomFolder()
   val folderDiff = FolderIndexDiff.create(folder)
   val indexRepository = Repository.forIndex(PathTreeRepository.toCategorized(
-    Repositories.fromDirectory(Files.createTempDirectory("vrt-index"))))
+    PathNodesMapper.encode(Repositories.fromDirectory(Files.createTempDirectory("vrt-index")), Base64)))
   val chunksDir = Files.createTempDirectory("vrt-chunks")
   val fileRepository = Repository.forChunks(PathTreeRepository.toCategorized(Repositories.fromDirectory(chunksDir)))
   val storageProps = StorageProps.fromDirectory(chunksDir.getParent)

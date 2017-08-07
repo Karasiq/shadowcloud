@@ -318,7 +318,7 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
         log.debug("Writing compacted diff #{}: {}", newSequenceNr, newDiff)
         val writeResult = if (newDiff.isEmpty) {
           // Skip write
-          val empty = IndexIOResult(newSequenceNr, IndexData.empty, StorageIOResult.Success("", 0))
+          val empty = IndexIOResult(newSequenceNr, IndexData.empty, StorageIOResult.empty)
           Source.single(empty)
         } else {
           Source.single(newSequenceNr → newDiff)

@@ -1,8 +1,8 @@
 package com.karasiq.shadowcloud.storage
 
-import com.karasiq.shadowcloud.exceptions.StorageException
-
 import scala.language.postfixOps
+
+import com.karasiq.shadowcloud.exceptions.StorageException
 
 sealed trait StorageIOResult {
   def path: String
@@ -20,4 +20,6 @@ object StorageIOResult {
     val count: Long = 0L
     val isSuccess: Boolean = false
   }
+
+  val empty: StorageIOResult = Success("", 0)
 }

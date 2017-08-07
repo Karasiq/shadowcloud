@@ -67,7 +67,7 @@ class RepositoryTest extends SCExtensionSpec with FlatSpecLike {
     }
 
     // Delete
-    val deleteResult = testRepository.delete(chunk.checksum.hash)
+    val deleteResult = Source.single(chunk.checksum.hash).runWith(testRepository.delete)
     whenReady(deleteResult) { result ⇒
       val StorageIOResult.Success(_, count) = result
       count shouldBe chunk.data.plain.length

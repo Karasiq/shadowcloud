@@ -30,8 +30,16 @@ private[storage] final class DefaultIndexRepositoryStreams(breadth: Int, writeFl
 
   def delete[Key](repository: Repository[Key]): Flow[Key, IndexIOResult[Key], NotUsed] = {
     Flow[Key].flatMapMerge(breadth, { key ⇒
-      Source.fromFuture(StorageUtils.wrapFuture(repository.toString, repository.delete(key)))
-        .map(IndexIOResult(key, IndexData.empty, _))
+      val graph = GraphDSL.create(repository.delete) { implicit builder ⇒ deleteSink ⇒
+        import GraphDSL.Implicits._
+        val broadcast = builder.add(Broadcast[Key](2))
+        val zipKeyAndResult = builder.add(ZipWith((key: Key, result: StorageIOResult) ⇒ IndexIOResult(key, IndexData.empty, result)))
+        broadcast ~> deleteSink
+        broadcast ~> zipKeyAndResult.in0
+        builder.materializedValue.flatMapConcat(Source.fromFuture) ~> zipKeyAndResult.in1
+        FlowShape(broadcast.in, zipKeyAndResult.out)
+      }
+      Source.single(key).via(graph)
     })
   }
 

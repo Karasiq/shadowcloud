@@ -7,7 +7,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.pattern.ask
-import akka.stream.scaladsl.Keep
+import akka.stream.scaladsl.{Keep, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.testkit.TestActorRef
 import akka.util.ByteString
@@ -175,7 +175,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
     firstDiff.chunks.deletedChunks shouldBe empty
 
     // Delete #1
-    whenReady(regionRepo.delete(1)) { deleteResult ⇒
+    whenReady(Source.single(1L).runWith(regionRepo.delete)) { deleteResult ⇒
       deleteResult.isSuccess shouldBe true
       testRegion ! RegionDispatcher.Synchronize
       val StorageEnvelope("testStorage", StorageEvents.IndexDeleted("testRegion", sequenceNrs)) = receiveOne(5 seconds)

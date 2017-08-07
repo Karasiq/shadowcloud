@@ -6,11 +6,12 @@ import scala.collection.concurrent.{Map ⇒ CMap}
 import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
 
-import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.storage.StorageIOResult
+import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.utils.HexString
 
 private[inmem] final class ConcurrentMapStreams[K, V](map: CMap[K, V], length: V ⇒ Int) {
@@ -58,12 +59,17 @@ private[inmem] final class ConcurrentMapStreams[K, V](map: CMap[K, V], length: V
     }
   }
 
-  def delete(key: K): Future[StorageIOResult] = {
-    val path = key.toString
-    val ioResult = map.remove(key)
-      .map(deleted ⇒ StorageIOResult.Success(path, length(deleted)))
-      .getOrElse(StorageIOResult.Failure(path, StorageException.NotFound(path)))
-    Future.successful(ioResult)
+  def delete: Sink[K, Future[StorageIOResult]] = {
+    Flow[K]
+      .map { key ⇒
+        val path = key.toString
+        map.remove(key)
+          .map(deleted ⇒ StorageIOResult.Success(path, length(deleted)): StorageIOResult)
+          .getOrElse(StorageIOResult.Failure(path, StorageException.NotFound(path)))
+      }
+      .fold(Seq.empty[StorageIOResult])(_ :+ _)
+      .map(results ⇒ StorageUtils.foldIOResultsIgnoreErrors(results:_*))
+      .toMat(Sink.head)(Keep.right)
   }
 
   private[this] def rootPathString: String = {

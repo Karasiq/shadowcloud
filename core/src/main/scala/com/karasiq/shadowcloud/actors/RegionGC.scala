@@ -21,8 +21,9 @@ import com.karasiq.shadowcloud.config.{GCConfig, StorageConfig}
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.metadata.MetadataUtils
+import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
-import com.karasiq.shadowcloud.storage.utils.IndexMerger
+import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
 
@@ -174,7 +175,7 @@ private[actors] final class RegionGC(regionId: String, config: GCConfig) extends
 
   private[this] def deleteGarbage(regionState: RegionGCState,
                                   storageStates: Seq[(RegionStorage, StorageGCState)],
-                                  delete: Boolean): Future[Set[ByteString]] = {
+                                  delete: Boolean): Future[(Set[ByteString], StorageIOResult)] = {
     // Global
     def pushRegionDiff(): Future[IndexDiff] = {
       val folderDiff = {
@@ -195,15 +196,17 @@ private[actors] final class RegionGC(regionId: String, config: GCConfig) extends
       regionState.orphanedChunks ++ state.notExisting
     }
 
-    def deleteFromStorages(chunks: Seq[(RegionStorage, Set[ByteString])]): Future[Set[ByteString]] = {
+    def deleteFromStorages(chunks: Seq[(RegionStorage, Set[ByteString])]): Future[(Set[ByteString], StorageIOResult)] = {
       val futures = chunks.map { case (storage, chunks) ⇒
         val paths = chunks.map(ChunkPath(regionId, _))
         if (log.isDebugEnabled) log.debug("Deleting chunks from storage {}: [{}]", storage.id, Utils.printHashes(chunks))
         SDeleteChunks.unwrapFuture(storage.dispatcher ? SDeleteChunks(paths))
       }
 
-      Future.foldLeft(futures.toVector)(Set.empty[ByteString])((deleted, result) ⇒
-        deleted ++ result.filter(_.region == regionId).map(_.id))
+      Future.foldLeft(futures.toVector)((Set.empty[ByteString], StorageIOResult.empty)) {
+        case ((deleted, result), (deleted1, result1)) ⇒
+          (deleted ++ deleted1.map(_.id), StorageUtils.foldIOResultsIgnoreErrors(result, result1))
+      }
     }
 
     def deleteFromIndexes(chunks: Seq[(RegionStorage, Set[Chunk])]): Future[Done] = {
@@ -241,8 +244,8 @@ private[actors] final class RegionGC(regionId: String, config: GCConfig) extends
       } yield deleted
 
       future.onComplete {
-        case Success(result) ⇒
-          if (log.isInfoEnabled) log.info("Orphaned chunks deleted: [{}]", Utils.printHashes(result))
+        case Success((hashes, ioResult)) ⇒
+          if (log.isInfoEnabled) log.info("Orphaned chunks deleted: [{}] ({})", Utils.printHashes(hashes), MemorySize.toString(ioResult.count))
 
         case Failure(error) ⇒
           log.error(error, "Error deleting orphaned chunks")
@@ -252,7 +255,7 @@ private[actors] final class RegionGC(regionId: String, config: GCConfig) extends
     } else {
       if (regionState.oldFiles.nonEmpty) log.warning("Old files found: [{}]", Utils.printValues(regionState.oldFiles))
       if (hashes.nonEmpty) log.warning("Orphaned chunks found: [{}]", Utils.printHashes(hashes))
-      Future.successful(Set.empty)
+      Future.successful((Set.empty, StorageIOResult.empty))
     }
   }
 }

@@ -3,11 +3,12 @@ package com.karasiq.shadowcloud.actors
 import java.io.IOException
 
 import scala.concurrent.{Future, Promise}
+import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-import akka.NotUsed
-import akka.actor.{Actor, ActorLogging, Kill, Props}
+import akka.{Done, NotUsed}
+import akka.actor.{Actor, ActorLogging, Kill, Props, Status}
 import akka.pattern.pipe
 import akka.stream._
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, Sink, Source, Zip}
@@ -20,6 +21,7 @@ import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
+import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.utils.HexString
 
@@ -40,7 +42,7 @@ object ChunkIODispatcher {
   object ReadChunk extends MessageStatus[(ChunkPath, Chunk), Chunk]
 
   case class DeleteChunks(chunks: Set[ChunkPath]) extends Message
-  object DeleteChunks extends MessageStatus[Set[ChunkPath], Set[ChunkPath]]
+  object DeleteChunks extends MessageStatus[Set[ChunkPath], (Set[ChunkPath], StorageIOResult)]
 
   case object GetKeys extends Message with MessageStatus[NotUsed, Set[ChunkPath]]
 
@@ -222,23 +224,33 @@ private final class ChunkIODispatcher(storageId: String, storageProps: StoragePr
   }
 
   private[this] def deleteChunks(paths: Set[ChunkPath]): Future[DeleteChunks.Status] = {
-    val byRegion = paths.groupBy(_.region).toVector.flatMap { case (region, chunks) ⇒
+    val byRegion = paths.groupBy(_.region).toVector.map { case (region, chunks) ⇒
       val localRepository = subRepository(region)
-      chunks.map(localRepository → _)
+      localRepository → chunks
     }
 
-    val deleted = Source(byRegion)
-      .mapAsync(sc.config.parallelism.write) { case (lr, path) ⇒
-        lr.delete(path.id)
-          .filter(_.isSuccess)
-          .map(_ ⇒ path)
+    val (matSink, matResult) = Source.actorRef[Future[StorageIOResult]](10, OverflowStrategy.dropNew)
+      .mapAsync(4)(identity)
+      .idleTimeout(20 seconds)
+      .fold(Seq.empty[StorageIOResult])(_ :+ _)
+      .map(results ⇒ StorageUtils.foldIOResultsIgnoreErrors(results:_*))
+      .toMat(Sink.head)(Keep.both)
+      .run()
+
+    val (deleted, ioResult) = Source(byRegion)
+      .flatMapConcat { case (repository, chunks) ⇒
+        Source(chunks)
+          .alsoToMat(Flow[ChunkPath].map(_.id).toMat(repository.delete)(Keep.right))(Keep.right)
+          .mapMaterializedValue(matSink ! _)
       }
       .addAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+      .alsoTo(Sink.onComplete(_ ⇒ matSink ! Status.Success(Done)))
       .fold(Set.empty[ChunkPath])(_ + _)
       .toMat(Sink.head)(Keep.right)
+      .mapMaterializedValue((_, matResult))
       .named("deleteChunks")
       .run()
 
-    DeleteChunks.wrapFuture(paths, deleted)
+    DeleteChunks.wrapFuture(paths, deleted.zip(ioResult))
   }
 }

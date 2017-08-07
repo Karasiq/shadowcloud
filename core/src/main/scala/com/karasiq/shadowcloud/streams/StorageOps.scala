@@ -14,6 +14,7 @@ import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.config.TimeoutsConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 
 object StorageOps {
@@ -61,7 +62,7 @@ final class StorageOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(imp
     askStorage(storageId, ChunkIODispatcher.GetKeys, ChunkIODispatcher.GetKeys)(timeouts.chunksList)
   }
 
-  def deleteChunks(storageId: String, paths: Set[ChunkPath]): Future[Set[ChunkPath]] = {
+  def deleteChunks(storageId: String, paths: Set[ChunkPath]): Future[(Set[ChunkPath], StorageIOResult)] = {
     askStorage(storageId, ChunkIODispatcher.DeleteChunks, ChunkIODispatcher.DeleteChunks(paths))(timeouts.chunksDelete)
   }
 

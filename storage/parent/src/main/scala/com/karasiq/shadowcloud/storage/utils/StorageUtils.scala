@@ -53,7 +53,7 @@ object StorageUtils {
   }
 
   def foldIOResultsIgnoreErrors(results: StorageIOResult*): StorageIOResult = {
-    if (results.isEmpty) return StorageIOResult.Success("", 0L)
+    if (results.isEmpty) return StorageIOResult.empty
     val path = results.headOption.fold("")(_.path)
     val count = results
       .collect { case StorageIOResult.Success(_, count) ⇒ count }
@@ -62,7 +62,7 @@ object StorageUtils {
   }
 
   def foldIOResults(results: StorageIOResult*): StorageIOResult = {
-    if (results.isEmpty) return StorageIOResult.Success("", 0L)
+    if (results.isEmpty) return StorageIOResult.empty
     results.find(_.isFailure).getOrElse(foldIOResultsIgnoreErrors(results:_*))
   }
 

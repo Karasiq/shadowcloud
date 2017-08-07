@@ -6,8 +6,9 @@ import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
+import akka.NotUsed
 import akka.stream.{ActorAttributes, Attributes, Materializer}
-import akka.stream.scaladsl.{FileIO, Sink, Source}
+import akka.stream.scaladsl.{FileIO, Flow, Keep, Sink, Source}
 
 import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.storage._
@@ -26,23 +27,13 @@ private[storage] object FileRepository {
   * @param rootFolder Root directory
   */
 private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: ExecutionContext, mat: Materializer) extends PathTreeRepository {
-  def read(key: Path): Source[Data, Result] = {
-    val path = toAbsolute(key)
-    FileIO.fromPath(path)
-      .mapMaterializedValue(StorageUtils.wrapIOResult(path.toString, _))
-  }
-
   def keys: Source[Path, Result] = {
     subKeys(Path.root)
   }
 
-  def delete(key: Path): Result = {
-    val file = toAbsolute(key)
-    ioOperation(file.toString, { () ⇒
-      val size = Files.size(file)
-      Files.delete(file)
-      size
-    })
+  def read(key: Path): Source[Data, Result] = {
+    val path = toAbsolute(key)
+    FileIO.fromPath(path).mapMaterializedValue(StorageUtils.wrapIOResult(path.toString, _))
   }
 
   def write(key: Path): Sink[Data, Result] = {
@@ -51,6 +42,18 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
     if (!Files.isDirectory(parentDir)) Files.createDirectories(parentDir)
     FileIO.toPath(path, Set(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))
       .mapMaterializedValue(StorageUtils.wrapIOResult(path.toString, _))
+  }
+
+  def delete: Sink[Path, Result] = {
+    Flow[Path]
+      .map(toAbsolute)
+      .map(file ⇒ (file, Files.size(file)))
+      .addAttributes(Attributes.name("filePreDelete") and ActorAttributes.IODispatcher)
+      .alsoTo(Flow[(FSPath, Long)].map(_._1).to(fileDeleteSink))
+      .map(_._2)
+      .fold(0L)(_ + _)
+      .map(StorageIOResult.Success(rootFolder.toString, _))
+      .toMat(Sink.head)(Keep.right)
   }
 
   override def subKeys(fromPath: Path): Source[Path, Result] = {
@@ -74,10 +77,7 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
     Path(nodes.toVector)
   }
 
-  private[this] def ioOperation(path: String, f: () ⇒ Long): Future[StorageIOResult] = {
-    Source.single(path)
-      .map(path ⇒ StorageIOResult.Success(path, f()))
-      .addAttributes(Attributes.name("ioOperation") and ActorAttributes.IODispatcher)
-      .runWith(Sink.head)
-  }
+  private[this] val fileDeleteSink: Sink[FSPath, NotUsed] = Sink.foreach(Files.delete)
+    .addAttributes(Attributes.name("fileDelete") and ActorAttributes.IODispatcher)
+    .mapMaterializedValue(_ ⇒ NotUsed)
 }

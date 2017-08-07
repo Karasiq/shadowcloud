@@ -18,7 +18,7 @@ trait Repository[Key] {
   def keys: Source[Key, Result]
   def read(key: Key): Source[Data, Result]
   def write(key: Key): Sink[Data, Result]
-  def delete(key: Key): Result
+  def delete: Sink[Key, Result]
 }
 
 object Repository {

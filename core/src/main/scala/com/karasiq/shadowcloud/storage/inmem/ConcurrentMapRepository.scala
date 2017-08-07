@@ -29,7 +29,7 @@ private[storage] final class ConcurrentMapRepository[Key](storage: CMap[Key, Byt
       .toMat(underlying.write(key))(Keep.right)
   }
 
-  def delete(key: Key): Result = {
-    underlying.delete(key)
+  def delete: Sink[Key, Result] = {
+    underlying.delete
   }
 }

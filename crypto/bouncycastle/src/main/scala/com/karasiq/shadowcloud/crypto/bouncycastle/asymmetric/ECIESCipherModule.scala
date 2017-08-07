@@ -52,12 +52,17 @@ private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
   private def getIesParameters(method: EncryptionMethod): IESParameters = {
     val config = ConfigProps.toConfig(method.config)
 
-    def getByteArrayOrNull(name: String): Array[Byte] = {
-      config.withDefault(null, cfg ⇒ HexString.decode(cfg.getString(name)).toArray)
+    def getByteArray(name: String): Array[Byte] = {
+      config.optional(_.getString(name))
+        .map(HexString.decode)
+        .map(_.toArray)
+        .getOrElse(throw new IllegalArgumentException(name + " required"))
+      
+      // config.withDefault(null, cfg ⇒ HexString.decode(cfg.getString(name)).toArray)
     }
 
-    val derivation = getByteArrayOrNull("ies.derivation")
-    val encoding = getByteArrayOrNull("ies.encoding")
+    val derivation = getByteArray("ies.derivation")
+    val encoding = getByteArray("ies.encoding")
     val macKeySize = config.withDefault(defaults.macKeySize, _.getInt("ies.mac-key-size"))
 
     getBlockCipherMethod(config) match {
@@ -141,7 +146,7 @@ private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
 private[bouncycastle] final class ECIESCipherModule(val method: EncryptionMethod) extends StreamEncryptionModule
   with BCAsymmetricCipherKeys with BCECKeys {
 
-  private[this] val cipher = ECIESCipherModule.createIesEngine(method)
+  private[this] var iesEngine: IESEngine = _
   private[this] val ephKeyGenerator = ECIESCipherModule.createEphKeyGenerator(method, keyPairGenerator)
 
   override def createParameters(): EncryptionParameters = {
@@ -153,15 +158,17 @@ private[bouncycastle] final class ECIESCipherModule(val method: EncryptionMethod
     val asymmetricKey = getCipherKey(parameters, encrypt)
     val iesParameters = ECIESCipherModule.getIesParameters(parameters.method)
 
+    iesEngine = ECIESCipherModule.createIesEngine(parameters.method)
     if (encrypt) {
-      cipher.init(asymmetricKey, iesParameters, ephKeyGenerator)
+      iesEngine.init(asymmetricKey, iesParameters, ephKeyGenerator)
     } else {
-      cipher.init(asymmetricKey, iesParameters, ECIESCipherModule.createPublicKeyParser(method))
+      iesEngine.init(asymmetricKey, iesParameters, ECIESCipherModule.createPublicKeyParser(method))
     }
   }
 
   def process(data: ByteString): ByteString = {
-    val outArray = cipher.processBlock(data.toArray, 0, data.length)
+    require(iesEngine ne null, "Not initialized")
+    val outArray = iesEngine.processBlock(data.toArray, 0, data.length)
     ByteString(outArray)
   }
 

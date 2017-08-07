@@ -25,7 +25,7 @@ private[shadowcloud] object Utils {
 
   @inline
   def toScalaDuration(duration: java.time.Duration): FiniteDuration = {
-    FiniteDuration(duration.toNanos, scala.concurrent.duration.NANOSECONDS)
+    FiniteDuration(duration.toNanos, scala.concurrent.duration.NANOSECONDS).toCoarsest
   }
 
   // -----------------------------------------------------------------------

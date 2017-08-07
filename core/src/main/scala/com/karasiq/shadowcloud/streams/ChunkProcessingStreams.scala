@@ -34,10 +34,11 @@ final class ChunkProcessingStreams(val modules: SCModules, val crypto: CryptoCon
     ChunkSplitter(chunkSize)
   }
 
-  def generateKey(method: EncryptionMethod = crypto.encryption.chunks): ChunkFlow = {
+  def generateKey(method: EncryptionMethod = crypto.encryption.chunks,
+                  maxKeyReuse: Int = crypto.encryption.maxKeyReuse): ChunkFlow = {
     Flow.fromGraph(GraphDSL.create() { implicit builder ⇒
       import GraphDSL.Implicits._
-      val keys = builder.add(ChunkKeyStream(modules, method))
+      val keys = builder.add(ChunkKeyStream(modules, method, maxKeyReuse))
       val chunkWithKey = builder.add(ZipWith((key: EncryptionParameters, chunk: Chunk) ⇒ chunk.copy(encryption = key)))
       keys ~> chunkWithKey.in0
       FlowShape(chunkWithKey.in1, chunkWithKey.out)
@@ -59,14 +60,19 @@ final class ChunkProcessingStreams(val modules: SCModules, val crypto: CryptoCon
   }
 
   def createHashes(plainMethod: HashingMethod = crypto.hashing.chunks,
-                   encMethod: HashingMethod = crypto.hashing.chunksEncrypted): ChunkFlow = parallelFlow(parallelism.hashing) { chunk ⇒
-    val hasher = modules.crypto.hashingModule(plainMethod)
-    val encHasher = modules.crypto.hashingModule(encMethod)
-    val size = chunk.data.plain.length
-    val hash = if (chunk.data.plain.nonEmpty) hasher.createHash(chunk.data.plain) else ByteString.empty
-    val encSize = chunk.data.encrypted.length
-    val encHash = if (chunk.data.encrypted.nonEmpty) encHasher.createHash(chunk.data.encrypted) else ByteString.empty
-    chunk.copy(checksum = chunk.checksum.copy(plainMethod, encMethod, size, hash, encSize, encHash))
+                   encMethod: HashingMethod = crypto.hashing.chunksEncrypted): ChunkFlow = {
+    parallelFlow(parallelism.hashing) { chunk ⇒
+      val hasher = modules.crypto.hashingModule(plainMethod)
+      val encHasher = modules.crypto.hashingModule(encMethod)
+
+      val size = chunk.data.plain.length
+      val hash = if (chunk.data.plain.nonEmpty) hasher.createHash(chunk.data.plain) else ByteString.empty
+
+      val encSize = chunk.data.encrypted.length
+      val encHash = if (chunk.data.encrypted.nonEmpty) encHasher.createHash(chunk.data.encrypted) else ByteString.empty
+
+      chunk.copy(checksum = chunk.checksum.copy(plainMethod, encMethod, size, hash, encSize, encHash))
+    }
   }
 
   def decrypt: ChunkFlow = parallelFlow(parallelism.encryption) { chunk ⇒

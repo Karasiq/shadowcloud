@@ -8,7 +8,8 @@ import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
 
 private[shadowcloud] case class EncryptionConfig(rootConfig: Config, chunks: EncryptionMethod,
-                                                 index: EncryptionMethod, keys: EncryptionMethod) extends WrappedConfig
+                                                 index: EncryptionMethod, keys: EncryptionMethod,
+                                                 maxKeyReuse: Int) extends WrappedConfig
 
 private[shadowcloud] object EncryptionConfig extends WrappedConfigFactory[EncryptionConfig] with ConfigImplicits {
   def apply(config: Config): EncryptionConfig = {
@@ -16,7 +17,8 @@ private[shadowcloud] object EncryptionConfig extends WrappedConfigFactory[Encryp
       config,
       getEncryptionMethod(config, "chunks"),
       getEncryptionMethod(config, "index"),
-      getEncryptionMethod(config, "keys")
+      getEncryptionMethod(config, "keys"),
+      config.getInt("max-key-reuse")
     )
   }
 

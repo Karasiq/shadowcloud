@@ -3,21 +3,18 @@ package com.karasiq.shadowcloud.crypto.bouncycastle.symmetric
 import scala.language.postfixOps
 
 import akka.util.ByteString
-import org.bouncycastle.crypto.BlockCipher
-import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
+import org.bouncycastle.crypto.paddings.PaddedBufferedBlockCipher
 
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, StreamEncryptionModule}
-import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCSymmetricKeys
+import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{BCSymmetricKeys, BCUtils}
+import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.BlockCipherModule.BlockCipherOptions
 
 //noinspection RedundantDefaultArgument
-private[bouncycastle] object BlockCipherModule extends ConfigImplicits {
+private[bouncycastle] object BlockCipherModule {
   def apply(method: EncryptionMethod): BlockCipherModule = {
-    val config = ConfigProps.toConfig(method.config)
-    val customBlockSize = config.optional(_.getInt("block-size"))
-    val nonceSize = config.withDefault(BCBlockCiphers.getNonceSize(method.algorithm, customBlockSize), _.getInt("nonce-size"))
-    new BlockCipherModule(method, BCBlockCiphers.createBlockCipher(method.algorithm, customBlockSize), nonceSize)
+    new BlockCipherModule(BlockCipherOptions(method))
   }
 
   def AES_CBC(): BlockCipherModule = {
@@ -35,30 +32,44 @@ private[bouncycastle] object BlockCipherModule extends ConfigImplicits {
   def AES_CTR(): BlockCipherModule = {
     apply(EncryptionMethod("AES/CTR", 256))
   }
+
+  private case class BlockCipherOptions(method: EncryptionMethod) {
+    import ConfigImplicits._
+    private[this] val config = ConfigProps.toConfig(method.config)
+    val customBlockSize = config.optional(_.getInt("block-size"))
+    val nonceSize = config.withDefault(BCBlockCiphers.getNonceSize(method.algorithm, customBlockSize), _.getInt("nonce-size"))
+  }
 }
 
-private[bouncycastle] class BlockCipherModule(val method: EncryptionMethod,
-                                              protected val baseCipher: BlockCipher,
-                                              protected val nonceSize: Int)
+private[bouncycastle] class BlockCipherModule(defaultOptions: BlockCipherOptions)
   extends StreamEncryptionModule with BCSymmetricKeys {
 
-  protected val bufferedCipher = BCBlockCiphers.toPaddedBufferedBlockCipher(baseCipher)
+  val method: EncryptionMethod = defaultOptions.method
+  protected val nonceSize: Int = defaultOptions.nonceSize
+  protected var cipher: PaddedBufferedBlockCipher = _
 
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
-    val sp = EncryptionParameters.symmetric(parameters)
-    val keyParams = new ParametersWithIV(new KeyParameter(sp.key.toArray), sp.nonce.toArray)
-    bufferedCipher.init(encrypt, keyParams)
+    val options = BlockCipherOptions(parameters.method)
+    val baseCipher = BCBlockCiphers.createBlockCipher(method.algorithm, options.customBlockSize)
+    cipher = BCBlockCiphers.toPaddedBufferedBlockCipher(baseCipher)
+    cipher.init(encrypt, BCUtils.toParametersWithIV(parameters))
   }
 
   def process(data: ByteString): ByteString = {
-    val outArray = new Array[Byte](bufferedCipher.getUpdateOutputSize(data.length))
-    val length = bufferedCipher.processBytes(data.toArray, 0, data.length, outArray, 0)
-    ByteString.fromArray(outArray, 0, length)
+    requireInitialized()
+    val outArray = new Array[Byte](cipher.getUpdateOutputSize(data.length))
+    val outLength = cipher.processBytes(data.toArray, 0, data.length, outArray, 0)
+    ByteString.fromArray(outArray, 0, outLength)
   }
 
   def finish(): ByteString = {
-    val output = new Array[Byte](bufferedCipher.getOutputSize(0))
-    val length = bufferedCipher.doFinal(output, 0)
-    ByteString.fromArray(output, 0, length)
+    requireInitialized()
+    val outArray = new Array[Byte](cipher.getOutputSize(0))
+    val outLength = cipher.doFinal(outArray, 0)
+    ByteString.fromArray(outArray, 0, outLength)
+  }
+
+  private[this] def requireInitialized(): Unit = {
+    require(cipher ne null, "Not initialized")
   }
 }

@@ -5,6 +5,7 @@ import java.io.IOException
 import scala.collection.concurrent.{Map ⇒ CMap}
 import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
+import scala.util.{Failure, Success}
 
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.util.ByteString
@@ -16,9 +17,16 @@ import com.karasiq.shadowcloud.utils.HexString
 
 private[inmem] final class ConcurrentMapStreams[K, V](map: CMap[K, V], length: V ⇒ Int) {
   def keys: Source[K, Future[StorageIOResult]] = {
-    val keys = map.keys.toVector
-    Source(keys)
-      .mapMaterializedValue(_ ⇒ Future.successful(StorageIOResult.Success(rootPathString, keys.length)))
+    val promise = Promise[StorageIOResult]
+    Source.fromIterator(() ⇒ map.keysIterator)
+      .alsoTo(Sink.onComplete {
+        case Success(_) ⇒
+          promise.success(StorageIOResult.Success(rootPathString, 0))
+
+        case Failure(error) ⇒
+          promise.success(StorageIOResult.Failure(rootPathString, StorageUtils.wrapException(rootPathString, error)))
+      })
+      .mapMaterializedValue(_ ⇒ promise.future)
   }
 
   def read(key: K): Source[V, Future[StorageIOResult]] = {
@@ -43,8 +51,8 @@ private[inmem] final class ConcurrentMapStreams[K, V](map: CMap[K, V], length: V
     } else {
       val result = Promise[StorageIOResult]
       Flow[V]
-        .map(data ⇒ (map.putIfAbsent(key, data), data))
         .limit(1)
+        .map(data ⇒ (map.putIfAbsent(key, data), data))
         .alsoTo(Sink.foreach { case (oldValue, data) ⇒
           if (oldValue.isEmpty) {
             result.success(StorageIOResult.Success(path, length(data)))

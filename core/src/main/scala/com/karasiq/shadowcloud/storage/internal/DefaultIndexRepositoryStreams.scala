@@ -18,10 +18,9 @@ private[storage] final class DefaultIndexRepositoryStreams(breadth: Int, writeFl
                                                           (implicit ec: ExecutionContext) extends IndexRepositoryStreams {
 
   def write[Key](repository: Repository[Key]): Flow[(Key, IndexData), IndexIOResult[Key], NotUsed] = {
-    Flow[(Key, IndexData)]
-      .flatMapMerge(breadth, { case (key, value) ⇒
-        Source.single(value).via(writeAndReturn(repository, key))
-      })
+    Flow[(Key, IndexData)].flatMapMerge(breadth, { case (key, value) ⇒
+      Source.single(value).via(writeAndReturn(repository, key))
+    })
   }
 
   def read[Key](repository: Repository[Key]): Flow[Key, IndexIOResult[Key], NotUsed] = {
@@ -46,19 +45,25 @@ private[storage] final class DefaultIndexRepositoryStreams(breadth: Int, writeFl
   private[this] def writeAndReturn[Key](repository: Repository[Key], key: Key): Flow[IndexData, IndexIOResult[Key], NotUsed] = {
     val graph = GraphDSL.create(repository.write(key)) { implicit builder ⇒ repository ⇒
       import GraphDSL.Implicits._
-      val broadcast = builder.add(Broadcast[IndexData](2, eagerCancel = true))
+      val broadcast = builder.add(Broadcast[IndexData](2))
       val compose = builder.add(ZipWith((diff: IndexData, result: Future[StorageIOResult]) ⇒ (key, diff, result)))
       val unwrap = builder.add(Flow[(Key, IndexData, Future[StorageIOResult])].flatMapConcat { case (key, diff, future) ⇒
         Source.fromFuture(StorageUtils.wrapFuture(repository.toString, future))
           .map(IndexIOResult(key, diff, _))
       })
-      broadcast.out(0) ~> compose.in0
-      broadcast.out(1) ~> writeFlow ~> repository
+      broadcast ~> compose.in0
+      broadcast ~> writeFlow ~> repository
       builder.materializedValue ~> compose.in1
       compose.out ~> unwrap
       FlowShape(broadcast.in, unwrap.out)
     }
-    Flow.fromGraph(graph).mapMaterializedValue(_ ⇒ NotUsed)
+
+    Flow[IndexData]
+      .take(1)
+      .via(graph)
+      .take(1)
+      .mapMaterializedValue(_ ⇒ NotUsed)
+      .named("writeAndReturn")
   }
 
   private[this] def readAndReturn[Key](repository: Repository[Key], key: Key): Source[IndexIOResult[Key], NotUsed] = {
@@ -74,6 +79,10 @@ private[storage] final class DefaultIndexRepositoryStreams(breadth: Int, writeFl
       compose.out ~> unwrap
       SourceShape(unwrap.out)
     }
-    Source.fromGraph(graph).mapMaterializedValue(_ ⇒ NotUsed)
+
+    Source.fromGraph(graph)
+      .take(1)
+      .mapMaterializedValue(_ ⇒ NotUsed)
+      .named("readAndReturn")
   }
 }

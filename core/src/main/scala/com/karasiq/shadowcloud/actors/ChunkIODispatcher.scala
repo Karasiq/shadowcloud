@@ -23,7 +23,7 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
-import com.karasiq.shadowcloud.utils.HexString
+import com.karasiq.shadowcloud.utils.{HexString, Utils}
 
 object ChunkIODispatcher {
   case class ChunkPath(region: String, id: ByteString) {
@@ -130,6 +130,7 @@ private final class ChunkIODispatcher(storageId: String, storageProps: StoragePr
       chunksRead.finish(msg.key, msg)
 
     case DeleteChunks(chunks) ⇒
+      log.warning("Deleting chunks from storage: [{}]", Utils.printValues(chunks))
       deleteChunks(chunks).pipeTo(sender())
 
     case GetKeys ⇒

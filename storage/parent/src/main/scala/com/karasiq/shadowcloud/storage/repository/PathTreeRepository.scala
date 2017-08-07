@@ -34,8 +34,7 @@ object PathTreeRepository {
       path ⇒ (path.parent.name, path.name), { case (s1, s2) ⇒ path / s1 / s2 }) with CategorizedRepository[String, String] {
 
       override def keys: Source[(String, String), Result] = repository.subKeys(path)
-        .filter(_.parent.parent == path)
-        .filterNot(p ⇒ p.isRoot || p.parent.isRoot)
+        .filter(_.nodes.length == 2) // .filterNot(p ⇒ p.isRoot || p.parent.isRoot)
         .map(path ⇒ (path.parent.name, path.name))
 
       override def subKeys(seq: String): Source[String, Result] = {

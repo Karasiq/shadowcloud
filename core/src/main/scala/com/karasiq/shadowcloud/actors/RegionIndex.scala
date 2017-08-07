@@ -210,6 +210,7 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
         Source(keySeq)
           .via(streams.read(repository))
           .map(ReadSuccess)
+          .idleTimeout(sc.config.timeouts.indexRead)
           .runWith(Sink.actorRef(self, StreamCompleted))
         become(receiveRead)
       }
@@ -266,6 +267,7 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
           .via(toIndexDataWithKey)
           .via(streams.write(repository))
           .map(WriteSuccess)
+          .completionTimeout(sc.config.timeouts.indexWrite)
           .runWith(Sink.actorRef(self, StreamCompleted))
 
         become(receiveWrite)
@@ -396,6 +398,7 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
     repository.keys
       .fold(Set.empty[LocalKey])(_ + _)
       .map(KeysLoaded)
+      .completionTimeout(sc.config.timeouts.indexList)
       .runWith(Sink.actorRef(self, StreamCompleted))
   }
 

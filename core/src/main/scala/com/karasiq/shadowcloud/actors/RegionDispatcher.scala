@@ -107,7 +107,10 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
   // -----------------------------------------------------------------------
   private[this] val pendingIndexQueue = Source.queue[IndexDiff](sc.config.queues.regionDiffs, OverflowStrategy.dropNew)
     .via(AkkaStreamUtils.groupedOrInstant(sc.config.queues.regionDiffs, sc.config.queues.regionDiffsTime))
-    .map(diffs ⇒ WriteIndexDiff(diffs.fold(IndexDiff.empty)(_ merge _)))
+    .map(_.fold(IndexDiff.empty)((d1, d2) ⇒ d1.merge(d2)))
+    .filter(_.nonEmpty)
+    .log("region-grouped-diff")
+    .map(WriteIndexDiff)
     .to(Sink.actorRef(self, Kill))
     .run()
 
@@ -119,10 +122,16 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
     // Global index commands
     // -----------------------------------------------------------------------
     case WriteIndex(folders) ⇒
-      val future = (self ? EnqueueIndexDiff(IndexDiff(Utils.timestamp, folders))).mapTo[IndexDiff]
-      WriteIndex.wrapFuture(folders, future).pipeTo(sender())
+      if (folders.isEmpty) {
+        sender() ! WriteIndex.Failure(folders, new IllegalArgumentException("Diff is empty"))
+      } else {
+        log.debug("Index write request: {}", folders)
+        val future = (self ? EnqueueIndexDiff(IndexDiff(Utils.timestamp, folders))).mapTo[IndexDiff]
+        WriteIndex.wrapFuture(folders, future).pipeTo(sender())
+      }
 
     case EnqueueIndexDiff(diff) ⇒
+      log.debug("Enqueuing region index diff: {}", diff)
       val currentSender = sender()
       pendingIndexQueue.offer(diff).onComplete {
         case Success(QueueOfferResult.Enqueued) ⇒
@@ -140,6 +149,7 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
       sender() ! Status.Success(globalIndex.pending)
 
     case WriteIndexDiff(diff) ⇒
+      log.debug("Writing region index diff: {}", diff)
       val storages = storageSelector.forIndexWrite(diff)
       if (storages.isEmpty) {
         log.warning("No index storages available on {}", regionId)

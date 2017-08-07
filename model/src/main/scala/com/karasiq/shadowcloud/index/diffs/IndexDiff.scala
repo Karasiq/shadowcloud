@@ -15,13 +15,13 @@ case class IndexDiff(time: Long = Utils.timestamp, folders: FolderIndexDiff = Fo
 
   // Delete wins by default
   def mergeWith(diff: IndexDiff, folderDecider: FolderDecider = FolderDecider.mutualExclude,
-            chunkDecider: SplitDecider[Chunk] = SplitDecider.dropDuplicates): IndexDiff = {
+                chunkDecider: SplitDecider[Chunk] = SplitDecider.dropDuplicates): IndexDiff = {
     withDiffs(math.max(time, diff.time), folders.mergeWith(diff.folders, folderDecider), chunks.mergeWith(diff.chunks, chunkDecider))
   }
 
   def diffWith(diff: IndexDiff, decider: Decider[FolderDiff] = Decider.diff,
-           folderDecider: FolderDecider = FolderDecider.mutualExclude,
-           chunkDecider: Decider[Chunk] = Decider.diff): IndexDiff = {
+               folderDecider: FolderDecider = FolderDecider.mutualExclude,
+               chunkDecider: Decider[Chunk] = Decider.diff): IndexDiff = {
     withDiffs(time, folders.diffWith(diff.folders, decider, folderDecider), chunks.diffWith(diff.chunks, chunkDecider))
   }
 
@@ -69,7 +69,7 @@ object IndexDiff {
     if (chunks.isEmpty) {
       empty
     } else {
-      IndexDiff(Utils.timestamp, chunks = ChunkIndexDiff.create(chunks:_*))
+      IndexDiff(Utils.timestamp, chunks = ChunkIndexDiff.create(chunks: _*))
     }
   }
 
@@ -77,7 +77,7 @@ object IndexDiff {
     if (chunks.isEmpty) {
       empty
     } else {
-      IndexDiff(Utils.timestamp, chunks = ChunkIndexDiff.delete(chunks:_*))
+      IndexDiff(Utils.timestamp, chunks = ChunkIndexDiff.delete(chunks: _*))
     }
   }
 
@@ -85,7 +85,7 @@ object IndexDiff {
     if (folders.isEmpty) {
       empty
     } else {
-      IndexDiff(folders.map(_.timestamp.lastModified).max, FolderIndexDiff.create(folders:_*))
+      IndexDiff(folders.map(_.timestamp.lastModified).max, FolderIndexDiff.create(folders: _*))
     }
   }
 
@@ -93,7 +93,7 @@ object IndexDiff {
     if (folders.isEmpty) {
       empty
     } else {
-      IndexDiff(Utils.timestamp, FolderIndexDiff.deleteFolderPaths(folders:_*))
+      IndexDiff(Utils.timestamp, FolderIndexDiff.deleteFolderPaths(folders: _*))
     }
   }
 }

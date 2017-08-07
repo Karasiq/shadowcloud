@@ -177,13 +177,18 @@ private[actors] final class RegionGC(regionId: String, config: GCConfig) extends
                                   storageStates: Seq[(RegionStorage, StorageGCState)],
                                   delete: Boolean): Future[(Set[ByteString], StorageIOResult)] = {
     // Global
-    def pushRegionDiff(): Future[IndexDiff] = {
+    def pushRegionDiff(): Future[FolderIndexDiff] = {
       val folderDiff = {
         val metadataFolders = regionState.expiredMetadata.map(MetadataUtils.getFolderPath)
         FolderIndexDiff.deleteFolderPaths(metadataFolders.toSeq:_*)
           .merge(FolderIndexDiff.deleteFiles(regionState.oldFiles.toSeq:_*))
       }
-      sc.ops.region.writeIndex(regionId, folderDiff)
+
+      if (folderDiff.nonEmpty) {
+        sc.ops.region.writeIndex(regionId, folderDiff).map(_ ⇒ folderDiff)
+      } else {
+        Future.successful(folderDiff)
+      }
     }
 
     // Per-storage

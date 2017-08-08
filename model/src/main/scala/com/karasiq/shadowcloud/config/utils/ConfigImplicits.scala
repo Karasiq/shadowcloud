@@ -3,9 +3,10 @@ package com.karasiq.shadowcloud.config.utils
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
+import akka.util.ByteString
 import com.typesafe.config.ConfigException
 
-import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.utils.{HexString, Utils}
 
 object ConfigImplicits extends ConfigImplicits
 
@@ -51,6 +52,10 @@ trait ConfigImplicits {
     def getStringSet(path: String): Set[String] = {
       import scala.collection.JavaConverters._
       config.getStringList(path).asScala.toSet
+    }
+
+    def getHexString(path: String): ByteString = {
+      HexString.decode(config.getString(path))
     }
 
     def optional[T](value: Config ⇒ T): Option[T] = {

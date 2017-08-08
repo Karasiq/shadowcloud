@@ -10,7 +10,6 @@ import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.{HashingMethod, HashingModule, HashingModuleStreamer, StreamHashingModule}
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.Blake2bModule.DigestOptions
-import com.karasiq.shadowcloud.utils.HexString
 
 private[libsodium] object Blake2bModule {
   def apply(method: HashingMethod = HashingMethod("Blake2b")): Blake2bModule = {
@@ -21,8 +20,7 @@ private[libsodium] object Blake2bModule {
     import ConfigImplicits._
     private[this] val config = ConfigProps.toConfig(method.config)
     val digestSize = config.withDefault(256, _.getInt("digest-size"))
-    val digestKey = config.optional(_.getString("digest-key"))
-      .fold(ByteString.empty)(HexString.decode)
+    val digestKey = config.withDefault(ByteString.empty, _.getHexString("digest-key"))
 
     require(digestKey.isEmpty || (digestKey.length >= NaCl.Sodium.CRYPTO_GENERICHASH_KEYBYTES_MIN &&
       digestKey.length <= NaCl.Sodium.CRYPTO_GENERICHASH_KEYBYTES_MAX), "Invalid digest key")

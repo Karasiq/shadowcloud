@@ -4,7 +4,7 @@ import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric.{ECIESCipherModule, RSACipherModule}
-import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigests, MessageDigestModule}
+import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigests, Blake2bModule, MessageDigestModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.{ECDSASignModule, RSASignModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric._
 import com.karasiq.shadowcloud.providers.CryptoProvider
@@ -15,6 +15,9 @@ final class BouncyCastleCryptoProvider extends CryptoProvider with ConfigImplici
   }
 
   override def hashing: HashingPF = {
+    case method if method.algorithm == "Blake2b" ⇒
+      Blake2bModule(method)
+
     case method if hashingAlgorithms.contains(method.algorithm) ⇒
       MessageDigestModule(method)
   }

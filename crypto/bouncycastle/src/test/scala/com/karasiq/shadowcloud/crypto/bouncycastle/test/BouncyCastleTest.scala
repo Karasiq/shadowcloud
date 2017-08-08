@@ -11,7 +11,7 @@ import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.BouncyCastleCryptoProvider
 import com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric.{ECIESCipherModule, RSACipherModule}
-import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigests, MessageDigestModule}
+import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigests, Blake2bModule, MessageDigestModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.{ECDSASignModule, RSASignModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, BCBlockCiphers, BlockCipherModule, StreamCipherModule}
 import com.karasiq.shadowcloud.test.crypto.utils.CryptoTestVectors
@@ -91,8 +91,17 @@ class BouncyCastleTest extends FlatSpec with Matchers {
     testHashing(alg, hash)
   }
 
-  testHashing("Blake2-512", MessageDigestModule(HashingMethod("Blake2b", config = ConfigProps("digest-size" → 512))),
+  testHashing("Blake2b+key", Blake2bModule(HashingMethod("Blake2b", config = ConfigProps("digest-key" → "824396f4585a22b2c4b36df76f55e669d4edfb423970071b6b616ce454a95400"))), "717fc02f9817eb24cc3f9e803fddebf81fc18b415537b1ea9bb08691215d162d")
+
+  testHashing("Blake2b+key+salt+personalization", Blake2bModule(HashingMethod("Blake2b", config = ConfigProps(
+    "digest-key" → "824396f4585a22b2c4b36df76f55e669d4edfb423970071b6b616ce454a95400",
+    "digest-salt" → "824396f4585a22b2c4b36df76f55e669",
+    "digest-personalization" → "d4edfb423970071b6b616ce454a95400"
+  ))), "0eb3a9e54089752c9972df3bf64cf5df677b58747a8194ab58fd12d516475fc8")
+
+  testHashing("Blake2b-512", Blake2bModule(HashingMethod("Blake2b", config = ConfigProps("digest-size" → 512))),
     "9f84251be0c325ad771696302e9ed3cd174f84ffdd0b8de49664e9a3ea934b89a4d008581cd5803b80b3284116174b3c4a79a5029996eb59edc1fbacfd18204e")
+
   testHashing("Skein-1024-1024", MessageDigestModule(HashingMethod("Skein", config = ConfigProps("state-size" → 1024, "digest-size" → 1024))),
     "66588dbe2beb3b9cea762f42e3abaa9dc406bfa005fed3579089d8d2c5807453aa6cb0f8e69134ad47405c843e9a08c51da931827957f06ca58b3e8fe658993e" +
       "1ca87d19a09bc168cc5845bc3235050f8dd59c8f8ec302bbdff4508b16c1c7cef694e1a4c84c250132d445637e0a84772196162a5815c38e45ff3dac4374f567")

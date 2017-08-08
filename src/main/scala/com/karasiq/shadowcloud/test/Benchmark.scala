@@ -13,6 +13,8 @@ import akka.util.{ByteString, Timeout}
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
+import com.karasiq.shadowcloud.storage.utils.IndexMerger
+import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.streams.ChunkSplitter
 import com.karasiq.shadowcloud.utils.MemorySize
 
@@ -22,8 +24,13 @@ private object Benchmark extends App {
   val sc = ShadowCloud(actorSystem)
   import sc.implicits._
 
-  // Start
-  printBlock("Default settings benchmark")
+  sc.actors.regionSupervisor
+  Thread.sleep(10000)
+
+  printBlock("Read benchmark")
+  runReadBenchmark()
+  
+  printBlock("Write benchmark")
   println(sc.config.crypto)
   for (_ ← 1 to 5) runWriteBenchmark()
   //System.exit(0)
@@ -81,6 +88,22 @@ private object Benchmark extends App {
     } catch {
       case NonFatal(exc) ⇒ println(s"Benchmark failed: $exc")
     }
+  }
+
+  private[this] def runReadBenchmark(): Unit = {
+    val start = System.nanoTime()
+    val future = Source.fromFuture(sc.ops.region.getIndex("testRegion"))
+      .map(IndexMerger.restore(RegionKey.zero, _))
+      .map(_.folders.folders.values.flatMap(_.files).maxBy(_.checksum.size))
+      .flatMapConcat(file ⇒ sc.streams.file.read("testRegion", file))
+      .map(_.length)
+      .runWith(Sink.fold(0L)(_ + _))
+
+    val bytes = Await.result(future, Duration.Inf)
+    val elapsed = (System.nanoTime() - start).nanos
+    val perMb = elapsed / (bytes / MemorySize.MB)
+    val speed = 1.second / perMb
+    println(f"Read benchmark completed, ${MemorySize.toString(bytes)}, ${elapsed.toSeconds} seconds elapsed, ${perMb.toMillis} ms per megabyte, $speed%.2f MB/sec")
   }
 
   // Utils

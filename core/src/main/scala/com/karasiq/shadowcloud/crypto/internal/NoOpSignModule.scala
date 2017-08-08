@@ -4,13 +4,20 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.crypto.{SignMethod, SignParameters, StreamSignModule}
+import com.karasiq.shadowcloud.crypto._
 
 private[crypto] final class NoOpSignModule extends StreamSignModule {
   def method: SignMethod = SignMethod.none
-  def init(sign: Boolean, parameters: SignParameters): Unit = ()
-  def process(data: ByteString): Unit = ()
-  def finishVerify(signature: ByteString): Boolean = true
-  def finishSign(): ByteString = ByteString.empty
   def createParameters(): SignParameters = SignParameters.empty
+  def sign(data: ByteString, parameters: SignParameters) = ByteString.empty
+  def verify(data: ByteString, signature: ByteString, parameters: SignParameters) = signature.isEmpty
+  def createStreamer(): SignModuleStreamer = NoOpSignStreamer
+
+  private[this] object NoOpSignStreamer extends SignModuleStreamer {
+    def module: SignModule = NoOpSignModule.this
+    def init(sign: Boolean, parameters: SignParameters): Unit = ()
+    def update(data: ByteString): Unit = ()
+    def finishVerify(signature: ByteString): Boolean = signature.isEmpty
+    def finishSign(): ByteString = ByteString.empty
+  }
 }

@@ -2,9 +2,10 @@ package com.karasiq.shadowcloud.crypto.bouncycastle.sign
 
 import scala.language.postfixOps
 
+import org.bouncycastle.crypto.DSA
 import org.bouncycastle.crypto.signers.ECDSASigner
 
-import com.karasiq.shadowcloud.crypto.{HashingMethod, SignMethod}
+import com.karasiq.shadowcloud.crypto.{HashingMethod, SignMethod, SignModule, SignModuleStreamer}
 
 private[bouncycastle] object ECDSASignModule {
   def apply(method: SignMethod = SignMethod("ECDSA", HashingMethod.default)): ECDSASignModule = {
@@ -12,6 +13,13 @@ private[bouncycastle] object ECDSASignModule {
   }
 }
 
-private[bouncycastle] final class ECDSASignModule(val method: SignMethod) extends BCDSAModule with BCECKeys {
-  protected val dsaSigner = new ECDSASigner()
+private[bouncycastle] final class ECDSASignModule(val method: SignMethod) extends BCSignModule with BCECKeys {
+  def createStreamer(): SignModuleStreamer = {
+    new ECDSASignerStreamer
+  }
+
+  protected class ECDSASignerStreamer extends BCDSAStreamer {
+    protected val dsaSigner: DSA = new ECDSASigner()
+    def module: SignModule = ECDSASignModule.this
+  }
 }

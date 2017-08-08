@@ -9,16 +9,27 @@ trait HashingModule extends CryptoModule {
   def createHash(data: ByteString): ByteString
 }
 
-trait StreamHashingModule extends HashingModule {
+trait HashingModuleStreamer extends CryptoModuleStreamer {
+  def module: HashingModule
+
   def update(data: ByteString): Unit
-  def createHash(): ByteString
   def reset(): Unit
 
-  // One pass function
-  override def createHash(data: ByteString): ByteString = {
+  override def process(data: ByteString): ByteString = {
     update(data)
-    val hash = createHash()
-    reset()
-    hash
+    ByteString.empty
+  }
+}
+
+trait StreamHashingModule extends HashingModule with StreamCryptoModule {
+  def createStreamer(): HashingModuleStreamer
+}
+
+trait OnlyStreamHashingModule extends StreamHashingModule {
+  override def createHash(data: ByteString): ByteString = {
+    val streamer = this.createStreamer()
+    streamer.reset()
+    streamer.process(data)
+    streamer.finish()
   }
 }

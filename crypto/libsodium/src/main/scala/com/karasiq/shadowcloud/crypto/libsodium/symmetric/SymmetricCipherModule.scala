@@ -5,7 +5,7 @@ import scala.language.postfixOps
 import akka.util.ByteString
 import org.abstractj.kalium.NaCl
 
-import com.karasiq.shadowcloud.crypto.{EncryptionModule, EncryptionParameters, StreamEncryptionModule, SymmetricEncryptionParameters}
+import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
 
 private[libsodium] object SymmetricCipherModule {
@@ -52,13 +52,15 @@ private[libsodium] trait SymmetricCipherAtomic extends SymmetricCipherModule {
   }
 }
 
-private[libsodium] trait SymmetricCipherStreaming extends SymmetricCipherModule with StreamEncryptionModule {
+private[libsodium] trait SymmetricCipherStreaming extends EncryptionModuleStreamer {
   protected def init(encrypt: Boolean, key: Array[Byte], nonce: Array[Byte]): Unit
   protected def process(data: Array[Byte]): Array[Byte]
 
+  def module: SymmetricCipherModule
+
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
     val sp = EncryptionParameters.symmetric(parameters)
-    SymmetricCipherModule.requireValidParameters(this, sp)
+    SymmetricCipherModule.requireValidParameters(module, sp)
     init(encrypt, sp.key.toArray, sp.nonce.toArray)
   }
 

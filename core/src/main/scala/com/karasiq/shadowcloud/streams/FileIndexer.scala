@@ -42,10 +42,12 @@ private[shadowcloud] final class FileIndexer(cryptoModules: CryptoModuleRegistry
       private[this] val hasher = Some(plainHashing)
         .filterNot(_.algorithm.isEmpty)
         .map(CryptoModuleRegistry.streamHashingModule(cryptoModules, _))
+        .map(_.createStreamer())
 
       private[this] val encHasher = Some(encryptedHashing)
         .filterNot(_.algorithm.isEmpty)
         .map(CryptoModuleRegistry.streamHashingModule(cryptoModules, _))
+        .map(_.createStreamer())
 
       private[this] var plainSize = 0L
       private[this] var encryptedSize = 0L
@@ -69,8 +71,8 @@ private[shadowcloud] final class FileIndexer(cryptoModules: CryptoModuleRegistry
 
       private[this] def finish(status: Try[Done]): Unit = {
         val checksum = Checksum(plainHashing, encryptedHashing,
-          plainSize, hasher.fold(ByteString.empty)(_.createHash()),
-          encryptedSize, encHasher.fold(ByteString.empty)(_.createHash()))
+          plainSize, hasher.fold(ByteString.empty)(_.finish()),
+          encryptedSize, encHasher.fold(ByteString.empty)(_.finish()))
 
         val indexedFile = Result(checksum, chunks.result(), IOResult(plainSize, status))
         promise.trySuccess(indexedFile)

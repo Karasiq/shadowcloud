@@ -1,21 +1,15 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.hashing
 
-import java.security.MessageDigest
-
 import scala.language.postfixOps
 
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto.{HashingMethod, StreamHashingModule}
+import com.karasiq.shadowcloud.crypto._
 
 private[bouncycastle] object MessageDigestModule extends ConfigImplicits {
-  def fromMessageDigest(method: HashingMethod, messageDigest: MessageDigest): MessageDigestModule = {
-    new MessageDigestModule(method, messageDigest)
-  }
-
   def apply(method: HashingMethod): MessageDigestModule = {
-    fromMessageDigest(method, BCDigests.createMessageDigest(method))
+    new MessageDigestModule(method)
   }
 
   def apply(algorithm: String): MessageDigestModule = {
@@ -23,18 +17,28 @@ private[bouncycastle] object MessageDigestModule extends ConfigImplicits {
   }
 }
 
-private[bouncycastle] final class MessageDigestModule(val method: HashingMethod, val messageDigest: MessageDigest)
-  extends StreamHashingModule {
-
-  def update(data: ByteString): Unit = {
-    messageDigest.update(data.toArray)
+private[bouncycastle] final class MessageDigestModule(val method: HashingMethod) extends OnlyStreamHashingModule {
+  def createStreamer(): HashingModuleStreamer = {
+    new MessageDigestStreamer
   }
 
-  def createHash(): ByteString = {
-    ByteString(messageDigest.digest())
-  }
+  protected class MessageDigestStreamer extends HashingModuleStreamer {
+    private[this] val messageDigest = BCDigests.createMessageDigest(method)
 
-  def reset(): Unit = {
-    messageDigest.reset()
+    def module: HashingModule = {
+      MessageDigestModule.this
+    }
+
+    def update(data: ByteString): Unit = {
+      messageDigest.update(data.toArray)
+    }
+
+    def finish(): ByteString = {
+      ByteString(messageDigest.digest())
+    }
+
+    def reset(): Unit = {
+      messageDigest.reset()
+    }
   }
 }

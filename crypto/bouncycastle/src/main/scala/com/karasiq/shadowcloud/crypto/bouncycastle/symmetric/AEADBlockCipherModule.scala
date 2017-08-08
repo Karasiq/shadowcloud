@@ -8,7 +8,7 @@ import org.bouncycastle.crypto.params.{AEADParameters, KeyParameter}
 
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, StreamEncryptionModule}
+import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCSymmetricKeys
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.AEADBlockCipherModule.AEADCipherOptions
 
@@ -49,47 +49,57 @@ private[bouncycastle] object AEADBlockCipherModule {
 }
 
 private[bouncycastle] class AEADBlockCipherModule(defaultOptions: AEADCipherOptions)
-  extends StreamEncryptionModule with BCSymmetricKeys {
+  extends OnlyStreamEncryptionModule with BCSymmetricKeys {
 
   val method: EncryptionMethod = defaultOptions.method
   protected val nonceSize: Int = defaultOptions.nonceSize + defaultOptions.additionalDataSize
 
-  private[this] var aeadCipher: AEADBlockCipher = _
-
-  def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
-    val aeadOptions = AEADCipherOptions(parameters.method)
-
-    @inline
-    def splitNonce(value: ByteString): (ByteString, ByteString) = value.splitAt(aeadOptions.nonceSize)
-
-    val symmetricParameters = EncryptionParameters.symmetric(parameters)
-    val (nonce, additionalData) = splitNonce(symmetricParameters.nonce)
-
-    val aeadParameters = new AEADParameters(
-      new KeyParameter(symmetricParameters.key.toArray),
-      aeadOptions.macSize, nonce.toArray,
-      if (additionalData.nonEmpty) additionalData.toArray else null
-    ) // new ParametersWithIV(new KeyParameter(sp.key.toArray), nonce.toArray)
-
-    aeadCipher = AEADBlockCipherModule.createAEADCipher(aeadOptions)
-    aeadCipher.init(encrypt, aeadParameters)
+  def createStreamer(): EncryptionModuleStreamer = {
+    new AEADBlockCipherStreamer()
   }
 
-  def process(data: ByteString): ByteString = {
-    requireInitialized()
-    val output = new Array[Byte](aeadCipher.getUpdateOutputSize(data.length))
-    val length = aeadCipher.processBytes(data.toArray, 0, data.length, output, 0)
-    ByteString.fromArray(output, 0, length)
-  }
+  protected class AEADBlockCipherStreamer extends EncryptionModuleStreamer {
+    private[this] var aeadCipher: AEADBlockCipher = _
 
-  def finish(): ByteString = {
-    requireInitialized()
-    val output = new Array[Byte](aeadCipher.getOutputSize(0))
-    val length = aeadCipher.doFinal(output, 0)
-    ByteString.fromArray(output, 0, length)
-  }
+    def module: EncryptionModule = {
+      AEADBlockCipherModule.this
+    }
 
-  private[this] def requireInitialized(): Unit = {
-    require(aeadCipher ne null, "Not initialized")
+    def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
+      val aeadOptions = AEADCipherOptions(parameters.method)
+
+      @inline
+      def splitNonce(value: ByteString): (ByteString, ByteString) = value.splitAt(aeadOptions.nonceSize)
+
+      val symmetricParameters = EncryptionParameters.symmetric(parameters)
+      val (nonce, additionalData) = splitNonce(symmetricParameters.nonce)
+
+      val aeadParameters = new AEADParameters(
+        new KeyParameter(symmetricParameters.key.toArray),
+        aeadOptions.macSize, nonce.toArray,
+        if (additionalData.nonEmpty) additionalData.toArray else null
+      ) // new ParametersWithIV(new KeyParameter(sp.key.toArray), nonce.toArray)
+
+      aeadCipher = AEADBlockCipherModule.createAEADCipher(aeadOptions)
+      aeadCipher.init(encrypt, aeadParameters)
+    }
+
+    def process(data: ByteString): ByteString = {
+      requireInitialized()
+      val output = new Array[Byte](aeadCipher.getUpdateOutputSize(data.length))
+      val length = aeadCipher.processBytes(data.toArray, 0, data.length, output, 0)
+      ByteString.fromArray(output, 0, length)
+    }
+
+    def finish(): ByteString = {
+      requireInitialized()
+      val output = new Array[Byte](aeadCipher.getOutputSize(0))
+      val length = aeadCipher.doFinal(output, 0)
+      ByteString.fromArray(output, 0, length)
+    }
+
+    private[this] def requireInitialized(): Unit = {
+      require(aeadCipher ne null, "Not initialized")
+    }
   }
 }

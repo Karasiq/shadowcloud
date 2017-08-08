@@ -73,6 +73,6 @@ class EncryptionModuleTest extends FlatSpec with Matchers {
 
   //noinspection NameBooleanParameters
   private[this] def runDoubleCrossTest(provider1: String, provider2: String, alg: String, keySize: Int = 256): Unit = {
-    runDoubleCrossTest(EncryptionMethod(alg, keySize, false, provider1), EncryptionMethod(alg, keySize, false, provider2))
+    runDoubleCrossTest(EncryptionMethod(alg, keySize, provider = provider1), EncryptionMethod(alg, keySize, provider = provider2))
   }
 }

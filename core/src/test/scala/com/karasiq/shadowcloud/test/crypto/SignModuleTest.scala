@@ -56,6 +56,6 @@ class SignModuleTest extends FlatSpec with Matchers {
 
   //noinspection NameBooleanParameters
   private[this] def runDoubleCrossTest(provider1: String, provider2: String, alg: String, keySize: Int = 2048): Unit = {
-    runDoubleCrossTest(SignMethod(alg, hashingMethod, keySize, false, provider1), SignMethod(alg, hashingMethod, keySize, false, provider2))
+    runDoubleCrossTest(SignMethod(alg, hashingMethod, keySize, provider = provider1), SignMethod(alg, hashingMethod, keySize, provider = provider2))
   }
 }

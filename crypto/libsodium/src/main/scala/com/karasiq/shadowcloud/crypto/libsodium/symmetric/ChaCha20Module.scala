@@ -18,7 +18,7 @@ private[libsodium] object ChaCha20Module {
 private[libsodium] final class ChaCha20Module(method: EncryptionMethod)
   extends StreamCipherModule(method, ChaCha20Module.KEY_BYTES, ChaCha20Module.NONCE_BYTES) {
 
-  protected def process(inArray: Array[Byte], outArray: Array[Byte]): Unit = {
+  protected def process(key: Array[Byte], nonce: Array[Byte], inArray: Array[Byte], outArray: Array[Byte]): Unit = {
     sodium.crypto_stream_chacha20_xor(outArray, inArray, inArray.length, nonce, key)
   }
 }

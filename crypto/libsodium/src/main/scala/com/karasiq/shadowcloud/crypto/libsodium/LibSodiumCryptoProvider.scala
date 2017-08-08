@@ -2,7 +2,6 @@ package com.karasiq.shadowcloud.crypto.libsodium
 
 import scala.language.postfixOps
 
-import com.karasiq.shadowcloud.crypto.EncryptionMethod
 import com.karasiq.shadowcloud.crypto.libsodium.asymmetric.SealedBoxModule
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
 import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
@@ -34,25 +33,25 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
   }
 
   override def encryption: EncryptionPF = ifLoaded(super.encryption) {
-    case method if method.algorithm == SealedBoxModule.algorithm && !method.stream ⇒
+    case method if method.algorithm == SealedBoxModule.algorithm ⇒
       SealedBoxModule(method)
 
-    case method @ EncryptionMethod("XSalsa20/Poly1305", 256, false, _, _) ⇒
+    case method if method.algorithm == "XSalsa20/Poly1305" ⇒
       SecretBoxModule(method)
 
-    case method @ EncryptionMethod("ChaCha20/Poly1305", 256, false, _, _)  ⇒
+    case method if method.algorithm == "ChaCha20/Poly1305"  ⇒
       AEADCipherModule.ChaCha20_Poly1305(method)
 
-    case method @ EncryptionMethod("AES/GCM", 256, false, _, _) if LSUtils.aes256GcmAvailable ⇒
+    case method if method.algorithm == "AES/GCM" && method.keySize == 256 && LSUtils.aes256GcmAvailable ⇒
       AEADCipherModule.AES_GCM(method)
 
-    case method @ EncryptionMethod("Salsa20", 256, _, _, _) ⇒
+    case method if method.algorithm == "Salsa20" ⇒
       Salsa20Module(method)
 
-    case method @ EncryptionMethod("XSalsa20", 256, _, _, _) ⇒
+    case method if method.algorithm == "XSalsa20" ⇒
       XSalsa20Module(method)
 
-    case method @ EncryptionMethod("ChaCha20", 256, _, _, _) ⇒
+    case method if method.algorithm == "ChaCha20" ⇒
       ChaCha20Module(method)
   }
 
@@ -61,7 +60,7 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
   }
 
   override def signing = ifLoaded(super.signing) {
-    case method if method.algorithm == CryptoSignModule.algorithm && !method.stream ⇒
+    case method if method.algorithm == CryptoSignModule.algorithm ⇒
       CryptoSignModule(method)
   }
 

@@ -11,22 +11,36 @@ trait SignModule extends CryptoModule {
   def verify(data: ByteString, signature: ByteString, parameters: SignParameters): Boolean
 }
 
-trait StreamSignModule extends SignModule {
+trait SignModuleStreamer extends CryptoModuleStreamer {
+  def module: SignModule
   def init(sign: Boolean, parameters: SignParameters): Unit
-  def process(data: ByteString): Unit
+  def update(data: ByteString): Unit
   def finishVerify(signature: ByteString): Boolean
   def finishSign(): ByteString
 
-  // One pass functions
+  override def process(data: ByteString): ByteString = {
+    update(data)
+    ByteString.empty
+  }
+
+  override final def finish(): ByteString = finishSign()
+}
+
+trait StreamSignModule extends SignModule with StreamCryptoModule {
+  def createStreamer(): SignModuleStreamer
+}
+
+trait OnlyStreamSignModule extends StreamSignModule {
   def sign(data: ByteString, parameters: SignParameters): ByteString = {
-    init(sign = true, parameters)
-    process(data)
-    finishSign()
+    val streamer = this.createStreamer()
+    streamer.init(sign = true, parameters)
+    streamer.process(data) ++ streamer.finishSign()
   }
 
   def verify(data: ByteString, signature: ByteString, parameters: SignParameters): Boolean = {
-    init(sign = false, parameters)
-    process(data)
-    finishVerify(signature)
+    val streamer = this.createStreamer()
+    streamer.init(sign = false, parameters)
+    streamer.process(data)
+    streamer.finishVerify(signature)
   }
 }

@@ -12,19 +12,25 @@ trait EncryptionModule extends CryptoModule {
   def decrypt(data: ByteString, parameters: EncryptionParameters): ByteString
 }
 
-trait StreamEncryptionModule extends EncryptionModule {
+trait EncryptionModuleStreamer extends CryptoModuleStreamer {
+  def module: EncryptionModule
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit
-  def process(data: ByteString): ByteString
-  def finish(): ByteString
+}
 
-  // One pass functions
+trait StreamEncryptionModule extends EncryptionModule with StreamCryptoModule {
+  def createStreamer(): EncryptionModuleStreamer
+}
+
+trait OnlyStreamEncryptionModule extends StreamEncryptionModule {
   override def encrypt(data: ByteString, parameters: EncryptionParameters): ByteString = {
-    init(encrypt = true, parameters)
-    process(data) ++ finish()
+    val streamer = this.createStreamer()
+    streamer.init(encrypt = true, parameters)
+    streamer.process(data) ++ streamer.finish()
   }
 
   override def decrypt(data: ByteString, parameters: EncryptionParameters): ByteString = {
-    init(encrypt = false, parameters)
-    process(data) ++ finish()
+    val streamer = this.createStreamer()
+    streamer.init(encrypt = false, parameters)
+    streamer.process(data) ++ streamer.finish()
   }
 }

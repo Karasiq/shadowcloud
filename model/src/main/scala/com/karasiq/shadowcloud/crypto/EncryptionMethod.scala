@@ -4,8 +4,10 @@ import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.config.SerializedProps
 
-case class EncryptionMethod(algorithm: String, keySize: Int = 256, stream: Boolean = false,
-                            provider: String = "", config: SerializedProps = SerializedProps.empty) extends CryptoMethod {
+case class EncryptionMethod(algorithm: String, keySize: Int = 256,
+                            config: SerializedProps = SerializedProps.empty,
+                            provider: String = "") extends CryptoMethod {
+
   override def toString: String = {
     if (CryptoMethod.isNoOpMethod(this)) {
       "EncryptionMethod.none"

@@ -2,9 +2,10 @@ package com.karasiq.shadowcloud.crypto.bouncycastle.sign
 
 import scala.language.postfixOps
 
+import org.bouncycastle.crypto.Signer
 import org.bouncycastle.crypto.signers.RSADigestSigner
 
-import com.karasiq.shadowcloud.crypto.{HashingMethod, SignMethod, SignParameters}
+import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.BCDigests
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.RSAUtils
 
@@ -15,12 +16,23 @@ private[bouncycastle] object RSASignModule {
   }
 }
 
-private[bouncycastle] final class RSASignModule(val method: SignMethod) extends BCSignerModule {
-  protected var signer: RSADigestSigner = _
+private[bouncycastle] final class RSASignModule(val method: SignMethod) extends BCSignModule {
   protected val keyPairGenerator = RSAUtils.createKeyGenerator(method.keySize, RSAUtils.getPublicExponent(method))
 
-  override def init(sign: Boolean, parameters: SignParameters): Unit = {
-    this.signer = new RSADigestSigner(BCDigests.createDigest(method.hashingMethod))
-    super.init(sign, parameters)
+  def createStreamer(): SignModuleStreamer = {
+    new RSASignStreamer
+  }
+
+  protected class RSASignStreamer extends BCSignerStreamer {
+    protected var signer: Signer = _
+
+    override def init(sign: Boolean, parameters: SignParameters): Unit = {
+      this.signer = new RSADigestSigner(BCDigests.createDigest(parameters.method.hashingMethod))
+      super.init(sign, parameters)
+    }
+
+    def module: SignModule = {
+      RSASignModule.this
+    }
   }
 }

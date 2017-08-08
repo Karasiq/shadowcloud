@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.crypto.libsodium.hashing
 import akka.util.ByteString
 import org.abstractj.kalium.crypto.Hash
 
-import com.karasiq.shadowcloud.crypto.{HashingMethod, StreamHashingModule}
+import com.karasiq.shadowcloud.crypto._
 
 private[libsodium] object MultiPartHashModule {
   def SHA256(method: HashingMethod = HashingMethod("SHA256")): MultiPartHashModule = {
@@ -15,21 +15,39 @@ private[libsodium] object MultiPartHashModule {
   }
 }
 
-private[libsodium] final class MultiPartHashModule(val method: HashingMethod, newInstance: Hash ⇒ Hash.MultiPartHash) extends StreamHashingModule {
-  private[this] val hashInstance = new Hash()
-  private[this] var hasher: Hash.MultiPartHash = _
-  this.reset()
+private[libsodium] final class MultiPartHashModule(val method: HashingMethod, newInstance: Hash ⇒ Hash.MultiPartHash)
+  extends OnlyStreamHashingModule {
 
-  def update(data: ByteString): Unit = {
-    hasher.update(data.toArray)
+  def createStreamer(): HashingModuleStreamer = {
+    new MultiPartHashStreamer(new Hash(), newInstance)
   }
 
-  def createHash(): ByteString = {
-    ByteString(hasher.done())
-  }
+  protected class MultiPartHashStreamer(hashInstance: Hash, newInstance: Hash ⇒ Hash.MultiPartHash) extends HashingModuleStreamer {
+    private[this] var hasher: Hash.MultiPartHash = _
 
-  def reset(): Unit = {
-    hasher = newInstance(hashInstance)
-    hasher.init()
+    this.reset()
+
+    def module: HashingModule = {
+      MultiPartHashModule.this
+    }
+
+    def update(data: ByteString): Unit = {
+      requireInitialized()
+      hasher.update(data.toArray)
+    }
+
+    def finish(): ByteString = {
+      requireInitialized()
+      ByteString(hasher.done())
+    }
+
+    def reset(): Unit = {
+      hasher = newInstance(hashInstance)
+      hasher.init()
+    }
+
+    private[this] def requireInitialized(): Unit = {
+      require(hasher ne null, "Not initialized")
+    }
   }
 }

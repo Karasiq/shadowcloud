@@ -16,7 +16,7 @@ private[libsodium] object XSalsa20Module {
 private[libsodium] final class XSalsa20Module(method: EncryptionMethod)
   extends StreamCipherModule(method, XSalsa20Module.KEY_BYTES, XSalsa20Module.NONCE_BYTES) {
 
-  protected def process(inArray: Array[Byte], outArray: Array[Byte]): Unit = {
+  protected def process(key: Array[Byte], nonce: Array[Byte], inArray: Array[Byte], outArray: Array[Byte]): Unit = {
     sodium.crypto_stream_xor(outArray, inArray, inArray.length, nonce, key)
   }
 }

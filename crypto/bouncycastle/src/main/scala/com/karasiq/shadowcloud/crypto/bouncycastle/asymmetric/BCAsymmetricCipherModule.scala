@@ -5,9 +5,11 @@ import scala.language.postfixOps
 import akka.util.ByteString
 import org.bouncycastle.crypto.AsymmetricBlockCipher
 
-import com.karasiq.shadowcloud.crypto.StreamEncryptionModule
+import com.karasiq.shadowcloud.crypto.{EncryptionModuleStreamer, OnlyStreamEncryptionModule}
 
-private[bouncycastle] trait BCAsymmetricCipherModule extends StreamEncryptionModule with BCAsymmetricCipherKeys {
+private[bouncycastle] trait BCAsymmetricCipherModule extends OnlyStreamEncryptionModule with BCAsymmetricCipherKeys
+
+private[bouncycastle] trait BCAsymmetricBlockCipherStreamer extends EncryptionModuleStreamer {
   protected def cipher: AsymmetricBlockCipher
 
   def process(data: ByteString): ByteString = {

@@ -24,7 +24,9 @@ private[libsodium] final class SealedBoxModule(val method: EncryptionMethod) ext
       privateKey = ByteString(keyPair.getPrivateKey.toBytes))
   }
 
-  def updateParameters(parameters: EncryptionParameters) = parameters
+  def updateParameters(parameters: EncryptionParameters) = {
+    parameters
+  }
 
   def encrypt(data: ByteString, parameters: EncryptionParameters) = {
     val ap = EncryptionParameters.asymmetric(parameters)

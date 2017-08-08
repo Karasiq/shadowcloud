@@ -5,7 +5,7 @@ import scala.language.postfixOps
 import org.bouncycastle.crypto.encodings.OAEPEncoding
 import org.bouncycastle.crypto.engines.RSAEngine
 
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters}
+import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionModule, EncryptionModuleStreamer, EncryptionParameters}
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.RSAUtils
 
 private[bouncycastle] object RSACipherModule {
@@ -15,10 +15,21 @@ private[bouncycastle] object RSACipherModule {
 }
 
 private[bouncycastle] final class RSACipherModule(val method: EncryptionMethod) extends BCAsymmetricCipherModule {
-  protected val cipher = new OAEPEncoding(new RSAEngine)
   protected val keyPairGenerator = RSAUtils.createKeyGenerator(method.keySize, RSAUtils.getPublicExponent(method))
 
-  def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
-    cipher.init(encrypt, getCipherKey(parameters, encrypt))
+  def createStreamer(): EncryptionModuleStreamer = {
+    new RSACipherStreamer
+  }
+
+  protected class RSACipherStreamer extends BCAsymmetricBlockCipherStreamer {
+    protected val cipher = new OAEPEncoding(new RSAEngine)
+
+    def module: EncryptionModule = {
+      RSACipherModule.this
+    }
+
+    def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
+      cipher.init(encrypt, BCAsymmetricCipherKeys.getCipherKey(parameters, encrypt))
+    }
   }
 }

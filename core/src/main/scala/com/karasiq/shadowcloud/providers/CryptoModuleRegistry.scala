@@ -2,8 +2,6 @@ package com.karasiq.shadowcloud.providers
 
 import java.security.NoSuchAlgorithmException
 
-import akka.util.ByteString
-
 import com.karasiq.shadowcloud.config.ProvidersConfig
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.utils.ProviderInstantiator
@@ -29,60 +27,8 @@ private[shadowcloud] object CryptoModuleRegistry {
   // -----------------------------------------------------------------------
   // Wrappers
   // -----------------------------------------------------------------------
-  def threadSafeHashingModule(registry: CryptoModuleRegistry, method: HashingMethod): HashingModule = {
-    val method1 = method.copy(stream = false)
-    registry.hashingModule(method1) match {
-      case _: StreamHashingModule ⇒
-        new HashingModule {
-          def method: HashingMethod = method1
-          def createHash(data: ByteString): ByteString = {
-            val module = registry.hashingModule(method1)
-            module.createHash(data)
-          }
-        }
-
-      case module ⇒
-        module
-    }
-  }
-
-  def threadSafeEncryptionModule(registry: CryptoModuleRegistry, method: EncryptionMethod): EncryptionModule = {
-    val method1 = method.copy(stream = false)
-    registry.encryptionModule(method1) match {
-      case module: StreamEncryptionModule ⇒
-        new EncryptionModule {
-          private[this] def newModule = registry.encryptionModule(method1)
-          def method: EncryptionMethod = method1
-          def createParameters(): EncryptionParameters = module.createParameters()
-          def updateParameters(parameters: EncryptionParameters): EncryptionParameters = module.updateParameters(parameters)
-          def encrypt(data: ByteString, parameters: EncryptionParameters): ByteString = newModule.encrypt(data, parameters)
-          def decrypt(data: ByteString, parameters: EncryptionParameters): ByteString = newModule.decrypt(data, parameters)
-        }
-
-      case module ⇒
-        module
-    }
-  }
-
-  def threadSafeSignModule(registry: CryptoModuleRegistry, method: SignMethod): SignModule = {
-    val method1 = method.copy(stream = false)
-    registry.signModule(method1) match {
-      case module: StreamSignModule ⇒
-        new SignModule {
-          private[this] def newModule = registry.signModule(method1)
-          def createParameters(): SignParameters = module.createParameters()
-          def method: SignMethod = method1
-          def sign(data: ByteString, parameters: SignParameters): ByteString = newModule.sign(data, parameters)
-          def verify(data: ByteString, signature: ByteString, parameters: SignParameters): Boolean = newModule.verify(data, signature, parameters)
-        }
-
-      case _ ⇒
-        throw new IllegalArgumentException("Stream signature module required")
-    }
-  }
-
   def streamHashingModule(registry: CryptoModuleRegistry, method: HashingMethod): StreamHashingModule = {
-    registry.hashingModule(method.copy(stream = true)) match {
+    registry.hashingModule(method) match {
       case m: StreamHashingModule ⇒
         m
 
@@ -92,7 +38,7 @@ private[shadowcloud] object CryptoModuleRegistry {
   }
 
   def streamEncryptionModule(registry: CryptoModuleRegistry, method: EncryptionMethod): StreamEncryptionModule = {
-    registry.encryptionModule(method.copy(stream = true)) match {
+    registry.encryptionModule(method) match {
       case m: StreamEncryptionModule ⇒
         m
 
@@ -102,7 +48,7 @@ private[shadowcloud] object CryptoModuleRegistry {
   }
 
   def streamSignModule(registry: CryptoModuleRegistry, method: SignMethod): StreamSignModule = {
-    registry.signModule(method.copy(stream = true)) match {
+    registry.signModule(method) match {
       case m: StreamSignModule ⇒
         m
 

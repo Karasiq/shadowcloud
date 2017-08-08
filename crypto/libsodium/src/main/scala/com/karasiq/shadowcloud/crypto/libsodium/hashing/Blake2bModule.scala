@@ -8,36 +8,69 @@ import org.abstractj.kalium.crypto.Util
 
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto.{HashingMethod, StreamHashingModule}
+import com.karasiq.shadowcloud.crypto.{HashingMethod, HashingModule, HashingModuleStreamer, StreamHashingModule}
+import com.karasiq.shadowcloud.crypto.libsodium.hashing.Blake2bModule.DigestOptions
+import com.karasiq.shadowcloud.utils.HexString
 
-private[libsodium] object Blake2bModule extends ConfigImplicits {
+private[libsodium] object Blake2bModule {
   def apply(method: HashingMethod = HashingMethod("Blake2b")): Blake2bModule = {
-    val config = ConfigProps.toConfig(method.config)
+    new Blake2bModule(DigestOptions(method))
+  }
+
+  private case class DigestOptions(method: HashingMethod) {
+    import ConfigImplicits._
+    private[this] val config = ConfigProps.toConfig(method.config)
     val digestSize = config.withDefault(256, _.getInt("digest-size"))
-    new Blake2bModule(method, digestSize)
+    val digestKey = config.optional(_.getString("digest-key"))
+      .fold(ByteString.empty)(HexString.decode)
+
+    require(digestKey.isEmpty || (digestKey.length >= NaCl.Sodium.CRYPTO_GENERICHASH_KEYBYTES_MIN &&
+      digestKey.length <= NaCl.Sodium.CRYPTO_GENERICHASH_KEYBYTES_MAX), "Invalid digest key")
   }
 }
 
-private[libsodium] final class Blake2bModule(val method: HashingMethod, size: Int) extends StreamHashingModule {
+private[libsodium] final class Blake2bModule(options: DigestOptions) extends StreamHashingModule {
+  val method: HashingMethod = options.method
+  private[this] val outBytes = options.digestSize / 8
   private[this] val sodium = NaCl.sodium()
-  private[this] val stateSize = sodium.crypto_generichash_statebytes()
-  private[this] val outBytes = size / 8
-  private[this] val state = new Array[Byte](stateSize)
-  this.reset()
 
-  def update(data: ByteString): Unit = {
-    val array = data.toArray
-    sodium.crypto_generichash_update(state, array, array.length)
+  def createStreamer(): HashingModuleStreamer = {
+    new Blake2bStreamer
   }
 
-  def createHash(): ByteString = {
-    val out = Util.zeros(outBytes)
-    sodium.crypto_generichash_final(state, out, outBytes)
-    ByteString(out)
+  def createHash(data: ByteString): ByteString = {
+    val outArray = new Array[Byte](outBytes)
+    sodium.crypto_generichash(
+      outArray, outArray.length,
+      data.toArray, data.length,
+      options.digestKey.toArray, options.digestKey.length
+    )
+    ByteString(outArray)
   }
 
-  def reset(): Unit = {
-    util.Arrays.fill(state, 0.toByte)
-    sodium.crypto_generichash_init(state, Array.emptyByteArray, 0, outBytes)
+  protected class Blake2bStreamer extends HashingModuleStreamer {
+    private[this] val state = new Array[Byte](sodium.crypto_generichash_statebytes())
+
+    this.reset()
+
+    def module: HashingModule = {
+      Blake2bModule.this
+    }
+
+    def reset(): Unit = {
+      util.Arrays.fill(state, 0.toByte)
+      sodium.crypto_generichash_init(state, options.digestKey.toArray, options.digestKey.length, outBytes)
+    }
+
+    def update(data: ByteString): Unit = {
+      val array = data.toArray
+      sodium.crypto_generichash_update(state, array, array.length)
+    }
+
+    def finish(): ByteString = {
+      val out = Util.zeros(outBytes)
+      sodium.crypto_generichash_final(state, out, outBytes)
+      ByteString(out)
+    }
   }
 }

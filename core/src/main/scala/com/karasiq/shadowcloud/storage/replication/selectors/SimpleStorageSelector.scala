@@ -20,7 +20,7 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
   }
 
   def available(toWrite: Long = 0): Seq[RegionStorage] = {
-    region.storages.storages.filter(s ⇒ s.health.online && s.health.canWrite > toWrite).toSeq
+    region.storages.storages.filter(s ⇒ s.health.online && s.health.canWrite > toWrite).toVector
   }
 
   def forIndexWrite(diff: IndexDiff): Seq[RegionStorage] = {
@@ -29,7 +29,8 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
   }
 
   def forRead(status: ChunkStatus): Option[RegionStorage] = {
-    available().find(storage ⇒ status.availability.isWritten(storage.id) && !status.availability.isFailed(storage.id))
+    val readable = available().filter(storage ⇒ status.availability.isWritten(storage.id) && !status.availability.isFailed(storage.id))
+    tryRandomize(readable).headOption
   }
 
   def forWrite(chunk: ChunkStatus): ChunkWriteAffinity = {
@@ -55,9 +56,11 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
     }
   }
 
+  protected def tryRandomize[T](storages: Seq[T]): Seq[T] = {
+    if (settings.randomize) Random.shuffle(storages) else storages
+  }
+
   protected def selectStoragesToWrite(storages: Seq[String]): Seq[String] = {
-    val distinctList = storages.distinct
-    val resultList = if (settings.randomize) Random.shuffle(distinctList) else distinctList
-    Utils.takeOrAll(resultList, settings.dataRF)
+    Utils.takeOrAll(tryRandomize(storages.distinct), settings.dataRF)
   }
 }

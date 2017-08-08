@@ -6,7 +6,7 @@ import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.storage.repository.wrappers.{PathStringRepositoryWrapper, RepositoryKeyMapper}
 
 trait PathTreeRepository extends Repository[Path] {
-  def subKeys(fromPath: Path): Source[Path, Result] = {
+  def subKeys(fromPath: Path): Source[Path, Result] = { // Should return relative paths
     keys
       .filter(_.startsWith(fromPath))
       .map(_.toRelative(fromPath))
@@ -39,7 +39,7 @@ object PathTreeRepository {
 
       override def subKeys(seq: String): Source[String, Result] = {
         repository.subKeys(path / seq)
-          .filterNot(_.isRoot)
+          .filter(_.nodes.length == 1)
           .map(_.name)
       }
     }
@@ -48,7 +48,7 @@ object PathTreeRepository {
   def toKeyValue(repository: PathTreeRepository, path: Path = Path.root): KeyValueRepository = {
     new RepositoryKeyMapper[Path, String](repository, _.name, path / _) {
       override def keys: Source[String, Result] = repository.subKeys(path)
-        .filter(_.parent == path)
+        .filter(_.nodes.length == 1)
         .map(_.name)
     }
   }

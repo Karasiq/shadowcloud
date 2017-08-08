@@ -91,14 +91,14 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
           receiver ! ReadChunk.Failure(chunk, new IllegalArgumentException(s"Chunks conflict: ${status.chunk} / $chunk"))
         } */
 
-        val chunk = status.chunk.withoutData
-        val readStatus = readingChunks.getOrElse(chunk, ChunkReadStatus(Set.empty, Set.empty))
+        val actualChunk = status.chunk.withoutData
+        val readStatus = readingChunks.getOrElse(actualChunk, ChunkReadStatus(Set.empty, Set.empty))
         if (readStatus.reading.isEmpty) {
           val (storageOption, future) = getReadFuture(status)
-          storageOption.foreach(storage ⇒ addReader(chunk, storage.id))
-          pipeReadFuture(storageOption.map(_.id), chunk, future)
+          storageOption.foreach(storage ⇒ addReader(actualChunk, storage.id))
+          pipeReadFuture(storageOption.map(_.id), actualChunk, future)
         }
-        addWaiter(chunk, receiver)
+        addWaiter(actualChunk, receiver)
 
       case None ⇒
         receiver ! ReadChunk.Failure(chunk, new IllegalArgumentException("Chunk not found"))

@@ -29,14 +29,6 @@ object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshall
   import sc.implicits._
   import sc.ops.supervisor
 
-  // Test storage
-  val tempDirectory = sys.props.get("shadowcloud.temp-storage-dir")
-    .map(Paths.get(_))
-    .getOrElse(Files.createTempDirectory("scl-temp-storage"))
-  supervisor.addRegion("testRegion", sc.configs.regionConfig("testRegion"))
-  supervisor.addStorage("testStorage", StorageProps.fromDirectory(tempDirectory))
-  supervisor.register("testRegion", "testStorage")
-
   // -----------------------------------------------------------------------
   // Route
   // -----------------------------------------------------------------------
@@ -94,6 +86,25 @@ object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshall
         getFromResourceDirectory("webapp")
       }
     }
+  }
+
+  // -----------------------------------------------------------------------
+  // Pre-start
+  // -----------------------------------------------------------------------
+  sc.keys.getOrGenerateChain().foreach { keyChain ⇒
+    println(s"Key chain initialized: $keyChain")
+  }
+
+  val tempDirectory = sys.props.get("shadowcloud.temp-storage-dir")
+    .map(Paths.get(_))
+    .getOrElse(Files.createTempDirectory("scl-temp-storage"))
+  supervisor.addRegion("testRegion", sc.configs.regionConfig("testRegion"))
+  supervisor.addStorage("testStorage", StorageProps.fromDirectory(tempDirectory))
+  supervisor.register("testRegion", "testStorage")
+
+  import scala.concurrent.duration._
+  actorSystem.scheduler.scheduleOnce(30 seconds) {
+    sc.ops.region.collectGarbage("testRegion", delete = true)
   }
 
   // -----------------------------------------------------------------------

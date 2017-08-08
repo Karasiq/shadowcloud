@@ -32,12 +32,12 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
   }
 
   def read(key: Path): Source[Data, Result] = {
-    val path = toAbsolute(key)
+    val path = toRealPath(key)
     FileIO.fromPath(path).mapMaterializedValue(StorageUtils.wrapIOResult(path.toString, _))
   }
 
   def write(key: Path): Sink[Data, Result] = {
-    val path = toAbsolute(key)
+    val path = toRealPath(key)
     val parentDir = path.getParent
     if (!Files.isDirectory(parentDir)) Files.createDirectories(parentDir)
     FileIO.toPath(path, Set(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))
@@ -46,7 +46,7 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
 
   def delete: Sink[Path, Result] = {
     Flow[Path]
-      .map(toAbsolute)
+      .map(toRealPath)
       .map(file ⇒ (file, Files.size(file)))
       .addAttributes(Attributes.name("filePreDelete") and ActorAttributes.IODispatcher)
       .alsoTo(Flow[(FSPath, Long)].map(_._1).to(fileDeleteSink))
@@ -57,20 +57,21 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
   }
 
   override def subKeys(fromPath: Path): Source[Path, Result] = {
-    val subDirPath = toAbsolute(fromPath)
+    val subDirPath = toRealPath(fromPath)
     FileSystemUtils.walkFileTree(subDirPath, includeDirs = false)
-      .map(toRelative)
+      // .log("file-repository-tree")
+      .map(fsPath ⇒ toVirtualPath(fsPath).toRelative(fromPath))
       .mapMaterializedValue(_ ⇒ Future.successful(StorageIOResult.Success(subDirPath.toString, 0)))
   }
 
-  private[this] def toAbsolute(path: Path): FSPath = {
+  private[this] def toRealPath(path: Path): FSPath = {
     path.nodes.foldLeft(rootFolder) { (path, node) ⇒
       require(FileSystemUtils.isValidFileName(node), "File name not supported: " + node)
       path.resolve(node)
     }
   }
 
-  private[this] def toRelative(fsPath: FSPath): Path = {
+  private[this] def toVirtualPath(fsPath: FSPath): Path = {
     val nodes = rootFolder.relativize(fsPath)
       .iterator().asScala
       .map(_.getFileName.toString)

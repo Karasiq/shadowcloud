@@ -273,9 +273,9 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
         become(receiveWrite)
       }
 
-      val maxKey = math.max(index.lastSequenceNr, (if (keys.isEmpty) 0L else keys.max) + 1)
+      val maxKey = math.max(index.lastSequenceNr, if (keys.isEmpty) 0L else keys.max)
       if (index.pending.nonEmpty) {
-        becomeWrite(maxKey, index.pending)
+        becomeWrite(maxKey + 1, index.pending)
       } else {
         scheduleSync()
       }
@@ -397,6 +397,7 @@ private[actors] final class RegionIndex(storageId: String, regionId: String, sto
   private[this] def loadRepositoryKeys(): Unit = {
     repository.keys
       .fold(Set.empty[LocalKey])(_ + _)
+      // .log("index-keys")
       .map(KeysLoaded)
       .completionTimeout(sc.config.timeouts.indexList)
       .runWith(Sink.actorRef(self, StreamCompleted))

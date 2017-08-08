@@ -13,13 +13,15 @@ import org.scalajs.jquery._
 
 import com.karasiq.shadowcloud.index.{Folder, Path}
 import com.karasiq.shadowcloud.webapp.api.AjaxApi
-import com.karasiq.shadowcloud.webapp.components.FolderView
+import com.karasiq.shadowcloud.webapp.components.folder.FolderFileList
+import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.shadowcloud.webapp.utils.RxWithUpdate
 
 @JSExportAll
 object Main extends JSApp {
   def main(): Unit = {
     jQuery(() ⇒ {
+      implicit val appContext = AppContext()
       val testRegion = "testRegion"
       val rootFolder = RxWithUpdate(Folder(Path.root))(_ ⇒ AjaxApi.getFolder(testRegion, Path.root))
 
@@ -33,7 +35,7 @@ object Main extends JSApp {
 
       val container = GridSystem.container(
         GridSystem.mkRow(input),
-        GridSystem.mkRow(FolderView(testRegion, rootFolder.toRx))
+        GridSystem.mkRow(FolderFileList(testRegion, rootFolder.toRx))
       )
       container.applyTo(dom.document.body)
     })

@@ -1,11 +1,11 @@
 package com.karasiq.shadowcloud.index
 
+import scala.collection.GenTraversableOnce
+import scala.language.postfixOps
+
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData, Mergeable}
 import com.karasiq.shadowcloud.utils.Utils
-
-import scala.collection.GenTraversableOnce
-import scala.language.postfixOps
 
 case class ChunkIndex(chunks: Set[Chunk] = Set.empty) extends Mergeable with HasEmpty with HasWithoutData {
   type Repr = ChunkIndex
@@ -36,7 +36,7 @@ case class ChunkIndex(chunks: Set[Chunk] = Set.empty) extends Mergeable with Has
   }
 
   def diff(oldIndex: ChunkIndex): ChunkIndexDiff = {
-    ChunkIndexDiff(this, oldIndex)
+    ChunkIndexDiff(oldIndex, this)
   }
 
   def patch(diff: ChunkIndexDiff): ChunkIndex = {

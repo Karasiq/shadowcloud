@@ -50,9 +50,8 @@ private[shadowcloud] final class ChunkKeyStream(modules: SCModules, method: Encr
   val shape = SourceShape(outlet)
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with OutHandler {
-    private[this] lazy val secureRandom = new SecureRandom()
     private[this] val encryptionModule = modules.crypto.encryptionModule(method)
-
+    private[this] var secureRandom: SecureRandom = _
     private[this] var keyParameters: EncryptionParameters = _
     private[this] var encryptedCount: Int = _
     private[this] var changeKeyIn: Int = _
@@ -60,7 +59,12 @@ private[shadowcloud] final class ChunkKeyStream(modules: SCModules, method: Encr
     private[this] def resetParametersAndCounter(): Unit = { // TODO: Log key changes
       this.keyParameters = encryptionModule.createParameters()
       this.encryptedCount = 0
-      this.changeKeyIn = if (maxKeyReuse > 0) secureRandom.nextInt(maxKeyReuse) else maxKeyReuse
+      this.changeKeyIn = if (maxKeyReuse > 0) {
+        if (secureRandom == null) secureRandom = new SecureRandom()
+        secureRandom.nextInt(maxKeyReuse)
+      } else {
+        maxKeyReuse
+      }
     }
 
     private[this] def updateParameters(): Unit = {

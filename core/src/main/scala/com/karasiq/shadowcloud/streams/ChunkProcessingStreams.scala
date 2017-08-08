@@ -4,33 +4,31 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
 import akka.NotUsed
-import akka.stream.FlowShape
+import akka.stream.{FlowShape, OverflowStrategy}
 import akka.stream.scaladsl.{Flow, GraphDSL, Sink, ZipWith}
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.config.{CryptoConfig, ParallelismConfig, SCConfig}
+import com.karasiq.shadowcloud.config.{ChunksConfig, CryptoConfig, ParallelismConfig}
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod}
 import com.karasiq.shadowcloud.index.{Chunk, Data}
 import com.karasiq.shadowcloud.providers.SCModules
-import com.karasiq.shadowcloud.utils.{MemorySize, ProviderInstantiator}
 
-// TODO: Separate execution context for crypto
 object ChunkProcessingStreams {
-  def apply(modules: SCModules, crypto: CryptoConfig,
+  def apply(modules: SCModules, chunks: ChunksConfig, crypto: CryptoConfig,
             parallelism: ParallelismConfig)(implicit ec: ExecutionContext): ChunkProcessingStreams = {
-    new ChunkProcessingStreams(modules, crypto, parallelism)
+    new ChunkProcessingStreams(modules, chunks, crypto, parallelism)
   }
 
-  def apply(config: SCConfig)(implicit ec: ExecutionContext, inst: ProviderInstantiator): ChunkProcessingStreams = {
-    apply(SCModules(config), config.crypto, config.parallelism)
-  }
+  /* def apply(config: SCConfig)(implicit ec: ExecutionContext, inst: ProviderInstantiator): ChunkProcessingStreams = {
+    apply(SCModules(config), config.chunks, config.crypto, config.parallelism)
+  } */ 
 }
 
-final class ChunkProcessingStreams(val modules: SCModules, val crypto: CryptoConfig,
-                                   val parallelism: ParallelismConfig)(implicit ec: ExecutionContext) {
+final class ChunkProcessingStreams(modules: SCModules, chunks: ChunksConfig,
+                                   crypto: CryptoConfig, parallelism: ParallelismConfig)(implicit ec: ExecutionContext) {
   type ChunkFlow = Flow[Chunk, Chunk, NotUsed]
 
-  def split(chunkSize: Int = MemorySize.MB): Flow[ByteString, Chunk, NotUsed] = {
+  def split(chunkSize: Int = chunks.chunkSize): Flow[ByteString, Chunk, NotUsed] = {
     ChunkSplitter(chunkSize)
   }
 
@@ -107,7 +105,10 @@ final class ChunkProcessingStreams(val modules: SCModules, val crypto: CryptoCon
   def beforeWrite(encryption: EncryptionMethod = crypto.encryption.chunks,
                   hashing: HashingMethod = crypto.hashing.chunks,
                   encHashing: HashingMethod = crypto.hashing.chunksEncrypted): ChunkFlow = {
-    generateKey(encryption).via(encrypt).via(createHashes(hashing, encHashing))
+    generateKey(encryption)
+      .buffer(10, OverflowStrategy.backpressure)
+      .via(encrypt)
+      .via(createHashes(hashing, encHashing))
   }
 
   def afterRead: ChunkFlow = {

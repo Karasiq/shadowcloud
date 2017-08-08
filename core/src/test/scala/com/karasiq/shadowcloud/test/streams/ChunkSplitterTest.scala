@@ -49,8 +49,8 @@ class ChunkSplitterTest extends SCExtensionSpec with FlatSpecLike {
 
   "Chunk encryptor" should "encrypt chunk stream" in {
     def testChunk(chunk: Chunk) = {
-      val hasher = chunkProcessing.modules.crypto.hashingModule(chunk.checksum.method)
-      val decryptor = chunkProcessing.modules.crypto.encryptionModule(chunk.encryption.method)
+      val hasher = sc.modules.crypto.hashingModule(chunk.checksum.method)
+      val decryptor = sc.modules.crypto.encryptionModule(chunk.encryption.method)
       val hash1 = hasher.createHash(chunk.data.plain)
       val hash2 = hasher.createHash(chunk.data.encrypted)
       val size1 = chunk.data.plain.length

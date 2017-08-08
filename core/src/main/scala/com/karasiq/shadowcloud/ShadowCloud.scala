@@ -1,6 +1,7 @@
 package com.karasiq.shadowcloud
 
 import java.util.UUID
+import java.util.concurrent.Executors
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
@@ -56,7 +57,6 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // -----------------------------------------------------------------------
   // Configuration
   // -----------------------------------------------------------------------
-
   private[this] val rootConfig: Config = actorSystem.settings.config.getConfig("shadowcloud")
   val config: SCConfig = SCConfig(rootConfig)
   val modules: SCModules = SCModules(config)
@@ -76,6 +76,9 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     }
   }
 
+  // -----------------------------------------------------------------------
+  // User keys and passwords
+  // -----------------------------------------------------------------------
   object keys {
     val provider: KeyProvider = pInst.getInstance(config.crypto.keyProvider)
 
@@ -136,7 +139,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // Streams
   // -----------------------------------------------------------------------
   object streams {
-    val chunk = ChunkProcessingStreams(config)
+    val chunk = ChunkProcessingStreams(modules, config.chunks, config.crypto, config.parallelism)(executionContexts.chunkProcessing)
     val index = IndexProcessingStreams(ShadowCloudExtension.this)
     val region = RegionStreams(actors.regionSupervisor, config.parallelism, config.timeouts)
     val file = FileStreams(region, chunk)
@@ -148,5 +151,13 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     val region = RegionOps(actors.regionSupervisor, config.timeouts)
     val storage = StorageOps(actors.regionSupervisor, config.timeouts)
     val background = BackgroundOps(config, this.region)
+  }
+
+  // -----------------------------------------------------------------------
+  // Utils
+  // -----------------------------------------------------------------------
+  private[shadowcloud] object executionContexts {
+    val chunkProcessing = ExecutionContext.fromExecutorService(
+      Executors.newFixedThreadPool(sys.runtime.availableProcessors()))
   }
 }

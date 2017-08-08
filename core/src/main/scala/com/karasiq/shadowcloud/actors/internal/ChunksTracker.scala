@@ -61,7 +61,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
             (Some(storage), SReadChunk.unwrapFuture(storage.dispatcher ? SReadChunk(getChunkPath(storage, status.chunk), chunk)))
 
           case None ⇒
-            (None, Future.failed(new IllegalArgumentException("Chunk unavailable")))
+            (None, Future.failed(new IllegalArgumentException("Chunk unavailable: " + chunk)))
         }
       }
     }
@@ -101,7 +101,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
         addWaiter(actualChunk, receiver)
 
       case None ⇒
-        receiver ! ReadChunk.Failure(chunk, new IllegalArgumentException("Chunk not found"))
+        receiver ! ReadChunk.Failure(chunk, new IllegalArgumentException("Chunk not found: " + chunk))
     }
     statusOption
   }
@@ -197,22 +197,17 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
     val storageId = storages.getStorageId(dispatcher)
     getChunkStatus(chunk) match {
       case Some(status) if !Utils.isSameChunk(status.chunk, chunk) ⇒
-        log.error("Chunk conflict: {} / {}", status.chunk, chunk)
-        status
+        if (status.availability.isWriting(storageId)) {
+          log.warning("Replacing {} with {} on {}", status.chunk, chunk, storageId)
+          unregisterChunk(dispatcher, status.chunk)
+          registerChunk(dispatcher, chunk)
+        } else {
+          log.error("Chunk conflict: {} / {}", status.chunk, chunk)
+          status
+        }
 
       case Some(status)  ⇒
-        status.writeStatus match {
-          case WriteStatus.Pending(_) ⇒
-            markAsWritten(status, storageId)
-
-          case WriteStatus.Finished ⇒
-            if (!status.availability.isWritten(storageId)) {
-              log.debug("Chunk duplicate found on {}: {}", dispatcher, chunk)
-              markAsWritten(status, storageId)
-            } else {
-              status
-            }
-        }
+        markAsWritten(status, storageId)
 
       case None ⇒
         putStatus(ChunkStatus(WriteStatus.Finished, chunk.withoutData, ChunkAvailability.empty.withFinished(storageId)))

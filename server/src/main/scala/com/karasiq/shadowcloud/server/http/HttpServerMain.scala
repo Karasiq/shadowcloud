@@ -17,6 +17,7 @@ import org.apache.commons.io.FilenameUtils
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.api.SCApiEncoding
 import com.karasiq.shadowcloud.index.Path
+import com.karasiq.shadowcloud.index.diffs.FileVersions
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
 object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshallers with SCAkkaHttpApiServer {
@@ -48,13 +49,16 @@ object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshall
     } ~
     get {
       path("download" / Segment / SCPath / Segment) { (regionId, path, fileName) ⇒
-        val stream = sc.streams.file.readMostRecent(regionId, path)
-        val contentType = try {
-          ContentType(MediaTypes.forExtension(FilenameUtils.getExtension(fileName)), () ⇒ HttpCharsets.`UTF-8`)
-        } catch { case NonFatal(_) ⇒
-          ContentTypes.`application/octet-stream`
+        onSuccess(sc.ops.region.getFiles(regionId, path)) { files ⇒
+          val file = FileVersions.mostRecent(files)
+          val stream = sc.streams.file.read(regionId, file)
+          val contentType = try {
+            ContentType(MediaTypes.forExtension(FilenameUtils.getExtension(fileName)), () ⇒ HttpCharsets.`UTF-8`)
+          } catch { case NonFatal(_) ⇒
+            ContentTypes.`application/octet-stream`
+          }
+          complete(HttpEntity(contentType, file.checksum.size, stream))
         }
-        complete(HttpEntity(contentType, stream))
       } ~
       staticFilesRoute
     }
@@ -104,7 +108,7 @@ object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshall
 
   import scala.concurrent.duration._
   actorSystem.scheduler.scheduleOnce(30 seconds) {
-    sc.ops.region.collectGarbage("testRegion", delete = true)
+    sc.ops.region.collectGarbage("testRegion", delete = false)
   }
 
   // -----------------------------------------------------------------------

@@ -26,11 +26,11 @@ final class RegionStreams(regionSupervisor: ActorRef, parallelism: ParallelismCo
   private[this] val regionOps = RegionOps(regionSupervisor, timeouts)
 
   val writeChunks = Flow[(String, Chunk)]
-    .mapAsync(parallelism.query) { case (regionId, chunk) ⇒ regionOps.writeChunk(regionId, chunk) }
+    .mapAsync(parallelism.write) { case (regionId, chunk) ⇒ regionOps.writeChunk(regionId, chunk) }
     .named("writeChunks")
 
   val readChunks = Flow[(String, Chunk)]
-    .mapAsync(parallelism.query) { case (regionId, chunk) ⇒ regionOps.readChunk(regionId, chunk) }
+    .mapAsync(parallelism.read) { case (regionId, chunk) ⇒ regionOps.readChunk(regionId, chunk) }
     .named("readChunks")
 
   val findFiles = Flow[(String, Path)]

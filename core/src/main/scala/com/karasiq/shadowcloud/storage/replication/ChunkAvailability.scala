@@ -33,7 +33,7 @@ case class ChunkAvailability(hasChunk: Set[String] = Set.empty,
   }
 
   def withFinished(storageIds: String*): ChunkAvailability = {
-    copy(hasChunk = hasChunk ++ storageIds, writingChunk = writingChunk -- storageIds)
+    copy(hasChunk = hasChunk ++ storageIds, writingChunk = writingChunk -- storageIds, writeFailed -- storageIds, readFailed -- storageIds)
   }
 
   def withWriteFailed(storageIds: String*): ChunkAvailability = {

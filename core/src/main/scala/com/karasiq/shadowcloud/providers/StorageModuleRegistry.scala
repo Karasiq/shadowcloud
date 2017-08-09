@@ -17,7 +17,7 @@ private[shadowcloud] object StorageModuleRegistry {
 }
 
 private[shadowcloud] final class StorageModuleRegistryImpl(providers: ProvidersConfig[StorageProvider])
-                                                    (implicit inst: ProviderInstantiator) extends StorageModuleRegistry {
+                                                          (implicit inst: ProviderInstantiator) extends StorageModuleRegistry {
 
   private[this] val providerInstances = providers.instances
   private[this] val providerMap = providerInstances.toMap

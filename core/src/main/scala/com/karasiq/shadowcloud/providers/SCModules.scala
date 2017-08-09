@@ -23,9 +23,9 @@ private[shadowcloud] object SCModules {
 }
 
 private[shadowcloud] final class SCModulesImpl(_storages: ProvidersConfig[StorageProvider],
-                                         _crypto: ProvidersConfig[CryptoProvider],
-                                         _metadata: ProvidersConfig[MetadataProvider])
-                                        (implicit inst: ProviderInstantiator) extends SCModules {
+                                               _crypto: ProvidersConfig[CryptoProvider],
+                                               _metadata: ProvidersConfig[MetadataProvider])
+                                              (implicit inst: ProviderInstantiator) extends SCModules {
 
   val storage = StorageModuleRegistry(_storages)
   val crypto = CryptoModuleRegistry(_crypto)

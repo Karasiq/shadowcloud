@@ -59,7 +59,7 @@ private[shadowcloud] object CryptoModuleRegistry {
 }
 
 private[providers] final class CryptoModuleRegistryImpl(providers: ProvidersConfig[CryptoProvider])
-                                                 (implicit inst: ProviderInstantiator) extends CryptoModuleRegistry {
+                                                       (implicit inst: ProviderInstantiator) extends CryptoModuleRegistry {
 
   // -----------------------------------------------------------------------
   // Context

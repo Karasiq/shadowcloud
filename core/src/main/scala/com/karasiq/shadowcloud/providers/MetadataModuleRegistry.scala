@@ -20,7 +20,7 @@ private[shadowcloud] object MetadataModuleRegistry {
 }
 
 private[shadowcloud] final class MetadataModuleRegistryImpl(providers: ProvidersConfig[MetadataProvider])
-                                                     (implicit inst: ProviderInstantiator) extends MetadataModuleRegistry {
+                                                           (implicit inst: ProviderInstantiator) extends MetadataModuleRegistry {
 
   private[this] val (plugins, detectors, parsers) = {
     val (s1, s2) = providers.instances

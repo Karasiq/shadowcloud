@@ -23,17 +23,17 @@ private[shadowcloud] final class MetadataModuleRegistryImpl(providers: Providers
                                                            (implicit inst: ProviderInstantiator) extends MetadataModuleRegistry {
 
   private[this] val (plugins, detectors, parsers) = {
-    val (s1, s2) = providers.instances
+    val (detectors, parsers) = providers.instances
       .map(kv ⇒ (kv._2.detectors, kv._2.parsers))
       .unzip
-    (providers.classes.map(_._1), s1.flatten, s2.flatten)
+    (providers.classes.map(_._1), detectors.flatten, parsers.flatten)
   }
 
   val metadataPlugins: Set[String] = plugins.toSet
 
   def getMimeType(name: String, data: ByteString): Option[String] = {
     detectors.iterator
-      .map(_.getMimeType(name, data))
+      .map(_.getMimeType(name, data).filterNot(mime ⇒ mime.isEmpty || mime == "application/octet-stream"))
       .find(_.nonEmpty)
       .flatten
   }

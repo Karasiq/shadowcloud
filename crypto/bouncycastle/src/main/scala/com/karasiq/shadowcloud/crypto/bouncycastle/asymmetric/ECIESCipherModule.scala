@@ -1,5 +1,7 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric
 
+import java.security.SecureRandom
+
 import scala.language.postfixOps
 
 import akka.util.ByteString
@@ -15,13 +17,17 @@ import org.bouncycastle.crypto.parsers.ECIESPublicKeyParser
 import com.karasiq.shadowcloud.config.{ConfigProps, CryptoProps}
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric.ECIESCipherModule.IESOptions
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.BCDigests
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{BCUtils, ECUtils}
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.BCECKeys
-import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.BCBlockCiphers
+import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.BlockCipherModule
 import com.karasiq.shadowcloud.utils.HexString
 
-private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
+private[bouncycastle] object ECIESCipherModule {
+  import ConfigImplicits._
+
+
   object defaults {
     val digest = HashingMethod("SHA-512") // HashingMethod("SHA3", config = ConfigProps("digest-size" → 512))
     val encodingSize = 32
@@ -33,91 +39,41 @@ private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
     new ECIESCipherModule(method)
   }
 
-  private def getDigestMethod(config: Config, key: String): Option[HashingMethod] = {
-    config
-      .optional(_.getConfig(key))
-      .map(CryptoProps.hashing)
-      .orElse(config.optional(_.getString(key)).map(HashingMethod(_)))
-      .filter(_.algorithm.nonEmpty)
-  }
-
-  private def getBlockCipherMethod(config: Config): Option[EncryptionMethod] = {
-    config
-      .optional(_.getConfig("ies.block-cipher"))
-      .map(CryptoProps.encryption)
-      .orElse(config.optional(_.getString("ies.block-cipher")).map(EncryptionMethod(_)))
-      .filter(_.algorithm.nonEmpty)
-  }
-
-  private def getIesParameters(method: EncryptionMethod): IESParameters = {
-    val config = ConfigProps.toConfig(method.config)
-
-    def getByteArray(name: String): Array[Byte] = {
-      config.optional(_.getString(name))
-        .map(HexString.decode)
-        .map(_.toArray)
-        .getOrElse(throw new IllegalArgumentException(name + " required"))
-      
-      // config.withDefault(null, cfg ⇒ HexString.decode(cfg.getString(name)).toArray)
-    }
-
-    val derivation = getByteArray("ies.derivation")
-    val encoding = getByteArray("ies.encoding")
-    val macKeySize = config.withDefault(defaults.macKeySize, _.getInt("ies.mac-key-size"))
-
-    getBlockCipherMethod(config) match {
-      case Some(bcMethod) ⇒
-        new IESWithCipherParameters(derivation, encoding, macKeySize, bcMethod.keySize)
+  private def toIesParameters(options: IESOptions): IESParameters = {
+    import options._
+    blockCipherMethod match {
+      case Some(blockCipherMethod) ⇒
+        new IESWithCipherParameters(derivation.toArray, encoding.toArray, macKeySize, blockCipherMethod.keySize)
 
       case None ⇒
         // Streaming mode
-        new IESParameters(derivation, encoding, macKeySize)
+        new IESParameters(derivation.toArray, encoding.toArray, macKeySize)
     }
   }
 
-  private def addIesParameters(parameters: AsymmetricEncryptionParameters): AsymmetricEncryptionParameters = {
-    val secureRandom = BCUtils.createSecureRandom()
-
-    def randomBytes(size: Int): String = {
+  private def generateIesParameters(secureRandom: SecureRandom, parameters: AsymmetricEncryptionParameters): AsymmetricEncryptionParameters = {
+    def generateHexString(size: Int): String = {
       val bytes = new Array[Byte](size)
       secureRandom.nextBytes(bytes)
       HexString.encode(ByteString(bytes))
     }
 
     val newConfig = ConfigProps.toConfig(parameters.method.config)
-      .withValue("ies.derivation", ConfigValueFactory.fromAnyRef(randomBytes(defaults.derivationSize)))
-      .withValue("ies.encoding", ConfigValueFactory.fromAnyRef(randomBytes(defaults.encodingSize)))
+      .withValue("ies.derivation", ConfigValueFactory.fromAnyRef(generateHexString(defaults.derivationSize)))
+      .withValue("ies.encoding", ConfigValueFactory.fromAnyRef(generateHexString(defaults.encodingSize)))
+
     parameters.copy(method = parameters.method.copy(config = ConfigProps.fromConfig(newConfig)))
   }
 
-  private def createIesEngine(method: EncryptionMethod): IESEngine = {
-    def createDigest(config: Config): Digest = {
-      val digestMethod = getDigestMethod(config, "ies.digest").getOrElse(defaults.digest)
-      BCDigests.createDigest(digestMethod)
+  private def createIesEngine(options: IESOptions): IESEngine = {
+    def createBlockCipher(method: Option[EncryptionMethod]): Option[BufferedBlockCipher] = {
+      method.map(BlockCipherModule.createBlockCipher)
     }
 
-    def createHMac(config: Config): HMac = {
-      // Will fail if digest is not in list: org.bouncycastle.crypto.macs.HMac#blockLengths
-      val digestMethod = getDigestMethod(config, "ies.hmac")
-        .orElse(getDigestMethod(config, "ies.digest"))
-        .getOrElse(defaults.digest)
-
-      new HMac(BCDigests.createDigest(digestMethod))
-    }
-
-    def createBlockCipher(config: Config): Option[BufferedBlockCipher] = {
-      val bcMethod = getBlockCipherMethod(config)
-      val blockSize = bcMethod
-        .map(m ⇒ ConfigProps.toConfig(m.config))
-        .flatMap(_.optional(_.getInt("block-size")))
-      bcMethod.map(m ⇒ BCBlockCiphers.toPaddedBufferedBlockCipher(BCBlockCiphers.createBlockCipher(m.algorithm, blockSize)))
-    }
-
-    val config = ConfigProps.toConfig(method.config)
     val agreement = new ECDHBasicAgreement()
-    val kdfGenerator = new KDF2BytesGenerator(createDigest(config))
-    val mac = createHMac(config)
-    createBlockCipher(config) match {
+    val kdfGenerator = new KDF2BytesGenerator(BCDigests.createDigest(options.digestMethod))
+    val mac = new HMac(BCDigests.createDigest(options.hmacMethod))
+    createBlockCipher(options.blockCipherMethod) match {
       case Some(blockCipher) ⇒
         new IESEngine(agreement, kdfGenerator, mac, blockCipher)
 
@@ -141,14 +97,47 @@ private[bouncycastle] object ECIESCipherModule extends ConfigImplicits {
     val domainParameters = ECUtils.getCurveDomainParameters(method)
     new ECIESPublicKeyParser(domainParameters)
   }
+
+  private case class IESOptions(method: EncryptionMethod) {
+    private[this] val iesConfig = ConfigProps.toConfig(method.config).getConfigIfExists("ies")
+
+    val derivation = iesConfig.getHexString("derivation")
+    val encoding = iesConfig.getHexString("encoding")
+    val macKeySize = iesConfig.withDefault(defaults.macKeySize, _.getInt("mac-key-size"))
+
+    val digestMethod = getDigestMethod("digest").getOrElse(defaults.digest)
+
+    // Will fail if hmac digest is not in list: org.bouncycastle.crypto.macs.HMac#blockLengths
+    val hmacMethod = getDigestMethod("hmac").getOrElse(digestMethod)
+
+    val blockCipherMethod = getBlockCipherMethod()
+
+    private[this] def getDigestMethod(key: String): Option[HashingMethod] = {
+      iesConfig
+        .optional(_.getConfig(key))
+        .map(CryptoProps.hashing)
+        .orElse(iesConfig.optional(_.getString(key)).map(HashingMethod(_)))
+        .filter(_.algorithm.nonEmpty)
+    }
+
+    private[this] def getBlockCipherMethod(): Option[EncryptionMethod] = {
+      iesConfig
+        .optional(_.getConfig("block-cipher"))
+        .map(CryptoProps.encryption)
+        .orElse(iesConfig.optional(_.getString("block-cipher")).map(EncryptionMethod(_)))
+        .filter(_.algorithm.nonEmpty)
+    }
+  }
 }
 
 private[bouncycastle] final class ECIESCipherModule(val method: EncryptionMethod)
   extends BCAsymmetricCipherModule with BCECKeys {
 
+  private[this] lazy val secureRandom = BCUtils.createSecureRandom()
+
   override def createParameters(): EncryptionParameters = {
     val basicParameters = EncryptionParameters.asymmetric(super.createParameters())
-    ECIESCipherModule.addIesParameters(basicParameters)
+    ECIESCipherModule.generateIesParameters(secureRandom, basicParameters)
   }
 
   def createStreamer(): EncryptionModuleStreamer = {
@@ -165,9 +154,11 @@ private[bouncycastle] final class ECIESCipherModule(val method: EncryptionMethod
 
     def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
       val asymmetricKey = BCAsymmetricCipherKeys.getCipherKey(parameters, encrypt)
-      val iesParameters = ECIESCipherModule.getIesParameters(parameters.method)
+      val options = IESOptions(parameters.method)
 
-      iesEngine = ECIESCipherModule.createIesEngine(parameters.method)
+      val iesParameters = ECIESCipherModule.toIesParameters(options)
+      iesEngine = ECIESCipherModule.createIesEngine(options)
+
       if (encrypt) {
         iesEngine.init(asymmetricKey, iesParameters, ephKeyGenerator)
       } else {

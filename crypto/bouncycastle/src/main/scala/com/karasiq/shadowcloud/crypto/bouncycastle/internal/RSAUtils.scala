@@ -1,36 +1,48 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.internal
 
-import java.math.BigInteger
-
-import scala.util.control.NonFatal
-
-import org.bouncycastle.crypto.AsymmetricCipherKeyPairGenerator
 import org.bouncycastle.crypto.generators.RSAKeyPairGenerator
 import org.bouncycastle.crypto.params.RSAKeyGenerationParameters
+import org.bouncycastle.jcajce.provider.asymmetric.util.PrimeCertaintyCalculator
 
 import com.karasiq.shadowcloud.config.ConfigProps
-import com.karasiq.shadowcloud.crypto.CryptoMethod
+import com.karasiq.shadowcloud.crypto.{CryptoMethod, EncryptionMethod, SignMethod}
 
 private[bouncycastle] object RSAUtils {
+  type KeyGenerator = org.bouncycastle.crypto.AsymmetricCipherKeyPairGenerator
+
+  /**
+    * @see [[org.bouncycastle.jcajce.provider.asymmetric.rsa.KeyPairGeneratorSpi]]
+    */
   object defaults {
-    val publicExponent = 65537L
-    val certainty = 12
+    val keySize = 2048
+    val publicExponent = BigInt(0x10001)
+    def certainty(keySize: Int): Int = PrimeCertaintyCalculator.getDefaultCertainty(keySize)
   }
 
-  def getPublicExponent(method: CryptoMethod): Long = {
-    try {
-      val config = ConfigProps.toConfig(method.config)
-      config.getLong("rsa.public-exponent")
-    } catch { case NonFatal(_) ⇒
-      defaults.publicExponent
-    }
-  }
-
-  def createKeyGenerator(keySize: Int, publicExponent: Long = defaults.publicExponent): AsymmetricCipherKeyPairGenerator = {
+  private[this] def createKeyGenerator(keySize: Int, publicExponent: BigInt, certainty: Int): KeyGenerator = {
     val generator = new RSAKeyPairGenerator
-    val secureRandom =  BCUtils.createSecureRandom()
-    val rsaParameters = new RSAKeyGenerationParameters(BigInteger.valueOf(publicExponent), secureRandom, keySize, defaults.certainty)
+    val secureRandom = BCUtils.createSecureRandom()
+    val rsaParameters = new RSAKeyGenerationParameters(publicExponent.bigInteger, secureRandom, keySize, certainty)
     generator.init(rsaParameters)
     generator
+  }
+
+  def createKeyGenerator(method: CryptoMethod): KeyGenerator = {
+    val options = RSAOptions(method)
+    require(options.keySize >= 1024, "RSA key size is too small")
+    createKeyGenerator(options.keySize, options.publicExponent, options.certainty)
+  }
+
+  private case class RSAOptions(method: CryptoMethod) {
+    import com.karasiq.shadowcloud.config.utils.ConfigImplicits._
+    private[this] val rsaConfig = ConfigProps.toConfig(method.config).getConfigIfExists("rsa")
+
+    val keySize = method match {
+      case sm: SignMethod ⇒ sm.keySize
+      case em: EncryptionMethod ⇒ em.keySize
+      case _ ⇒ defaults.keySize
+    }
+    val publicExponent = rsaConfig.withDefault(defaults.publicExponent, cfg ⇒ BigInt(cfg.getString("public-exponent")))
+    val certainty = rsaConfig.withDefault(defaults.certainty(keySize), _.getInt("certainty"))
   }
 }

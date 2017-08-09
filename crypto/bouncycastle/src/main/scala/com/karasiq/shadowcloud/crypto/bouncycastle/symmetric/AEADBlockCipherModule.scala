@@ -43,7 +43,24 @@ private[bouncycastle] object AEADBlockCipherModule {
     val macSize = config.withDefault(BCBlockCiphers.getAeadMacSize(method.algorithm, customBlockSize), _.getInt("mac-size"))
   }
 
-  private def createAEADCipher(options: AEADCipherOptions): AEADBlockCipher = {
+  private def toAEADParameters(parameters: EncryptionParameters): AEADParameters = {
+    val options = AEADCipherOptions(parameters.method)
+
+    @inline
+    def splitNonce(value: ByteString): (ByteString, ByteString) = value.splitAt(options.nonceSize)
+
+    val symmetricParameters = EncryptionParameters.symmetric(parameters)
+    val (nonce, additionalData) = splitNonce(symmetricParameters.nonce)
+
+    new AEADParameters(
+      new KeyParameter(symmetricParameters.key.toArray),
+      options.macSize, nonce.toArray,
+      if (additionalData.nonEmpty) additionalData.toArray else null
+    )
+  }
+
+  private def createAEADCipher(method: EncryptionMethod): AEADBlockCipher = {
+    val options = AEADCipherOptions(method)
     BCBlockCiphers.createAEADCipher(options.method.algorithm, options.customBlockSize)
   }
 }
@@ -66,21 +83,8 @@ private[bouncycastle] class AEADBlockCipherModule(defaultOptions: AEADCipherOpti
     }
 
     def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
-      val aeadOptions = AEADCipherOptions(parameters.method)
-
-      @inline
-      def splitNonce(value: ByteString): (ByteString, ByteString) = value.splitAt(aeadOptions.nonceSize)
-
-      val symmetricParameters = EncryptionParameters.symmetric(parameters)
-      val (nonce, additionalData) = splitNonce(symmetricParameters.nonce)
-
-      val aeadParameters = new AEADParameters(
-        new KeyParameter(symmetricParameters.key.toArray),
-        aeadOptions.macSize, nonce.toArray,
-        if (additionalData.nonEmpty) additionalData.toArray else null
-      ) // new ParametersWithIV(new KeyParameter(sp.key.toArray), nonce.toArray)
-
-      aeadCipher = AEADBlockCipherModule.createAEADCipher(aeadOptions)
+      val aeadParameters = AEADBlockCipherModule.toAEADParameters(parameters)
+      aeadCipher = AEADBlockCipherModule.createAEADCipher(parameters.method)
       aeadCipher.init(encrypt, aeadParameters)
     }
 

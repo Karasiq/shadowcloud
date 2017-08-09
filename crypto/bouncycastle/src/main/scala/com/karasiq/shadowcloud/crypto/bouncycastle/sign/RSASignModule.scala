@@ -17,7 +17,7 @@ private[bouncycastle] object RSASignModule {
 }
 
 private[bouncycastle] final class RSASignModule(val method: SignMethod) extends BCSignModule {
-  protected val keyPairGenerator = RSAUtils.createKeyGenerator(method.keySize, RSAUtils.getPublicExponent(method))
+  protected val keyPairGenerator = RSAUtils.createKeyGenerator(method)
 
   def createStreamer(): SignModuleStreamer = {
     new RSASignStreamer

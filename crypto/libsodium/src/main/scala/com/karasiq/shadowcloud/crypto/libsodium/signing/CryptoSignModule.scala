@@ -31,6 +31,10 @@ private[libsodium] final class CryptoSignModule(val method: SignMethod) extends 
 
   def verify(data: ByteString, signature: ByteString, parameters: SignParameters): Boolean = {
     val verifyKey = new VerifyKey(parameters.publicKey.toArray)
-    verifyKey.verify(data.toArray, signature.toArray)
+    try {
+      verifyKey.verify(data.toArray, signature.toArray)
+    } catch { case exc: RuntimeException if exc.getMessage.contains("signature was forged or corrupted") ⇒
+      false
+    }
   }
 }

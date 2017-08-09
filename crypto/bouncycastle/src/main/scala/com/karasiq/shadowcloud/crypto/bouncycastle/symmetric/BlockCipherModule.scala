@@ -39,6 +39,12 @@ private[bouncycastle] object BlockCipherModule {
     val customBlockSize = config.optional(_.getInt("block-size"))
     val nonceSize = config.withDefault(BCBlockCiphers.getNonceSize(method.algorithm, customBlockSize), _.getInt("nonce-size"))
   }
+
+  private[bouncycastle] def createBlockCipher(method: EncryptionMethod): PaddedBufferedBlockCipher = {
+    val options = BlockCipherOptions(method)
+    val baseCipher = BCBlockCiphers.createBlockCipher(method.algorithm, options.customBlockSize)
+    BCBlockCiphers.toPaddedBufferedBlockCipher(baseCipher)
+  }
 }
 
 private[bouncycastle] class BlockCipherModule(defaultOptions: BlockCipherOptions)
@@ -59,9 +65,7 @@ private[bouncycastle] class BlockCipherModule(defaultOptions: BlockCipherOptions
     }
 
     def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
-      val options = BlockCipherOptions(parameters.method)
-      val baseCipher = BCBlockCiphers.createBlockCipher(method.algorithm, options.customBlockSize)
-      cipher = BCBlockCiphers.toPaddedBufferedBlockCipher(baseCipher)
+      cipher = BlockCipherModule.createBlockCipher(parameters.method)
       cipher.init(encrypt, BCUtils.toParametersWithIV(parameters))
     }
 

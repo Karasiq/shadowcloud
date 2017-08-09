@@ -15,7 +15,7 @@ private[bouncycastle] object RSACipherModule {
 }
 
 private[bouncycastle] final class RSACipherModule(val method: EncryptionMethod) extends BCAsymmetricCipherModule {
-  protected val keyPairGenerator = RSAUtils.createKeyGenerator(method.keySize, RSAUtils.getPublicExponent(method))
+  protected val keyPairGenerator = RSAUtils.createKeyGenerator(method)
 
   def createStreamer(): EncryptionModuleStreamer = {
     new RSACipherStreamer

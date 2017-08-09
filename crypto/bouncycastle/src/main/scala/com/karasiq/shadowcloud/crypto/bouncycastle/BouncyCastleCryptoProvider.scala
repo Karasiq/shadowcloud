@@ -4,22 +4,19 @@ import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric.{ECIESCipherModule, RSACipherModule}
-import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigests, Blake2bModule, MessageDigestModule}
+import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigestModule, BCDigests}
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.{ECDSASignModule, RSASignModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric._
 import com.karasiq.shadowcloud.providers.CryptoProvider
 
 final class BouncyCastleCryptoProvider extends CryptoProvider with ConfigImplicits {
   override val hashingAlgorithms: Set[String] = {
-    BCDigests.algorithms.toSet
+    BCDigests.algorithms
   }
 
   override def hashing: HashingPF = {
-    case method if method.algorithm == "Blake2b" ⇒
-      Blake2bModule(method)
-
-    case method if hashingAlgorithms.contains(method.algorithm) ⇒
-      MessageDigestModule(method)
+    case method if BCDigests.isDigestAlgorithm(method.algorithm) ⇒
+      BCDigestModule(method)
   }
 
   override val encryptionAlgorithms: Set[String] = {
@@ -43,19 +40,19 @@ final class BouncyCastleCryptoProvider extends CryptoProvider with ConfigImplici
     case method if method.algorithm == "ECIES" ⇒
       ECIESCipherModule(method)
 
-    case method if method.algorithm == "RSA" ⇒
+    case method if method.algorithm == "RSA" && method.keySize >= 1024 ⇒
       RSACipherModule(method)
   }
 
   override def signingAlgorithms: Set[String] = {
-    Set("RSA", "ECDSA")
+    Set("ECDSA", "RSA")
   }
 
   override def signing: SignPF = {
     case method if method.algorithm == "ECDSA" ⇒
       ECDSASignModule(method)
 
-    case method if method.algorithm == "RSA" ⇒
+    case method if method.algorithm == "RSA" && method.keySize >= 1024 ⇒
       RSASignModule(method)
   }
 }

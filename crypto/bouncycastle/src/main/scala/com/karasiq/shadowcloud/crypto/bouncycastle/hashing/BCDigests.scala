@@ -13,7 +13,7 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCUtils
 
 private[bouncycastle] object BCDigests extends ConfigImplicits {
   /** [[org.bouncycastle.jce.provider.BouncyCastleProvider.DIGESTS]] */
-  val algorithms: Seq[String] = Seq(
+  val algorithms: Set[String] = Set(
     "GOST3411", "Keccak", "MD2", "MD4", "MD5", "SHA1", "RIPEMD128", "RIPEMD160", "RIPEMD256", "RIPEMD320", "SHA224",
     "SHA256", "SHA384", "SHA512", "SHA3", "Skein", "SM3", "Tiger", "Whirlpool", "Blake2b"
   )
@@ -26,47 +26,49 @@ private[bouncycastle] object BCDigests extends ConfigImplicits {
     "Skein"
   )
 
-  def hasSize(algorithm: String): Boolean = {
-    digestsWithSize.contains(algorithm)
-  }
-
-  def hasTwoSizes(algorithm: String): Boolean = {
-    digestsWithTwoSizes.contains(algorithm)
+  def isDigestAlgorithm(algorithm: String): Boolean = {
+    algorithms.contains(algorithm)
   }
 
   def createDigest(method: HashingMethod): Digest = {
-    BCDigestWrapper(createMessageDigest(method))
+    method.algorithm match {
+      case "Blake2b" ⇒
+        Blake2b.createDigest(method)
+
+      case _ ⇒ // Generic
+        BCDigestWrapper(createMessageDigest(method))
+    }
   }
 
-  def createMessageDigest(method: HashingMethod): MessageDigest = {
-    if (BCDigests.hasTwoSizes(method.algorithm)) {
+  private[this] def hasSize(algorithm: String): Boolean = {
+    digestsWithSize.contains(algorithm)
+  }
+
+  private[this] def hasTwoSizes(algorithm: String): Boolean = {
+    digestsWithTwoSizes.contains(algorithm)
+  }
+
+  private[this] def createMessageDigest(method: HashingMethod): MessageDigest = {
+    if (hasTwoSizes(method.algorithm)) {
       createMDWithTwoSizes(method.algorithm, method)
-    } else if (BCDigests.hasSize(method.algorithm)) {
+    } else if (hasSize(method.algorithm)) {
       createMDWithSize(method.algorithm, method)
     } else {
       getMDInstance(method.algorithm)
     }
   }
 
-  def createMDWithSize(algorithm: String, method: HashingMethod, defaultSize: Int = 256): MessageDigest = {
+  private[this] def createMDWithSize(algorithm: String, method: HashingMethod, defaultSize: Int = 256): MessageDigest = {
     val config = ConfigProps.toConfig(method.config)
     val digestSize = config.withDefault(defaultSize, _.getInt("digest-size"))
     getMDInstance(s"$algorithm-$digestSize")
   }
 
-  def createMDWithTwoSizes(alg: String, method: HashingMethod, defaultStateSize: Int = 256): MessageDigest = {
+  private[this] def createMDWithTwoSizes(alg: String, method: HashingMethod, defaultStateSize: Int = 256): MessageDigest = {
     val config = ConfigProps.toConfig(method.config)
     val stateSize = config.withDefault(defaultStateSize, _.getInt("state-size"))
     val digestSize = config.withDefault(stateSize, _.getInt("digest-size"))
     getMDInstance(s"$alg-$stateSize-$digestSize")
-  }
-
-  def createDigest(algorithm: String): Digest = {
-    BCDigestWrapper(createMessageDigest(algorithm))
-  }
-
-  def createMessageDigest(algorithm: String): MessageDigest = {
-    createMessageDigest(HashingMethod(algorithm))
   }
 
   private[this] def getMDInstance(algorithm: String): MessageDigest = {

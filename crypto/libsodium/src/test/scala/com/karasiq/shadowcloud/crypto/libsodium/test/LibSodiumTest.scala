@@ -126,6 +126,7 @@ class LibSodiumTest extends FlatSpec with Matchers {
       val parameters = module.createParameters()
       val signature = module.sign(testData, parameters)
       module.verify(testData, signature, parameters) shouldBe true
+      module.verify(testData, signature.reverse, parameters) shouldBe false 
     }
   }
 }

@@ -19,7 +19,7 @@ class LibSodiumTest extends FlatSpec with Matchers {
   val testVectors = CryptoTestVectors("libsodium")
   val testData = ByteString("# First, make a nonce: A single-use value never repeated under the same key\n# The nonce isn't secret, and can be sent with the ciphertext.\n# The cipher instance has a nonce_bytes method for determining how many bytes should be in a nonce")
 
-  if (LSUtils.libraryAvailable) {
+  if (LSUtils.isLibraryAvailable) {
     // Encryption
     testAsymmetricEncryption(SealedBoxModule.algorithm, SealedBoxModule())
     testSymmetricEncryption("XSalsa20/Poly1305", SecretBoxModule(), SecretBoxModule.KEY_BYTES, SecretBoxModule.NONCE_BYTES)
@@ -28,7 +28,7 @@ class LibSodiumTest extends FlatSpec with Matchers {
     testSymmetricEncryption("XSalsa20", XSalsa20Module(), XSalsa20Module.KEY_BYTES, XSalsa20Module.NONCE_BYTES)
     testSymmetricEncryption("ChaCha20", ChaCha20Module(), ChaCha20Module.KEY_BYTES, ChaCha20Module.NONCE_BYTES)
 
-    if (LSUtils.aes256GcmAvailable) {
+    if (LSUtils.isAesAvailable) {
       testSymmetricEncryption("AES/GCM", AEADCipherModule.AES_GCM(), AEADCipherModule.AES_KEY_BYTES, AEADCipherModule.AES_NONCE_BYTES)
     } else {
       System.err.println("Hardware AES not supported")

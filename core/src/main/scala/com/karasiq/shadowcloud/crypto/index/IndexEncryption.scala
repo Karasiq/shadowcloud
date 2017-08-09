@@ -37,7 +37,7 @@ private[shadowcloud] object IndexEncryption {
 }
 
 private[shadowcloud] final class IndexEncryption(modules: SCModules, serialization: SerializationModule) {
-  private[this] val secureRandom = new SecureRandom()
+  private[this] lazy val secureRandom = new SecureRandom()
 
   def encrypt(plaintext: ByteString, dataEncMethod: EncryptionMethod, keys: KeyChain): EncryptedIndexData = {
     def createEncryptedData(plaintext: ByteString, method: EncryptionMethod): (EncryptedIndexData, EncryptionParameters) = {

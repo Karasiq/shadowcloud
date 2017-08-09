@@ -24,6 +24,11 @@ private object Benchmark extends App {
   val sc = ShadowCloud(actorSystem)
   import sc.implicits._
 
+  printBlock("Available algorithms")
+  println("Encryption: " + sc.modules.crypto.encryptionAlgorithms.toSeq.sorted.mkString(", "))
+  println("Signatures: " + sc.modules.crypto.signingAlgorithms.toSeq.sorted.mkString(", "))
+  println("Hashing: " + sc.modules.crypto.hashingAlgorithms.toSeq.sorted.mkString(", "))
+
   sc.actors.regionSupervisor
   Thread.sleep(10000)
 

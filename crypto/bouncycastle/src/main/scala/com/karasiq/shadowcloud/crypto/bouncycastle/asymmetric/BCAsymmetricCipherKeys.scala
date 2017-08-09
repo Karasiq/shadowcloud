@@ -9,11 +9,11 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{BCAsymmetricKeys, K
 
 private[bouncycastle] object BCAsymmetricCipherKeys {
   def getCipherKey(parameters: EncryptionParameters, encrypt: Boolean): AsymmetricKeyParameter = {
-    val ap = EncryptionParameters.asymmetric(parameters)
+    val asymmetricParameters = EncryptionParameters.asymmetric(parameters)
     if (encrypt) {
-      KeyUtils.decodePublicKey(ap.publicKey)
+      KeyUtils.decodePublicKey(asymmetricParameters.publicKey)
     } else {
-      KeyUtils.decodePrivateKey(ap.privateKey)
+      KeyUtils.decodePrivateKey(asymmetricParameters.privateKey)
     }
   }
 }

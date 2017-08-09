@@ -10,6 +10,9 @@ import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
 import com.karasiq.shadowcloud.providers.CryptoProvider
 
 final class LibSodiumCryptoProvider extends CryptoProvider {
+  private[this] val libraryLoaded = LSUtils.isLibraryAvailable
+  private[this] val aesAvailable = LSUtils.isAesAvailable
+
   override val hashingAlgorithms: Set[String] = ifLoaded(super.hashingAlgorithms) {
     Set("SHA256", "SHA512", "Blake2b")
   }
@@ -28,22 +31,19 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
   override def encryptionAlgorithms: Set[String] = ifLoaded(super.encryptionAlgorithms) {
     @inline def onlyIf(cond: Boolean)(algorithms: String*): Seq[String] = if (cond) algorithms else Nil
 
-    Set("XSalsa20/Poly1305", "ChaCha20/Poly1305", "Salsa20", "XSalsa20", "ChaCha20", SealedBoxModule.algorithm) ++
-      onlyIf(LSUtils.isAesAvailable)("AES/GCM")
+    Set("ChaCha20/Poly1305", "Salsa20", "XSalsa20", "ChaCha20", SecretBoxModule.algorithm, SealedBoxModule.algorithm) ++
+      onlyIf(aesAvailable)("AES/GCM")
   }
 
   override def encryption: EncryptionPF = ifLoaded(super.encryption) {
     case method if method.algorithm == SealedBoxModule.algorithm ⇒
       SealedBoxModule(method)
 
-    case method if method.algorithm == "XSalsa20/Poly1305" ⇒
+    case method if method.algorithm == SecretBoxModule.algorithm ⇒
       SecretBoxModule(method)
 
-    case method if method.algorithm == "ChaCha20/Poly1305"  ⇒
-      AEADCipherModule.ChaCha20_Poly1305(method)
-
-    case method if method.algorithm == "AES/GCM" && method.keySize == 256 && LSUtils.isAesAvailable ⇒
-      AEADCipherModule.AES_GCM(method)
+    case method if method.algorithm == "ChaCha20/Poly1305" || (method.algorithm == "AES/GCM" && method.keySize == 256 && aesAvailable) ⇒
+      AEADCipherModule(method)
 
     case method if method.algorithm == "Salsa20" ⇒
       Salsa20Module(method)
@@ -66,6 +66,6 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
 
   @inline
   private[this] def ifLoaded[T](empty: ⇒ T)(value: ⇒ T): T = {
-    if (LSUtils.isLibraryAvailable) value else empty
+    if (libraryLoaded) value else empty
   }
 }

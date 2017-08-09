@@ -33,21 +33,19 @@ private object Benchmark extends App {
   Thread.sleep(10000)
 
   printBlock("Read benchmark")
-  runReadBenchmark()
-  
+  for (_ ← 1 to 5) runReadBenchmark()
+
   printBlock("Write benchmark")
   println(sc.config.crypto)
   for (_ ← 1 to 5) runWriteBenchmark()
   //System.exit(0)
 
   runProviderBenchmark("libsodium", "ChaCha20/Poly1305", 256, "Blake2b")
-  runProviderBenchmark("bouncycastle", "ChaCha20", 256, "Blake2b")
-  runProviderBenchmark("bouncycastle", "AES/GCM", 256, "SHA256")
-  runProviderBenchmark("bouncycastle", "AES/GCM", 256, "Blake2b")
-  runProviderBenchmark("bouncycastle", "XSalsa20", 256, "Blake2b")
   runProviderBenchmark("libsodium", "AES/GCM", 256, "Blake2b")
-  runProviderBenchmark("libsodium", "XSalsa20", 256, "Blake2b")
-  runProviderBenchmark("libsodium", "ChaCha20", 256, "Blake2b")
+  runProviderBenchmark("bouncycastle", "ChaCha20", 256, "Blake2b")
+  runProviderBenchmark("bouncycastle", "AES/GCM", 256, "Blake2b")
+  runProviderBenchmark("libsodium", "XSalsa20/Poly1305", 256, "Blake2b")
+  runProviderBenchmark("bouncycastle", "XSalsa20", 256, "Blake2b")
   System.exit(0)
 
   // Benchmarks

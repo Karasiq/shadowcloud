@@ -15,12 +15,16 @@ private[libsodium] object AEADCipherModule {
   val KEY_BYTES: Int = Sodium.CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES
   val NONCE_BYTES: Int = Sodium.CRYPTO_AEAD_CHACHA20POLY1305_NPUBBYTES
 
-  def AES_GCM(method: EncryptionMethod = EncryptionMethod("AES/GCM", AES_KEY_BYTES * 8)): AEADCipherModule = {
+  def apply(method: EncryptionMethod): AEADCipherModule = {
     new AEADCipherModule(AEADCipherOptions(method))
   }
 
-  def ChaCha20_Poly1305(method: EncryptionMethod = EncryptionMethod("ChaCha20/Poly1305", KEY_BYTES * 8)): AEADCipherModule = {
-    new AEADCipherModule(AEADCipherOptions(method))
+  def AES_GCM(): AEADCipherModule = {
+    apply(EncryptionMethod("AES/GCM", AES_KEY_BYTES * 8))
+  }
+
+  def ChaCha20_Poly1305(): AEADCipherModule = {
+    apply(EncryptionMethod("ChaCha20/Poly1305", KEY_BYTES * 8))
   }
 
   private case class AEADCipherOptions(method: EncryptionMethod) {

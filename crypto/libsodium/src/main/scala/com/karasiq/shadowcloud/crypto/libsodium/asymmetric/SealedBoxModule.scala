@@ -20,8 +20,11 @@ private[libsodium] object SealedBoxModule {
 private[libsodium] final class SealedBoxModule(val method: EncryptionMethod) extends EncryptionModule {
   def createParameters(): EncryptionParameters = {
     val keyPair = new KeyPair()
-    AsymmetricEncryptionParameters(method, publicKey = ByteString(keyPair.getPublicKey.toBytes),
-      privateKey = ByteString(keyPair.getPrivateKey.toBytes))
+    AsymmetricEncryptionParameters(
+      method,
+      publicKey = ByteString(keyPair.getPublicKey.toBytes),
+      privateKey = ByteString(keyPair.getPrivateKey.toBytes)
+    )
   }
 
   def updateParameters(parameters: EncryptionParameters) = {
@@ -29,15 +32,15 @@ private[libsodium] final class SealedBoxModule(val method: EncryptionMethod) ext
   }
 
   def encrypt(data: ByteString, parameters: EncryptionParameters) = {
-    val ap = EncryptionParameters.asymmetric(parameters)
-    val sealedBox = new SealedBox(ap.publicKey.toArray)
+    val asymmetricParameters = EncryptionParameters.asymmetric(parameters)
+    val sealedBox = new SealedBox(asymmetricParameters.publicKey.toArray)
     val outArray = sealedBox.encrypt(data.toArray)
     ByteString(outArray)
   }
 
   def decrypt(data: ByteString, parameters: EncryptionParameters) = {
-    val ap = EncryptionParameters.asymmetric(parameters)
-    val sealedBox = new SealedBox(ap.publicKey.toArray, ap.privateKey.toArray)
+    val asymmetricParameters = EncryptionParameters.asymmetric(parameters)
+    val sealedBox = new SealedBox(asymmetricParameters.publicKey.toArray, asymmetricParameters.privateKey.toArray)
     val outArray = sealedBox.decrypt(data.toArray)
     ByteString(outArray)
   }

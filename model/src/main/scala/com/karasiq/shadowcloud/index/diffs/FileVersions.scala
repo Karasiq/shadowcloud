@@ -4,6 +4,7 @@ import scala.collection.GenTraversableOnce
 import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.index.File
+import com.karasiq.shadowcloud.model.FileId
 
 object FileVersions {
   def mostRecent(files: GenTraversableOnce[File]): File = {
@@ -11,7 +12,7 @@ object FileVersions {
     files.maxBy(f ⇒ (f.revision, f.timestamp))
   }
 
-  def withId(id: File.ID, files: GenTraversableOnce[File]): File = {
+  def withId(id: FileId, files: GenTraversableOnce[File]): File = {
     requireNonEmpty(files)
     files.find(_.id == id).getOrElse(throw new NoSuchElementException(s"File not found: $id"))
   }

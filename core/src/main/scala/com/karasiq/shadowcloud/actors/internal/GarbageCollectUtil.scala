@@ -6,6 +6,7 @@ import com.karasiq.shadowcloud.actors.utils.{RegionGCState, StorageGCState}
 import com.karasiq.shadowcloud.config.{GCConfig, StorageConfig}
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.metadata.MetadataUtils
+import com.karasiq.shadowcloud.model.FileId
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.utils.Utils
 
@@ -37,7 +38,7 @@ private[actors] final class GarbageCollectUtil(config: GCConfig) {
     )
   }
 
-  private[this] def expiredMetadata(index: FolderIndex): Set[File.ID] = {
+  private[this] def expiredMetadata(index: FolderIndex): Set[FileId] = {
     MetadataUtils.expiredFileIds(index)
   }
 

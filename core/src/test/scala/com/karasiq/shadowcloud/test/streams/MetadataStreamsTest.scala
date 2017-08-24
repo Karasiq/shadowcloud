@@ -7,8 +7,9 @@ import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import org.scalatest.FlatSpecLike
 
-import com.karasiq.shadowcloud.index.{File, Path}
+import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.metadata.Metadata
+import com.karasiq.shadowcloud.model.FileId
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams.metadata.MimeDetectorStream
 import com.karasiq.shadowcloud.test.utils.{ResourceUtils, SCExtensionSpec, TestUtils}
@@ -33,7 +34,7 @@ class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike {
 
   val testRegionId = "metadataStreamsTest"
   val testStorageId = "metadataStreamsTest"
-  val testFileId = File.newFileId
+  val testFileId = FileId.create()
   val testMetadata = Metadata(Some(Metadata.Tag("test", "test", Metadata.Tag.Disposition.PREVIEW)),
     Metadata.Value.Preview(Metadata.Preview("random", TestUtils.randomBytes(100))))
 

@@ -8,7 +8,7 @@ import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.config.RegionConfig
-import com.karasiq.shadowcloud.model.StorageId
+import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
 object Shell extends ImplicitConversions {

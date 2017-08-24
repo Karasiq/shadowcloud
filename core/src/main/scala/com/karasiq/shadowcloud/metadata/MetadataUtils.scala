@@ -4,18 +4,19 @@ import java.util.UUID
 
 import scala.util.Try
 
-import com.karasiq.shadowcloud.index.{File, FolderIndex, Path}
+import com.karasiq.shadowcloud.index.{FolderIndex, Path}
 import Metadata.Tag.{Disposition ⇒ MDDisposition}
+import com.karasiq.shadowcloud.model.FileId
 import com.karasiq.shadowcloud.utils.Utils
 
 private[shadowcloud] object MetadataUtils {
   val metadataRoot = Utils.internalFolderPath / "metadata"
 
-  def getFolderPath(fileId: File.ID): Path = {
+  def getFolderPath(fileId: FileId): Path = {
     metadataRoot / fileId.toString.toLowerCase
   }
 
-  def getFilePath(fileId: File.ID, disposition: MDDisposition): Path = {
+  def getFilePath(fileId: FileId, disposition: MDDisposition): Path = {
     getFolderPath(fileId) / disposition.toString().toLowerCase
   }
 
@@ -23,7 +24,7 @@ private[shadowcloud] object MetadataUtils {
     tag.fold(MDDisposition.METADATA: MDDisposition)(_.disposition)
   }
 
-  def expiredFileIds(index: FolderIndex): Set[File.ID] = {
+  def expiredFileIds(index: FolderIndex): Set[FileId] = {
     val metadataFolders = index.get(metadataRoot)
       .map(_.folders)
       .getOrElse(Set.empty)

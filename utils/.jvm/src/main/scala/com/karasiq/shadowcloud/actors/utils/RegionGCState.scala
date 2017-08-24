@@ -4,11 +4,12 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.index.{Chunk, File}
 import com.karasiq.shadowcloud.index.utils.HasEmpty
+import com.karasiq.shadowcloud.model.FileId
 import com.karasiq.shadowcloud.utils.Utils
 
 case class RegionGCState(orphanedChunks: Set[Chunk],
                          oldFiles: Set[File],
-                         expiredMetadata: Set[File.ID]) extends HasEmpty {
+                         expiredMetadata: Set[FileId]) extends HasEmpty {
 
   def isEmpty: Boolean = orphanedChunks.isEmpty && oldFiles.isEmpty && expiredMetadata.isEmpty
 

@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import java.util.UUID
 
 import akka.util.ByteString
-import com.google.protobuf.{ByteString => PBByteString}
+import com.google.protobuf.{ByteString ⇒ PBByteString}
 import com.trueaccord.scalapb.TypeMapper
 
 object ProtobufUtils {
@@ -20,7 +20,7 @@ object ProtobufUtils {
     if (bs.isEmpty) {
       emptyUUID
     } else {
-      val bb = bs.asReadOnlyByteBuffer()
+      val bb = ByteBuffer.wrap(bs.toByteArray())
       new UUID(bb.getLong, bb.getLong)
     }
   } { uuid ⇒
@@ -28,6 +28,6 @@ object ProtobufUtils {
     bb.putLong(uuid.getMostSignificantBits)
     bb.putLong(uuid.getLeastSignificantBits)
     bb.flip()
-    PBByteString.copyFrom(bb)
+    PBByteString.copyFrom(bb.array())
   }
 }

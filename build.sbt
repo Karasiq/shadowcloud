@@ -21,11 +21,10 @@ lazy val model = crossProject
     ),
     PB.protoSources in Compile := Seq(
       (baseDirectory in Compile).value.getParentFile / "src" / "main" / "protobuf"
-    ),
-    libraryDependencies ++= ProjectDeps.protobuf
+    )
   )
-  .jvmSettings(libraryDependencies ++= ProjectDeps.akka.actors)
-  .jsSettings(ScalaJSDeps.akka.actors)
+  .jvmSettings(libraryDependencies ++= ProjectDeps.akka.actors ++ ProjectDeps.protobuf)
+  .jsSettings(ScalaJSDeps.akka.actors, ScalaJSDeps.protobuf)
 
 lazy val modelJVM = model.jvm
 
@@ -159,7 +158,7 @@ lazy val server = project
     libraryDependencies ++= ProjectDeps.akka.streams ++ ProjectDeps.akka.http,
     scalaJsBundlerAssets in Compile += {
       import com.karasiq.scalajsbundler.dsl._
-      Bundle("index", WebDeps.bootstrap, WebDeps.indexHtml, scalaJsApplication(webapp, fastOpt = true).value)
+      Bundle("index", WebDeps.bootstrap, WebDeps.indexHtml, scalaJsApplication(webapp, fastOpt = true, launcher = false).value)
     },
     scalaJsBundlerCompile in Compile <<= (scalaJsBundlerCompile in Compile)
       .dependsOn(fastOptJS in Compile in webapp)
@@ -171,7 +170,7 @@ lazy val webapp = (project in file("server") / "webapp")
   .settings(commonSettings)
   .settings(
     name := "shadowcloud-webapp",
-    persistLauncher in Compile := true,
+    scalaJSUseMainModuleInitializer := true,
     ScalaJSDeps.bootstrap,
     ScalaJSDeps.java8Time
   )

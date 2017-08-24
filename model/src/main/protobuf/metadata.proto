@@ -46,8 +46,8 @@ message Metadata {
     message ArchiveFiles {
         message ArchiveFile {
             repeated string path = 1;
-            string name = 2;
-            uint64 size = 3;
+            uint64 size = 2;
+            uint64 timestamp = 3;
         }
         repeated ArchiveFile files = 1;
     }

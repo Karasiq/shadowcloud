@@ -38,6 +38,13 @@ object ScalaJSDeps {
     libraryDependencies ++= Seq("com.typesafe.play" %%% "play-json" % "2.6.0" )
   }
 
+  def protobuf: Deps = {
+    libraryDependencies ++= Seq(
+      "com.trueaccord.scalapb" %%% "scalapb-runtime" % com.trueaccord.scalapb.compiler.Version.scalapbVersion,
+      "com.trueaccord.scalapb" %%% "scalapb-runtime" % com.trueaccord.scalapb.compiler.Version.scalapbVersion % "protobuf"
+    )
+  }
+
   def java8Time: Deps = {
     libraryDependencies ++= Seq("io.github.cquiroz" %%% "scala-java-time" % "2.0.0-M12")
   }

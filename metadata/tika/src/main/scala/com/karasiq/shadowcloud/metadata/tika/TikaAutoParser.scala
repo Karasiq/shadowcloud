@@ -4,6 +4,7 @@ import java.io.{InputStream, OutputStream}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
+import scala.util.control.NonFatal
 
 import com.typesafe.config.Config
 import org.apache.tika.Tika
@@ -13,6 +14,7 @@ import org.apache.tika.sax._
 import org.xml.sax.{ContentHandler, SAXException}
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.metadata.Metadata
 
 private[tika] object TikaAutoParser {
@@ -66,22 +68,39 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
     }
 
     def extractArchiveTable(subMetadatas: Seq[TikaMetadata]): Option[Metadata] = {
-      val archiveFiles = subMetadatas.flatMap { md ⇒
-        val path = Option(md.get("X-TIKA:embedded_resource_path")).map(_.split('/').filter(_.nonEmpty).toVector)
-        val size = Option(md.get("Content-Length")).map(_.toLong)
-
-        for {
-          fullPath ← path if fullPath.nonEmpty
-          size ← size
-          path = fullPath.dropRight(1)
-          name = fullPath.last
-        } yield Metadata.ArchiveFiles.ArchiveFile(path, name, size)
-      }
+      val archiveFiles = for {
+        md ← subMetadatas
+        path ← Option(md.get("X-TIKA:embedded_resource_path")).map(Path.fromString)
+        size ← Option(md.get("Content-Length")).map(_.toLong)
+        // TODO: Timestamp
+      } yield Metadata.ArchiveFiles.ArchiveFile(path.nodes, size, 0)
 
       Some(archiveFiles)
         .filter(_.nonEmpty)
         .map(files ⇒ Metadata(Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.PREVIEW)),
           Metadata.Value.ArchiveFiles(Metadata.ArchiveFiles(files))))
+    }
+
+    def extractTextPreview(metadatas: Seq[Metadata]): Seq[Metadata] = {
+      def takeWords(str: String, maxLength: Int): String = {
+        def cutAt(separator: String): Option[String] = {
+          val index = str.lastIndexOf(separator, maxLength)
+          if (index == -1) None
+          else Some(str.substring(0, index + 1))
+        }
+
+        cutAt(". ")
+          .orElse(cutAt("\n"))
+          .orElse(cutAt(" "))
+          .getOrElse(str.take(maxLength))
+      }
+
+      metadatas.flatMap(_.value.text)
+        .filter(_.format == "text/plain")
+        .map(text ⇒ takeWords(text.data, 1000))
+        .filter(_.nonEmpty)
+        .sortBy(_.length)(Ordering[Int].reverse)
+        .map(result ⇒ Metadata(Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.PREVIEW)), Metadata.Value.Text(Metadata.Text("text/plain", result))))
     }
 
     val (rawMetadatas, contentHandlers) = if (autoParserSettings.recursive) {
@@ -109,7 +128,7 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
       val handler = createContentHandlers()
       try {
         this.parser.parse(inputStream, handler.createHandler(), metadata, new ParseContext)
-      } catch { case _: SAXException ⇒
+      } catch { case NonFatal(_) ⇒
         // Ignore
       }
       (Vector(metadata), Vector(handler))
@@ -124,6 +143,7 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
     } else {
       val (mainMetadata, subMetadatas) = results.splitAt(1)
       mainMetadata.flatten ++
+        extractTextPreview(results.flatten) ++
         extractArchiveTable(rawMetadatas.drop(1)) ++
         wrapSubMetadatas(subMetadatas)
     }

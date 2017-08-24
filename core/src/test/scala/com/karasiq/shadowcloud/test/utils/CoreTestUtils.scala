@@ -10,7 +10,7 @@ import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, SerializedProps, 
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderIndexDiff, IndexDiff}
-import com.karasiq.shadowcloud.model.{RegionId, StorageId}
+import com.karasiq.shadowcloud.model.{FileId, RegionId, StorageId}
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.utils.ProviderInstantiator
 
@@ -47,7 +47,7 @@ object CoreTestUtils extends TestImplicits {
     val encSize = chunks.map(_.checksum.encSize).sum
     val hash = sha1Hashing.createHash(ByteString.fromChunks(chunks))
     val encHash = sha1Hashing.createHash(ByteString.fromEncryptedChunks(chunks))
-    File(parent / s"$randomString.txt", File.newFileId, Random.nextInt(10), Timestamp.now, SerializedProps.empty,
+    File(parent / s"$randomString.txt", FileId.create(), Random.nextInt(10), Timestamp.now, SerializedProps.empty,
       Checksum(sha1Hashing.method, sha1Hashing.method, size, hash, encSize, encHash), chunks)
   }
 

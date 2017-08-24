@@ -1,6 +1,7 @@
 package com.karasiq.shadowcloud.webapp.locales
 
 trait AppLocale {
+  def languageCode: String
   def fileId: String
   def name: String
   def size: String
@@ -10,6 +11,7 @@ trait AppLocale {
 
 object AppLocale {
   object English extends AppLocale {
+    val languageCode = "en"
     val fileId = "File ID"
     val name = "Name"
     val size = "Size"

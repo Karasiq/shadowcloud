@@ -14,7 +14,7 @@ import com.karasiq.shadowcloud.compression.StreamCompression
 import com.karasiq.shadowcloud.index.{File, Folder, Path}
 import com.karasiq.shadowcloud.metadata.{Metadata, MetadataUtils}
 import Metadata.Tag.{Disposition ⇒ MDDisposition}
-import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.model.{FileId, RegionId}
 import com.karasiq.shadowcloud.serialization.StreamSerialization
 import com.karasiq.shadowcloud.streams.metadata.MimeDetectorStream
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
@@ -26,39 +26,39 @@ private[shadowcloud] object MetadataStreams {
 }
 
 private[shadowcloud] final class MetadataStreams(sc: ShadowCloudExtension) {
-  def keys(regionId: RegionId): Source[File.ID, NotUsed] = {
+  def keys(regionId: RegionId): Source[FileId, NotUsed] = {
     Source.fromFuture(sc.ops.region.getFolder(regionId, MetadataUtils.metadataRoot))
       .recover { case _ ⇒ Folder(MetadataUtils.metadataRoot) }
       .mapConcat(_.folders.map(UUID.fromString))
       .named("metadataFileKeys")
   }
   
-  def write(regionId: RegionId, fileId: File.ID, disposition: MDDisposition): Flow[Metadata, File, NotUsed] = {
+  def write(regionId: RegionId, fileId: FileId, disposition: MDDisposition): Flow[Metadata, File, NotUsed] = {
     internalStreams.preWriteFile(regionId)
       .map((regionId, MetadataUtils.getFilePath(fileId, disposition), _))
       .via(sc.streams.region.createFile)
       .named("metadataWrite")
   }
 
-  def writeAll(regionId: RegionId, fileId: File.ID): Flow[Metadata, File, NotUsed] = {
+  def writeAll(regionId: RegionId, fileId: FileId): Flow[Metadata, File, NotUsed] = {
     internalStreams.preWriteAll(regionId)
       .map { case (disposition, result) ⇒ (regionId, MetadataUtils.getFilePath(fileId, disposition), result) }
       .via(sc.streams.region.createFile)
       .named("metadataWriteAll")
   }
 
-  def list(regionId: RegionId, fileId: File.ID): Future[Folder] = {
+  def list(regionId: RegionId, fileId: FileId): Future[Folder] = {
     val path = MetadataUtils.getFolderPath(fileId)
     sc.ops.region.getFolder(regionId, path)
   }
 
-  def read(regionId: RegionId, fileId: File.ID, disposition: MDDisposition): Source[Metadata, NotUsed] = {
+  def read(regionId: RegionId, fileId: FileId, disposition: MDDisposition): Source[Metadata, NotUsed] = {
     internalStreams
       .readMetadataFile(regionId, fileId, disposition)
       .named("metadataRead")
   }
 
-  def delete(regionId: RegionId, fileId: File.ID): Future[Folder] = {
+  def delete(regionId: RegionId, fileId: FileId): Future[Folder] = {
     val path = MetadataUtils.getFolderPath(fileId)
     sc.ops.region.deleteFolder(regionId, path)
   }
@@ -92,7 +92,7 @@ private[shadowcloud] final class MetadataStreams(sc: ShadowCloudExtension) {
     }
 
     Flow[ByteString]
-      .via(ByteStreams.limit(sizeLimit))
+      .via(ByteStreams.truncate(sizeLimit))
       .via(graph)
       .recoverWithRetries(1, { case _ ⇒ Source.empty })
       .named("metadataCreate")
@@ -168,7 +168,7 @@ private[shadowcloud] final class MetadataStreams(sc: ShadowCloudExtension) {
         .named("metadataPreWrite")
     }
 
-    def readMetadataFile(regionId: RegionId, fileId: File.ID, disposition: MDDisposition) = {
+    def readMetadataFile(regionId: RegionId, fileId: FileId, disposition: MDDisposition) = {
       sc.streams.file.readMostRecent(regionId, MetadataUtils.getFilePath(fileId, disposition))
         .via(StreamCompression.decompress)
         .via(StreamSerialization.deserializeFramed[Metadata](sc.serialization, sc.config.serialization.frameLimit))

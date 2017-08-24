@@ -1,13 +1,15 @@
 package com.karasiq.shadowcloud.api.json
 
 import akka.util.ByteString
+import com.trueaccord.scalapb.{GeneratedEnum, GeneratedEnumCompanion, GeneratedMessage, GeneratedMessageCompanion}
 import play.api.libs.json._
 
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index._
-import com.karasiq.shadowcloud.utils.HexString
+import com.karasiq.shadowcloud.utils.{Base64, HexString}
 
+//noinspection ConvertExpressionToSAM
 trait SCJsonEncoders {
   implicit val byteStringReads: Reads[ByteString] = Reads(value ⇒ JsSuccess(HexString.decode(value.as[JsString].value)))
   implicit val byteStringWrites: Writes[ByteString] = Writes(value ⇒ JsString(HexString.encode(value)))
@@ -37,4 +39,33 @@ trait SCJsonEncoders {
   implicit val fileWrites: Writes[File] = Json.writes[File]
   implicit val folderReads: Reads[Folder] = Json.reads[Folder]
   implicit val folderWrites: Writes[Folder] = Json.writes[Folder]
+
+  implicit def generatedMessageReadWrites[T <: GeneratedMessage with com.trueaccord.scalapb.Message[T] : GeneratedMessageCompanion]: Reads[T] with Writes[T] = new Reads[T] with Writes[T] {
+    def reads(json: JsValue): JsResult[T] = {
+      val bytes = Base64.decode(json.as[String])
+      JsSuccess(implicitly[GeneratedMessageCompanion[T]].parseFrom(bytes.toArray))
+    }
+
+    def writes(o: T): JsValue = {
+      JsString(Base64.encode(ByteString(o.toByteArray)))
+    }
+  }
+
+  implicit def generatedEnumReadWrites[T <: GeneratedEnum : GeneratedEnumCompanion]: Reads[T] with Writes[T] = new Reads[T] with Writes[T] {
+    def reads(json: JsValue): JsResult[T] = {
+      val stringValue = json.as[String]
+      val value = implicitly[GeneratedEnumCompanion[T]].fromName(stringValue)
+      value match {
+        case Some(value) ⇒
+          JsSuccess(value)
+
+        case None ⇒
+          JsError(s"Invalid enum value: $stringValue")
+      }
+    }
+
+    def writes(o: T): JsValue = {
+      JsString(o.name)
+    }
+  }
 }

@@ -37,4 +37,8 @@ object ScalaJSDeps {
   def playJson: Deps = {
     libraryDependencies ++= Seq("com.typesafe.play" %%% "play-json" % "2.6.0" )
   }
+
+  def java8Time: Deps = {
+    libraryDependencies ++= Seq("io.github.cquiroz" %%% "scala-java-time" % "2.0.0-M12")
+  }
 }

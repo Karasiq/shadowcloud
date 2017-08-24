@@ -64,10 +64,18 @@ lazy val testUtilsJS = testUtils.js
 // -----------------------------------------------------------------------
 lazy val core = project
   .settings(commonSettings)
+  .settings(
+    name := "shadowcloud-core",
+    libraryDependencies ++= ProjectDeps.akka.all ++ ProjectDeps.kryo
+  )
   .dependsOn(modelJVM, utilsJVM, storageParent, cryptoParent, metadataParent, testUtilsJVM % "test")
 
 lazy val persistence = project
   .settings(commonSettings)
+  .settings(
+    name := "shadowcloud-persistence",
+    libraryDependencies ++= ProjectDeps.akka.persistence ++ ProjectDeps.h2
+  )
   .dependsOn(core)
 
 lazy val coreAssembly = (project in file("target/core-assembly"))
@@ -99,9 +107,11 @@ lazy val cryptoParent = Project("crypto-parent", file("crypto") / "parent")
   .dependsOn(modelJVM)
 
 lazy val bouncyCastleCrypto = cryptoPlugin("bouncycastle")
+  .settings(libraryDependencies ++= ProjectDeps.bouncyCastle)
   .dependsOn(testUtilsJVM % "test")
 
 lazy val libsodiumCrypto = cryptoPlugin("libsodium")
+  .settings(libraryDependencies ++= ProjectDeps.libSodiumJni)
 
 // Storage plugins
 lazy val storageParent = Project("storage-parent", file("storage") / "parent")
@@ -145,6 +155,8 @@ lazy val autowireApiJS = autowireApi.js
 lazy val server = project
   .settings(commonSettings)
   .settings(
+    name := "shadowcloud-server",
+    libraryDependencies ++= ProjectDeps.akka.streams ++ ProjectDeps.akka.http,
     scalaJsBundlerAssets in Compile += {
       import com.karasiq.scalajsbundler.dsl._
       Bundle("index", WebDeps.bootstrap, WebDeps.indexHtml, scalaJsApplication(webapp, fastOpt = true).value)
@@ -157,6 +169,12 @@ lazy val server = project
 
 lazy val webapp = (project in file("server") / "webapp")
   .settings(commonSettings)
+  .settings(
+    name := "shadowcloud-webapp",
+    persistLauncher in Compile := true,
+    ScalaJSDeps.bootstrap,
+    ScalaJSDeps.java8Time
+  )
   .dependsOn(autowireApiJS)
   .enablePlugins(ScalaJSPlugin)
 
@@ -165,6 +183,10 @@ lazy val webapp = (project in file("server") / "webapp")
 // -----------------------------------------------------------------------
 lazy val javafx = (project in file("javafx"))
   .settings(commonSettings)
+  .settings(
+    name := "shadowcloud-javafx-gui",
+    libraryDependencies ++= ProjectDeps.scalafx
+  )
   .dependsOn(core)
 
 lazy val shell = (project in file("."))

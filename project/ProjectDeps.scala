@@ -1,5 +1,4 @@
 import sbt._
-import sbt.Keys.libraryDependencies
 
 object ProjectDeps {
   type Deps = Seq[ModuleID]
@@ -31,13 +30,6 @@ object ProjectDeps {
 
     def all: Deps = {
       actors ++ streams ++ http ++ persistence // ++ testKit.map(_ % "test")
-    }
-
-    def provided: Def.Setting[Seq[ModuleID]] = {
-      libraryDependencies ++= Seq(
-        "com.typesafe.akka" %% "akka-actor" % version % "provided",
-        "com.typesafe.akka" %% "akka-stream" % version % "provided"
-      )
     }
   }
 
@@ -87,5 +79,9 @@ object ProjectDeps {
   // https://github.com/lz4/lz4-java
   def lz4: Deps = Seq(
     "org.lz4" % "lz4-java" % "1.4.0"
+  )
+
+  def scalafx: Deps = Seq(
+    "org.scalafx" %% "scalafx" % "8.0.102-R11"
   )
 }

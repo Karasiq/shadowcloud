@@ -5,6 +5,7 @@ import scala.concurrent.Future
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.api.ShadowCloudApi
 import com.karasiq.shadowcloud.index.{Folder, Path}
+import com.karasiq.shadowcloud.model.RegionId
 
 private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends ShadowCloudApi {
   import sc.implicits.executionContext

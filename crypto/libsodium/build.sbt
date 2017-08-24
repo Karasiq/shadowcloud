@@ -1,1 +1,0 @@
-libraryDependencies ++= ProjectDeps.libSodiumJni

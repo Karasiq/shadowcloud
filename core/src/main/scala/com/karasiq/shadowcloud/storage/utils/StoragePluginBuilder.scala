@@ -1,10 +1,10 @@
 package com.karasiq.shadowcloud.storage.utils
 
 import akka.actor.{ActorContext, ActorRef}
-import akka.util.ByteString
 
 import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, StorageDispatcher, StorageIndex}
 import com.karasiq.shadowcloud.index.Path
+import com.karasiq.shadowcloud.model.{ChunkId, RegionId, SequenceNr, StorageId}
 import com.karasiq.shadowcloud.storage.StorageHealthProvider
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository._
@@ -25,13 +25,13 @@ object StoragePluginBuilder {
   }
 }
 
-case class StoragePluginBuilder(storageId: String,
+case class StoragePluginBuilder(storageId: StorageId,
                                 props: StorageProps,
-                                index: Option[CategorizedRepository[String, Long]] = None,
-                                chunks: Option[CategorizedRepository[String, ByteString]] = None,
+                                index: Option[CategorizedRepository[RegionId, SequenceNr]] = None,
+                                chunks: Option[CategorizedRepository[RegionId, ChunkId]] = None,
                                 health: Option[StorageHealthProvider] = None) {
 
-  def withIndex(repository: CategorizedRepository[String, Long]): StoragePluginBuilder = {
+  def withIndex(repository: CategorizedRepository[RegionId, SequenceNr]): StoragePluginBuilder = {
     copy(index = Some(repository))
   }
 
@@ -45,7 +45,7 @@ case class StoragePluginBuilder(storageId: String,
     withIndexTree(pathTreeWrapper)
   }
 
-  def withChunks(repository: CategorizedRepository[String, ByteString]): StoragePluginBuilder = {
+  def withChunks(repository: CategorizedRepository[RegionId, ChunkId]): StoragePluginBuilder = {
     copy(chunks = Some(repository))
   }
 

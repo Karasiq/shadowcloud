@@ -6,6 +6,7 @@ import scala.language.postfixOps
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.index.utils.HasEmpty
+import com.karasiq.shadowcloud.model.{SequenceNr, StorageId}
 import com.karasiq.shadowcloud.storage.utils.internal.DefaultIndexMerger
 
 // TODO: UUID, time query
@@ -27,7 +28,7 @@ private[shadowcloud] trait IndexMerger[T] extends HasEmpty {
 }
 
 private[shadowcloud] object IndexMerger {
-  final case class RegionKey(timestamp: Long = 0L, storageId: String = "", sequenceNr: Long = 0L) {
+  final case class RegionKey(timestamp: Long = 0L, storageId: StorageId = "", sequenceNr: SequenceNr = 0L) {
     override def toString: String = {
       s"($storageId/$sequenceNr at $timestamp)"
     }
@@ -69,8 +70,8 @@ private[shadowcloud] object IndexMerger {
   /**
     * Sequential index merger
     */
-  def apply(): IndexMerger[Long] = {
-    new DefaultIndexMerger[Long](0L)
+  def apply(): IndexMerger[SequenceNr] = {
+    new DefaultIndexMerger[SequenceNr](SequenceNr.zero)
   }
 
   /**

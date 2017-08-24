@@ -8,6 +8,7 @@ import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.config.RegionConfig
+import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
 object Shell extends ImplicitConversions {
@@ -38,25 +39,25 @@ object Shell extends ImplicitConversions {
     sys.addShutdownHook(Await.result(actorSystem.terminate(), Duration.Inf))
   }
 
-  def openRegion(regionId: String): RegionContext = {
+  def openRegion(regionId: RegionId): RegionContext = {
     RegionContext(regionId)
   }
 
-  def createRegion(regionId: String): RegionContext = {
+  def createRegion(regionId: RegionId): RegionContext = {
     regionSupervisor ! RegionSupervisor.AddRegion(regionId, RegionConfig.forId(regionId, actorSystem.settings.config.getConfig("shadowcloud")))
     openRegion(regionId)
   }
 
-  def openStorage(storageId: String): StorageContext = {
+  def openStorage(storageId: StorageId): StorageContext = {
     StorageContext(storageId)
   }
 
-  def createStorage(storageId: String, props: StorageProps): StorageContext = {
+  def createStorage(storageId: StorageId, props: StorageProps): StorageContext = {
     regionSupervisor ! RegionSupervisor.AddStorage(storageId, props)
     openStorage(storageId)
   }
 
-  def createTempStorage(storageId: String): StorageContext = {
+  def createTempStorage(storageId: StorageId): StorageContext = {
     createStorage(storageId, StorageProps.fromDirectory(Files.createTempDirectory("sc-shell")))
   }
 
@@ -65,13 +66,13 @@ object Shell extends ImplicitConversions {
     val testStorage = openStorage("test")
 
     testStorage.sync("test")
-    Thread.sleep(5000)
+    // Thread.sleep(5000)
 
     println("Uploading file")
     val testFile = "LICENSE"
     testRegion.upload(testFile, testFile)
     testStorage.sync("test")
-    Thread.sleep(5000)
+    // Thread.sleep(5000)
 
     println("Downloading file")
     Files.deleteIfExists(testFile + "_remote")
@@ -80,7 +81,7 @@ object Shell extends ImplicitConversions {
     println("Deleting file")
     testRegion.deleteFile(testFile)
     testStorage.sync("test")
-    Thread.sleep(5000)
+    // Thread.sleep(5000)
 
     testRegion.collectGarbage(delete = true)
     testStorage.compactIndex(testRegion.regionId)

@@ -49,9 +49,13 @@ trait ConfigImplicits {
       math.min(config.getBytes(path), Int.MaxValue).toInt
     }
 
-    def getStringSet(path: String): Set[String] = {
+    def getStrings(path: String): Seq[String] = {
       import scala.collection.JavaConverters._
-      config.getStringList(path).asScala.toSet
+      config.getStringList(path).asScala
+    }
+
+    def getStringSet(path: String): Set[String] = {
+      getStrings(path).toSet
     }
 
     def getHexString(path: String): ByteString = {

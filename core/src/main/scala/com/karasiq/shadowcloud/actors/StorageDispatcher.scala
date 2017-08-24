@@ -18,6 +18,7 @@ import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.utils.AkkaStreamUtils
@@ -32,12 +33,12 @@ object StorageDispatcher {
   private case class WriteChunkToIndex(path: ChunkPath, chunk: Chunk) extends InternalMessage
 
   // Props
-  def props(storageId: String, storageProps: StorageProps, index: ActorRef, chunkIO: ActorRef, health: StorageHealthProvider): Props = {
+  def props(storageId: StorageId, storageProps: StorageProps, index: ActorRef, chunkIO: ActorRef, health: StorageHealthProvider): Props = {
     Props(new StorageDispatcher(storageId, storageProps, index, chunkIO, health))
   }
 }
 
-private final class StorageDispatcher(storageId: String, storageProps: StorageProps, index: ActorRef,
+private final class StorageDispatcher(storageId: StorageId, storageProps: StorageProps, index: ActorRef,
                                       chunkIO: ActorRef, healthProvider: StorageHealthProvider) extends Actor with ActorLogging {
   import StorageDispatcher._
 
@@ -61,7 +62,7 @@ private final class StorageDispatcher(storageId: String, storageProps: StoragePr
   // -----------------------------------------------------------------------
   private[this] val pendingIndexQueue = Source.queue[(ChunkPath, Chunk)](sc.config.queues.chunksIndex, OverflowStrategy.dropNew)
     .via(AkkaStreamUtils.groupedOrInstant(sc.config.queues.chunksIndex, sc.config.queues.chunksIndexTime))
-    .mapConcat(_.groupBy(_._1.region).map { case (regionId, chunks) ⇒
+    .mapConcat(_.groupBy(_._1.regionId).map { case (regionId, chunks) ⇒
       StorageIndex.Envelope(regionId, RegionIndex.WriteDiff(IndexDiff.newChunks(chunks.map(_._2):_*)))
     })
     .to(Sink.actorRef(index, NotUsed))

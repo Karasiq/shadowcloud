@@ -5,5 +5,5 @@ import scala.concurrent.Future
 import com.karasiq.shadowcloud.index.{Folder, Path}
 
 trait ShadowCloudApi {
-  def getFolder(regionId: String, path: Path): Future[Folder]
+  def getFolder(regionId: RegionId, path: Path): Future[Folder]
 }

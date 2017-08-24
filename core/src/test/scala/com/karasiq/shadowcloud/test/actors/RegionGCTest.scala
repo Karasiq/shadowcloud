@@ -42,8 +42,7 @@ class RegionGCTest extends SCExtensionSpec with FlatSpecLike {
     expectNoMsg(1 seconds)
     
     sc.ops.storage.writeIndex(testStorageId, testRegionId, IndexDiff.deleteChunks(chunk)).futureValue
-    sc.ops.storage.synchronize(testStorageId, testRegionId)
-    expectNoMsg(1 seconds)
+    sc.ops.storage.synchronize(testStorageId, testRegionId).futureValue
 
     whenReady(sc.ops.region.collectGarbage(testRegionId, delete = true), Timeout(10 seconds)) { gcReport ⇒
       gcReport.regionId shouldBe testRegionId

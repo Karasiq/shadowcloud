@@ -1,3 +1,5 @@
 package com.karasiq.shadowcloud.actors.messages
 
-case class RegionEnvelope(regionId: String, message: Any)
+import com.karasiq.shadowcloud.model.RegionId
+
+case class RegionEnvelope(regionId: RegionId, message: Any)

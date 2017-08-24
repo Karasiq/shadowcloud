@@ -11,28 +11,27 @@ import akka.util.Timeout
 
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.exceptions.StorageException
+import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 
 object StorageIndex {
-  private type LocalKey = (String, Long)
-
   // Messages
   sealed trait Message
-  case class OpenIndex(regionId: String) extends Message
-  case class CloseIndex(regionId: String) extends Message
+  case class OpenIndex(regionId: RegionId) extends Message
+  case class CloseIndex(regionId: RegionId) extends Message
   case object GetIndexes extends Message with MessageStatus[String, Map[String, IndexMerger.State[Long]]]
   case object SynchronizeAll extends Message
-  case class Envelope(regionId: String, message: RegionIndex.Message) extends Message
+  case class Envelope(regionId: RegionId, message: RegionIndex.Message) extends Message
 
   // Props
-  def props(storageId: String, storageProps: StorageProps, repository: CategorizedRepository[String, Long]): Props = {
+  def props(storageId: StorageId, storageProps: StorageProps, repository: CategorizedRepository[String, Long]): Props = {
     Props(new StorageIndex(storageId, storageProps, repository))
   }
 }
 
-private[actors] final class StorageIndex(storageId: String, storageProps: StorageProps, repository: CategorizedRepository[String, Long])
+private[actors] final class StorageIndex(storageId: StorageId, storageProps: StorageProps, repository: CategorizedRepository[String, Long])
   extends Actor with ActorLogging {
 
   import StorageIndex._
@@ -83,13 +82,13 @@ private[actors] final class StorageIndex(storageId: String, storageProps: Storag
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
-  private[this] def startRegionDispatcher(regionId: String): Unit = {
+  private[this] def startRegionDispatcher(regionId: RegionId): Unit = {
     if (subIndexes.contains(regionId)) return
     val newDispatcher = context.actorOf(RegionIndex.props(storageId, regionId, storageProps, repository.subRepository(regionId)))
     subIndexes += (regionId, newDispatcher)
   }
 
-  private[this] def stopRegionDispatcher(regionId: String): Unit = {
+  private[this] def stopRegionDispatcher(regionId: RegionId): Unit = {
     subIndexes.get(regionId).foreach(context.stop)
   }
 }

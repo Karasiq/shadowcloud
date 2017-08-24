@@ -10,6 +10,7 @@ import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, SerializedProps, 
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.utils.ProviderInstantiator
 
@@ -21,11 +22,11 @@ object CoreTestUtils extends TestImplicits {
   val sha1Hashing = modules.crypto.hashingModule(HashingMethod("SHA1"))
   val aesEncryption = modules.crypto.encryptionModule(EncryptionMethod("AES/GCM", 256))
 
-  def regionConfig(regionId: String): RegionConfig = {
+  def regionConfig(regionId: RegionId): RegionConfig = {
     RegionConfig.forId(regionId, config.rootConfig)
   }
 
-  def storageConfig(storageId: String): StorageConfig = {
+  def storageConfig(storageId: StorageId): StorageConfig = {
     StorageConfig.forId(storageId, config.rootConfig)
   }
 

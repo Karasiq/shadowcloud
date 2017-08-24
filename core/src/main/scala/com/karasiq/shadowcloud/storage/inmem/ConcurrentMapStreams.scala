@@ -8,9 +8,9 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
-import akka.util.ByteString
 
 import com.karasiq.shadowcloud.exceptions.StorageException
+import com.karasiq.shadowcloud.model.{ChunkId, RegionId}
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.utils.HexString
@@ -86,8 +86,8 @@ private[inmem] final class ConcurrentMapStreams[K, V](map: CMap[K, V], length: V
 
   private[this] def toPathString(key: K): String = {
     val keyString = key match {
-      case (region: String, hash: ByteString) ⇒
-        region + "/" + HexString.encode(hash)
+      case (regionId: RegionId, chunkId: ChunkId) ⇒
+        regionId + "/" + HexString.encode(chunkId)
 
       case _ ⇒
         key.toString

@@ -18,6 +18,7 @@ import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperations}
 import com.karasiq.shadowcloud.index.Chunk
+import com.karasiq.shadowcloud.model.{ChunkId, RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
@@ -26,10 +27,10 @@ import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.utils.{HexString, Utils}
 
 object ChunkIODispatcher {
-  case class ChunkPath(region: String, id: ByteString) {
+  case class ChunkPath(regionId: RegionId, chunkId: ChunkId) {
     override def toString: String = {
-      val sb = new StringBuilder(region.length + 1 + (id.length * 2))
-      (sb ++= region += '/' ++= HexString.encode(id)).result()
+      val sb = new StringBuilder(regionId.length + 1 + (chunkId.length * 2))
+      (sb ++= regionId += '/' ++= HexString.encode(chunkId)).result()
     }
   }
 
@@ -47,12 +48,12 @@ object ChunkIODispatcher {
   case object GetKeys extends Message with MessageStatus[NotUsed, Set[ChunkPath]]
 
   // Props
-  def props(storageId: String, storageProps: StorageProps, repository: CategorizedRepository[String, ByteString]): Props = {
+  def props(storageId: StorageId, storageProps: StorageProps, repository: CategorizedRepository[String, ByteString]): Props = {
     Props(new ChunkIODispatcher(storageId, storageProps, repository))
   }
 }
 
-private final class ChunkIODispatcher(storageId: String, storageProps: StorageProps,
+private final class ChunkIODispatcher(storageId: StorageId, storageProps: StorageProps,
                                       repository: CategorizedRepository[String, ByteString]) extends Actor with ActorLogging {
   import context.dispatcher
 
@@ -65,9 +66,9 @@ private final class ChunkIODispatcher(storageId: String, storageProps: StoragePr
   private[this] val writeQueue = Source
     .queue[(ChunkPath, Chunk, Promise[StorageIOResult])](sc.config.queues.storageWrite, OverflowStrategy.dropNew)
     .flatMapConcat { case (path, chunk, promise) ⇒
-      val repository = subRepository(path.region)
+      val repository = subRepository(path.regionId)
       Source.single(chunk.data.encrypted)
-        .alsoToMat(repository.write(path.id))(Keep.right)
+        .alsoToMat(repository.write(path.chunkId))(Keep.right)
         .completionTimeout(sc.config.timeouts.chunkWrite)
         .map(_ ⇒ NotUsed)
         .mapMaterializedValue { result ⇒
@@ -82,8 +83,8 @@ private final class ChunkIODispatcher(storageId: String, storageProps: StoragePr
   private[this] val readQueue = Source
     .queue[(ChunkPath, Chunk, Promise[(Chunk, StorageIOResult)])](sc.config.queues.storageRead, OverflowStrategy.dropNew)
     .flatMapConcat { case (path, chunk, promise) ⇒
-      val localRepository = subRepository(path.region)
-      val readSource = localRepository.read(path.id)
+      val localRepository = subRepository(path.regionId)
+      val readSource = localRepository.read(path.chunkId)
         .completionTimeout(sc.config.timeouts.chunkRead)
         .via(ByteStreams.limit(chunk.checksum.encSize))
         .via(ByteStreams.concat)
@@ -225,7 +226,7 @@ private final class ChunkIODispatcher(storageId: String, storageProps: StoragePr
   }
 
   private[this] def deleteChunks(paths: Set[ChunkPath]): Future[DeleteChunks.Status] = {
-    val byRegion = paths.groupBy(_.region).toVector.map { case (region, chunks) ⇒
+    val byRegion = paths.groupBy(_.regionId).toVector.map { case (region, chunks) ⇒
       val localRepository = subRepository(region)
       localRepository → chunks
     }
@@ -241,7 +242,7 @@ private final class ChunkIODispatcher(storageId: String, storageProps: StoragePr
     val (deleted, ioResult) = Source(byRegion)
       .flatMapConcat { case (repository, chunks) ⇒
         Source(chunks)
-          .alsoToMat(Flow[ChunkPath].map(_.id).toMat(repository.delete)(Keep.right))(Keep.right)
+          .alsoToMat(Flow[ChunkPath].map(_.chunkId).toMat(repository.delete)(Keep.right))(Keep.right)
           .mapMaterializedValue(matSink ! _)
       }
       .addAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))

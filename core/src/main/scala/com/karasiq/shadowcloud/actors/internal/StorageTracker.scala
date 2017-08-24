@@ -6,6 +6,7 @@ import scala.language.postfixOps
 import akka.actor.{ActorContext, ActorRef}
 
 import com.karasiq.shadowcloud.ShadowCloud
+import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider
@@ -33,14 +34,14 @@ private[actors] final class StorageTracker(implicit context: ActorContext) exten
     storagesByAR.contains(dispatcher)
   }
 
-  def contains(storageId: String): Boolean = {
+  def contains(storageId: StorageId): Boolean = {
     storagesById.contains(storageId)
   }
 
   // -----------------------------------------------------------------------
   // Register/unregister
   // -----------------------------------------------------------------------
-  def register(storageId: String, props: StorageProps, dispatcher: ActorRef, health: StorageHealth): Unit = {
+  def register(storageId: StorageId, props: StorageProps, dispatcher: ActorRef, health: StorageHealth): Unit = {
     context.watch(dispatcher)
     val storage = RegionStorage(storageId, props, sc.configs.storageConfig(storageId, props), dispatcher, health)
     storagesById += storageId → storage
@@ -63,7 +64,7 @@ private[actors] final class StorageTracker(implicit context: ActorContext) exten
     storagesById.values.toVector
   }
 
-  override def getStorage(storageId: String): RegionStorage = {
+  override def getStorage(storageId: StorageId): RegionStorage = {
     storagesById(storageId)
   }
 
@@ -71,14 +72,14 @@ private[actors] final class StorageTracker(implicit context: ActorContext) exten
     storagesByAR(dispatcher).id
   }
 
-  def getDispatcher(storageId: String): ActorRef = {
+  def getDispatcher(storageId: StorageId): ActorRef = {
     storagesById(storageId).dispatcher
   }
 
   // -----------------------------------------------------------------------
   // Update state
   // -----------------------------------------------------------------------
-  def update(storageId: String, health: StorageHealth): Unit = {
+  def update(storageId: StorageId, health: StorageHealth): Unit = {
     storagesById.get(storageId).foreach { storage ⇒
       val newStatus = storage.copy(health = health)
       storagesById += storageId → newStatus

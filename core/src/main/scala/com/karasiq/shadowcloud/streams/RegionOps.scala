@@ -15,6 +15,7 @@ import com.karasiq.shadowcloud.actors.RegionGC.GCReport
 import com.karasiq.shadowcloud.config.TimeoutsConfig
 import com.karasiq.shadowcloud.index.{Chunk, File, Folder, Path}
 import com.karasiq.shadowcloud.index.diffs.{FileVersions, FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.model.RegionId
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
@@ -31,51 +32,51 @@ final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(impl
   // -----------------------------------------------------------------------
   // Index
   // -----------------------------------------------------------------------
-  def getIndex(regionId: String): Future[IndexMerger.State[RegionKey]] = {
+  def getIndex(regionId: RegionId): Future[IndexMerger.State[RegionKey]] = {
     askRegion(regionId, RegionDispatcher.GetIndex, RegionDispatcher.GetIndex)
   }
 
-  def getFiles(regionId: String, path: Path): Future[Set[File]] = {
+  def getFiles(regionId: RegionId, path: Path): Future[Set[File]] = {
     askRegion(regionId, RegionDispatcher.GetFiles, RegionDispatcher.GetFiles(path))
   }
 
-  def getFolder(regionId: String, path: Path): Future[Folder] = {
+  def getFolder(regionId: RegionId, path: Path): Future[Folder] = {
     askRegion(regionId, RegionDispatcher.GetFolder, RegionDispatcher.GetFolder(path))
   }
 
-  def writeIndex(regionId: String, diff: FolderIndexDiff): Future[IndexDiff] = {
+  def writeIndex(regionId: RegionId, diff: FolderIndexDiff): Future[IndexDiff] = {
     askRegion(regionId, WriteIndex, WriteIndex(diff))
   }
 
-  def createFolder(regionId: String, path: Path): Future[IndexDiff] = {
+  def createFolder(regionId: RegionId, path: Path): Future[IndexDiff] = {
     writeIndex(regionId, FolderIndexDiff.create(Folder.create(path)))
   }
 
-  def deleteFiles(regionId: String, files: File*): Future[IndexDiff] = {
+  def deleteFiles(regionId: RegionId, files: File*): Future[IndexDiff] = {
     writeIndex(regionId, FolderIndexDiff.deleteFiles(files: _*))
   }
 
-  def deleteFiles(regionId: String, path: Path): Future[Set[File]] = {
+  def deleteFiles(regionId: RegionId, path: Path): Future[Set[File]] = {
     getFiles(regionId, path).flatMap { files ⇒
       writeIndex(regionId, FolderIndexDiff.deleteFiles(files.toSeq: _*)).map(_ ⇒ files)
     }
   }
 
-  def deleteFolder(regionId: String, path: Path): Future[Folder] = {
+  def deleteFolder(regionId: RegionId, path: Path): Future[Folder] = {
     getFolder(regionId, path).flatMap { folder ⇒
       writeIndex(regionId, FolderIndexDiff.deleteFolderPaths(folder.path)).map(_ ⇒ folder)
     }
   }
 
-  def synchronize(regionId: String): Unit = {
+  def synchronize(regionId: RegionId): Unit = {
     regionSupervisor ! RegionEnvelope(regionId, RegionDispatcher.Synchronize)
   }
 
-  def getChunkStatus(regionId: String, chunk: Chunk): Future[ChunkStatus] = {
+  def getChunkStatus(regionId: RegionId, chunk: Chunk): Future[ChunkStatus] = {
     askRegion(regionId, GetChunkStatus, GetChunkStatus(chunk))
   }
 
-  def createFile(regionId: String, newFile: File): Future[File] = {
+  def createFile(regionId: RegionId, newFile: File): Future[File] = {
     val filesWithSamePath = getFiles(regionId, newFile.path)
       .recover { case _ ⇒ Set.empty[File] }
 
@@ -106,36 +107,36 @@ final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(impl
   // -----------------------------------------------------------------------
   // Chunk IO
   // -----------------------------------------------------------------------
-  def writeChunk(regionId: String, chunk: Chunk): Future[Chunk] = {
+  def writeChunk(regionId: RegionId, chunk: Chunk): Future[Chunk] = {
     askRegion(regionId, WriteChunk, WriteChunk(chunk))(timeouts.regionChunkWrite)
   }
 
-  def readChunk(regionId: String, chunk: Chunk): Future[Chunk] = {
+  def readChunk(regionId: RegionId, chunk: Chunk): Future[Chunk] = {
     askRegion(regionId, ReadChunk, ReadChunk(chunk))(timeouts.regionChunkRead)
   }
 
-  def rewriteChunk(regionId: String, chunk: Chunk, newAffinity: Option[ChunkWriteAffinity]): Future[Chunk] = {
+  def rewriteChunk(regionId: RegionId, chunk: Chunk, newAffinity: Option[ChunkWriteAffinity]): Future[Chunk] = {
     askRegion(regionId, WriteChunk, RewriteChunk(chunk, newAffinity))
   }
 
   // -----------------------------------------------------------------------
   // Storages
   // -----------------------------------------------------------------------
-  def getStorages(regionId: String): Future[Seq[RegionStorage]] = {
+  def getStorages(regionId: RegionId): Future[Seq[RegionStorage]] = {
     askRegion(regionId, RegionDispatcher.GetStorages, RegionDispatcher.GetStorages)
   }
 
   // -----------------------------------------------------------------------
   // Region GC
   // -----------------------------------------------------------------------
-  def collectGarbage(regionId: String, delete: Boolean = false): Future[GCReport] = {
+  def collectGarbage(regionId: RegionId, delete: Boolean = false): Future[GCReport] = {
     askRegion(regionId, RegionGC.CollectGarbage, RegionGC.CollectGarbage(Some(delete)))
   }
 
   // -----------------------------------------------------------------------
   // Utils
   // -----------------------------------------------------------------------
-  private[this] def askRegion[V](regionId: String, status: MessageStatus[_, V], message: Any)
+  private[this] def askRegion[V](regionId: RegionId, status: MessageStatus[_, V], message: Any)
                                 (implicit timeout: Timeout = timeouts.query): Future[V] = {
     status.unwrapFuture(regionSupervisor ? RegionEnvelope(regionId, message))
   }

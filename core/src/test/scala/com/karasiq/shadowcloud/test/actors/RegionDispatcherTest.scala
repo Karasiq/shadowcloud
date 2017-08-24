@@ -203,8 +203,8 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
 
     // Compact
     storage ! StorageIndex.Envelope("testRegion", RegionIndex.Compact)
-    storage ! StorageIndex.Envelope("testRegion", RegionIndex.Synchronize)
-    expectNoMsg(3 second)
+    (storage ? StorageIndex.Envelope("testRegion", RegionIndex.Synchronize)).futureValue
+    expectNoMsg(1 second)
 
     // Verify
     storage ! StorageIndex.GetIndexes

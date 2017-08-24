@@ -7,6 +7,7 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 
+import com.karasiq.shadowcloud.model.{ChunkId, SequenceNr}
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.repository.wrappers.{RepositoryKeyMapper, RepositoryWrapper, SubRepositoriesWrapper}
 import com.karasiq.shadowcloud.utils.{ByteStringEncoding, HexString}
@@ -39,12 +40,12 @@ object Repository {
       key ⇒ key.copy(_2 = toOld(key._2))) with CategorizedRepository[CatKey, NewKey]
   }
 
-  def forChunks(repository: CategorizedRepository[String, String],
-                encoding: ByteStringEncoding = HexString): CategorizedRepository[String, ByteString] = {
+  def forChunks[CatKey](repository: CategorizedRepository[CatKey, String],
+                        encoding: ByteStringEncoding = HexString): CategorizedRepository[CatKey, ChunkId] = {
     mapItemKeys(repository, encoding.decode, encoding.encode)
   }
 
-  def forIndex[CatKey](repository: CategorizedRepository[CatKey, String]): CategorizedRepository[CatKey, Long] = {
+  def forIndex[CatKey](repository: CategorizedRepository[CatKey, String]): CategorizedRepository[CatKey, SequenceNr] = {
     mapItemKeys[CatKey, String, Long](repository, _.toLong, _.toString)
   }
 

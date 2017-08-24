@@ -25,6 +25,7 @@ import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.model.{RegionId, SequenceNr, StorageId}
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
@@ -37,9 +38,9 @@ import com.karasiq.shadowcloud.utils.{AkkaStreamUtils, Utils}
 object RegionDispatcher {
   // Messages
   sealed trait Message
-  case class AttachStorage(storageId: String, storageProps: StorageProps,
+  case class AttachStorage(storageId: StorageId, storageProps: StorageProps,
                            dispatcher: ActorRef, health: StorageHealth = StorageHealth.empty) extends Message
-  case class DetachStorage(storageId: String) extends Message
+  case class DetachStorage(storageId: StorageId) extends Message
   case object GetStorages extends Message with MessageStatus[String, Seq[RegionStorage]]
   case class GetChunkStatus(chunk: Chunk) extends Message
   object GetChunkStatus extends MessageStatus[Chunk, ChunkStatus]
@@ -61,26 +62,26 @@ object RegionDispatcher {
 
   // Internal messages
   private[actors] sealed trait InternalMessage extends Message with PossiblyHarmful
-  private[actors] case class PushDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)], pending: IndexDiff) extends InternalMessage
-  private[actors] case class PullStorageIndex(storageId: String) extends InternalMessage
+  private[actors] case class PushDiffs(storageId: StorageId, diffs: Seq[(Long, IndexDiff)], pending: IndexDiff) extends InternalMessage
+  private[actors] case class PullStorageIndex(storageId: StorageId) extends InternalMessage
 
   private[actors] case class ChunkReadSuccess(storageId: Option[String], chunk: Chunk) extends InternalMessage
   private[actors] case class ChunkReadFailed(storageId: Option[String], chunk: Chunk, error: Throwable) extends InternalMessage
-  private[actors] case class ChunkWriteSuccess(storageId: String, chunk: Chunk) extends InternalMessage
-  private[actors] case class ChunkWriteFailed(storageId: String, chunk: Chunk, error: Throwable) extends InternalMessage
+  private[actors] case class ChunkWriteSuccess(storageId: StorageId, chunk: Chunk) extends InternalMessage
+  private[actors] case class ChunkWriteFailed(storageId: StorageId, chunk: Chunk, error: Throwable) extends InternalMessage
 
   private[actors] case class EnqueueIndexDiff(diff: IndexDiff) extends InternalMessage
   private[actors] case class MarkAsPending(diff: IndexDiff) extends InternalMessage
   private[actors] case class WriteIndexDiff(diff: IndexDiff) extends InternalMessage
 
   // Props
-  def props(regionId: String, regionProps: RegionConfig): Props = {
+  def props(regionId: RegionId, regionProps: RegionConfig): Props = {
     Props(new RegionDispatcher(regionId, regionProps))
   }
 }
 
 //noinspection TypeAnnotation
-private final class RegionDispatcher(regionId: String, regionConfig: RegionConfig) extends Actor with ActorLogging {
+private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionConfig) extends Actor with ActorLogging {
   import RegionDispatcher._
   require(regionId.nonEmpty, "Invalid region identifier")
 
@@ -341,7 +342,7 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
   // -----------------------------------------------------------------------
   // Utils
   // -----------------------------------------------------------------------
-  private[this] def addStorageDiffs(storageId: String, diffs: Seq[(Long, IndexDiff)]): Unit = {
+  private[this] def addStorageDiffs(storageId: StorageId, diffs: Seq[(Long, IndexDiff)]): Unit = {
     // dropStorageDiffs(storageId, diffs.map(_._1).toSet)
     val dispatcher = storages.getDispatcher(storageId)
     diffs.foreach { case (sequenceNr, diff) ⇒
@@ -354,11 +355,11 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
   }
 
   @inline
-  private[this] def addStorageDiff(storageId: String, sequenceNr: Long, diff: IndexDiff) = {
+  private[this] def addStorageDiff(storageId: StorageId, sequenceNr: SequenceNr, diff: IndexDiff) = {
     addStorageDiffs(storageId, Seq((sequenceNr, diff)))
   }
 
-  private[this] def dropStorageDiffs(storageId: String, sequenceNrs: Set[Long]): Unit = {
+  private[this] def dropStorageDiffs(storageId: StorageId, sequenceNrs: Set[Long]): Unit = {
     val preDel = globalIndex.chunks
     val regionKeys = globalIndex.diffs.keys
       .filter(rk ⇒ rk.storageId == storageId && sequenceNrs.contains(rk.sequenceNr))
@@ -370,7 +371,7 @@ private final class RegionDispatcher(regionId: String, regionConfig: RegionConfi
     sc.eventStreams.publishRegionEvent(regionId, RegionEvents.IndexDeleted(regionKeys))
   }
 
-  private[this] def dropStorageDiffs(storageId: String): Unit = {
+  private[this] def dropStorageDiffs(storageId: StorageId): Unit = {
     globalIndex.delete(globalIndex.diffs.keys.filter(_.storageId == storageId).toSet)
   }
 

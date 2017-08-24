@@ -16,7 +16,7 @@ object AjaxApi extends ShadowCloudApi with FileApi {
   private[this] val apiClient = clientFactory[ShadowCloudApi]
   private[this] implicit val ec: ExecutionContext = scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
-  def getFolder(regionId: String, path: Path): Future[Folder] = {
+  def getFolder(regionId: RegionId, path: Path): Future[Folder] = {
     apiClient.getFolder(regionId, path).call()
   }
 }

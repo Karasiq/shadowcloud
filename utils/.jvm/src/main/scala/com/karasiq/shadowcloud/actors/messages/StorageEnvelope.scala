@@ -1,3 +1,5 @@
 package com.karasiq.shadowcloud.actors.messages
 
-case class StorageEnvelope(storageId: String, message: Any)
+import com.karasiq.shadowcloud.model.StorageId
+
+case class StorageEnvelope(storageId: StorageId, message: Any)

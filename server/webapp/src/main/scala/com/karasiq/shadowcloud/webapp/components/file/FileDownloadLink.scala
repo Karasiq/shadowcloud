@@ -9,12 +9,12 @@ import com.karasiq.shadowcloud.index.File
 import com.karasiq.shadowcloud.webapp.api.AjaxApi
 
 object FileDownloadLink { // TODO: Download by UUID
-  def apply(regionId: String, file: File): FileDownloadLink = {
+  def apply(regionId: RegionId, file: File): FileDownloadLink = {
     new FileDownloadLink(regionId, file)
   }
 }
 
-final class FileDownloadLink(regionId: String, file: File) extends BootstrapHtmlComponent {
+final class FileDownloadLink(regionId: RegionId, file: File) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
     a(
       href := AjaxApi.downloadFileUrl(regionId, file.path),

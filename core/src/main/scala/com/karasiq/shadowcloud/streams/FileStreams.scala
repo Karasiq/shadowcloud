@@ -10,6 +10,7 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.index.{Chunk, File, Path}
 import com.karasiq.shadowcloud.index.diffs.FileVersions
+import com.karasiq.shadowcloud.model.RegionId
 
 object FileStreams {
   def apply(regionStreams: RegionStreams, chunkProcessing: ChunkProcessingStreams)(implicit m: Materializer): FileStreams = {
@@ -18,7 +19,7 @@ object FileStreams {
 }
 
 final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProcessingStreams) {
-  def readChunkStream(regionId: String, chunks: Seq[Chunk]): Source[ByteString, NotUsed] = {
+  def readChunkStream(regionId: RegionId, chunks: Seq[Chunk]): Source[ByteString, NotUsed] = {
     Source(chunks.toVector)
       .map((regionId, _))
       .via(regionStreams.readChunks)
@@ -27,22 +28,22 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
       .map(_.data.plain)
   }
 
-  def read(regionId: String, file: File): Source[ByteString, NotUsed] = { // TODO: Byte ranges
+  def read(regionId: RegionId, file: File): Source[ByteString, NotUsed] = { // TODO: Byte ranges
     readChunkStream(regionId, file.chunks)
   }
 
-  def readBy(regionId: String, path: Path, select: Set[File] ⇒ File): Source[ByteString, NotUsed] = {
+  def readBy(regionId: RegionId, path: Path, select: Set[File] ⇒ File): Source[ByteString, NotUsed] = {
     Source.single((regionId, path))
       .via(regionStreams.findFiles)
       .map(e ⇒ select(e._2))
       .flatMapConcat(read(regionId, _))
   }
 
-  def readMostRecent(regionId: String, path: Path): Source[ByteString, NotUsed] = {
+  def readMostRecent(regionId: RegionId, path: Path): Source[ByteString, NotUsed] = {
     readBy(regionId, path, FileVersions.mostRecent)
   }
 
-  def writeChunkStream(regionId: String): Flow[ByteString, FileIndexer.Result, NotUsed] = {
+  def writeChunkStream(regionId: RegionId): Flow[ByteString, FileIndexer.Result, NotUsed] = {
     val matSink = Flow.fromGraph(chunkProcessing.split()) // TODO: Chunk size config
       .via(chunkProcessing.beforeWrite())
       .map((regionId, _))
@@ -63,7 +64,7 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
       .named("writeChunkStream")
   }
 
-  def write(regionId: String, path: Path): Flow[ByteString, File, NotUsed] = {
+  def write(regionId: RegionId, path: Path): Flow[ByteString, File, NotUsed] = {
     writeChunkStream(regionId)
       .map((regionId, path, _))
       .via(regionStreams.createFile)

@@ -16,13 +16,14 @@ import com.karasiq.shadowcloud.actors.internal.ChunksTracker.ChunkReadStatus
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
+import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.replication.{ChunkAvailability, ChunkStatusProvider, ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.{ChunkStatus, WriteStatus}
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.utils.Utils
 
 private[actors] object ChunksTracker {
-  def apply(regionId: String, config: RegionConfig, storages: StorageTracker,
+  def apply(regionId: RegionId, config: RegionConfig, storages: StorageTracker,
             log: LoggingAdapter)(implicit context: ActorContext): ChunksTracker = {
     new ChunksTracker(regionId, config, storages, log)
   }
@@ -30,7 +31,7 @@ private[actors] object ChunksTracker {
   case class ChunkReadStatus(reading: Set[String], waiting: Set[ActorRef])
 }
 
-private[actors] final class ChunksTracker(regionId: String, config: RegionConfig, storages: StorageTracker,
+private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConfig, storages: StorageTracker,
                                           log: LoggingAdapter)(implicit context: ActorContext) extends ChunkStatusProvider {
   import context.dispatcher
 
@@ -73,7 +74,7 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
         .pipeTo(context.self)
     }
 
-    def addReader(chunk: Chunk, storageId: String): Unit = {
+    def addReader(chunk: Chunk, storageId: StorageId): Unit = {
       val status = readingChunks.getOrElse(chunk, ChunkReadStatus(Set.empty, Set.empty))
       readingChunks += chunk → status.copy(reading = status.reading + storageId)
     }
@@ -292,11 +293,11 @@ private[actors] final class ChunksTracker(regionId: String, config: RegionConfig
     }
   }
 
-  def onWriteSuccess(chunk: Chunk, storageId: String): Unit = {
+  def onWriteSuccess(chunk: Chunk, storageId: StorageId): Unit = {
     registerChunk(storages.getDispatcher(storageId), chunk)
   }
 
-  def onWriteFailure(chunk: Chunk, storageId: String, error: Throwable): Unit = {
+  def onWriteFailure(chunk: Chunk, storageId: StorageId, error: Throwable): Unit = {
     unregisterChunk(storages.getDispatcher(storageId), chunk)
     getChunkStatus(chunk).foreach(markAsWriteFailed(_, storageId))
   }

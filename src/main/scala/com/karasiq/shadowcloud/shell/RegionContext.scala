@@ -12,14 +12,15 @@ import akka.stream.scaladsl.{FileIO, Sink}
 import com.karasiq.shadowcloud.actors.RegionGC.GCReport
 import com.karasiq.shadowcloud.index.{File, Folder, Path}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.model.RegionId
 
 private[shell] object RegionContext {
-  def apply(region: String)(implicit context: ShellContext): RegionContext = {
-    new RegionContext(region)
+  def apply(regionId: RegionId)(implicit context: ShellContext): RegionContext = {
+    new RegionContext(regionId)
   }
 }
 
-private[shell] final class RegionContext(val regionId: String)(implicit context: ShellContext) {
+private[shell] final class RegionContext(val regionId: RegionId)(implicit context: ShellContext) {
   import context._
   import sc.ops.supervisor
 

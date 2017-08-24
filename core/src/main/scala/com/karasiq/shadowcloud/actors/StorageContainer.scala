@@ -9,6 +9,7 @@ import com.karasiq.shadowcloud.actors.utils.ContainerActor
 import com.karasiq.shadowcloud.actors.StorageContainer.SetProps
 import com.karasiq.shadowcloud.actors.internal.StorageInstantiator
 import com.karasiq.shadowcloud.actors.RegionSupervisor.RenewStorageSubscriptions
+import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.utils.Utils
 
@@ -16,12 +17,12 @@ private[actors] object StorageContainer {
   sealed trait Message
   case class SetProps(storageProps: StorageProps) extends Message
 
-  def props(instantiator: StorageInstantiator, storageId: String): Props = {
+  def props(instantiator: StorageInstantiator, storageId: StorageId): Props = {
     Props(new StorageContainer(instantiator, storageId))
   }
 }
 
-private[actors] final class StorageContainer(instantiator: StorageInstantiator, storageId: String)
+private[actors] final class StorageContainer(instantiator: StorageInstantiator, storageId: StorageId)
   extends Actor with ActorLogging with Stash with ContainerActor {
 
   private[this] val sc = ShadowCloud()

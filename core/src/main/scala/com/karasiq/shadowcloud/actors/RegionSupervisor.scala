@@ -14,25 +14,26 @@ import com.karasiq.shadowcloud.actors.internal.RegionTracker
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.{ActorState, MessageStatus}
 import com.karasiq.shadowcloud.config.RegionConfig
+import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
 object RegionSupervisor {
   // Messages
   sealed trait Message
-  case class AddRegion(regionId: String, regionConfig: RegionConfig) extends Message
-  case class DeleteRegion(regionId: String) extends Message
-  case class AddStorage(storageId: String, props: StorageProps) extends Message
-  case class DeleteStorage(storageId: String) extends Message
-  case class RegisterStorage(regionId: String, storageId: String) extends Message
-  case class UnregisterStorage(regionId: String, storageId: String) extends Message
-  case class SuspendStorage(storageId: String) extends Message
-  case class SuspendRegion(regionId: String) extends Message
-  case class ResumeStorage(storageId: String) extends Message
-  case class ResumeRegion(regionId: String) extends Message
+  case class AddRegion(regionId: RegionId, regionConfig: RegionConfig) extends Message
+  case class DeleteRegion(regionId: RegionId) extends Message
+  case class AddStorage(storageId: StorageId, props: StorageProps) extends Message
+  case class DeleteStorage(storageId: StorageId) extends Message
+  case class RegisterStorage(regionId: RegionId, storageId: StorageId) extends Message
+  case class UnregisterStorage(regionId: RegionId, storageId: StorageId) extends Message
+  case class SuspendStorage(storageId: StorageId) extends Message
+  case class SuspendRegion(regionId: RegionId) extends Message
+  case class ResumeStorage(storageId: StorageId) extends Message
+  case class ResumeRegion(regionId: RegionId) extends Message
   case object GetSnapshot extends Message with MessageStatus[NotUsed, RegionTracker.Snapshot]
 
-  private[actors] case class RenewRegionSubscriptions(regionId: String) extends Message
-  private[actors] case class RenewStorageSubscriptions(storageId: String) extends Message
+  private[actors] case class RenewRegionSubscriptions(regionId: RegionId) extends Message
+  private[actors] case class RenewStorageSubscriptions(storageId: StorageId) extends Message
 
   // Snapshot
   private[actors] case class RegionSnapshot(config: RegionConfig, storages: Set[String], active: Boolean)

@@ -1,13 +1,14 @@
 package com.karasiq.shadowcloud.storage.replication
 
 import com.karasiq.shadowcloud.index.utils.HasEmpty
+import com.karasiq.shadowcloud.model.StorageId
 
 case class ChunkAvailability(hasChunk: Set[String] = Set.empty,
                              writingChunk: Set[String] = Set.empty,
                              writeFailed: Set[String] = Set.empty,
                              readFailed: Set[String] = Set.empty) extends HasEmpty {
 
-  def contains(storageId: String): Boolean = {
+  def contains(storageId: StorageId): Boolean = {
     hasChunk.contains(storageId) || writingChunk.contains(storageId) ||
       writeFailed.contains(storageId) || readFailed.contains(storageId)
   }
@@ -16,15 +17,15 @@ case class ChunkAvailability(hasChunk: Set[String] = Set.empty,
     hasChunk.isEmpty && writingChunk.isEmpty
   }
 
-  def isWritten(storageId: String): Boolean = {
+  def isWritten(storageId: StorageId): Boolean = {
     hasChunk.contains(storageId)
   }
 
-  def isWriting(storageId: String): Boolean = {
+  def isWriting(storageId: StorageId): Boolean = {
     hasChunk.contains(storageId) || writingChunk.contains(storageId)
   }
 
-  def isFailed(storageId: String): Boolean = {
+  def isFailed(storageId: StorageId): Boolean = {
     writeFailed.contains(storageId) || readFailed.contains(storageId)
   }
 
@@ -44,7 +45,7 @@ case class ChunkAvailability(hasChunk: Set[String] = Set.empty,
     copy(readFailed = readFailed ++ storageIds)
   }
 
-  def -(storageId: String): ChunkAvailability = {
+  def -(storageId: StorageId): ChunkAvailability = {
     copy(hasChunk - storageId, writingChunk - storageId, writeFailed - storageId)
   }
 }

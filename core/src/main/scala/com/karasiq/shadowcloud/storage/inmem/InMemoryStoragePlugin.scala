@@ -7,13 +7,14 @@ import akka.actor.{ActorContext, ActorRef}
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.index.Path
+import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
 import com.karasiq.shadowcloud.storage.utils.StoragePluginBuilder
 
 private[storage] final class InMemoryStoragePlugin extends StoragePlugin {
-  def createStorage(storageId: String, props: StorageProps)(implicit context: ActorContext): ActorRef = {
+  def createStorage(storageId: StorageId, props: StorageProps)(implicit context: ActorContext): ActorRef = {
     val indexMap = TrieMap.empty[Path, ByteString]
     val chunkMap = TrieMap.empty[Path, ByteString]
 

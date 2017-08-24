@@ -21,6 +21,7 @@ import com.karasiq.shadowcloud.config.{GCConfig, StorageConfig}
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.metadata.MetadataUtils
+import com.karasiq.shadowcloud.model.RegionId
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}
@@ -29,7 +30,7 @@ import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
 
 object RegionGC {
   // Types
-  case class GCReport(regionId: String, regionState: RegionGCState, storageStates: Map[String, StorageGCState])
+  case class GCReport(regionId: RegionId, regionState: RegionGCState, storageStates: Map[String, StorageGCState])
 
   // Messages
   sealed trait Message
@@ -42,12 +43,12 @@ object RegionGC {
   private case class DeleteGarbage(regionState: RegionGCState, storageStates: Seq[(RegionStorage, StorageGCState)]) extends InternalMessage
 
   // Props
-  private[actors] def props(regionId: String, config: GCConfig): Props = {
+  private[actors] def props(regionId: RegionId, config: GCConfig): Props = {
     Props(new RegionGC(regionId, config))
   }
 }
 
-private[actors] final class RegionGC(regionId: String, config: GCConfig) extends Actor with ActorLogging {
+private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) extends Actor with ActorLogging {
   import context.dispatcher
 
   import RegionGC._
@@ -155,8 +156,8 @@ private[actors] final class RegionGC(regionId: String, config: GCConfig) extends
     def createStorageState(index: IndexMerger[_], storage: RegionStorage): Future[(RegionStorage, StorageGCState)] = {
       sc.ops.storage.getChunkKeys(storage.id).map { storageKeys ⇒
         val relevantKeys = storageKeys
-          .filter(_.region == regionId)
-          .map(_.id)
+          .filter(_.regionId == regionId)
+          .map(_.chunkId)
         (storage, gcUtil.checkStorage(index, storage.config, relevantKeys))
       }
     }
@@ -210,7 +211,7 @@ private[actors] final class RegionGC(regionId: String, config: GCConfig) extends
 
       Future.foldLeft(futures.toVector)((Set.empty[ByteString], StorageIOResult.empty)) {
         case ((deleted, result), (deleted1, result1)) ⇒
-          (deleted ++ deleted1.map(_.id), StorageUtils.foldIOResultsIgnoreErrors(result, result1))
+          (deleted ++ deleted1.map(_.chunkId), StorageUtils.foldIOResultsIgnoreErrors(result, result1))
       }
     }
 

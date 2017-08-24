@@ -11,13 +11,14 @@ import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.{RegionContainer, RegionDispatcher, StorageContainer, StorageIndex}
 import com.karasiq.shadowcloud.actors.utils.{ActorState ⇒ State}
 import com.karasiq.shadowcloud.config.RegionConfig
+import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.utils.Utils
 
 object RegionTracker {
-  case class RegionStatus(regionId: String, regionConfig: RegionConfig, actorState: State, storages: Set[String] = Set.empty)
-  case class StorageStatus(storageId: String, props: StorageProps, actorState: State, regions: Set[String] = Set.empty)
+  case class RegionStatus(regionId: RegionId, regionConfig: RegionConfig, actorState: State, storages: Set[String] = Set.empty)
+  case class StorageStatus(storageId: StorageId, props: StorageProps, actorState: State, regions: Set[String] = Set.empty)
 
   case class Snapshot(regions: Map[String, RegionStatus], storages: Map[String, StorageStatus])
 
@@ -40,26 +41,26 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   // -----------------------------------------------------------------------
   // Contains
   // -----------------------------------------------------------------------
-  def containsRegion(regionId: String): Boolean = {
+  def containsRegion(regionId: RegionId): Boolean = {
     regions.contains(regionId)
   }
 
-  def containsStorage(storageId: String): Boolean = {
+  def containsStorage(storageId: StorageId): Boolean = {
     storages.contains(storageId)
   }
 
-  def containsRegionAndStorage(regionId: String, storageId: String): Boolean = {
+  def containsRegionAndStorage(regionId: RegionId, storageId: StorageId): Boolean = {
     containsRegion(regionId) && containsStorage(storageId)
   }
 
   // -----------------------------------------------------------------------
   // Get
   // -----------------------------------------------------------------------
-  def getStorage(storageId: String): StorageStatus = {
+  def getStorage(storageId: StorageId): StorageStatus = {
     storages(storageId)
   }
 
-  def getRegion(regionId: String): RegionStatus = {
+  def getRegion(regionId: RegionId): RegionStatus = {
     regions(regionId)
   }
 
@@ -70,7 +71,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   // -----------------------------------------------------------------------
   // Add
   // -----------------------------------------------------------------------
-  def addRegion(regionId: String, config: RegionConfig): Unit = {
+  def addRegion(regionId: RegionId, config: RegionConfig): Unit = {
     val state = regions.get(regionId)
       .map(_.actorState)
       .getOrElse(State.Suspended)
@@ -79,7 +80,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     regions += regionId → RegionStatus(regionId, config, state)
   }
 
-  def addStorage(storageId: String, props: StorageProps): Unit = {
+  def addStorage(storageId: StorageId, props: StorageProps): Unit = {
     val state = storages.get(storageId)
       .map(_.actorState)
       .getOrElse(State.Suspended)
@@ -91,7 +92,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
-  def suspendStorage(storageId: String): Unit = {
+  def suspendStorage(storageId: StorageId): Unit = {
     storages.get(storageId) match {
       case Some(storage @ StorageStatus(`storageId`, _, State.Active(dispatcher), regions)) ⇒
         regions.flatMap(this.regions.get)
@@ -104,7 +105,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     }
   }
 
-  def suspendRegion(regionId: String): Unit = {
+  def suspendRegion(regionId: RegionId): Unit = {
     regions.get(regionId) match {
       case Some(region @ RegionStatus(`regionId`, _, State.Active(dispatcher), storages)) ⇒
         storages.flatMap(this.storages.get)
@@ -117,7 +118,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     }
   }
 
-  def resumeStorage(storageId: String): Unit = {
+  def resumeStorage(storageId: StorageId): Unit = {
     storages.get(storageId) match {
       case Some(StorageStatus(`storageId`, props, State.Suspended, regions)) ⇒
         val dispatcherProps = StorageContainer.props(instantiator, storageId)
@@ -132,7 +133,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     }
   }
 
-  def resumeRegion(regionId: String): Unit = {
+  def resumeRegion(regionId: RegionId): Unit = {
     regions.get(regionId) match {
       case Some(RegionStatus(`regionId`, config, State.Suspended, storages)) ⇒
         val dispatcherProps = RegionContainer.props(regionId)
@@ -150,7 +151,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   // -----------------------------------------------------------------------
   // Delete
   // -----------------------------------------------------------------------
-  def deleteRegion(regionId: String): RegionStatus = {
+  def deleteRegion(regionId: RegionId): RegionStatus = {
     require(containsRegion(regionId))
     storages.foreach { case (storageId, storage) ⇒
       if (storage.regions.contains(regionId))
@@ -161,7 +162,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     status
   }
 
-  def deleteStorage(storageId: String): StorageStatus = {
+  def deleteStorage(storageId: StorageId): StorageStatus = {
     require(containsStorage(storageId))
     regions.foreach { case (regionId, region) ⇒
       if (region.storages.contains(storageId)) {
@@ -184,7 +185,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   // -----------------------------------------------------------------------
   // Register/unregister
   // -----------------------------------------------------------------------
-  def registerStorage(regionId: String, storageId: String): Unit = {
+  def registerStorage(regionId: RegionId, storageId: StorageId): Unit = {
     require(containsRegionAndStorage(regionId, storageId))
     val region = regions(regionId)
     val storage = storages(storageId)
@@ -201,7 +202,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     }
   }
 
-  def unregisterStorage(regionId: String, storageId: String): Unit = {
+  def unregisterStorage(regionId: RegionId, storageId: StorageId): Unit = {
     require(containsRegionAndStorage(regionId, storageId))
     val region = regions(regionId)
     val storage = storages(storageId)
@@ -211,7 +212,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     State.ifActive(storage.actorState, _ ! StorageIndex.CloseIndex(regionId))
   }
 
-  def registerRegionStorages(regionId: String): Unit = {
+  def registerRegionStorages(regionId: RegionId): Unit = {
     regions.get(regionId) match {
       case Some(region) ⇒
         region.storages.foreach(registerStorage(regionId, _))
@@ -221,7 +222,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     }
   }
 
-  def registerStorageRegions(storageId: String): Unit = {
+  def registerStorageRegions(storageId: StorageId): Unit = {
     storages.get(storageId) match {
       case Some(storage) ⇒
         storage.regions.foreach(registerStorage(_, storageId))

@@ -9,6 +9,7 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 
 import com.karasiq.shadowcloud.config.ParallelismConfig
 import com.karasiq.shadowcloud.index.Chunk
+import com.karasiq.shadowcloud.model.RegionId
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
@@ -23,7 +24,7 @@ object RegionRepairStream {
     case class TransformAffinity(newAffinity: ChunkStatus ⇒ Option[ChunkWriteAffinity]) extends Strategy
   }
 
-  case class Request(regionId: String, strategy: Strategy, chunks: Seq[Chunk] = Nil, result: Promise[Seq[Chunk]] = Promise())
+  case class Request(regionId: RegionId, strategy: Strategy, chunks: Seq[Chunk] = Nil, result: Promise[Seq[Chunk]] = Promise())
 
   def apply(parallelism: ParallelismConfig, regionOps: RegionOps): Sink[Request, NotUsed] = {
     def createNewAffinity(status: ChunkStatus, strategy: Strategy): Option[ChunkWriteAffinity] = {

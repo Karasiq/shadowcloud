@@ -20,6 +20,7 @@ import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.config.passwords.PasswordProvider
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, SignMethod}
+import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.providers.{KeyProvider, SCModules}
 import com.karasiq.shadowcloud.serialization.{SerializationModule, SerializationModules}
 import com.karasiq.shadowcloud.storage.props.StorageProps
@@ -63,15 +64,15 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   val serialization: SerializationModule = SerializationModules.forActorSystem(actorSystem)
 
   object configs {
-    def regionConfig(regionId: String): RegionConfig = {
+    def regionConfig(regionId: RegionId): RegionConfig = {
       RegionConfig.forId(regionId, rootConfig)
     }
 
-    def storageConfig(storageId: String): StorageConfig = { // Uses only static config
+    def storageConfig(storageId: StorageId): StorageConfig = { // Uses only static config
       StorageConfig.forId(storageId, rootConfig)
     }
 
-    def storageConfig(storageId: String, storageProps: StorageProps): StorageConfig = {
+    def storageConfig(storageId: StorageId, storageProps: StorageProps): StorageConfig = {
       StorageConfig.forProps(storageId, storageProps, rootConfig)
     }
   }
@@ -126,11 +127,11 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     val region = new StringEventBus[RegionEnvelope](_.regionId)
     val storage = new StringEventBus[StorageEnvelope](_.storageId)
 
-    def publishRegionEvent(regionId: String, event: Any): Unit = {
+    def publishRegionEvent(regionId: RegionId, event: Any): Unit = {
       region.publish(RegionEnvelope(regionId, event))
     }
 
-    def publishStorageEvent(storageId: String, event: Any): Unit = {
+    def publishStorageEvent(storageId: StorageId, event: Any): Unit = {
       storage.publish(StorageEnvelope(storageId, event))
     }
   }

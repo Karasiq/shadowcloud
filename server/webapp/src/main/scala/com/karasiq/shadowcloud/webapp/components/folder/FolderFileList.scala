@@ -11,12 +11,12 @@ import com.karasiq.shadowcloud.webapp.components.file.FileDownloadLink
 import com.karasiq.shadowcloud.webapp.context.AppContext
 
 object FolderFileList {
-  def apply(regionId: String, folder: Rx[Folder])(implicit context: AppContext): FolderFileList = {
+  def apply(regionId: RegionId, folder: Rx[Folder])(implicit context: AppContext): FolderFileList = {
     new FolderFileList(regionId, folder)
   }
 }
 
-class FolderFileList(regionId: String, folder: Rx[Folder])(implicit context: AppContext) extends BootstrapHtmlComponent {
+class FolderFileList(regionId: RegionId, folder: Rx[Folder])(implicit context: AppContext) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
     val rows = folder.map(_.files.toSeq.sortBy(_.path.name).map { file ⇒
       TableRow(Seq(

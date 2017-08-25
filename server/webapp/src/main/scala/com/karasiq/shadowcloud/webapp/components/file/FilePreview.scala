@@ -18,7 +18,7 @@ import com.karasiq.shadowcloud.webapp.components.metadata.MetadataView
 import com.karasiq.shadowcloud.webapp.context.AppContext
 
 object FilePreview {
-  case class PreviewVariants(image: Option[Metadata.Preview] = None,
+  case class PreviewVariants(image: Option[Metadata.Thumbnail] = None,
                              text: Option[Metadata.Text] = None,
                              files: Option[Metadata.ArchiveFiles] = None)
 
@@ -29,8 +29,12 @@ object FilePreview {
   private def getImagePreview(regionId: RegionId, fileId: FileId)(implicit context: AppContext): Future[PreviewVariants] = {
     val futureMetadata = context.api.getFileMetadata(regionId, fileId, Metadata.Tag.Disposition.PREVIEW)
     futureMetadata.map { metadatas ⇒
-      val image = metadatas.flatMap(_.value.preview).headOption
-      val text = metadatas.flatMap(_.value.text).find(_.format == "text/plain")
+      println(metadatas)
+      val image = metadatas.flatMap(_.value.thumbnail).headOption
+      val text = {
+        val texts = metadatas.flatMap(_.value.text)
+        texts.find(_.format == "application/html").orElse(texts.find(_.format == "text/plain"))
+      }
       val files = metadatas.flatMap(_.value.archiveFiles).headOption
       PreviewVariants(image, text, files)
     }
@@ -41,13 +45,11 @@ class FilePreview(regionId: RegionId, file: File)(implicit context: AppContext) 
   val previews = FilePreview.getImagePreview(regionId, file.id).toRx(PreviewVariants())
 
   def renderTag(md: ModifierT*): TagT = {
-    val image = Rx(previews().image.map(MetadataView.preview))
+    val image = Rx(previews().image.map(MetadataView.thumbnail))
     val text = Rx(previews().text.filter(_.format == "text/plain").map(MetadataView.text))
-    val files = Rx(previews().files.map(MetadataView.fileList))
+    val files = Rx(previews().files.map(MetadataView.archiveFiles))
 
     div(
-      GridSystem.mkRow(h3(file.path.name)),
-      hr,
       for (preview ← Seq(
         image,
         text,

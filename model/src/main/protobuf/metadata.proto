@@ -26,7 +26,7 @@ message Metadata {
         uint32 height = 2;
     }
 
-    message Preview {
+    message Thumbnail {
         string format = 1;
         bytes data = 2 [(scalapb.field).type = "akka.util.ByteString"];
     }
@@ -54,7 +54,8 @@ message Metadata {
 
     message EmbeddedResources {
         message EmbeddedResource {
-            repeated Metadata metadata = 1;
+            string path = 1;
+            repeated Metadata metadata = 2;
         }
         repeated EmbeddedResource resources = 1;
     }
@@ -62,7 +63,7 @@ message Metadata {
     Tag tag = 1;
     oneof value {
         ImageData imageData = 10;
-        Preview preview = 11;
+        Thumbnail thumbnail = 11;
         Text text = 12;
         Table table = 13;
         ArchiveFiles archiveFiles = 14;

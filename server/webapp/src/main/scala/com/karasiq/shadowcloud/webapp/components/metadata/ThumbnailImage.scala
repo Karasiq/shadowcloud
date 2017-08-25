@@ -6,15 +6,15 @@ import scalaTags.all._
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.webapp.utils.Blobs
 
-object PreviewImage {
-  def apply(preview: Metadata.Preview): PreviewImage = {
-    new PreviewImage(preview)
+object ThumbnailImage {
+  def apply(thumbnail: Metadata.Thumbnail): ThumbnailImage = {
+    new ThumbnailImage(thumbnail)
   }
 }
 
-class PreviewImage(preview: Metadata.Preview) extends BootstrapHtmlComponent {
+class ThumbnailImage(thumbnail: Metadata.Thumbnail) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
-    val blob = Blobs.fromBytes(preview.data.toArray)
+    val blob = Blobs.fromBytes(thumbnail.data.toArray)
     val imageUrl = Blobs.getUrl(blob)
     img(src := imageUrl, alt := "Preview image")
   }

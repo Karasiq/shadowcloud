@@ -17,12 +17,14 @@ class ArchiveFilesView(files: Metadata.ArchiveFiles)(implicit context: AppContex
   def renderTag(md: ModifierT*): TagT = {
     val tableHeading = Seq[Modifier](
       context.locale.name,
-      context.locale.size
+      context.locale.size,
+      context.locale.modifiedDate
     )
     val rows = files.files.map { file ⇒
       TableRow(Seq(
         file.path.mkString("/"),
-        MemorySize.toString(file.size)
+        MemorySize.toString(file.size),
+        context.timeFormat.timestamp(file.timestamp)
       ))
     }
     PagedTable.static(tableHeading, rows, 10)

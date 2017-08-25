@@ -13,7 +13,7 @@ import org.scalajs.jquery._
 
 import com.karasiq.shadowcloud.index.{Folder, Path}
 import com.karasiq.shadowcloud.webapp.api.AjaxApi
-import com.karasiq.shadowcloud.webapp.components.file.FilePreview
+import com.karasiq.shadowcloud.webapp.components.file.FileView
 import com.karasiq.shadowcloud.webapp.components.folder.FolderFileList
 import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.shadowcloud.webapp.utils.RxWithUpdate
@@ -41,7 +41,7 @@ object Main extends JSApp {
           GridSystem.col(8).asDiv(folderView),
           GridSystem.col(4).asDiv(folderView.selectedFile.map[Frag] {
             case Some(file) ⇒
-              FilePreview(testRegion, file)
+              FileView(testRegion, file)
 
             case None ⇒
               ()

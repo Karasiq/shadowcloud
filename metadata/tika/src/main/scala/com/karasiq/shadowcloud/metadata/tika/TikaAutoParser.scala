@@ -1,6 +1,7 @@
 package com.karasiq.shadowcloud.metadata.tika
 
 import java.io.{InputStream, OutputStream}
+import java.time.ZonedDateTime
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
@@ -11,7 +12,7 @@ import org.apache.tika.Tika
 import org.apache.tika.metadata.{Metadata ⇒ TikaMetadata}
 import org.apache.tika.parser.{ParseContext, RecursiveParserWrapper}
 import org.apache.tika.sax._
-import org.xml.sax.{ContentHandler, SAXException}
+import org.xml.sax.ContentHandler
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.index.Path
@@ -61,19 +62,33 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
     }
 
     def wrapSubMetadatas(metadatas: Seq[Seq[Metadata]]): Option[Metadata] = {
-      Some(metadatas.map(Metadata.EmbeddedResources.EmbeddedResource(_)))
+      val resources = metadatas.map { metadatas ⇒
+        val resourcePath = metadatas.collectFirst {
+          case m if m.value.isTable && m.getTable.values.contains("resourceName") ⇒
+            m.getTable.values("resourceName").values.head
+        }
+        Metadata.EmbeddedResources.EmbeddedResource(resourcePath.getOrElse(""), metadatas)
+      }
+
+      Some(resources.filter(_.metadata.nonEmpty))
         .filter(_.nonEmpty)
         .map(resources ⇒ Metadata(Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.CONTENT)),
           Metadata.Value.EmbeddedResources(Metadata.EmbeddedResources(resources))))
     }
 
     def extractArchiveTable(subMetadatas: Seq[TikaMetadata]): Option[Metadata] = {
+      def toTimestamp(timeString: String): Long = {
+        ZonedDateTime.parse(timeString)
+          .toInstant
+          .toEpochMilli
+      }
+
       val archiveFiles = for {
         md ← subMetadatas
-        path ← Option(md.get("X-TIKA:embedded_resource_path")).map(Path.fromString)
+        path ← Option(md.get("resourceName")).map(Path.fromString)
         size ← Option(md.get("Content-Length")).map(_.toLong)
-        // TODO: Timestamp
-      } yield Metadata.ArchiveFiles.ArchiveFile(path.nodes, size, 0)
+        timestamp = Option(md.get("Last-Modified")).fold(0L)(toTimestamp)
+      } yield Metadata.ArchiveFiles.ArchiveFile(path.nodes, size, timestamp)
 
       Some(archiveFiles)
         .filter(_.nonEmpty)
@@ -119,7 +134,7 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
       })
       try {
         recursiveParserWrapper.parse(inputStream, null, metadata, new ParseContext)
-      } catch { case _: SAXException ⇒
+      } catch { case NonFatal(_) ⇒
         // Ignore
       }
       (recursiveParserWrapper.getMetadata.asScala.toVector, handlers.toVector)
@@ -135,16 +150,19 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
     }
 
     // Wrap results
-    val results = contentHandlers.zip(rawMetadatas)
-      .map { case (h, md) ⇒ h.extractContents() ++ wrapMetadataTable(md) }
+    val mainContents = contentHandlers.headOption.toVector.flatMap(_.extractContents())
+    val mainMetadata = rawMetadatas.headOption.flatMap(wrapMetadataTable)
 
-    if (results.isEmpty) {
+    val subRawMetadatas = rawMetadatas.drop(1)
+    val subContents = contentHandlers.drop(1)
+    val subMetadatas = subRawMetadatas.map(wrapMetadataTable(_).toSeq) ++ subContents.map(_.extractContents())
+    val mainMetadatas = mainContents ++ mainMetadata ++ extractArchiveTable(subRawMetadatas)
+
+    if (subMetadatas.isEmpty) {
       Vector.empty
     } else {
-      val (mainMetadata, subMetadatas) = results.splitAt(1)
-      mainMetadata.flatten ++
-        extractTextPreview(results.flatten) ++
-        extractArchiveTable(rawMetadatas.drop(1)) ++
+      mainMetadatas ++
+        extractTextPreview(mainMetadatas ++ subMetadatas.flatten) ++
         wrapSubMetadatas(subMetadatas)
     }
   }

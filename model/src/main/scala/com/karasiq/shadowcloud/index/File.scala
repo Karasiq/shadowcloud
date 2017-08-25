@@ -3,12 +3,11 @@ package com.karasiq.shadowcloud.index
 import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.config.SerializedProps
-import com.karasiq.shadowcloud.config.keys.KeySet.ID
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasPath, HasWithoutChunks, HasWithoutData}
 import com.karasiq.shadowcloud.model.FileId
 import com.karasiq.shadowcloud.utils.Utils
 
-case class File(path: Path, id: ID = FileId.create(),
+case class File(path: Path, id: FileId = FileId.create(),
                 revision: Long = 0, timestamp: Timestamp = Timestamp.now,
                 props: SerializedProps = SerializedProps.empty,
                 checksum: Checksum = Checksum.empty, chunks: Seq[Chunk] = Nil)

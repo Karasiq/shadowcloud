@@ -9,29 +9,47 @@ import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.webapp.context.AppContext
 
 object MetadataView {
-  def preview(preview: Metadata.Preview): PreviewImage = {
-    PreviewImage(preview)
-  }
-
-  def fileList(files: Metadata.ArchiveFiles): ArchiveFilesView = {
-    ArchiveFilesView(files)
+  def thumbnail(preview: Metadata.Thumbnail): ThumbnailImage = {
+    ThumbnailImage(preview)
   }
 
   def text(text: Metadata.Text): Tag = {
     p(text.data)
   }
 
+  def table(table: Metadata.Table)(implicit context: AppContext): TableView = {
+    TableView(table)
+  }
+
+  def archiveFiles(files: Metadata.ArchiveFiles)(implicit context: AppContext): ArchiveFilesView = {
+    ArchiveFilesView(files)
+  }
+
+  def embeddedResources(embeddedResources: Metadata.EmbeddedResources)(implicit context: AppContext): EmbeddedResourcesView = {
+    EmbeddedResourcesView(embeddedResources)
+  }
+
+  def imageData(imageData: Metadata.ImageData): Tag = {
+    span(imageData.width, "x", imageData.height)
+  }
+
   def apply(metadata: Metadata)(implicit context: AppContext): Frag = {
     import Metadata.Value._
     metadata.value match {
-      case Preview(preview) ⇒
-        this.preview(preview)
+      case Thumbnail(preview) ⇒
+        this.thumbnail(preview)
 
       case ArchiveFiles(files) if files.files.nonEmpty ⇒
-        this.fileList(files)
+        this.archiveFiles(files)
 
-      case Text(text) if text.format == "text/plain" ⇒
+      case Text(text) ⇒
         this.text(text)
+
+      case Table(table) ⇒
+        this.table(table)
+
+      case EmbeddedResources(resources) ⇒
+        this.embeddedResources(resources)
 
       case _ ⇒
         ()

@@ -23,7 +23,7 @@ class TableView(table: Metadata.Table)(implicit context: AppContext) extends Boo
       TableRow(Seq(name, values.mkString("\n")))
     }
 
-    PagedTable.static(heading, rows, 10)
+    PagedTable.static(heading, rows, 10).renderTag(md:_*)
   }
 }
 

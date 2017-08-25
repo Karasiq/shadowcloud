@@ -25,8 +25,8 @@ object MetadataTable {
     case Table(_) ⇒
       context.locale.metadataTable
 
-    case ArchiveFiles(_) ⇒
-      context.locale.metadataArchiveFiles
+    case FileList(_) ⇒
+      context.locale.metadataFileList
 
     case EmbeddedResources(_) ⇒
       context.locale.metadataEmbeddedResources

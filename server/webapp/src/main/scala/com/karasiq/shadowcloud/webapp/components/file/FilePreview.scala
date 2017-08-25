@@ -20,7 +20,7 @@ import com.karasiq.shadowcloud.webapp.context.AppContext
 object FilePreview {
   case class PreviewVariants(image: Option[Metadata.Thumbnail] = None,
                              text: Option[Metadata.Text] = None,
-                             files: Option[Metadata.ArchiveFiles] = None)
+                             files: Option[Metadata.FileList] = None)
 
   def apply(regionId: RegionId, file: File)(implicit context: AppContext): FilePreview = {
     new FilePreview(regionId: RegionId, file)
@@ -35,7 +35,7 @@ object FilePreview {
         val texts = metadatas.flatMap(_.value.text)
         texts.find(_.format == "application/html").orElse(texts.find(_.format == "text/plain"))
       }
-      val files = metadatas.flatMap(_.value.archiveFiles).headOption
+      val files = metadatas.flatMap(_.value.fileList).headOption
       PreviewVariants(image, text, files)
     }
   }
@@ -47,7 +47,7 @@ class FilePreview(regionId: RegionId, file: File)(implicit context: AppContext) 
   def renderTag(md: ModifierT*): TagT = {
     val image = Rx(previews().image.map(MetadataView.thumbnail))
     val text = Rx(previews().text.filter(_.format == "text/plain").map(MetadataView.text))
-    val files = Rx(previews().files.map(MetadataView.archiveFiles))
+    val files = Rx(previews().files.map(MetadataView.fileList))
 
     div(
       for (preview ← Seq(

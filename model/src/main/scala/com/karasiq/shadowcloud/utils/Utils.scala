@@ -84,6 +84,23 @@ private[shadowcloud] object Utils {
     indexOfExtension(path).fold("")(index ⇒ path.substring(index + 1))
   }
 
+  def getFileExtensionLowerCase(path: String): String = {
+    getFileExtension(path).toLowerCase
+  }
+
+  def takeWords(str: String, maxLength: Int): String = {
+    def cutAt(separator: String): Option[String] = {
+      val index = str.lastIndexOf(separator, maxLength)
+      if (index == -1) None
+      else Some(str.substring(0, index + 1))
+    }
+
+    cutAt("\n")
+      .orElse(cutAt(". "))
+      .orElse(cutAt(" "))
+      .getOrElse(str.take(maxLength))
+  }
+
   def toSafeIdentifier(str: String): String = {
     str.replaceAll("[^A-Za-z0-9-_]", "_")
   }

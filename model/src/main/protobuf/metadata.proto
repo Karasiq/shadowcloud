@@ -43,13 +43,13 @@ message Metadata {
         map<string, Values> values = 1;
     }
 
-    message ArchiveFiles {
-        message ArchiveFile {
+    message FileList {
+        message File {
             repeated string path = 1;
             uint64 size = 2;
             uint64 timestamp = 3;
         }
-        repeated ArchiveFile files = 1;
+        repeated File files = 1;
     }
 
     message EmbeddedResources {
@@ -66,7 +66,7 @@ message Metadata {
         Thumbnail thumbnail = 11;
         Text text = 12;
         Table table = 13;
-        ArchiveFiles archiveFiles = 14;
+        FileList fileList = 14;
         EmbeddedResources embeddedResources = 15;
     }
 }

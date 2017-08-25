@@ -7,13 +7,13 @@ import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.utils.MemorySize
 import com.karasiq.shadowcloud.webapp.context.AppContext
 
-object ArchiveFilesView {
-  def apply(files: Metadata.ArchiveFiles)(implicit context: AppContext): ArchiveFilesView = {
-    new ArchiveFilesView(files)
+object FileListView {
+  def apply(files: Metadata.FileList)(implicit context: AppContext): FileListView = {
+    new FileListView(files)
   }
 }
 
-class ArchiveFilesView(files: Metadata.ArchiveFiles)(implicit context: AppContext) extends BootstrapHtmlComponent {
+class FileListView(files: Metadata.FileList)(implicit context: AppContext) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
     val tableHeading = Seq[Modifier](
       context.locale.name,
@@ -27,7 +27,7 @@ class ArchiveFilesView(files: Metadata.ArchiveFiles)(implicit context: AppContex
         context.timeFormat.timestamp(file.timestamp)
       ))
     }
-    PagedTable.static(tableHeading, rows, 10)
+    PagedTable.static(tableHeading, rows, 10).renderTag(md:_*)
   }
 }
 

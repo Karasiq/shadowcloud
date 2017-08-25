@@ -19,6 +19,7 @@ class EmbeddedResourcesView(resources: Metadata.EmbeddedResources)(implicit cont
     def renderLine(path: String, metadatas: Seq[Metadata]): Tag = {
       val opened = Var(false)
       div(
+        // Link
         a(
           href := "#",
           Rx(if (opened()) "▼" else "►"),
@@ -30,6 +31,7 @@ class EmbeddedResourcesView(resources: Metadata.EmbeddedResources)(implicit cont
           onclick := Callback.onClick(_ ⇒ opened() = !opened.now)
         ),
 
+        // Content
         Rx[Frag](if (opened()) {
           MetadataTable(metadatas)
         } else {
@@ -41,7 +43,8 @@ class EmbeddedResourcesView(resources: Metadata.EmbeddedResources)(implicit cont
     div(
       resources.resources.groupBy(_.path).toSeq.sortBy(_._1).map { case (path, resource) ⇒
         renderLine(if (path.isEmpty) context.locale.unknown else path, resource.flatMap(_.metadata))
-      }
+      },
+      md
     )
   }
 }

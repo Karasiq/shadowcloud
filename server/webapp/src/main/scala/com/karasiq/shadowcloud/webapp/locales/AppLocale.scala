@@ -28,7 +28,7 @@ trait AppLocale {
 
   def metadataText: String
   def metadataTable: String
-  def metadataArchiveFiles: String
+  def metadataFileList: String
   def metadataThumbnail: String
   def metadataImageData: String
   def metadataEmbeddedResources: String
@@ -63,7 +63,7 @@ object AppLocale {
 
     val metadataText = "Text"
     val metadataTable = "Table"
-    val metadataArchiveFiles = "File list"
+    val metadataFileList = "File list"
     val metadataThumbnail = preview
     val metadataImageData = "Image data"
     val metadataEmbeddedResources = "Embedded resources"

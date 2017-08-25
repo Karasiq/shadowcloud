@@ -1,7 +1,6 @@
 package com.karasiq.shadowcloud.metadata.tika
 
 import java.io.{InputStream, OutputStream}
-import java.time.ZonedDateTime
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
@@ -12,15 +11,161 @@ import org.apache.tika.Tika
 import org.apache.tika.metadata.{Metadata ⇒ TikaMetadata}
 import org.apache.tika.parser.{ParseContext, RecursiveParserWrapper}
 import org.apache.tika.sax._
+import org.jsoup.Jsoup
 import org.xml.sax.ContentHandler
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.metadata.Metadata
+import com.karasiq.shadowcloud.metadata.Metadata.Tag.{Disposition ⇒ MDDisposition}
+import com.karasiq.shadowcloud.utils.Utils
 
 private[tika] object TikaAutoParser {
   def apply(tika: Tika, config: Config): TikaAutoParser = {
     new TikaAutoParser(tika, config)
+  }
+
+  private object attributes {
+    val path = "resourceName"
+    val size = "Content-Length"
+    val lastModified = "Last-Modified"
+
+    def optional(md: TikaMetadata, name: String): Option[String] = {
+      Option(md.get(name)).filter(_.nonEmpty)
+    }
+  }
+
+  private object formats {
+    val html = "text/html"
+    val text = "text/plain"
+  }
+
+  private object conversions {
+    def toMetadataTable(metadata: TikaMetadata): Option[Metadata] = {
+      Option(metadata)
+        .filter(_.size() > 0)
+        .map { metadataMap ⇒
+          val values = metadataMap.names()
+            .map(name ⇒ (name, Metadata.Table.Values(metadataMap.getValues(name).toVector)))
+            .toMap
+          Metadata(TikaAutoParser.createTag(MDDisposition.METADATA), Metadata.Value.Table(Metadata.Table(values)))
+        }
+    }
+
+    def toEmbeddedResources(metadatas: Seq[Seq[Metadata]]): Option[Metadata] = {
+      val resources = metadatas.map { metadatas ⇒
+        val resourcePaths = metadatas.flatMap(utils.extractMetadataPath)
+        Metadata.EmbeddedResources.EmbeddedResource(resourcePaths.headOption.getOrElse(""), metadatas)
+      }
+
+      val groupedResources = resources.filter(_.metadata.nonEmpty)
+        .groupBy(_.path)
+        .map { case (path, resources) ⇒
+          val allMetadatas = resources.flatMap(_.metadata)
+          Metadata.EmbeddedResources.EmbeddedResource(path, allMetadatas)
+        }
+
+      Some(groupedResources)
+        .filter(_.nonEmpty)
+        .map(resources ⇒ Metadata(TikaAutoParser.createTag(MDDisposition.CONTENT),
+          Metadata.Value.EmbeddedResources(Metadata.EmbeddedResources(resources.toVector))))
+    }
+
+    def toArchiveTable(subMetadatas: Seq[TikaMetadata]): Option[Metadata] = {
+      val archiveFiles = for {
+        md ← subMetadatas
+        path ← attributes.optional(md, attributes.path).map(ps ⇒ Path.fromString(ps).nodes)
+        size ← attributes.optional(md, attributes.size).map(_.toLong)
+        timestamp = attributes.optional(md, attributes.lastModified).fold(0L)(utils.parseTimeString)
+      } yield Metadata.FileList.File(path, size, timestamp)
+
+      Some(archiveFiles)
+        .filter(_.nonEmpty)
+        .map(files ⇒ Metadata(TikaAutoParser.createTag(MDDisposition.PREVIEW),
+          Metadata.Value.FileList(Metadata.FileList(files))))
+    }
+
+    def toTextPreviews(metadatas: Seq[Metadata], maxLength: Int): Seq[Metadata] = {
+      metadatas.flatMap(_.value.text)
+        .filter(_.format == formats.text)
+        .map(text ⇒ Utils.takeWords(text.data, maxLength))
+        .filter(_.nonEmpty)
+        .sortBy(_.length)(Ordering[Int].reverse)
+        .map(result ⇒ Metadata(TikaAutoParser.createTag(MDDisposition.PREVIEW),
+          Metadata.Value.Text(Metadata.Text(formats.text, result))))
+    }
+  }
+
+  private object utils {
+    def getHtmlContent(xhtml: String): String = {
+      val document = Jsoup.parse(xhtml)
+      val documentBody = document.body()
+      documentBody.html()
+    }
+
+    def getHtmlMetaValue(xhtml: String, name: String): Option[String] = {
+      import scala.collection.JavaConverters._
+      val document = Jsoup.parse(xhtml)
+      val element = document.head().children().asScala
+        .find(e ⇒ e.tagName() == "meta" && e.attr("name") == name)
+      element.map(_.attr("content")).filter(_.nonEmpty)
+    }
+
+    def extractMetadataPath(md: Metadata): Option[String] = {
+      val pathString = md match {
+        case m if m.value.isTable ⇒
+          m.getTable.values.get(attributes.path).flatMap(_.values.headOption)
+
+        case m if m.value.isText && m.getText.format == formats.html ⇒
+          getHtmlMetaValue(m.getText.data, attributes.path)
+
+        case _ ⇒
+          None
+      }
+
+      pathString.filter(_.nonEmpty)
+    }
+
+    def hasContent(text: String, format: String): Boolean = {
+      if (format == formats.html) getHtmlContent(text).nonEmpty else text.trim.nonEmpty
+    }
+
+    def parseTimeString(timeString: String): Long = {
+      import java.time.ZonedDateTime
+      ZonedDateTime.parse(timeString)
+        .toInstant
+        .toEpochMilli
+    }
+
+    final class ContentHandlersWrapper(textHandler: Option[ContentHandler], xhtmlHandler: Option[ContentHandler]) {
+      private[this] final class TeeContentHandlerWrapper(subHandlers: Seq[ContentHandler]) extends TeeContentHandler(subHandlers:_*) {
+        override def toString: String = "" // RecursiveParserWrapper fix
+      }
+
+      def createHandler(): ContentHandler = {
+        val subHandlers = Seq(textHandler, xhtmlHandler).flatten
+        new TeeContentHandlerWrapper(subHandlers)
+      }
+
+      def extractContents(): Seq[Metadata] = {
+        def extractText(handler: Option[ContentHandler], format: String): Option[Metadata] = {
+          handler
+            .map(_.toString)
+            .filter(utils.hasContent(_, format))
+            .map(result ⇒ Metadata(TikaAutoParser.createTag(MDDisposition.CONTENT),
+              Metadata.Value.Text(Metadata.Text(format, result))))
+        }
+
+        Seq(
+          extractText(textHandler, formats.text),
+          extractText(xhtmlHandler, formats.html)
+        ).flatten
+      }
+    }
+  }
+
+  private def createTag(disposition: Metadata.Tag.Disposition): Option[Metadata.Tag] = {
+    Some(Metadata.Tag("tika", "auto", disposition))
   }
 }
 
@@ -29,6 +174,8 @@ private[tika] object TikaAutoParser {
   * @param config Parser config
   */
 private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends TikaMetadataParser {
+  import TikaAutoParser.{conversions, utils}
+
   // Configuration
   private[this] object autoParserSettings extends ConfigImplicits {
     // Parser
@@ -38,6 +185,7 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
     // Text handler
     val textEnabled = config.getBoolean("text.enabled")
     val textLimit = config.getBytesInt("text.limit")
+    val textPreviewSize = config.getBytesInt("text.preview-size")
 
     // XHTML handler
     val xhtmlEnabled = config.getBoolean("xhtml.enabled")
@@ -50,78 +198,28 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
   }
 
   protected def parseStream(metadata: TikaMetadata, inputStream: InputStream): Seq[Metadata] = {
-    def wrapMetadataTable(metadata: TikaMetadata): Option[Metadata] = {
-      Option(metadata)
-        .filter(_.size() > 0)
-        .map { metadataMap ⇒
-          val values = metadataMap.names()
-            .map(name ⇒ (name, Metadata.Table.Values(metadataMap.getValues(name).toVector)))
-            .toMap
-          Metadata(Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.METADATA)), Metadata.Value.Table(Metadata.Table(values)))
-        }
-    }
+    val (rawMetadatas, contentHandlers) = parseMetadataTablesAndContents(metadata, inputStream, autoParserSettings.recursive)
 
-    def wrapSubMetadatas(metadatas: Seq[Seq[Metadata]]): Option[Metadata] = {
-      val resources = metadatas.map { metadatas ⇒
-        val resourcePath = metadatas.collectFirst {
-          case m if m.value.isTable && m.getTable.values.contains("resourceName") ⇒
-            m.getTable.values("resourceName").values.head
-        }
-        Metadata.EmbeddedResources.EmbeddedResource(resourcePath.getOrElse(""), metadatas)
-      }
+    // Wrap results
+    val mainContents = contentHandlers.headOption.toVector.flatMap(_.extractContents())
+    val mainMetadata = rawMetadatas.headOption.flatMap(conversions.toMetadataTable)
 
-      Some(resources.filter(_.metadata.nonEmpty))
-        .filter(_.nonEmpty)
-        .map(resources ⇒ Metadata(Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.CONTENT)),
-          Metadata.Value.EmbeddedResources(Metadata.EmbeddedResources(resources))))
-    }
+    val subRawMetadatas = rawMetadatas.drop(1)
+    val subContents = contentHandlers.drop(1)
+    val subMetadatas = subRawMetadatas.map(conversions.toMetadataTable(_).toSeq) ++ subContents.map(_.extractContents())
+    val mainMetadatas = mainContents ++ mainMetadata ++ conversions.toArchiveTable(subRawMetadatas)
 
-    def extractArchiveTable(subMetadatas: Seq[TikaMetadata]): Option[Metadata] = {
-      def toTimestamp(timeString: String): Long = {
-        ZonedDateTime.parse(timeString)
-          .toInstant
-          .toEpochMilli
-      }
+    mainMetadatas ++
+      conversions.toTextPreviews(mainMetadatas ++ subMetadatas.flatten, autoParserSettings.textPreviewSize) ++
+      conversions.toEmbeddedResources(subMetadatas)
+  }
 
-      val archiveFiles = for {
-        md ← subMetadatas
-        path ← Option(md.get("resourceName")).map(Path.fromString)
-        size ← Option(md.get("Content-Length")).map(_.toLong)
-        timestamp = Option(md.get("Last-Modified")).fold(0L)(toTimestamp)
-      } yield Metadata.ArchiveFiles.ArchiveFile(path.nodes, size, timestamp)
-
-      Some(archiveFiles)
-        .filter(_.nonEmpty)
-        .map(files ⇒ Metadata(Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.PREVIEW)),
-          Metadata.Value.ArchiveFiles(Metadata.ArchiveFiles(files))))
-    }
-
-    def extractTextPreview(metadatas: Seq[Metadata]): Seq[Metadata] = {
-      def takeWords(str: String, maxLength: Int): String = {
-        def cutAt(separator: String): Option[String] = {
-          val index = str.lastIndexOf(separator, maxLength)
-          if (index == -1) None
-          else Some(str.substring(0, index + 1))
-        }
-
-        cutAt(". ")
-          .orElse(cutAt("\n"))
-          .orElse(cutAt(" "))
-          .getOrElse(str.take(maxLength))
-      }
-
-      metadatas.flatMap(_.value.text)
-        .filter(_.format == "text/plain")
-        .map(text ⇒ takeWords(text.data, 1000))
-        .filter(_.nonEmpty)
-        .sortBy(_.length)(Ordering[Int].reverse)
-        .map(result ⇒ Metadata(Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.PREVIEW)), Metadata.Value.Text(Metadata.Text("text/plain", result))))
-    }
-
-    val (rawMetadatas, contentHandlers) = if (autoParserSettings.recursive) {
+  private[this] def parseMetadataTablesAndContents(metadata: TikaMetadata, inputStream: InputStream,
+                                                   recursive: Boolean): (Vector[TikaMetadata], Vector[utils.ContentHandlersWrapper]) = {
+    if (recursive) {
       // Recursive parser
-      val handlers = new ArrayBuffer[Handlers]()
-      val recursiveParserWrapper = new RecursiveParserWrapper(this.parser, new ContentHandlerFactory {
+      val handlers = new ArrayBuffer[utils.ContentHandlersWrapper]()
+      val contentHandlerFactory = new ContentHandlerFactory {
         def getNewContentHandler: ContentHandler = {
           val newHandler = createContentHandlers()
           handlers += newHandler
@@ -131,71 +229,34 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
         def getNewContentHandler(os: OutputStream, encoding: String): ContentHandler = {
           throw new IllegalArgumentException("Not supported")
         }
-      })
+      }
+
+      val parser = new RecursiveParserWrapper(this.parser, contentHandlerFactory)
       try {
-        recursiveParserWrapper.parse(inputStream, null, metadata, new ParseContext)
+        parser.parse(inputStream, null, metadata, new ParseContext)
       } catch { case NonFatal(_) ⇒
         // Ignore
       }
-      (recursiveParserWrapper.getMetadata.asScala.toVector, handlers.toVector)
+
+      (parser.getMetadata.asScala.toVector, handlers.toVector)
     } else {
       // Plain parser
       val handler = createContentHandlers()
+
       try {
         this.parser.parse(inputStream, handler.createHandler(), metadata, new ParseContext)
       } catch { case NonFatal(_) ⇒
         // Ignore
       }
+
       (Vector(metadata), Vector(handler))
-    }
-
-    // Wrap results
-    val mainContents = contentHandlers.headOption.toVector.flatMap(_.extractContents())
-    val mainMetadata = rawMetadatas.headOption.flatMap(wrapMetadataTable)
-
-    val subRawMetadatas = rawMetadatas.drop(1)
-    val subContents = contentHandlers.drop(1)
-    val subMetadatas = subRawMetadatas.map(wrapMetadataTable(_).toSeq) ++ subContents.map(_.extractContents())
-    val mainMetadatas = mainContents ++ mainMetadata ++ extractArchiveTable(subRawMetadatas)
-
-    if (subMetadatas.isEmpty) {
-      Vector.empty
-    } else {
-      mainMetadatas ++
-        extractTextPreview(mainMetadatas ++ subMetadatas.flatten) ++
-        wrapSubMetadatas(subMetadatas)
     }
   }
 
-  private[this] def createContentHandlers(): Handlers = {
-    new Handlers(
+  private[this] def createContentHandlers(): utils.ContentHandlersWrapper = {
+    new utils.ContentHandlersWrapper(
       Some(new BodyContentHandler(autoParserSettings.textLimit)).filter(_ ⇒ autoParserSettings.textEnabled),
       Some(new ToXMLContentHandler()).filter(_ ⇒ autoParserSettings.xhtmlEnabled)
     )
-  }
-
-  private[this] final class Handlers(textHandler: Option[ContentHandler], xhtmlHandler: Option[ContentHandler]) {
-    private[this] final class Handler(subHandlers: Seq[ContentHandler]) extends TeeContentHandler(subHandlers:_*) {
-      override def toString: String = "" // RecursiveParserWrapper fix
-    }
-
-    def createHandler(): ContentHandler = {
-      val subHandlers = Seq(textHandler, xhtmlHandler).flatten
-      new Handler(subHandlers)
-    }
-
-    def extractContents(): Seq[Metadata] = {
-      def extractText(handler: Option[ContentHandler], format: String): Option[Metadata] = {
-        handler
-          .map(_.toString)
-          .filter(_.nonEmpty)
-          .map(result ⇒ Metadata(Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.CONTENT)), Metadata.Value.Text(Metadata.Text(format, result))))
-      }
-
-      Seq(
-        extractText(textHandler, "text/plain"),
-        extractText(xhtmlHandler, "text/html")
-      ).flatten
-    }
   }
 }

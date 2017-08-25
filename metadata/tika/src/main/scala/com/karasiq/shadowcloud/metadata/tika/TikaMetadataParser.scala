@@ -8,13 +8,13 @@ import scala.language.postfixOps
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import com.typesafe.config.Config
-import org.apache.commons.io.FilenameUtils
 import org.apache.tika.metadata.{TikaCoreProperties, Metadata ⇒ TikaMetadata}
 import org.apache.tika.parser.{ParseContext, Parser}
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.metadata.utils.BlockingMetadataParser
+import com.karasiq.shadowcloud.utils.Utils
 
 /**
   * Abstract metadata parser
@@ -40,7 +40,7 @@ private[tika] trait TikaMetadataParser extends BlockingMetadataParser {
   protected def parseStream(metadata: TikaMetadata, inputStream: InputStream): Seq[Metadata]
 
   def canParse(name: String, mime: String): Boolean = {
-    stdParserSettings.enabled && (stdParserSettings.mimes.contains(mime) || stdParserSettings.extensions.contains(FilenameUtils.getExtension(name)))
+    stdParserSettings.enabled && (stdParserSettings.mimes.contains(mime) || stdParserSettings.extensions.contains(Utils.getFileExtensionLowerCase(name)))
   }
 
   protected def parseMetadata(name: String, mime: String, inputStream: InputStream): Source[Metadata, NotUsed] = {

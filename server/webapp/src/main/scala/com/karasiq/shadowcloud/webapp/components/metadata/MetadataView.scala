@@ -13,16 +13,16 @@ object MetadataView {
     ThumbnailImage(preview)
   }
 
-  def text(text: Metadata.Text): Tag = {
-    p(text.data)
+  def text(text: Metadata.Text)(implicit context: AppContext): TextView = {
+    TextView(text)
   }
 
   def table(table: Metadata.Table)(implicit context: AppContext): TableView = {
     TableView(table)
   }
 
-  def archiveFiles(files: Metadata.ArchiveFiles)(implicit context: AppContext): ArchiveFilesView = {
-    ArchiveFilesView(files)
+  def fileList(files: Metadata.FileList)(implicit context: AppContext): FileListView = {
+    FileListView(files)
   }
 
   def embeddedResources(embeddedResources: Metadata.EmbeddedResources)(implicit context: AppContext): EmbeddedResourcesView = {
@@ -39,8 +39,8 @@ object MetadataView {
       case Thumbnail(preview) ⇒
         this.thumbnail(preview)
 
-      case ArchiveFiles(files) if files.files.nonEmpty ⇒
-        this.archiveFiles(files)
+      case FileList(files) if files.files.nonEmpty ⇒
+        this.fileList(files)
 
       case Text(text) ⇒
         this.text(text)

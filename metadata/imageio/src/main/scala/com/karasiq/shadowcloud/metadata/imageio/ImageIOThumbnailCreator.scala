@@ -34,7 +34,7 @@ private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataP
 
   def canParse(name: String, mime: String): Boolean = {
     thumbnailCreatorSettings.enabled &&
-      (thumbnailCreatorSettings.mimes.contains(mime) || thumbnailCreatorSettings.extensions.contains(Utils.getFileExtension(name)))
+      (thumbnailCreatorSettings.mimes.contains(mime) || thumbnailCreatorSettings.extensions.contains(Utils.getFileExtensionLowerCase(name)))
   }
 
   def parseMetadata(name: String, mime: String): Flow[ByteString, Metadata, NotUsed] = {

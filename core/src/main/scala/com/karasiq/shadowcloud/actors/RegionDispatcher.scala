@@ -224,7 +224,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
     case ChunkWriteFailed(storageId, chunk, error) ⇒
       log.error(error, "Chunk write failed: {}", chunk)
       chunks.onWriteFailure(chunk, storageId, error)
-      chunks.retryPendingChunks()
+      // chunks.retryPendingChunks()
 
     // -----------------------------------------------------------------------
     // Storage events

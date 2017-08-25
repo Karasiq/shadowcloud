@@ -20,7 +20,7 @@ class TableView(table: Metadata.Table)(implicit context: AppContext) extends Boo
     )
 
     val rows = table.values.toVector.sortBy(_._1).map { case (name, Metadata.Table.Values(values)) ⇒
-      TableRow(Seq(name, values.mkString("\n")))
+      TableRow(Seq(name, values.mkString(", ")))
     }
 
     PagedTable.static(heading, rows, 10).renderTag(md:_*)

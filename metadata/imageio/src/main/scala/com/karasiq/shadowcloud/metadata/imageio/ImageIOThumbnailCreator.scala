@@ -13,6 +13,7 @@ import com.typesafe.config.Config
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.metadata.{Metadata, MetadataParser}
 import com.karasiq.shadowcloud.metadata.imageio.utils.ImageIOResizer
+import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.utils.{ByteStringOutputStream, Utils}
 
 private[imageio] object ImageIOThumbnailCreator {
@@ -24,6 +25,7 @@ private[imageio] object ImageIOThumbnailCreator {
 private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataParser {
   protected object thumbnailCreatorSettings extends ConfigImplicits {
     val enabled = config.getBoolean("enabled")
+    val sizeLimit = config.getBytesInt("size-limit")
     val extensions = config.getStringSet("extensions")
     val mimes = config.getStringSet("mimes")
 
@@ -38,7 +40,7 @@ private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataP
   }
 
   def parseMetadata(name: String, mime: String): Flow[ByteString, Metadata, NotUsed] = {
-    val flow = Flow.fromGraph(GraphDSL.create() { implicit builder ⇒
+    val flowGraph = GraphDSL.create() { implicit builder ⇒
       import GraphDSL.Implicits._
       val loadImage = builder.add(Flow[ByteString].map { bytes ⇒
         ImageIOResizer.loadImage(bytes.toArray)
@@ -71,7 +73,11 @@ private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataP
       processImage ~> resizeImage ~> createPreview ~> writeMetadata
 
       FlowShape(readImage.in, writeMetadata.out)
-    })
-    flow.addAttributes(Attributes.name("imageioThumbnailCreator"))
+    }
+
+    Flow[ByteString]
+      .via(ByteStreams.limit(thumbnailCreatorSettings.sizeLimit))
+      .via(flowGraph)
+      .addAttributes(Attributes.name("imageioThumbnailCreator"))
   }
 }

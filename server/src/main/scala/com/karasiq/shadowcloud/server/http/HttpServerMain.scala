@@ -105,7 +105,7 @@ object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshall
 
       val chunkStreamSize = chunks.map(_.checksum.size).sum
       apiDirectives.extractChunkRanges(chunkStreamSize) { ranges ⇒
-        val stream = sc.streams.file.readChunkStreamRanged(regionId, chunks, ranges).log("ranged-stream")
+        val stream = sc.streams.file.readChunkStreamRanged(regionId, chunks, ranges)
         val contentLength = ChunkRanges.length(ranges)
         complete(StatusCodes.PartialContent, HttpEntity(contentType, contentLength, stream))
       } ~ {

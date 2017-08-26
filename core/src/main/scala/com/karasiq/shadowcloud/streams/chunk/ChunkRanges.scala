@@ -22,8 +22,8 @@ object ChunkRanges {
       copy(start - fullRange.start, end - fullRange.start)
     }
 
-    def fitTo(fullRange: Range): Range = {
-      copy(math.max(0L, start), math.min(fullRange.end, end))
+    def fitToSize(dataSize: Long): Range = {
+      copy(math.max(0L, start), math.min(dataSize, end))
     }
 
     def slice(data: ByteString): ByteString = {
@@ -35,10 +35,10 @@ object ChunkRanges {
   def fromChunkStream(ranges: Seq[Range], chunkStream: Seq[Chunk]): Seq[(Chunk, Seq[Range])] = {
     @tailrec
     def groupRanges(ranges: Seq[(Chunk, Range)], currentChunk: Option[(Chunk, Seq[Range])],
-                   result: Seq[(Chunk, Seq[Range])]): Seq[(Chunk, Seq[Range])] = ranges match {
+                    result: Seq[(Chunk, Seq[Range])]): Seq[(Chunk, Seq[Range])] = ranges match {
       case (chunk, range) +: tail ⇒
         if (currentChunk.exists(_._1 == chunk)) {
-          groupRanges(tail, currentChunk.map(kv ⇒ (kv._1, kv._2 :+ range)), result)
+          groupRanges(tail, currentChunk.map { case (c, ranges) ⇒ (c, ranges :+ range) }, result)
         } else {
           groupRanges(tail, Some((chunk, Seq(range))), result ++ currentChunk)
         }
@@ -64,7 +64,7 @@ object ChunkRanges {
 
     val flatRanged = ranges.flatMap { range ⇒
       for ((chunk, fullRange) ← rangedChunks if fullRange.contains(range))
-        yield (chunk, range.relativeTo(fullRange).fitTo(fullRange))
+        yield (chunk, range.relativeTo(fullRange).fitToSize(chunk.checksum.size))
     }
 
     groupRanges(flatRanged, None, Nil)

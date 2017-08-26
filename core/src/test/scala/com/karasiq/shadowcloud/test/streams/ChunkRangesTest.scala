@@ -38,14 +38,16 @@ class ChunkRangesTest extends FlatSpec with Matchers {
     val ranges = Seq(
       ChunkRanges.Range(10, 20),
       ChunkRanges.Range(5, 10),
-      ChunkRanges.Range(80, 150)
+      ChunkRanges.Range(80, 150),
+      ChunkRanges.Range(300, 999999)
     )
 
     val chunks = TestUtils.indexedBytes._2.chunks
     val result = ChunkRanges.fromChunkStream(ranges, chunks)
     val expected = Seq(
       (chunks(0), Seq(ChunkRanges.Range(10, 20), ChunkRanges.Range(5, 10), ChunkRanges.Range(80, 100))),
-      (chunks(1), Seq(ChunkRanges.Range(0, 50)))
+      (chunks(1), Seq(ChunkRanges.Range(0, 50))),
+      (chunks(3), Seq(ChunkRanges.Range(0, 56)))
     )
 
     result shouldBe expected

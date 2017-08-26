@@ -1,5 +1,7 @@
 package com.karasiq.shadowcloud.streams.chunk
 
+import scala.annotation.tailrec
+
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.index.Chunk
@@ -30,7 +32,21 @@ object ChunkRanges {
     }
   }
 
-  def fromChunkStream(ranges: Seq[Range], chunkStream: Seq[Chunk]): Seq[(Chunk, Range)] = {
+  def fromChunkStream(ranges: Seq[Range], chunkStream: Seq[Chunk]): Seq[(Chunk, Seq[Range])] = {
+    @tailrec
+    def groupRanges(ranges: Seq[(Chunk, Range)], currentChunk: Option[(Chunk, Seq[Range])],
+                   result: Seq[(Chunk, Seq[Range])]): Seq[(Chunk, Seq[Range])] = ranges match {
+      case (chunk, range) +: tail ⇒
+        if (currentChunk.exists(_._1 == chunk)) {
+          groupRanges(tail, currentChunk.map(kv ⇒ (kv._1, kv._2 :+ range)), result)
+        } else {
+          groupRanges(tail, Some((chunk, Seq(range))), result ++ currentChunk)
+        }
+
+      case Nil ⇒
+        result ++ currentChunk
+    }
+
     val rangedChunks = {
       var position = 0L
 
@@ -46,10 +62,12 @@ object ChunkRanges {
       rangedChunks.result()
     }
 
-    ranges.flatMap { range ⇒
+    val flatRanged = ranges.flatMap { range ⇒
       for ((chunk, fullRange) ← rangedChunks if fullRange.contains(range))
         yield (chunk, range.relativeTo(fullRange).fitTo(fullRange))
     }
+
+    groupRanges(flatRanged, None, Nil)
   }
 
   def slice(bytes: ByteString, ranges: Seq[Range]): ByteString = {

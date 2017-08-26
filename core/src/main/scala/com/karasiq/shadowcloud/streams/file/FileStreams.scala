@@ -11,7 +11,7 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.index.{Chunk, File, Path}
 import com.karasiq.shadowcloud.index.diffs.FileVersions
 import com.karasiq.shadowcloud.model.RegionId
-import com.karasiq.shadowcloud.streams.chunk.ChunkProcessingStreams
+import com.karasiq.shadowcloud.streams.chunk.{ChunkProcessingStreams, ChunkRanges}
 import com.karasiq.shadowcloud.streams.region.RegionStreams
 
 object FileStreams {
@@ -28,10 +28,21 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
       // .log("chunk-stream-read")
       .via(chunkProcessing.afterRead)
       .map(_.data.plain)
+      .named("readChunkStream")
   }
 
-  def read(regionId: RegionId, file: File): Source[ByteString, NotUsed] = { // TODO: Byte ranges
+  def readChunkStreamRanged(regionId: RegionId, chunks: Seq[Chunk], ranges: Seq[ChunkRanges.Range]): Source[ByteString, NotUsed] = {
+    Source(ChunkRanges.fromChunkStream(ranges, chunks).toVector)
+      .flatMapConcat { case (chunk, range) ⇒
+        readChunkStream(regionId, Vector(chunk))
+          .map(range.slice)
+      }
+      .named("readChunkStreamRanged")
+  }
+
+  def read(regionId: RegionId, file: File): Source[ByteString, NotUsed] = {
     readChunkStream(regionId, file.chunks)
+      .named("readFile")
   }
 
   def readBy(regionId: RegionId, path: Path, select: Set[File] ⇒ File): Source[ByteString, NotUsed] = {

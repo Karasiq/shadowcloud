@@ -26,7 +26,7 @@ class ChunkRangesTest extends FlatSpec with Matchers {
   it should "split byte string" in {
     val range1 = ChunkRanges.Range(10, 20)
     val bytes = TestUtils.randomBytes(20)
-    range1.split(bytes) shouldBe bytes.drop(10).take(10)
+    range1.slice(bytes) shouldBe bytes.drop(10).take(10)
   }
 
   it should "process chunk stream" in {
@@ -46,6 +46,18 @@ class ChunkRangesTest extends FlatSpec with Matchers {
     )
 
     result shouldBe expected
+  }
+
+  it should "apply ranges to bytes" in {
+    val bytes = TestUtils.indexedBytes._1
+    val ranges = Seq(
+      ChunkRanges.Range(10, 20),
+      ChunkRanges.Range(5, 10),
+      ChunkRanges.Range(80, 150)
+    )
+    val expected = bytes.slice(10, 20) ++ bytes.slice(5, 10) ++ bytes.slice(80, 150)
+    ChunkRanges.length(ranges) shouldBe expected.length
+    ChunkRanges.slice(bytes, ranges) shouldBe expected
   }
 
   it should "throw exception on invalid range" in {

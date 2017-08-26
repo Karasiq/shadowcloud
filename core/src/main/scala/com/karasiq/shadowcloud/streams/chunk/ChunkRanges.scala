@@ -8,6 +8,10 @@ object ChunkRanges {
   case class Range(start: Long, end: Long) {
     require(start <= end, s"Invalid range: $start - $end")
 
+    def length: Long = {
+      end - start
+    }
+
     def contains(range: Range): Boolean = {
       range.start < end && range.end > start
     }
@@ -20,7 +24,7 @@ object ChunkRanges {
       copy(math.max(0L, start), math.min(fullRange.end, end))
     }
 
-    def split(data: ByteString): ByteString = {
+    def slice(data: ByteString): ByteString = {
       val start = math.max(0L, this.start)
       data.drop(start.toInt).take((end - start).toInt)
     }
@@ -46,5 +50,13 @@ object ChunkRanges {
       for ((chunk, fullRange) ← rangedChunks if fullRange.contains(range))
         yield (chunk, range.relativeTo(fullRange).fitTo(fullRange))
     }
+  }
+
+  def slice(bytes: ByteString, ranges: Seq[Range]): ByteString = {
+    ranges.map(_.slice(bytes)).fold(ByteString.empty)(_ ++ _)
+  }
+
+  def length(ranges: Seq[Range]): Long = {
+    ranges.map(_.length).sum
   }
 }

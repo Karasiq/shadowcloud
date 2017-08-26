@@ -33,7 +33,7 @@ import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStat
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
-import com.karasiq.shadowcloud.utils.{AkkaStreamUtils, Utils}
+import com.karasiq.shadowcloud.utils.{AkkaStreamUtils, MemorySize, Utils}
 
 object RegionDispatcher {
   // Messages
@@ -316,8 +316,13 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
 
       case StorageEvents.HealthUpdated(health) ⇒
         log.debug("Storage [{}] health report: {}", storageId, health)
-        storages.update(storageId, health)
-        chunks.retryPendingChunks()
+        val wasOffline = {
+          val oldHealth = storages.getStorage(storageId).health
+          (!oldHealth.online || oldHealth.canWrite < MemorySize.MB) &&
+            (health.online && health.canWrite > MemorySize.MB)
+        }
+        storages.updateHealth(storageId, health)
+        if (wasOffline) chunks.retryPendingChunks()
 
       case _ ⇒
         // Ignore

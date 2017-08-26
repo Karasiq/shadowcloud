@@ -9,6 +9,10 @@ case class ChunkWriteAffinity(mandatory: Seq[String] = Vector.empty,
 
   def isEmpty: Boolean = mandatory.isEmpty && eventually.isEmpty && optional.isEmpty
 
+  def isFailed(cs: ChunkStatus): Boolean = {
+    mandatory.forall(cs.availability.isFailed)
+  }
+
   def selectForWrite(cs: ChunkStatus): Seq[String] = {
     (mandatory ++ eventually).filterNot(cs.availability.isWriting) ++
       optional.filterNot(stId ⇒ cs.availability.isWriting(stId) || cs.availability.isFailed(stId))

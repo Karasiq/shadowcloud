@@ -23,6 +23,11 @@ class ChunkRangesTest extends FlatSpec with Matchers {
     range3 shouldBe ChunkRanges.Range(-2, 5)
   }
 
+  it should "create length" in {
+    val range = ChunkRanges.Range(0, 1000)
+    range.length shouldBe 1000
+  }
+
   it should "split byte string" in {
     val range1 = ChunkRanges.Range(10, 20)
     val bytes = TestUtils.randomBytes(20)

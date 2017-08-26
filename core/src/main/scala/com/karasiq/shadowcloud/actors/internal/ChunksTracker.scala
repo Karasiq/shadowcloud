@@ -177,13 +177,20 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
 
   def retryPendingChunks()(implicit storageSelector: StorageSelector): Unit = {
     chunksMap.foreachValue {
-      case chunkStatus @ ChunkStatus(WriteStatus.Pending(_), _, _, _) ⇒
-        val affinity = storageSelector.forWrite(chunkStatus) // Try refresh affinity
-        if (affinity.isFinished(chunkStatus)) {
-          log.debug("Marking chunk as finished: {}", chunkStatus)
-          putStatus(tryFinishChunk(chunkStatus))
+      case chunkStatus @ ChunkStatus(WriteStatus.Pending(affinity), _, availability, _) if availability.writeFailed.nonEmpty ⇒
+        val newAffinity = if (affinity.isFailed(chunkStatus)) {
+          storageSelector.forWrite(chunkStatus) // Try refresh affinity
         } else {
-          startWriteChunk(chunkStatus)
+          affinity
+        }
+
+        val newStatus = chunkStatus.copy(WriteStatus.Pending(newAffinity),
+          availability = availability.copy(writeFailed = Set.empty))
+        if (newAffinity.isFinished(chunkStatus)) {
+          log.debug("Marking chunk as finished: {}", chunkStatus)
+          putStatus(tryFinishChunk(newStatus))
+        } else {
+          startWriteChunk(newStatus)
         }
 
       case _ ⇒

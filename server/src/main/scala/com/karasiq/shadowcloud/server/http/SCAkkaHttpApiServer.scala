@@ -5,6 +5,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.http.scaladsl.model._
+import akka.http.scaladsl.model.headers.{ByteRange, Range}
 import akka.http.scaladsl.server._
 import autowire.Core.Request
 import play.api.libs.json.Json
@@ -13,11 +14,12 @@ import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.api.{SCApiUtils, ShadowCloudApi}
 import com.karasiq.shadowcloud.api.jvm.SCDefaultApiServer
 import com.karasiq.shadowcloud.server.http.api.ShadowCloudApiImpl
+import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 
 private[server] trait SCAkkaHttpApiServer { self: Directives ⇒
   protected val sc: ShadowCloudExtension
 
-  protected object scApiInternal {
+  protected object apiInternals {
     private[this] implicit val executionContext: ExecutionContext = sc.implicits.executionContext
     val apiServer = SCDefaultApiServer
 
@@ -28,10 +30,23 @@ private[server] trait SCAkkaHttpApiServer { self: Directives ⇒
     type RequestT = apiServer.Request
   }
 
-  import scApiInternal._
+  import apiInternals._
   import apiEncoding.implicits._
 
-  protected object scApiDirectives {
+  protected object apiDirectives {
+    def extractChunkRanges(fullSize: Long) = headerValueByType[Range](()).map { range ⇒
+      range.ranges.map {
+        case ByteRange.FromOffset(offset) ⇒
+          ChunkRanges.Range(offset, fullSize)
+
+        case ByteRange.Slice(first, last) ⇒
+          ChunkRanges.Range(first, math.min(fullSize, last + 1))
+
+        case ByteRange.Suffix(length) ⇒
+          ChunkRanges.Range(math.max(0L, fullSize - length), fullSize)
+      }
+    }
+
     def validateContentType(expectedValue: MediaType): Directive0 = {
       extract(_.request.entity.contentType)
         .require(_.mediaType == expectedValue, UnsupportedRequestContentTypeRejection(Set(ContentTypeRange(expectedValue))))
@@ -50,7 +65,7 @@ private[server] trait SCAkkaHttpApiServer { self: Directives ⇒
         extractUnmatchedPath.flatMap {
           case Uri.Path.Slash(path) ⇒
             extractStrictEntity(timeout).map { entity ⇒
-              Request(path.toString().split("/"), scApiInternal.apiServer.decodePayload(entity.data))
+              Request(path.toString().split("/"), apiInternals.apiServer.decodePayload(entity.data))
             }
 
           case _ ⇒
@@ -84,7 +99,7 @@ private[server] trait SCAkkaHttpApiServer { self: Directives ⇒
     }
   }
 
-  def scApiRoute: Route = (post & pathPrefix("api") & scApiDirectives.extractApiRequest) { request ⇒
-    scApiDirectives.executeApiRequest(request)
+  def scApiRoute: Route = (post & pathPrefix("api") & apiDirectives.extractApiRequest) { request ⇒
+    apiDirectives.executeApiRequest(request)
   }
 }

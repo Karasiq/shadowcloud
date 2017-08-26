@@ -79,7 +79,7 @@ private[actors] final class StorageTracker(implicit context: ActorContext) exten
   // -----------------------------------------------------------------------
   // Update state
   // -----------------------------------------------------------------------
-  def update(storageId: StorageId, health: StorageHealth): Unit = {
+  def updateHealth(storageId: StorageId, health: StorageHealth): Unit = {
     storagesById.get(storageId).foreach { storage ⇒
       val newStatus = storage.copy(health = health)
       storagesById += storageId → newStatus

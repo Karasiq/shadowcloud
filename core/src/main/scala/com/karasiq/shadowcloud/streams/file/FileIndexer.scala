@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.streams
+package com.karasiq.shadowcloud.streams.file
 
 import java.io.IOException
 
@@ -15,7 +15,6 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.HashingMethod
 import com.karasiq.shadowcloud.index.{Checksum, Chunk}
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
-import com.karasiq.shadowcloud.streams.FileIndexer.Result
 import com.karasiq.shadowcloud.utils.ChunkUtils
 
 private[shadowcloud] object FileIndexer {
@@ -30,14 +29,14 @@ private[shadowcloud] object FileIndexer {
 private[shadowcloud] final class FileIndexer(cryptoModules: CryptoModuleRegistry,
                                              plainHashing: HashingMethod,
                                              encryptedHashing: HashingMethod)
-  extends GraphStageWithMaterializedValue[SinkShape[Chunk], Future[Result]] {
+  extends GraphStageWithMaterializedValue[SinkShape[Chunk], Future[FileIndexer.Result]] {
 
   val inlet = Inlet[Chunk]("FileIndexer.in")
   val shape = SinkShape(inlet)
 
   @scala.throws[Exception](classOf[Exception])
-  def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, Future[Result]) = {
-    val promise = Promise[Result]
+  def createLogicAndMaterializedValue(inheritedAttributes: Attributes): (GraphStageLogic, Future[FileIndexer.Result]) = {
+    val promise = Promise[FileIndexer.Result]
     val logic = new GraphStageLogic(shape) with InHandler {
       private[this] val hasher = Some(plainHashing)
         .filterNot(_.algorithm.isEmpty)
@@ -74,7 +73,7 @@ private[shadowcloud] final class FileIndexer(cryptoModules: CryptoModuleRegistry
           plainSize, hasher.fold(ByteString.empty)(_.finish()),
           encryptedSize, encHasher.fold(ByteString.empty)(_.finish()))
 
-        val indexedFile = Result(checksum, chunks.result(), IOResult(plainSize, status))
+        val indexedFile = FileIndexer.Result(checksum, chunks.result(), IOResult(plainSize, status))
         promise.trySuccess(indexedFile)
       }
 

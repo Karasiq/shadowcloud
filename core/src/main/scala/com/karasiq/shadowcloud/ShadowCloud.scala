@@ -4,7 +4,6 @@ import java.util.UUID
 import java.util.concurrent.Executors
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.actor.{ActorContext, ActorRef, ActorSystem, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
@@ -21,10 +20,17 @@ import com.karasiq.shadowcloud.config.passwords.PasswordProvider
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, SignMethod}
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
+import com.karasiq.shadowcloud.ops.region.{BackgroundOps, RegionOps}
+import com.karasiq.shadowcloud.ops.storage.StorageOps
+import com.karasiq.shadowcloud.ops.supervisor.RegionSupervisorOps
 import com.karasiq.shadowcloud.providers.{KeyProvider, SCModules}
 import com.karasiq.shadowcloud.serialization.{SerializationModule, SerializationModules}
 import com.karasiq.shadowcloud.storage.props.StorageProps
-import com.karasiq.shadowcloud.streams._
+import com.karasiq.shadowcloud.streams.chunk.ChunkProcessingStreams
+import com.karasiq.shadowcloud.streams.file.FileStreams
+import com.karasiq.shadowcloud.streams.index.IndexProcessingStreams
+import com.karasiq.shadowcloud.streams.metadata.MetadataStreams
+import com.karasiq.shadowcloud.streams.region.RegionStreams
 import com.karasiq.shadowcloud.utils.{ProviderInstantiator, SCProviderInstantiator}
 
 object ShadowCloud extends ExtensionId[ShadowCloudExtension] with ExtensionIdProvider {
@@ -43,25 +49,10 @@ object ShadowCloud extends ExtensionId[ShadowCloudExtension] with ExtensionIdPro
 
 class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension {
   // -----------------------------------------------------------------------
-  // Context
-  // -----------------------------------------------------------------------
-  object implicits {
-    implicit val actorSystem: ActorSystem = _actorSystem
-    implicit val executionContext: ExecutionContext = _actorSystem.dispatcher
-    implicit val materializer: Materializer = ActorMaterializer()(_actorSystem)
-    implicit val defaultTimeout: Timeout = Timeout(5 seconds)
-    private[ShadowCloudExtension] implicit val pInst: ProviderInstantiator = new SCProviderInstantiator(ShadowCloudExtension.this)
-  }
-
-  import implicits._
-
-  // -----------------------------------------------------------------------
   // Configuration
   // -----------------------------------------------------------------------
-  private[this] val rootConfig: Config = actorSystem.settings.config.getConfig("shadowcloud")
+  private[this] val rootConfig: Config = _actorSystem.settings.config.getConfig("shadowcloud")
   val config: SCConfig = SCConfig(rootConfig)
-  val modules: SCModules = SCModules(config)
-  val serialization: SerializationModule = SerializationModules.forActorSystem(actorSystem)
 
   object configs {
     def regionConfig(regionId: RegionId): RegionConfig = {
@@ -78,16 +69,34 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   }
 
   // -----------------------------------------------------------------------
+  // Context
+  // -----------------------------------------------------------------------
+  object implicits {
+    implicit val actorSystem: ActorSystem = _actorSystem
+    implicit val executionContext: ExecutionContext = _actorSystem.dispatcher
+    implicit val materializer: Materializer = ActorMaterializer()(_actorSystem)
+    implicit val defaultTimeout: Timeout = Timeout(config.timeouts.query)
+
+    private[ShadowCloudExtension] implicit val provInstantiator: ProviderInstantiator =
+      new SCProviderInstantiator(ShadowCloudExtension.this)
+  }
+
+  import implicits._
+
+  val modules: SCModules = SCModules(config)
+  val serialization: SerializationModule = SerializationModules.forActorSystem(_actorSystem)
+
+  // -----------------------------------------------------------------------
   // User keys and passwords
   // -----------------------------------------------------------------------
   object keys {
-    val provider: KeyProvider = pInst.getInstance(config.crypto.keyProvider)
+    val provider: KeyProvider = provInstantiator.getInstance(config.crypto.keyProvider)
 
     def generateKeySet(encryption: EncryptionMethod = config.crypto.encryption.keys,
                        signing: SignMethod = config.crypto.signing.index): KeySet = {
-      val enc = modules.crypto.encryptionModule(encryption).createParameters()
-      val sign = modules.crypto.signModule(signing).createParameters()
-      KeySet(UUID.randomUUID(), sign, enc)
+      val signingKey = modules.crypto.signModule(signing).createParameters()
+      val encryptionKey = modules.crypto.encryptionModule(encryption).createParameters()
+      KeySet(UUID.randomUUID(), signingKey, encryptionKey)
     }
 
     def getOrGenerateChain(): Future[KeyChain] = {
@@ -105,10 +114,11 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     }
   }
 
-  object passwords extends ConfigImplicits {
-    val provider: PasswordProvider = pInst.getInstance(config.crypto.passwordProvider)
+  object passwords {
+    val provider: PasswordProvider = provInstantiator.getInstance(config.crypto.passwordProvider)
 
     def getOrAsk(configPath: String, passwordId: String): String = {
+      import ConfigImplicits._
       rootConfig.withDefault(provider.askPassword(passwordId), _.getString(configPath))
     }
   }

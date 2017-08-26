@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.streams
+package com.karasiq.shadowcloud.ops.supervisor
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps

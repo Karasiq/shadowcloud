@@ -61,8 +61,7 @@ class ImageIOMetadataProviderTest extends TestKit(ActorSystem("imageio-test"))
   }
 
   private[this] def extractThumbnail(md: Metadata): BufferedImage = {
-    val data = md.value.preview.get.data
-    ImageIOResizer.loadImage(data.toArray)
+    ImageIOResizer.loadImage(md.getThumbnail.data.toArray)
   }
 
   private[this] def createResourceStream(name: String): Source[ByteString, NotUsed] = {

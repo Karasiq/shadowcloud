@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.streams
+package com.karasiq.shadowcloud.streams.chunk
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
@@ -12,6 +12,7 @@ import com.karasiq.shadowcloud.config.{ChunksConfig, CryptoConfig, ParallelismCo
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod}
 import com.karasiq.shadowcloud.index.{Chunk, Data}
 import com.karasiq.shadowcloud.providers.SCModules
+import com.karasiq.shadowcloud.streams.file.FileIndexer
 
 object ChunkProcessingStreams {
   def apply(modules: SCModules, chunks: ChunksConfig, crypto: CryptoConfig,

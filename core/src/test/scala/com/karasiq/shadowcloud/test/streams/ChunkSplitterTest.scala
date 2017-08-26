@@ -8,7 +8,7 @@ import akka.util.ByteString
 import org.scalatest.FlatSpecLike
 
 import com.karasiq.shadowcloud.index.{Checksum, Chunk, Data}
-import com.karasiq.shadowcloud.streams._
+import com.karasiq.shadowcloud.streams.chunk.ChunkSplitter
 import com.karasiq.shadowcloud.test.utils.{SCExtensionSpec, TestUtils}
 
 //noinspection ZeroIndexToHead

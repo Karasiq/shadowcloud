@@ -3,9 +3,10 @@ package com.karasiq.shadowcloud.test.streams
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-import akka.stream.scaladsl.Keep
+import akka.stream.scaladsl.{Keep, Sink}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import org.scalatest.FlatSpecLike
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
 
 import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.metadata.Metadata
@@ -36,11 +37,9 @@ class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike {
   val testStorageId = "metadataStreamsTest"
   val testFileId = FileId.create()
   val testMetadata = Metadata(Some(Metadata.Tag("test", "test", Metadata.Tag.Disposition.PREVIEW)),
-    Metadata.Value.Preview(Metadata.Preview("random", TestUtils.randomBytes(100))))
+    Metadata.Value.Thumbnail(Metadata.Thumbnail("random", TestUtils.randomBytes(100))))
 
   "Metadata streams" should "write metadata" in {
-    registerRegionAndStorages()
-
     val (testIn, testOut) = TestSource.probe[Metadata]
       .via(sc.streams.metadata.writeAll(testRegionId, testFileId))
       .toMat(TestSink.probe)(Keep.both)
@@ -77,17 +76,18 @@ class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike {
   }
 
   it should "create metadata" in {
-    val testFileStream = MetadataStreamsTest.testJpegStream()
+    val testTags = MetadataStreamsTest.testJpegStream()
       .via(sc.streams.metadata.create("test.jpg"))
-      .runWith(TestSink.probe)
+      .runWith(Sink.seq)
+      .futureValue(Timeout(10 seconds))
 
-    testFileStream.requestNext().tag shouldBe Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.CONTENT))
-    testFileStream.requestNext().tag shouldBe Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.METADATA))
-    testFileStream.requestNext().tag shouldBe Some(Metadata.Tag("imageio", "thumbnail", Metadata.Tag.Disposition.METADATA))
-    testFileStream.requestNext().tag shouldBe Some(Metadata.Tag("imageio", "thumbnail", Metadata.Tag.Disposition.PREVIEW))
+    val expectedTags = Set(
+      Metadata.Tag("imageio", "thumbnail", Metadata.Tag.Disposition.METADATA),
+      Metadata.Tag("imageio", "thumbnail", Metadata.Tag.Disposition.PREVIEW),
+      Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.METADATA)
+    )
 
-    testFileStream.request(1)
-    testFileStream.expectComplete()
+    testTags.flatMap(_.tag).toSet shouldBe expectedTags
   }
 
   it should "write metadata on the fly" in {
@@ -106,7 +106,7 @@ class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike {
     val resultMetadata = sc.streams.metadata.list(testRegionId, testFileResult.id).futureValue
     resultMetadata.folders shouldBe empty
     resultMetadata.files shouldBe writtenMetadataFiles.toSet
-    resultMetadata.files.map(_.path.name) shouldBe Set("content", "preview", "metadata")
+    resultMetadata.files.map(_.path.name) shouldBe Set("preview", "metadata")
     println(resultMetadata)
   }
 
@@ -114,6 +114,10 @@ class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike {
     sc.ops.supervisor.addRegion(testRegionId, sc.configs.regionConfig(testRegionId))
     sc.ops.supervisor.addStorage(testStorageId, StorageProps.inMemory)
     sc.ops.supervisor.register(testRegionId, testStorageId)
-    expectNoMsg(100 millis)
+  }
+
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+    registerRegionAndStorages()
   }
 }

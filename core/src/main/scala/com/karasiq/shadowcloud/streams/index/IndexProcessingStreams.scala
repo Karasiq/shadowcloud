@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.streams
+package com.karasiq.shadowcloud.streams.index
 
 import scala.language.postfixOps
 import scala.util.control.NonFatal

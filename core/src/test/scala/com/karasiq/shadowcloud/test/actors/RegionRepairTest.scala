@@ -10,7 +10,7 @@ import org.scalatest.FlatSpecLike
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
-import com.karasiq.shadowcloud.streams.RegionRepairStream
+import com.karasiq.shadowcloud.streams.region.RegionRepairStream
 import com.karasiq.shadowcloud.test.utils.{SCExtensionSpec, TestUtils}
 
 class RegionRepairTest extends SCExtensionSpec with FlatSpecLike {

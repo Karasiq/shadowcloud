@@ -1,14 +1,15 @@
-package com.karasiq.shadowcloud.streams
-
-import akka.NotUsed
-import akka.stream.scaladsl.Flow
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
-import akka.util.ByteString
-import com.karasiq.shadowcloud.index.{Chunk, Data}
-import com.karasiq.shadowcloud.utils.MemorySize
+package com.karasiq.shadowcloud.streams.chunk
 
 import scala.language.postfixOps
+
+import akka.NotUsed
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+import akka.stream.scaladsl.Flow
+import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import akka.util.ByteString
+
+import com.karasiq.shadowcloud.index.{Chunk, Data}
+import com.karasiq.shadowcloud.utils.MemorySize
 
 private[shadowcloud] object ChunkSplitter {
   def apply(chunkSize: Int = MemorySize.MB): Flow[ByteString, Chunk, NotUsed] = {

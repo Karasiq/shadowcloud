@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.streams
+package com.karasiq.shadowcloud.streams.metadata
 
 import java.util.UUID
 
@@ -16,7 +16,7 @@ import com.karasiq.shadowcloud.metadata.{Metadata, MetadataUtils}
 import Metadata.Tag.{Disposition ⇒ MDDisposition}
 import com.karasiq.shadowcloud.model.{FileId, RegionId}
 import com.karasiq.shadowcloud.serialization.StreamSerialization
-import com.karasiq.shadowcloud.streams.metadata.MimeDetectorStream
+import com.karasiq.shadowcloud.streams.file.FileIndexer
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
 
 private[shadowcloud] object MetadataStreams {

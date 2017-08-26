@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.streams
+package com.karasiq.shadowcloud.streams.chunk
 
 import java.security.SecureRandom
 

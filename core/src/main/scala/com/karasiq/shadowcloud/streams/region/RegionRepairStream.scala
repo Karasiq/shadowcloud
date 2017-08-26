@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.streams
+package com.karasiq.shadowcloud.streams.region
 
 import scala.concurrent.Promise
 import scala.util.Failure
@@ -10,11 +10,12 @@ import akka.stream.scaladsl.{Flow, Sink, Source}
 import com.karasiq.shadowcloud.config.ParallelismConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.ops.region.RegionOps
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
-import com.karasiq.shadowcloud.streams.RegionRepairStream.Strategy.{AutoAffinity, SetAffinity, TransformAffinity}
+import RegionRepairStream.Strategy.{AutoAffinity, SetAffinity, TransformAffinity}
 
 object RegionRepairStream {
   sealed trait Strategy

@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.streams
+package com.karasiq.shadowcloud.ops.region
 
 import scala.concurrent.Future
 
@@ -8,6 +8,7 @@ import akka.stream.scaladsl.Source
 import com.karasiq.shadowcloud.config.SCConfig
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.streams.region.RegionRepairStream
 
 private[shadowcloud] object BackgroundOps {
   def apply(config: SCConfig, regionOps: RegionOps)(implicit mat: Materializer): BackgroundOps = {

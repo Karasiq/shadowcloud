@@ -50,6 +50,10 @@ class TikaMetadataProviderTest extends TestKit(ActorSystem("test")) with FlatSpe
     metaTable.tag shouldBe Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.METADATA))
     metaTable.value.table.exists(_.values("created").values == Seq("Mon Jul 26 13:01:12 MSD 2010")) shouldBe true
 
+    val textPreview = output.requestNext(10 seconds)
+    textPreview.tag shouldBe Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.PREVIEW))
+    textPreview.value.text.exists(t ⇒ t.format == "text/plain" && t.data.contains("Type Classes as Objects and Implicits")) shouldBe true
+
     output.request(1)
     output.expectComplete()
   }

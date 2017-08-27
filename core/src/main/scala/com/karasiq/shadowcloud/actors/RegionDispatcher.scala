@@ -349,11 +349,10 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
   // -----------------------------------------------------------------------
   private[this] def addStorageDiffs(storageId: StorageId, diffs: Seq[(Long, IndexDiff)]): Unit = {
     // dropStorageDiffs(storageId, diffs.map(_._1).toSet)
-    val dispatcher = storages.getDispatcher(storageId)
     diffs.foreach { case (sequenceNr, diff) ⇒
       val regionKey = RegionKey(diff.time, storageId, sequenceNr)
       globalIndex.add(regionKey, diff)
-      chunks.registerDiff(dispatcher, diff.chunks)
+      chunks.registerDiff(storageId, diff.chunks)
       log.debug("Virtual region [{}] index updated: {} -> {}", regionId, regionKey, diff)
       sc.eventStreams.publishRegionEvent(regionId, RegionEvents.IndexUpdated(regionKey, diff))
     }
@@ -371,8 +370,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
       .toSet
     globalIndex.delete(regionKeys)
     val deleted = globalIndex.chunks.diff(preDel).deletedChunks
-    val dispatcher = storages.getDispatcher(storageId)
-    deleted.foreach(chunks.unregisterChunk(dispatcher, _))
+    deleted.foreach(chunks.unregisterChunk(storageId, _))
     sc.eventStreams.publishRegionEvent(regionId, RegionEvents.IndexDeleted(regionKeys))
   }
 

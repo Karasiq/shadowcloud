@@ -35,7 +35,7 @@ class ChunkRangesTest extends FlatSpec with Matchers {
   }
 
   it should "process chunk stream" in {
-    val ranges = Seq(
+    val ranges = ChunkRanges.RangeList(
       ChunkRanges.Range(10, 20),
       ChunkRanges.Range(5, 10),
       ChunkRanges.Range(80, 150),
@@ -43,11 +43,11 @@ class ChunkRangesTest extends FlatSpec with Matchers {
     )
 
     val chunks = TestUtils.indexedBytes._2.chunks
-    val result = ChunkRanges.fromChunkStream(ranges, chunks)
+    val result = ChunkRanges.RangeList.mapChunkStream(ranges, chunks)
     val expected = Seq(
-      (chunks(0), Seq(ChunkRanges.Range(10, 20), ChunkRanges.Range(5, 10), ChunkRanges.Range(80, 100))),
-      (chunks(1), Seq(ChunkRanges.Range(0, 50))),
-      (chunks(3), Seq(ChunkRanges.Range(0, 56)))
+      (chunks(0), ChunkRanges.RangeList(ChunkRanges.Range(10, 20), ChunkRanges.Range(5, 10), ChunkRanges.Range(80, 100))),
+      (chunks(1), ChunkRanges.RangeList(ChunkRanges.Range(0, 50))),
+      (chunks(3), ChunkRanges.RangeList(ChunkRanges.Range(0, 56)))
     )
 
     result shouldBe expected
@@ -55,14 +55,14 @@ class ChunkRangesTest extends FlatSpec with Matchers {
 
   it should "apply ranges to bytes" in {
     val bytes = TestUtils.indexedBytes._1
-    val ranges = Seq(
+    val ranges = ChunkRanges.RangeList(
       ChunkRanges.Range(10, 20),
       ChunkRanges.Range(5, 10),
       ChunkRanges.Range(80, 150)
     )
     val expected = bytes.slice(10, 20) ++ bytes.slice(5, 10) ++ bytes.slice(80, 150)
-    ChunkRanges.length(ranges) shouldBe expected.length
-    ChunkRanges.slice(bytes, ranges) shouldBe expected
+    ranges.length shouldBe expected.length
+    ranges.slice(bytes) shouldBe expected
   }
 
   it should "throw exception on invalid range" in {

@@ -32,49 +32,63 @@ object ChunkRanges {
     }
   }
 
-  def fromChunkStream(ranges: Seq[Range], chunkStream: Seq[Chunk]): Seq[(Chunk, Seq[Range])] = {
-    @tailrec
-    def groupRanges(ranges: Seq[(Chunk, Range)], currentChunk: Option[(Chunk, Seq[Range])],
-                    result: Seq[(Chunk, Seq[Range])]): Seq[(Chunk, Seq[Range])] = ranges match {
-      case (chunk, range) +: tail ⇒
-        if (currentChunk.exists(_._1 == chunk)) {
-          groupRanges(tail, currentChunk.map { case (c, ranges) ⇒ (c, ranges :+ range) }, result)
-        } else {
-          groupRanges(tail, Some((chunk, Seq(range))), result ++ currentChunk)
-        }
-
-      case Nil ⇒
-        result ++ currentChunk
+  case class RangeList(ranges: Seq[Range]) {
+    def slice(bytes: ByteString): ByteString = {
+      ranges
+        .map(_.slice(bytes))
+        .fold(ByteString.empty)(_ ++ _)
     }
 
-    val rangedChunks = {
-      var position = 0L
+    def length: Long = {
+      ranges.map(_.length).sum
+    }
 
-      val rangedChunks = List.newBuilder[(Chunk, Range)]
-      rangedChunks.sizeHint(chunkStream.length)
+    def +(range: Range): RangeList = {
+      copy(ranges :+ range)
+    }
+  }
 
-      for (chunk ← chunkStream) {
-        val chunkSize = chunk.checksum.size
-        val range = Range(position, position + chunkSize)
-        rangedChunks += (chunk → range)
-        position += chunkSize
+  object RangeList {
+    def apply(r1: Range, rs: Range*): RangeList = {
+      new RangeList(r1 +: rs)
+    }
+
+    def mapChunkStream(ranges: RangeList, chunkStream: Seq[Chunk]): Seq[(Chunk, RangeList)] = {
+      @tailrec
+      def groupRanges(ranges: Seq[(Chunk, Range)], currentChunk: Option[(Chunk, RangeList)],
+                      result: Seq[(Chunk, RangeList)]): Seq[(Chunk, RangeList)] = ranges match {
+        case (chunk, range) +: tail ⇒
+          if (currentChunk.exists(_._1 == chunk)) {
+            groupRanges(tail, currentChunk.map { case (c, ranges) ⇒ (c, ranges + range) }, result)
+          } else {
+            groupRanges(tail, Some((chunk, RangeList(range))), result ++ currentChunk)
+          }
+
+        case Nil ⇒
+          result ++ currentChunk
       }
-      rangedChunks.result()
+
+      val rangedChunks = {
+        var position = 0L
+
+        val rangedChunks = List.newBuilder[(Chunk, Range)]
+        rangedChunks.sizeHint(chunkStream.length)
+
+        for (chunk ← chunkStream) {
+          val chunkSize = chunk.checksum.size
+          val range = Range(position, position + chunkSize)
+          rangedChunks += (chunk → range)
+          position += chunkSize
+        }
+        rangedChunks.result()
+      }
+
+      val flatRanged = ranges.ranges.flatMap { range ⇒
+        for ((chunk, fullRange) ← rangedChunks if fullRange.contains(range))
+          yield (chunk, range.relativeTo(fullRange).fitToSize(chunk.checksum.size))
+      }
+
+      groupRanges(flatRanged, None, Nil)
     }
-
-    val flatRanged = ranges.flatMap { range ⇒
-      for ((chunk, fullRange) ← rangedChunks if fullRange.contains(range))
-        yield (chunk, range.relativeTo(fullRange).fitToSize(chunk.checksum.size))
-    }
-
-    groupRanges(flatRanged, None, Nil)
-  }
-
-  def slice(bytes: ByteString, ranges: Seq[Range]): ByteString = {
-    ranges.map(_.slice(bytes)).fold(ByteString.empty)(_ ++ _)
-  }
-
-  def length(ranges: Seq[Range]): Long = {
-    ranges.map(_.length).sum
   }
 }

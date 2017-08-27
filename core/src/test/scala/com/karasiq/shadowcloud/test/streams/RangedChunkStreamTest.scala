@@ -19,7 +19,7 @@ class RangedChunkStreamTest extends SCExtensionSpec with FlatSpecLike {
   "Ranged chunk stream" should "be read" in {
     writeTestFile()
 
-    val ranges = Seq(
+    val ranges = ChunkRanges.RangeList(
       ChunkRanges.Range(10, 100),
       ChunkRanges.Range(80, 150)
     )
@@ -30,7 +30,7 @@ class RangedChunkStreamTest extends SCExtensionSpec with FlatSpecLike {
       .runWith(Sink.head)
       .futureValue(Timeout(5 seconds))
 
-    result shouldBe ChunkRanges.slice(testBytes, ranges)
+    result shouldBe ranges.slice(testBytes)
   }
 
   private[this] def writeTestFile(): Unit = {

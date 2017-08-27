@@ -201,14 +201,13 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
   // -----------------------------------------------------------------------
   // Update state
   // -----------------------------------------------------------------------
-  def registerChunk(dispatcher: ActorRef, chunk: Chunk): ChunkStatus = {
-    val storageId = storages.getStorageId(dispatcher)
+  def registerChunk(storageId: StorageId, chunk: Chunk): ChunkStatus = {
     getChunkStatus(chunk) match {
       case Some(status) if !Utils.isSameChunk(status.chunk, chunk) ⇒
         if (status.availability.isWriting(storageId)) {
           log.warning("Replacing {} with {} on {}", status.chunk, chunk, storageId)
-          unregisterChunk(dispatcher, status.chunk)
-          registerChunk(dispatcher, chunk)
+          unregisterChunk(storageId, status.chunk)
+          registerChunk(storageId, chunk)
         } else {
           log.error("Chunk conflict: {} / {}", status.chunk, chunk)
           status
@@ -225,15 +224,23 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
   def unregister(dispatcher: ActorRef): Unit = {
     chunksMap.foreachValue(removeActorRef(_, dispatcher))
     readingChunks.foreach { case (chunk, status) ⇒
-      if (status.waiting.contains(dispatcher))
-        readingChunks += chunk → status.copy(waiting = status.waiting - dispatcher)
+      if (status.waiting.contains(dispatcher)) {
+        val newStatus = status.copy(waiting = status.waiting - dispatcher)
+        if (newStatus.waiting.isEmpty) {
+          log.warning("Cancelling chunk read: {}", chunk)
+          readingChunks -= chunk
+        } else {
+          readingChunks += chunk → newStatus
+        }
+      }
     }
   }
 
-  def unregisterChunk(dispatcher: ActorRef, chunk: Chunk): Unit = {
+  def unregisterChunk(storageId: StorageId, chunk: Chunk): Unit = {
     getChunkStatus(chunk) match {
       case Some(status) ⇒
         if (Utils.isSameChunk(status.chunk, chunk)) {
+          val dispatcher = storages.getDispatcher(storageId)
           removeActorRef(status, dispatcher)
         } else {
           log.warning("Unknown chunk deleted: {} (existing: {})", chunk, status.chunk)
@@ -244,9 +251,9 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
     }
   }
 
-  def registerDiff(dispatcher: ActorRef, diff: ChunkIndexDiff)(implicit storageSelector: StorageSelector): Unit = {
-    diff.deletedChunks.foreach(unregisterChunk(dispatcher, _))
-    diff.newChunks.foreach(registerChunk(dispatcher, _))
+  def registerDiff(storageId: StorageId, diff: ChunkIndexDiff)(implicit storageSelector: StorageSelector): Unit = {
+    diff.deletedChunks.foreach(unregisterChunk(storageId, _))
+    diff.newChunks.foreach(registerChunk(storageId, _))
   }
 
   // -----------------------------------------------------------------------
@@ -301,11 +308,11 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
   }
 
   def onWriteSuccess(chunk: Chunk, storageId: StorageId): Unit = {
-    registerChunk(storages.getDispatcher(storageId), chunk)
+    registerChunk(storageId, chunk)
   }
 
   def onWriteFailure(chunk: Chunk, storageId: StorageId, error: Throwable): Unit = {
-    unregisterChunk(storages.getDispatcher(storageId), chunk)
+    unregisterChunk(storageId, chunk)
     getChunkStatus(chunk).foreach(markAsWriteFailed(_, storageId))
   }
 
@@ -410,30 +417,33 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
     chunksMap.remove(status.chunk.checksum.hash)
   }
 
-  private[this] def removeActorRef(status: ChunkStatus, actor: ActorRef): Unit = {
-    def removeStorage(status: ChunkStatus, actor: ActorRef): Unit = {
-      val storageId = storages.getStorageId(actor)
-      if (status.availability.contains(storageId) || status.waitingChunk.contains(actor)) {
-        val newStatus = status.copy(
-          availability = status.availability - storageId,
-          waitingChunk = status.waitingChunk - actor
-        )
+  private[this] def removeStorage(status: ChunkStatus, storageId: StorageId): Unit = {
+    val dispatcher = storages.getDispatcher(storageId)
+    if (status.availability.contains(storageId) || status.waitingChunk.contains(dispatcher)) {
+      val newStatus = status.copy(
+        availability = status.availability - storageId,
+        waitingChunk = status.waitingChunk - dispatcher
+      )
 
-        status.writeStatus match {
-          case WriteStatus.Pending(_) ⇒
-            putStatus(newStatus)
+      status.writeStatus match {
+        case WriteStatus.Pending(_) ⇒
+          putStatus(newStatus)
+          // retryPendingChunks()
 
-          case WriteStatus.Finished ⇒
-            if (newStatus.availability.isEmpty) {
-              log.warning("Chunk is lost: {}", newStatus.chunk)
-              removeStatus(status)
-            }
-        }
+        case WriteStatus.Finished ⇒
+          if (newStatus.availability.isEmpty) {
+            log.warning("Chunk is lost: {}", newStatus.chunk)
+            removeStatus(status)
+          }
       }
     }
+  }
 
+  private[this] def removeActorRef(status: ChunkStatus, actor: ActorRef): Unit = {
     def removeWaiter(status: ChunkStatus, actor: ActorRef): Unit = {
-      if (status.waitingChunk.contains(actor)) putStatus(status.copy(waitingChunk = status.waitingChunk - actor))
+      if (status.waitingChunk.contains(actor))
+        putStatus(status.copy(waitingChunk = status.waitingChunk - actor))
+
       readingChunks.get(status.chunk).foreach { readStatus ⇒
         if (readStatus.waiting.contains(actor))
           readingChunks += status.chunk → readStatus.copy(waiting = readStatus.waiting - actor)
@@ -441,6 +451,6 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
     }
 
     val isStorage = storages.contains(actor)
-    if (isStorage) removeStorage(status, actor) else removeWaiter(status, actor)
+    if (isStorage) removeStorage(status, storages.getStorageId(actor)) else removeWaiter(status, actor)
   }
 }

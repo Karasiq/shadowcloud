@@ -37,7 +37,7 @@ private[server] trait SCAkkaHttpApiServer { self: Directives ⇒
     def extractChunkRanges(fullSize: Long) = headerValueByType[Range](()).map { range ⇒
       ChunkRanges.RangeList(range.ranges.map {
         case ByteRange.FromOffset(offset) ⇒
-          ChunkRanges.Range(offset, fullSize)
+          ChunkRanges.Range(math.min(fullSize, offset), fullSize)
 
         case ByteRange.Slice(first, last) ⇒
           ChunkRanges.Range(first, math.min(fullSize - 1, last) + 1)

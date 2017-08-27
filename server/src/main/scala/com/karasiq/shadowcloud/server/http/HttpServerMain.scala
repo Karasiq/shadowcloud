@@ -19,6 +19,7 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.api.SCApiEncoding
+import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.index.{Chunk, File, Path}
 import com.karasiq.shadowcloud.index.diffs.FileVersions
 import com.karasiq.shadowcloud.model.RegionId
@@ -36,6 +37,14 @@ object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshall
 
   import sc.implicits._
   import sc.ops.supervisor
+
+  // -----------------------------------------------------------------------
+  // Config
+  // -----------------------------------------------------------------------
+  private[this] object settings extends ConfigImplicits {
+    val config = sc.config.rootConfig.getConfig("http-server")
+    val useMultipartByteRanges = config.getBoolean("use-multipart-byte-ranges")
+  }
 
   // -----------------------------------------------------------------------
   // Route
@@ -103,7 +112,8 @@ object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshall
       val contentType = try {
         ContentType(MediaTypes.forExtension(Utils.getFileExtensionLowerCase(fileName)), () ⇒ HttpCharsets.`UTF-8`)
       } catch { case NonFatal(_) ⇒
-        ContentTypes.`application/octet-stream`
+        ContentTypes.NoContentType
+        // ContentTypes.`application/octet-stream`
       }
 
       def createEntity(dataStream: Source[ByteString, NotUsed], contentLength: Long) = {
@@ -126,26 +136,20 @@ object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshall
       (apiDirectives.extractChunkRanges(chunkStreamSize) & extractLog) { (ranges, log) ⇒
         val fullRangesSize = ranges.size
         ranges match {
-          case ranges if ranges.isOverlapping ⇒
-            log.debug("Byte ranges of size {} requested: {}", MemorySize(fullRangesSize), ranges)
-
+          case ranges if !settings.useMultipartByteRanges || ranges.isOverlapping ⇒
+            log.info("Byte ranges of size {} requested: {}", MemorySize(fullRangesSize), ranges)
             val stream = sc.streams.file.readChunkStreamRanged(regionId, chunks, ranges)
             respondWithHeader(`Content-Range`(toContentRange(ranges.toRange))) {
               complete(StatusCodes.PartialContent, createEntity(stream, fullRangesSize))
             }
 
           case ranges ⇒
-            log.debug("Non-overlapping byte ranges of size {} requested: {}", MemorySize(fullRangesSize), ranges)
-            val byteRangesStream = {
-              val partsSource = Source.fromIterator(() ⇒ ranges.ranges.iterator).map { range ⇒
-                val subRanges = RangeList(range)
-                val stream = sc.streams.file.readChunkStreamRanged(regionId, chunks, subRanges)
-                val contentRange = toContentRange(range)
-                Multipart.ByteRanges.BodyPart(contentRange, createEntity(stream, subRanges.size))
-              }
-              Multipart.ByteRanges(partsSource)
+            log.info("Multipart byte ranges of size {} requested: {}", MemorySize(fullRangesSize), ranges)
+            val partsStream = Source.fromIterator(() ⇒ ranges.ranges.iterator).map { range ⇒
+              val dataStream = sc.streams.file.readChunkStreamRanged(regionId, chunks, RangeList(range))
+              Multipart.ByteRanges.BodyPart(toContentRange(range), createEntity(dataStream, range.size))
             }
-            complete(StatusCodes.PartialContent, byteRangesStream)
+            complete(StatusCodes.PartialContent, Multipart.ByteRanges(partsStream))
         }
       } ~ {
         val stream = sc.streams.file.readChunkStream(regionId, chunks)

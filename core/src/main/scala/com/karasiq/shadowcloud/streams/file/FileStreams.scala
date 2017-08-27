@@ -36,7 +36,7 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
     Source.fromIterator(() ⇒ RangeList.mapChunkStream(ranges, chunks).iterator)
       .log("chunk-ranges")
       .flatMapConcat { case (chunk, ranges) ⇒
-        readChunkStream(regionId, Vector(chunk))
+        readChunkStream(regionId, Seq(chunk))
           .map(ranges.slice)
       }
       .named("readChunkStreamRanged")

@@ -6,14 +6,16 @@ import java.util.UUID
 import scala.language.postfixOps
 import scala.util.control.NonFatal
 
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.marshalling.PredefinedToResponseMarshallers
 import akka.http.scaladsl.model._
-import akka.http.scaladsl.model.headers.`Last-Modified`
+import akka.http.scaladsl.model.headers.{`Content-Range`, `Last-Modified`}
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import akka.http.scaladsl.settings.ServerSettings
-import akka.stream.scaladsl.Sink
+import akka.stream.scaladsl.{Sink, Source}
+import akka.util.ByteString
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.api.SCApiEncoding
@@ -22,7 +24,8 @@ import com.karasiq.shadowcloud.index.diffs.FileVersions
 import com.karasiq.shadowcloud.model.RegionId
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
-import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.streams.chunk.ChunkRanges.RangeList
+import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
 
 object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshallers with SCAkkaHttpApiServer {
   import apiInternals.apiEncoding.implicits._
@@ -103,11 +106,47 @@ object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshall
         ContentTypes.`application/octet-stream`
       }
 
+      def createEntity(dataStream: Source[ByteString, NotUsed], contentLength: Long) = {
+        if (contentLength > 0) {
+          HttpEntity.Default(contentType, contentLength, dataStream)
+        } else {
+          HttpEntity.empty(contentType)
+        }
+      }
+
       val chunkStreamSize = chunks.map(_.checksum.size).sum
-      apiDirectives.extractChunkRanges(chunkStreamSize) { ranges ⇒
-        val stream = sc.streams.file.readChunkStreamRanged(regionId, chunks, ranges)
-        val contentLength = ChunkRanges.length(ranges)
-        complete(StatusCodes.PartialContent, HttpEntity(contentType, contentLength, stream))
+
+      def toContentRange(range: ChunkRanges.Range) = {
+        val maxIndex = math.max(0L, chunkStreamSize - 1)
+        val start = math.min(maxIndex, math.max(0L, range.start))
+        val end = math.min(maxIndex, math.max(start, range.end - 1))
+        ContentRange(start, end, Some(chunkStreamSize).filter(_ > end))
+      }
+
+      (apiDirectives.extractChunkRanges(chunkStreamSize) & extractLog) { (ranges, log) ⇒
+        val fullRangesSize = ranges.size
+        ranges match {
+          case ranges if ranges.isOverlapping ⇒
+            log.debug("Byte ranges of size {} requested: {}", MemorySize(fullRangesSize), ranges)
+
+            val stream = sc.streams.file.readChunkStreamRanged(regionId, chunks, ranges)
+            respondWithHeader(`Content-Range`(toContentRange(ranges.toRange))) {
+              complete(StatusCodes.PartialContent, createEntity(stream, fullRangesSize))
+            }
+
+          case ranges ⇒
+            log.debug("Non-overlapping byte ranges of size {} requested: {}", MemorySize(fullRangesSize), ranges)
+            val byteRangesStream = {
+              val partsSource = Source.fromIterator(() ⇒ ranges.ranges.iterator).map { range ⇒
+                val subRanges = RangeList(range)
+                val stream = sc.streams.file.readChunkStreamRanged(regionId, chunks, subRanges)
+                val contentRange = toContentRange(range)
+                Multipart.ByteRanges.BodyPart(contentRange, createEntity(stream, subRanges.size))
+              }
+              Multipart.ByteRanges(partsSource)
+            }
+            complete(StatusCodes.PartialContent, byteRangesStream)
+        }
       } ~ {
         val stream = sc.streams.file.readChunkStream(regionId, chunks)
         complete(HttpEntity(contentType, chunkStreamSize, stream))

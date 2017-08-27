@@ -35,16 +35,16 @@ private[server] trait SCAkkaHttpApiServer { self: Directives ⇒
 
   protected object apiDirectives {
     def extractChunkRanges(fullSize: Long) = headerValueByType[Range](()).map { range ⇒
-      range.ranges.map {
+      ChunkRanges.RangeList(range.ranges.map {
         case ByteRange.FromOffset(offset) ⇒
           ChunkRanges.Range(offset, fullSize)
 
         case ByteRange.Slice(first, last) ⇒
-          ChunkRanges.Range(first, math.min(fullSize, last + 1))
+          ChunkRanges.Range(first, math.min(fullSize - 1, last) + 1)
 
         case ByteRange.Suffix(length) ⇒
           ChunkRanges.Range(math.max(0L, fullSize - length), fullSize)
-      }
+      })
     }
 
     def validateContentType(expectedValue: MediaType): Directive0 = {

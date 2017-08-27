@@ -78,9 +78,9 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
 
         freeSpaceFuture.onComplete {
           case Success(freeSpace) ⇒
-            if (log.isDebugEnabled) log.debug("Estimate free space on region {}: {}", regionId, MemorySize.toString(freeSpace))
+            log.debug("Estimate free space on region {}: {}", regionId, MemorySize(freeSpace))
             if (config.runOnLowSpace.exists(_ > freeSpace)) {
-              if (log.isDebugEnabled) log.debug("Free space lower than {}, starting GC", MemorySize.toString(config.runOnLowSpace.get))
+              log.debug("Free space lower than {}, starting GC", MemorySize(config.runOnLowSpace.get))
               self ! StartGCNow(delete)
             }
 
@@ -251,7 +251,7 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
 
       future.onComplete {
         case Success((hashes, ioResult)) ⇒
-          if (log.isInfoEnabled) log.info("Orphaned chunks deleted: [{}] ({})", Utils.printHashes(hashes), MemorySize.toString(ioResult.count))
+          if (log.isInfoEnabled) log.info("Orphaned chunks deleted: [{}] ({})", Utils.printHashes(hashes), MemorySize(ioResult.count))
 
         case Failure(error) ⇒
           log.error(error, "Error deleting orphaned chunks")

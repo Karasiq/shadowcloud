@@ -25,7 +25,33 @@ class ChunkRangesTest extends FlatSpec with Matchers {
 
   it should "create length" in {
     val range = ChunkRanges.Range(0, 1000)
-    range.length shouldBe 1000
+    range.size shouldBe 1000
+  }
+
+  it should "test overlap" in {
+    val ranges1 = ChunkRanges.RangeList(
+      ChunkRanges.Range(0, 10),
+      ChunkRanges.Range(10, 15),
+      ChunkRanges.Range(15, 20)
+    )
+
+    val ranges2 = ChunkRanges.RangeList(
+      ChunkRanges.Range(0, 10),
+      ChunkRanges.Range(8, 15)
+    )
+
+    val ranges3 = ChunkRanges.RangeList(
+      ChunkRanges.Range(10, 20),
+      ChunkRanges.Range(0, 10)
+    )
+
+    ranges1.isOverlapping shouldBe true
+    ranges2.isOverlapping shouldBe false
+    ranges3.isOverlapping shouldBe false
+
+    ranges1.toRange shouldBe ChunkRanges.Range(0, 20)
+    intercept[IllegalArgumentException](ranges2.toRange)
+    intercept[IllegalArgumentException](ranges3.toRange)
   }
 
   it should "split byte string" in {
@@ -61,7 +87,7 @@ class ChunkRangesTest extends FlatSpec with Matchers {
       ChunkRanges.Range(80, 150)
     )
     val expected = bytes.slice(10, 20) ++ bytes.slice(5, 10) ++ bytes.slice(80, 150)
-    ranges.length shouldBe expected.length
+    ranges.size shouldBe expected.length
     ranges.slice(bytes) shouldBe expected
   }
 

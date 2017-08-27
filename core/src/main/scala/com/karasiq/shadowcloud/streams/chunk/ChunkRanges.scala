@@ -5,12 +5,14 @@ import scala.annotation.tailrec
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.index.Chunk
+import com.karasiq.shadowcloud.index.utils.HasEmpty
+import com.karasiq.shadowcloud.utils.Utils
 
 object ChunkRanges {
   case class Range(start: Long, end: Long) {
     require(start <= end, s"Invalid range: $start - $end")
 
-    def length: Long = {
+    def size: Long = {
       end - start
     }
 
@@ -27,30 +29,65 @@ object ChunkRanges {
     }
 
     def slice(data: ByteString): ByteString = {
-      val start = math.max(0L, this.start)
-      data.drop(start.toInt).take((end - start).toInt)
+      if (start == 0 && end == data.length) {
+        data
+      } else {
+        val start = math.max(0L, this.start)
+        data.drop(start.toInt).take((end - start).toInt)
+      }
     }
   }
 
-  case class RangeList(ranges: Seq[Range]) {
+  case class RangeList(ranges: Seq[Range]) extends HasEmpty {
+    def isEmpty: Boolean = {
+      ranges.isEmpty
+    }
+
+    def size: Long = {
+      ranges.map(_.size).sum
+    }
+
+    def contains(range: Range): Boolean = {
+      ranges.exists(_.contains(range))
+    }
+
+    def fitToSize(dataSize: Long): RangeList = {
+      copy(ranges.map(_.fitToSize(dataSize)))
+    }
+
+    def +(range: Range): RangeList = {
+      copy(ranges :+ range)
+    }
+
+    def isOverlapping: Boolean = {
+      ranges.sliding(2).forall {
+        case Range(_, firstEnd) +: Range(secondStart, _) +: _ ⇒
+          firstEnd == secondStart
+
+        case _ ⇒
+          true
+      }
+    }
+
+    def toRange: Range = {
+      require(isOverlapping, "Overlapping range list required")
+      Range(ranges.headOption.fold(0L)(_.start), ranges.lastOption.fold(0L)(_.end))
+    }
+
     def slice(bytes: ByteString): ByteString = {
       ranges
         .map(_.slice(bytes))
         .fold(ByteString.empty)(_ ++ _)
     }
 
-    def length: Long = {
-      ranges.map(_.length).sum
-    }
-
-    def +(range: Range): RangeList = {
-      copy(ranges :+ range)
+    override def toString: String = {
+      "RangeList(" + Utils.printValues(ranges, 20) + ")"
     }
   }
 
   object RangeList {
-    def apply(r1: Range, rs: Range*): RangeList = {
-      new RangeList(r1 +: rs)
+    def apply(firstRange: Range, otherRanges: Range*): RangeList = {
+      new RangeList(firstRange +: otherRanges)
     }
 
     def mapChunkStream(ranges: RangeList, chunkStream: Seq[Chunk]): Seq[(Chunk, RangeList)] = {

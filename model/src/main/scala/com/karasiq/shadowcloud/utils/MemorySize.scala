@@ -2,7 +2,13 @@ package com.karasiq.shadowcloud.utils
 
 import scala.language.postfixOps
 
-private[shadowcloud] object MemorySize {
+case class MemorySize(bytes: Long) extends AnyVal {
+  override def toString: String = {
+    MemorySize.toString(bytes)
+  }
+}
+
+object MemorySize {
   private[this] val units = Array("bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
 
   val KB: Int = 1024

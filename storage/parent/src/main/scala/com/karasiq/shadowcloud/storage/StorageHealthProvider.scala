@@ -5,26 +5,41 @@ import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.utils.MemorySize
 
-case class StorageHealth(canWrite: Long, totalSpace: Long, usedSpace: Long, online: Boolean = true) {
-  require(canWrite >= 0 && totalSpace >= 0 && usedSpace >= 0, "Invalid sizes")
+case class StorageHealth(writableSpace: Long, totalSpace: Long, usedSpace: Long = 0L, online: Boolean = true) {
+  require(writableSpace >= 0 && totalSpace >= 0 && usedSpace >= 0, "Invalid sizes")
 
   def freeSpace: Long = {
     math.max(0L, totalSpace - usedSpace)
   }
 
   def -(bytes: Long): StorageHealth = {
-    val newUsedSpace = usedSpace + bytes
-    copy(canWrite = math.max(0L, canWrite - bytes), usedSpace = if (newUsedSpace >= 0) newUsedSpace else Long.MaxValue)
+    StorageHealth.normalized(writableSpace - bytes, totalSpace, usedSpace + bytes, online)
+  }
+
+  def canWrite(bytes: Long): Boolean = {
+    online && writableSpace >= bytes
   }
 
   override def toString: String = {
-    s"StorageHealth(${if (online) "Online" else "Offline"}, ${MemorySize(canWrite)} available, ${MemorySize(usedSpace)}/${MemorySize(totalSpace)})"
+    s"StorageHealth(${if (online) "Online" else "Offline"}, ${MemorySize(writableSpace)} available, ${MemorySize(usedSpace)}/${MemorySize(totalSpace)})"
   }
 }
 
 object StorageHealth {
   val empty = StorageHealth(0, 0, 0)
   val unlimited = StorageHealth(Long.MaxValue, Long.MaxValue, 0)
+
+  def normalized(writableSpace: Long, totalSpace: Long, usedSpace: Long = 0L, online: Boolean = true): StorageHealth = {
+    val totalSpaceN = if (totalSpace >= 0) totalSpace else Long.MaxValue
+    val usedSpaceN = if (usedSpace >= 0) math.min(totalSpaceN, usedSpace) else totalSpaceN
+    val writableSpaceN = math.min(totalSpaceN /* - usedSpaceN */, math.max(0L, writableSpace))
+    StorageHealth(
+      writableSpaceN, 
+      totalSpaceN,
+      usedSpaceN,
+      online
+    )
+  }
 }
 
 trait StorageHealthProvider {

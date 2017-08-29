@@ -67,7 +67,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
       case StorageEvents.ChunkWritten(ChunkPath("testRegion", chunk.checksum.hash), chunk) +: StorageEvents.HealthUpdated(health) +: Nil ⇒
         health.totalSpace shouldBe initialHealth.totalSpace
         health.usedSpace shouldBe (initialHealth.usedSpace + chunk.checksum.encSize)
-        health.canWrite shouldBe (initialHealth.canWrite - chunk.checksum.encSize)
+        health.writableSpace shouldBe (initialHealth.writableSpace - chunk.checksum.encSize)
     }
 
     // Chunk index update

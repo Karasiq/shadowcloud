@@ -20,7 +20,7 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
   }
 
   def available(toWrite: Long = 0): Seq[RegionStorage] = {
-    region.storages.storages.filter(s ⇒ s.health.online && s.health.canWrite > toWrite).toVector
+    region.storages.storages.filter(_.health.canWrite(toWrite)).toVector
   }
 
   def forIndexWrite(diff: IndexDiff): Seq[RegionStorage] = {

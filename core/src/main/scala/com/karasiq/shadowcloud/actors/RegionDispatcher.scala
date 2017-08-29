@@ -316,8 +316,8 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
         log.debug("Storage [{}] health report: {}", storageId, health)
         val wasOffline = {
           val oldHealth = storages.getStorage(storageId).health
-          (!oldHealth.online || oldHealth.canWrite < SizeUnit.MB) &&
-            (health.online && health.canWrite > SizeUnit.MB)
+          (!oldHealth.online || oldHealth.writableSpace < SizeUnit.MB) &&
+            (health.online && health.writableSpace > SizeUnit.MB)
         }
         storages.updateHealth(storageId, health)
         if (wasOffline) chunks.retryPendingChunks()

@@ -20,6 +20,6 @@ private[storage] final class InMemoryStorageHealthProvider(maps: Seq[mutable.Map
       .map(_.length)
       .foldLeft(0L)(_ + _)
 
-    Future.successful(StorageHealth(math.max(0L, total - used), total, used))
+    Future.successful(StorageHealth.normalized(total - used, total, used))
   }
 }

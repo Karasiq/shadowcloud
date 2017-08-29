@@ -1,5 +1,8 @@
 package com.karasiq.shadowcloud.utils
 
+import java.text.{DecimalFormat, DecimalFormatSymbols}
+import java.util.Locale
+
 import scala.language.postfixOps
 
 case class MemorySize(bytes: Long) extends AnyVal {
@@ -9,6 +12,7 @@ case class MemorySize(bytes: Long) extends AnyVal {
 }
 
 object MemorySize {
+  private[this] val decimalFormat = new DecimalFormat("#0.##", DecimalFormatSymbols.getInstance(Locale.ENGLISH))
   private[this] val units = Array("bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
 
   val KB: Int = 1024
@@ -35,11 +39,16 @@ object MemorySize {
   }
 
   def toString(bytes: Long): String = {
+    val sb = new StringBuilder(8)
     if (bytes < 1024) {
-      s"$bytes bytes"
+      sb.append(bytes)
+      sb.append(" bytes")
     } else {
       val (amount, unit) = toCoarsest(bytes)
-      f"$amount%.2f $unit"
+      sb.append(decimalFormat.format(amount))
+      sb.append(' ')
+      sb.append(unit)
     }
+    sb.result()
   }
 }

@@ -182,7 +182,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
       val StorageEnvelope("testStorage", StorageEvents.IndexDeleted("testRegion", sequenceNrs)) = receiveOne(5 seconds)
       sequenceNrs shouldBe Set[Long](1)
       storage ! StorageIndex.Envelope("testRegion", RegionIndex.GetIndex)
-      val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((2, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
+      val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((2L, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
       expectNoMsg(1 second)
       testRegion ! RegionDispatcher.GetIndex
       val RegionDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((RegionKey(_, "testStorage", 2), `remoteDiff`)), _)) = receiveOne(1 second)
@@ -194,7 +194,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
   it should "compact index" in {
     // Read
     storage ! StorageIndex.Envelope("testRegion", RegionIndex.GetIndex)
-    val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((2, oldDiff)), IndexDiff.empty)) = receiveOne(1 second)
+    val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((2L, oldDiff)), IndexDiff.empty)) = receiveOne(1 second)
 
     // Write diff #3
     val newDiff = CoreTestUtils.randomDiff.folders

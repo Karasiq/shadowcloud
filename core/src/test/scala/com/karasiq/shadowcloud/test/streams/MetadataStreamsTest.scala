@@ -13,7 +13,8 @@ import com.karasiq.shadowcloud.model.{FileId, Path}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams.metadata.MimeDetectorStream
 import com.karasiq.shadowcloud.test.utils.{ResourceUtils, SCExtensionSpec, TestUtils}
-import com.karasiq.shadowcloud.utils.{HexString, Utils}
+import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.utils.encoding.HexString
 
 object MetadataStreamsTest {
   def testJpegStream() = ResourceUtils.toStream("14935431092820.jpg")
@@ -52,7 +53,7 @@ class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike {
     testOut.expectComplete()
 
     resultFile.checksum.size should be > 0L
-    resultFile.path shouldBe (Utils.internalFolderPath / "metadata" / testFileId.toString.toLowerCase / "preview")
+    resultFile.path shouldBe (Utils.InternalFolder / "metadata" / testFileId.toString.toLowerCase / "preview")
   }
 
   it should "read metadata" in {

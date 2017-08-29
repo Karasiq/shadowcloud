@@ -8,12 +8,13 @@ import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
 
 import com.karasiq.shadowcloud.model.{Chunk, Path}
+import com.karasiq.shadowcloud.utils.encoding.HexString
 
 private[shadowcloud] object Utils {
   // -----------------------------------------------------------------------
   // Paths
   // -----------------------------------------------------------------------
-  val internalFolderPath = Path.root / ".$sc-internal"
+  val InternalFolder = Path.root / ".$sc-internal"
   
   // -----------------------------------------------------------------------
   // Time

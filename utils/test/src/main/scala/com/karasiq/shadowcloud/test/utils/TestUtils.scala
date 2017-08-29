@@ -10,7 +10,7 @@ import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod, SymmetricEncryptionParameters}
-import com.karasiq.shadowcloud.utils.HexString
+import com.karasiq.shadowcloud.utils.encoding.HexString
 
 object TestUtils {
   def randomBytes(length: Int): ByteString = {

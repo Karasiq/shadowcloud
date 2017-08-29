@@ -5,7 +5,7 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
-import com.karasiq.shadowcloud.utils.ByteStringEncoding
+import com.karasiq.shadowcloud.utils.encoding.ByteStringEncoding
 
 class PathNodesMapper(repository: PathTreeRepository, toNew: String ⇒ String, toOld: String ⇒ String) extends PathTreeRepository {
   def keys: Source[Path, Result] = repository.keys.map(toCleanPath)

@@ -23,7 +23,7 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{BCUtils, ECUtils}
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.BCECKeys
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.BlockCipherModule
 import com.karasiq.shadowcloud.model.crypto.{AsymmetricEncryptionParameters, EncryptionMethod, EncryptionParameters, HashingMethod}
-import com.karasiq.shadowcloud.utils.HexString
+import com.karasiq.shadowcloud.utils.encoding.HexString
 
 private[bouncycastle] object ECIESCipherModule {
   import ConfigImplicits._

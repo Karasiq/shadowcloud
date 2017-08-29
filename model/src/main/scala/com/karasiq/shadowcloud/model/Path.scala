@@ -44,22 +44,23 @@ final case class Path(nodes: Seq[String]) extends SCEntity {
   }
 
   override def toString: String = {
-    nodes.mkString(Path.delimiter, Path.delimiter, "")
+    nodes.mkString(Path.Delimiter, Path.Delimiter, "")
   }
 }
 
 object Path {
-  private val delimiter = "/"
+  private val Delimiter = "/"
+
   val root = Path(Nil)
 
   // Supports only conventional paths
   implicit def fromString(str: String): Path = {
-    val nodes: Seq[String] = str.split(delimiter).filter(_.nonEmpty)
+    val nodes: Seq[String] = str.split(Delimiter).filter(_.nonEmpty)
     if (nodes.isEmpty) root else Path(nodes)
   }
 
   def isConventional(path: Path): Boolean = {
-    path.nodes.forall(!_.contains(delimiter))
+    path.nodes.forall(!_.contains(Delimiter))
   }
 
   def isStrictlyConventional(path: Path): Boolean = {

@@ -23,7 +23,8 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
-import com.karasiq.shadowcloud.utils.{HexString, Utils}
+import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.utils.encoding.HexString
 
 object ChunkIODispatcher {
   case class ChunkPath(regionId: RegionId, chunkId: ChunkId) {

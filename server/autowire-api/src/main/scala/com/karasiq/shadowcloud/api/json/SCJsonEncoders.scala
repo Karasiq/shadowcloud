@@ -7,7 +7,7 @@ import play.api.libs.json._
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.crypto._
-import com.karasiq.shadowcloud.utils.{Base64, HexString}
+import com.karasiq.shadowcloud.utils.encoding.{Base64, HexString}
 
 //noinspection ConvertExpressionToSAM
 trait SCJsonEncoders {

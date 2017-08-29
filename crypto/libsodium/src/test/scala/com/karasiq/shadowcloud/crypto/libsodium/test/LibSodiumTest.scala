@@ -14,7 +14,7 @@ import com.karasiq.shadowcloud.crypto.libsodium.signing.CryptoSignModule
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
 import com.karasiq.shadowcloud.model.crypto.{EncryptionParameters, HashingMethod}
 import com.karasiq.shadowcloud.test.crypto.utils.CryptoTestVectors
-import com.karasiq.shadowcloud.utils.HexString
+import com.karasiq.shadowcloud.utils.encoding.HexString
 
 class LibSodiumTest extends FlatSpec with Matchers {
   val testVectors = CryptoTestVectors("libsodium")

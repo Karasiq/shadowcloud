@@ -5,7 +5,7 @@ import scala.language.postfixOps
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.model.Chunk
-import com.karasiq.shadowcloud.utils.HexString
+import com.karasiq.shadowcloud.utils.encoding.HexString
 
 trait TestImplicits {
   implicit class ByteStringOps(private val bs: ByteString) {

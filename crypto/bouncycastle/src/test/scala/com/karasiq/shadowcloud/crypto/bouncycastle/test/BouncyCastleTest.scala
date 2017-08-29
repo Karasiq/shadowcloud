@@ -16,7 +16,7 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.sign.{ECDSASignModule, RSASig
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, BCBlockCiphers, BlockCipherModule, StreamCipherModule}
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod, SignMethod}
 import com.karasiq.shadowcloud.test.crypto.utils.CryptoTestVectors
-import com.karasiq.shadowcloud.utils.HexString
+import com.karasiq.shadowcloud.utils.encoding.HexString
 
 //noinspection RedundantDefaultArgument
 class BouncyCastleTest extends FlatSpec with Matchers {

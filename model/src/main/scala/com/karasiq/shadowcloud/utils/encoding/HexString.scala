@@ -1,13 +1,13 @@
-package com.karasiq.shadowcloud.utils
+package com.karasiq.shadowcloud.utils.encoding
 
 import scala.language.postfixOps
 
 import akka.util.ByteString
 
 object HexString extends ByteStringEncoding {
-  private[this] val HEX_DIGITS = Array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f')
+  private[this] val HexDigits = Array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f')
 
-  def encode(data: Bytes): Encoded = {
+  def encode(data: BytesT): EncodedT = {
     if (data.isEmpty) return ""
     
     val halfLength = data.length << 1
@@ -15,9 +15,9 @@ object HexString extends ByteStringEncoding {
     
     var dataIndex, outIndex = 0
     while (dataIndex < data.length) {
-      outArray(outIndex) = HEX_DIGITS((0xF0 & data(dataIndex)) >>> 4)
+      outArray(outIndex) = HexDigits((0xF0 & data(dataIndex)) >>> 4)
       outIndex += 1
-      outArray(outIndex) = HEX_DIGITS(0x0F & data(dataIndex))
+      outArray(outIndex) = HexDigits(0x0F & data(dataIndex))
       outIndex += 1
       dataIndex += 1
     }
@@ -25,7 +25,7 @@ object HexString extends ByteStringEncoding {
     new String(outArray)
   }
 
-  def decode(data: Encoded): Bytes = {
+  def decode(data: EncodedT): BytesT = {
     @inline def hexCharToInt(char: Char): Int = Character.digit(char, 16)
     
     if (data.isEmpty) return ByteString.empty

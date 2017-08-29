@@ -10,7 +10,7 @@ import com.karasiq.shadowcloud.model.{FileId, Path}
 import com.karasiq.shadowcloud.utils.Utils
 
 private[shadowcloud] object MetadataUtils {
-  val metadataRoot = Utils.internalFolderPath / "metadata"
+  val metadataRoot = Utils.InternalFolder / "metadata"
 
   def getFolderPath(fileId: FileId): Path = {
     metadataRoot / fileId.toString.toLowerCase

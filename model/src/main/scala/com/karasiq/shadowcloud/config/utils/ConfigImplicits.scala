@@ -6,7 +6,8 @@ import scala.language.postfixOps
 import akka.util.ByteString
 import com.typesafe.config.ConfigException
 
-import com.karasiq.shadowcloud.utils.{HexString, Utils}
+import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.utils.encoding.HexString
 
 object ConfigImplicits extends ConfigImplicits
 

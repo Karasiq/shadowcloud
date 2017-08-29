@@ -6,7 +6,8 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.model.crypto.HashingMethod
-import com.karasiq.shadowcloud.utils.{HexString, MemorySize}
+import com.karasiq.shadowcloud.utils.MemorySize
+import com.karasiq.shadowcloud.utils.encoding.HexString
 
 @SerialVersionUID(0L)
 final case class Checksum(method: HashingMethod = HashingMethod.default, encMethod: HashingMethod = HashingMethod.default,

@@ -30,7 +30,7 @@ import com.karasiq.shadowcloud.storage.repository.wrappers.PathNodesMapper
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, SCExtensionSpec, TestUtils}
-import com.karasiq.shadowcloud.utils.{Base64, HexString}
+import com.karasiq.shadowcloud.utils.encoding.{Base64, HexString}
 
 // Uses local filesystem
 class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {

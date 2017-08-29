@@ -3,6 +3,7 @@ package com.karasiq.shadowcloud.storage.utils.internal
 import scala.collection.{mutable, SortedMap}
 import scala.language.postfixOps
 
+import com.karasiq.shadowcloud.exceptions.SCExceptions
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.index.utils.FolderDecider
@@ -29,7 +30,7 @@ private[storage] final class DefaultIndexMerger[@specialized(Long) T](firstKey: 
         // Pass
 
       case Some(existing) ⇒
-        throw new IllegalArgumentException(s"Diff conflict: $existing / $diff")
+        throw SCExceptions.DiffConflict(existing, diff)
 
       case None ⇒
         val lastDiff = _diffs.lastOption

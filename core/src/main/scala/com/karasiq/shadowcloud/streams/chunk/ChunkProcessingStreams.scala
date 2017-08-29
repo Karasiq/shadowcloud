@@ -10,6 +10,7 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.{ChunksConfig, CryptoConfig, ParallelismConfig}
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod}
+import com.karasiq.shadowcloud.exceptions.{CryptoException, SCExceptions}
 import com.karasiq.shadowcloud.index.{Chunk, Data}
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.streams.file.FileIndexer
@@ -54,7 +55,7 @@ final class ChunkProcessingStreams(modules: SCModules, chunks: ChunksConfig,
         chunk
 
       case _ ⇒
-        throw new IllegalArgumentException("Chunk data is empty")
+        throw SCExceptions.ChunkDataIsEmpty(chunk)
     }
   }
 
@@ -85,22 +86,30 @@ final class ChunkProcessingStreams(modules: SCModules, chunks: ChunksConfig,
         chunk
 
       case _ ⇒
-        throw new IllegalArgumentException("Chunk data is empty")
+        throw SCExceptions.ChunkDataIsEmpty(chunk)
     }
   }
 
   def verify: ChunkFlow = parallelFlow(parallelism.hashing) { chunk ⇒
-    val hasher = modules.crypto.hashingModule(chunk.checksum.method)
-    if (chunk.checksum.hash.nonEmpty && hasher.createHash(chunk.data.plain) != chunk.checksum.hash) {
-      throw new IllegalArgumentException(s"Chunk plaintext checksum not match: $chunk")
-    } else if (chunk.checksum.encHash.nonEmpty && hasher.createHash(chunk.data.encrypted) != chunk.checksum.encHash) {
-      throw new IllegalArgumentException(s"Chunk ciphertext checksum not match: $chunk")
-    } else if ((chunk.data.plain.nonEmpty && chunk.checksum.size != chunk.data.plain.length) ||
-      (chunk.data.encrypted.nonEmpty && chunk.checksum.encSize != chunk.data.encrypted.length)) {
-      throw new IllegalArgumentException(s"Chunk sizes not match: $chunk")
-    } else {
-      chunk
+    def verifyHash(expected: ByteString, create: ⇒ ByteString): Unit = {
+      if (expected.nonEmpty) {
+        val actual = create
+        if (expected != actual)
+          throw SCExceptions.ChunkVerifyError(chunk, CryptoException.ChecksumError(expected, actual))
+      }
     }
+
+    val hasher = modules.crypto.hashingModule(chunk.checksum.method)
+
+    if ((chunk.data.plain.nonEmpty && chunk.checksum.size != chunk.data.plain.length) ||
+      (chunk.data.encrypted.nonEmpty && chunk.checksum.encSize != chunk.data.encrypted.length)) {
+      throw SCExceptions.ChunkVerifyError(chunk, new IllegalArgumentException("Chunk sizes not match"))
+    }
+
+    verifyHash(chunk.checksum.hash, hasher.createHash(chunk.data.plain))
+    verifyHash(chunk.checksum.encHash, hasher.createHash(chunk.data.encrypted))
+
+    chunk
   }
 
   def beforeWrite(encryption: EncryptionMethod = crypto.encryption.chunks,

@@ -61,8 +61,8 @@ object Blobs {
       promise.success(reader.result.asInstanceOf[String])
     }
 
-    reader.onerror = (e: Event) ⇒ {
-      promise.failure(new IllegalArgumentException(e.toString))
+    reader.onerror = (errorEvent: Event) ⇒ {
+      promise.failure(new IllegalArgumentException(errorEvent.toString))
     }
 
     promise.future
@@ -80,8 +80,8 @@ object Blobs {
       promise.success(reader.result.asInstanceOf[String])
     }
 
-    reader.onerror = (e: Event) ⇒ {
-      promise.failure(new IllegalArgumentException(e.toString))
+    reader.onerror = (errorEvent: Event) ⇒ {
+      promise.failure(new IllegalArgumentException(errorEvent.toString))
     }
 
     promise.future

@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.actors
 
-import java.io.FileNotFoundException
-
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
@@ -22,7 +20,7 @@ import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.RegionIndex.WriteDiff
 import com.karasiq.shadowcloud.config.RegionConfig
-import com.karasiq.shadowcloud.exceptions.StorageException
+import com.karasiq.shadowcloud.exceptions.{RegionException, StorageException}
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model.{RegionId, SequenceNr, StorageId}
@@ -124,7 +122,8 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
     // -----------------------------------------------------------------------
     case WriteIndex(folders) ⇒
       if (folders.isEmpty) {
-        sender() ! WriteIndex.Failure(folders, new IllegalArgumentException("Diff is empty"))
+        sender() ! WriteIndex.Success(folders, globalIndex.pending)
+        // sender() ! WriteIndex.Failure(folders, RegionException.IndexWriteFailed(IndexDiff(folders = folders), new IllegalArgumentException("Diff is empty")))
       } else {
         log.debug("Index write request: {}", folders)
         val future = (self ? EnqueueIndexDiff(IndexDiff(Utils.timestamp, folders))).mapTo[IndexDiff]
@@ -139,10 +138,10 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
           self.tell(MarkAsPending(diff), currentSender)
 
         case Success(otherQueueResult) ⇒
-          currentSender ! Status.Failure(new IllegalStateException(otherQueueResult.toString))
+          currentSender ! Status.Failure(RegionException.IndexWriteFailed(diff, new IllegalStateException(otherQueueResult.toString)))
 
         case Failure(error) ⇒
-          currentSender ! Status.Failure(error)
+          currentSender ! Status.Failure(RegionException.IndexWriteFailed(diff, error))
       }
 
     case MarkAsPending(diff) ⇒
@@ -171,7 +170,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
           sender() ! GetFiles.Success(path, files)
 
         case None ⇒
-          sender() ! GetFiles.Failure(path, new FileNotFoundException(s"No such file: $path"))
+          sender() ! GetFiles.Failure(path, RegionException.FileNotFound(path))
       }
 
     case GetFolder(path) ⇒
@@ -180,7 +179,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
           sender() ! GetFolder.Success(path, folder)
 
         case None ⇒
-          sender() ! GetFolder.Failure(path, new FileNotFoundException(s"No such directory: $path"))
+          sender() ! GetFolder.Failure(path, RegionException.DirectoryNotFound(path))
       }
 
     case GetIndex ⇒
@@ -196,7 +195,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
           sender() ! GetChunkStatus.Success(chunk, status)
 
         case None ⇒
-          sender() ! GetChunkStatus.Failure(chunk, new NoSuchElementException("Chunk not found"))
+          sender() ! GetChunkStatus.Failure(chunk, RegionException.ChunkNotFound(chunk))
       }
 
     // -----------------------------------------------------------------------
@@ -218,11 +217,9 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
       chunks.onReadFailure(chunk, storageId, error)
 
     case ChunkWriteSuccess(storageId, chunk) ⇒
-      log.debug("Chunk write success: {}", chunk)
       chunks.onWriteSuccess(chunk, storageId)
 
     case ChunkWriteFailed(storageId, chunk, error) ⇒
-      log.error(error, "Chunk write failed: {}", chunk)
       chunks.onWriteFailure(chunk, storageId, error)
       // chunks.retryPendingChunks()
 
@@ -230,10 +227,11 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
     // Storage events
     // -----------------------------------------------------------------------
     case AttachStorage(storageId, props, dispatcher, health) ⇒
-      if (storages.contains(storageId) && storages.getDispatcher(storageId) == dispatcher) {
+      val isStorageExists = storages.contains(storageId)
+      if (isStorageExists && storages.getDispatcher(storageId) == dispatcher) {
         // Ignore
       } else {
-        if (storages.contains(storageId)) {
+        if (isStorageExists) {
           val oldDispatcher = storages.getDispatcher(storageId)
           log.warning("Replacing storage {} with new dispatcher: {} -> {}", storageId, oldDispatcher, dispatcher)
           dropStorageDiffs(storageId)
@@ -267,7 +265,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
         StorageIndex.Envelope(regionId, RegionIndex.GetIndex))
 
       indexFuture.onComplete {
-        case Success(IndexMerger.State(Nil, IndexDiff.empty)) | Failure(_: StorageException.NotFound) ⇒
+        case Success(IndexMerger.State(Nil, IndexDiff.empty)) | Failure(StorageException.NotFound(_)) ⇒
           val diff = globalIndex.mergedDiff.merge(globalIndex.pending)
           if (diff.nonEmpty) {
             log.info("Mirroring index to storage {}: {}", storageId, diff)

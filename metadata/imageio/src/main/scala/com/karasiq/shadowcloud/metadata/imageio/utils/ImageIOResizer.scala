@@ -92,7 +92,7 @@ object ImageIOResizer {
         new BufferedImage(rgbOpaqueModel, raster, false, null)
 
       case _ ⇒
-        throw new IllegalArgumentException(s"Not supported: $pg")
+        throw new IllegalStateException(s"Not supported: $pg")
     }
   }
 

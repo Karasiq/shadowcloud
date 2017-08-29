@@ -1,11 +1,17 @@
 package com.karasiq.shadowcloud.exceptions
 
-import java.io.IOException
+import com.karasiq.shadowcloud.index.Path
 
-sealed abstract class StorageException(message: String = null, cause: Throwable = null) extends IOException(message, cause)
+sealed abstract class StorageException(message: String = null, cause: Throwable = null)
+  extends SCException(message, cause) with SCException.IOError with SCException.PathAssociated
 
 object StorageException {
-  case class NotFound(path: String) extends StorageException(s"Not found: $path")
-  case class AlreadyExists(path: String) extends StorageException(s"Already exists: $path")
-  case class IOFailure(path: String, cause: Throwable) extends StorageException(s"IO failure: $path", cause)
+  final case class NotFound(path: Path)
+    extends StorageException("Not found: " + path) with SCException.NotFound
+
+  final case class AlreadyExists(path: Path)
+    extends StorageException("Already exists: " + path) with SCException.AlreadyExists
+
+  final case class IOFailure(path: Path, cause: Throwable)
+    extends StorageException("IO failure: " + path, cause) with SCException.WrappedError
 }

@@ -8,6 +8,7 @@ import akka.stream._
 import akka.stream.stage.{GraphStage, GraphStageLogic, OutHandler}
 
 import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.exceptions.CryptoException
 import com.karasiq.shadowcloud.providers.SCModules
 
 private[shadowcloud] object ChunkKeyStream {
@@ -77,12 +78,12 @@ private[shadowcloud] final class ChunkKeyStream(modules: SCModules, method: Encr
       if (encryptedCount > changeKeyIn) {
         resetParametersAndCounter()
         if (ChunkKeyStream.isKeyReused(oldParameters, keyParameters) || ChunkKeyStream.isNonceReused(oldParameters, keyParameters)) {
-          failStage(new IllegalArgumentException("Key or nonce is reused"))
+          failStage(CryptoException.ReuseError(new IllegalArgumentException("Key or nonce is reused")))
         }
       } else {
         updateParameters()
         if (ChunkKeyStream.isNonceReused(oldParameters, keyParameters)) {
-          failStage(new IllegalArgumentException("Nonce is reused"))
+          failStage(CryptoException.ReuseError(new IllegalArgumentException("Nonce is reused")))
         }
       }
     }

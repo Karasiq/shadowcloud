@@ -9,12 +9,36 @@ import scala.util.{Failure, Success}
 
 import akka.Done
 import akka.stream.{IOResult ⇒ AkkaIOResult}
+import akka.util.ByteString
 
 import com.karasiq.shadowcloud.exceptions.StorageException
+import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.storage.StorageIOResult
+import com.karasiq.shadowcloud.utils.HexString
 
 object StorageUtils {
-  def wrapException(path: String, error: Throwable): StorageException = error match {
+  def toStoragePath(key: Any, root: Path = Path.root): Path = {
+    def encodeNode(node: Any): String = node match {
+      case bytes: ByteString ⇒
+        HexString.encode(bytes)
+
+      case _ ⇒
+        node.toString
+    }
+
+    key match {
+      case path: Path ⇒
+        root / path
+
+      case (v1, v2) ⇒
+        root / encodeNode(v1) / encodeNode(v2)
+
+      case _ ⇒
+        root / key.toString
+    }
+  }
+
+  def wrapException(path: Path, error: Throwable): StorageException = error match {
     case se: StorageException ⇒
       se
 
@@ -28,7 +52,7 @@ object StorageUtils {
       StorageException.IOFailure(path, error)
   }
 
-  def wrapIOResult(path: String, future: Future[AkkaIOResult])(implicit ec: ExecutionContext): Future[StorageIOResult] = {
+  def wrapIOResult(path: Path, future: Future[AkkaIOResult])(implicit ec: ExecutionContext): Future[StorageIOResult] = {
     wrapFuture(path, future.map {
       case AkkaIOResult(count, Success(Done)) ⇒
         StorageIOResult.Success(path, count)
@@ -38,7 +62,7 @@ object StorageUtils {
     })
   }
 
-  def wrapFuture(path: String, future: Future[_ <: StorageIOResult])(implicit ec: ExecutionContext): Future[StorageIOResult] = {
+  def wrapFuture(path: Path, future: Future[_ <: StorageIOResult])(implicit ec: ExecutionContext): Future[StorageIOResult] = {
     future.recover { case error ⇒ StorageIOResult.Failure(path, StorageUtils.wrapException(path, error)) }
   }
 
@@ -54,7 +78,7 @@ object StorageUtils {
 
   def foldIOResultsIgnoreErrors(results: StorageIOResult*): StorageIOResult = {
     if (results.isEmpty) return StorageIOResult.empty
-    val path = results.headOption.fold("")(_.path)
+    val path = results.headOption.fold(Path.root)(_.path)
     val count = results
       .collect { case StorageIOResult.Success(_, count) ⇒ count }
       .sum

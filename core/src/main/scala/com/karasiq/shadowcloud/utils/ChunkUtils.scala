@@ -2,6 +2,7 @@ package com.karasiq.shadowcloud.utils
 
 import akka.util.ByteString
 
+import com.karasiq.shadowcloud.exceptions.SCExceptions
 import com.karasiq.shadowcloud.index.{Chunk, Data}
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 
@@ -16,7 +17,7 @@ private[shadowcloud] object ChunkUtils {
         module.decrypt(encrypted, chunk.encryption)
 
       case _ ⇒
-        throw new IllegalArgumentException("Chunk data is empty")
+        throw SCExceptions.ChunkDataIsEmpty(chunk)
     }
   }
 
@@ -30,7 +31,7 @@ private[shadowcloud] object ChunkUtils {
         module.encrypt(plain, chunk.encryption)
 
       case _ ⇒
-        throw new IllegalArgumentException("Chunk data is empty")
+        throw SCExceptions.ChunkDataIsEmpty(chunk)
     }
   }
 

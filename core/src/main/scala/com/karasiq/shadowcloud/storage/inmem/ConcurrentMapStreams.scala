@@ -10,10 +10,9 @@ import scala.util.{Failure, Success}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 
 import com.karasiq.shadowcloud.exceptions.StorageException
-import com.karasiq.shadowcloud.model.{ChunkId, RegionId}
+import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
-import com.karasiq.shadowcloud.utils.HexString
 
 private[inmem] final class ConcurrentMapStreams[K, V](map: CMap[K, V], length: V ⇒ Int) {
   def keys: Source[K, Future[StorageIOResult]] = {
@@ -21,16 +20,16 @@ private[inmem] final class ConcurrentMapStreams[K, V](map: CMap[K, V], length: V
     Source.fromIterator(() ⇒ map.keysIterator)
       .alsoTo(Sink.onComplete {
         case Success(_) ⇒
-          promise.success(StorageIOResult.Success(rootPathString, 0))
+          promise.success(StorageIOResult.Success(Path.root, 0))
 
         case Failure(error) ⇒
-          promise.success(StorageIOResult.Failure(rootPathString, StorageUtils.wrapException(rootPathString, error)))
+          promise.success(StorageIOResult.Failure(Path.root, StorageUtils.wrapException(Path.root, error)))
       })
       .mapMaterializedValue(_ ⇒ promise.future)
   }
 
   def read(key: K): Source[V, Future[StorageIOResult]] = {
-    val path = toPathString(key)
+    val path = StorageUtils.toStoragePath(key)
     map.get(key) match {
       case Some(data) ⇒
         Source.single(data)
@@ -43,7 +42,7 @@ private[inmem] final class ConcurrentMapStreams[K, V](map: CMap[K, V], length: V
   }
 
   def write(key: K): Sink[V, Future[StorageIOResult]] = {
-    val path = toPathString(key)
+    val path = StorageUtils.toStoragePath(key)
     if (map.contains(key)) {
       Sink.cancelled.mapMaterializedValue(_ ⇒ {
         Future.successful(StorageIOResult.Failure(path, StorageException.AlreadyExists(path)))
@@ -70,7 +69,7 @@ private[inmem] final class ConcurrentMapStreams[K, V](map: CMap[K, V], length: V
   def delete: Sink[K, Future[StorageIOResult]] = {
     Flow[K]
       .map { key ⇒
-        val path = key.toString
+        val path = StorageUtils.toStoragePath(key)
         map.remove(key)
           .map(deleted ⇒ StorageIOResult.Success(path, length(deleted)): StorageIOResult)
           .getOrElse(StorageIOResult.Failure(path, StorageException.NotFound(path)))
@@ -78,20 +77,5 @@ private[inmem] final class ConcurrentMapStreams[K, V](map: CMap[K, V], length: V
       .fold(Seq.empty[StorageIOResult])(_ :+ _)
       .map(results ⇒ StorageUtils.foldIOResultsIgnoreErrors(results:_*))
       .toMat(Sink.head)(Keep.right)
-  }
-
-  private[this] def rootPathString: String = {
-    "ConcurrentMap"
-  }
-
-  private[this] def toPathString(key: K): String = {
-    val keyString = key match {
-      case (regionId: RegionId, chunkId: ChunkId) ⇒
-        regionId + "/" + HexString.encode(chunkId)
-
-      case _ ⇒
-        key.toString
-    }
-    keyString + " in " + rootPathString
   }
 }

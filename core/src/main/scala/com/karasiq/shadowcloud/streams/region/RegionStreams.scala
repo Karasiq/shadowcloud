@@ -8,6 +8,7 @@ import akka.actor.ActorRef
 import akka.stream.scaladsl.{Flow, Source}
 
 import com.karasiq.shadowcloud.config.{ParallelismConfig, TimeoutsConfig}
+import com.karasiq.shadowcloud.exceptions.SCException
 import com.karasiq.shadowcloud.index.{Chunk, File, Path}
 import com.karasiq.shadowcloud.index.diffs.FileVersions
 import com.karasiq.shadowcloud.ops.region.RegionOps
@@ -39,7 +40,7 @@ final class RegionStreams(regionSupervisor: ActorRef, parallelism: ParallelismCo
     .mapAsync(parallelism.query) { case (regionId, path) ⇒
       regionOps.getFiles(regionId, path)
         .map((path, _))
-        .recover { case _ ⇒ (path, Set.empty[File]) } // TODO: Region exceptions
+        .recover { case error if SCException.isNotFound(error) ⇒ (path, Set.empty[File]) }
     }
     .named("findFiles")
 

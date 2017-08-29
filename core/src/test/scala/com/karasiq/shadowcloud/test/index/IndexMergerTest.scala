@@ -4,6 +4,7 @@ import scala.language.postfixOps
 
 import org.scalatest.{Matchers, WordSpec}
 
+import com.karasiq.shadowcloud.exceptions.SCExceptions
 import com.karasiq.shadowcloud.index.FolderIndex
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
@@ -71,7 +72,7 @@ class IndexMergerTest extends WordSpec with Matchers {
       }
       
       "throw exception on diff rewrite" in {
-        intercept[IllegalArgumentException] {
+        intercept[SCExceptions.DiffConflict] {
           index.add(diff1.time, diff1.merge(CoreTestUtils.randomDiff))
         }
       }

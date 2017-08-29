@@ -20,7 +20,7 @@ private[bouncycastle] object BCUtils {
       (algorithm, "CBC")
 
     case _ ⇒
-      throw new IllegalArgumentException
+      throw new IllegalArgumentException(algorithm)
   }
 
   def createSecureRandom(): SecureRandom = {

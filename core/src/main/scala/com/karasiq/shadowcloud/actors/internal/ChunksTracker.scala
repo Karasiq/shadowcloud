@@ -14,6 +14,7 @@ import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk �
 import com.karasiq.shadowcloud.actors.RegionDispatcher._
 import com.karasiq.shadowcloud.actors.internal.ChunksTracker.ChunkReadStatus
 import com.karasiq.shadowcloud.config.RegionConfig
+import com.karasiq.shadowcloud.exceptions.{RegionException, SCExceptions}
 import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
@@ -62,7 +63,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
             (Some(storage), SReadChunk.unwrapFuture(storage.dispatcher ? SReadChunk(getChunkPath(storage, status.chunk), chunk)))
 
           case None ⇒
-            (None, Future.failed(new IllegalArgumentException("Chunk unavailable: " + chunk)))
+            (None, Future.failed(RegionException.ChunkReadFailed(chunk, RegionException.ChunkUnavailable(chunk))))
         }
       }
     }
@@ -102,7 +103,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
         addWaiter(actualChunk, receiver)
 
       case None ⇒
-        receiver ! ReadChunk.Failure(chunk, new IllegalArgumentException("Chunk not found: " + chunk))
+        receiver ! ReadChunk.Failure(chunk, RegionException.ChunkReadFailed(chunk, RegionException.ChunkNotFound(chunk)))
     }
     statusOption
   }
@@ -152,10 +153,10 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
 
         case WriteStatus.Finished ⇒
           if (!Utils.isSameChunk(status.chunk, chunk)) {
-            receiver ! WriteChunk.Failure(chunk, new IllegalArgumentException(s"Chunk conflict: ${status.chunk} / $chunk"))
+            receiver ! WriteChunk.Failure(chunk, RegionException.ChunkRepairFailed(chunk, SCExceptions.ChunkConflict(status.chunk, chunk)))
             status
           } else if (chunk.isEmpty) {
-            receiver ! WriteChunk.Failure(chunk, new IllegalArgumentException("Chunk should not be empty"))
+            receiver ! WriteChunk.Failure(chunk, RegionException.ChunkRepairFailed(chunk, SCExceptions.ChunkDataIsEmpty(chunk)))
             status
           } else {
             val status1 = status.copy(
@@ -171,7 +172,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
       }
     }
 
-    if (result.isEmpty) receiver ! WriteChunk.Failure(chunk, new NoSuchElementException("Chunk not found"))
+    if (result.isEmpty) receiver ! WriteChunk.Failure(chunk, RegionException.ChunkRepairFailed(chunk, RegionException.ChunkNotFound(chunk)))
     result 
   }
 
@@ -259,8 +260,8 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
   // -----------------------------------------------------------------------
   // Callbacks
   // -----------------------------------------------------------------------
-  def onReadSuccess(chunk: Chunk, storageId: Option[String]): Unit = {
-    log.debug("Read success: {} from {}", chunk, storageId)
+  def onReadSuccess(chunk: Chunk, storageId: Option[StorageId]): Unit = {
+    log.debug("Read success: {} from {}", chunk, storageId.getOrElse("<internal>"))
     readingChunks.remove(chunk) match {
       case Some(ChunkReadStatus(_, waiting)) ⇒
         waiting.foreach(_ ! ReadChunk.Success(chunk.withoutData, chunk))
@@ -270,10 +271,11 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
     }
   }
 
-  def onReadFailure(chunk: Chunk, storageId: Option[String], error: Throwable)
+  def onReadFailure(chunk: Chunk, storageId: Option[StorageId], error: Throwable)
                    (implicit storageSelector: StorageSelector): Unit = {
 
-    log.error(error, "Read failure: {} from {}", chunk, storageId)
+    log.error(error, "Chunk read failure from {}: {}", storageId.getOrElse("<internal>"), chunk)
+
     for (storageId ← storageId; status ← getChunkStatus(chunk)) {
       markAsReadFailed(status, storageId)
     }
@@ -282,7 +284,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
       case Some(ChunkReadStatus(reading, waiting)) ⇒
         def cancelChunkRead(): Unit = {
           log.warning("Cancelling chunk read: {}", chunk)
-          waiting.foreach(_ ! ReadChunk.Failure(chunk, error))
+          waiting.foreach(_ ! ReadChunk.Failure(chunk, RegionException.ChunkReadFailed(chunk, error)))
           readingChunks -= chunk
         }
 
@@ -308,10 +310,12 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
   }
 
   def onWriteSuccess(chunk: Chunk, storageId: StorageId): Unit = {
+    log.debug("Chunk write success to {}: {}", storageId, chunk)
     registerChunk(storageId, chunk)
   }
 
   def onWriteFailure(chunk: Chunk, storageId: StorageId, error: Throwable): Unit = {
+    log.error(error, "Chunk write failed from {}: {}", storageId, chunk)
     unregisterChunk(storageId, chunk)
     getChunkStatus(chunk).foreach(markAsWriteFailed(_, storageId))
   }

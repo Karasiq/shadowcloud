@@ -227,7 +227,8 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
         }
 
         def getNewContentHandler(os: OutputStream, encoding: String): ContentHandler = {
-          throw new IllegalArgumentException("Not supported")
+          getNewContentHandler
+          // throw new IllegalArgumentException("Not supported")
         }
       }
 

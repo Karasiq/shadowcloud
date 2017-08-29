@@ -40,7 +40,7 @@ object EncryptionParameters {
       sp
 
     case _ ⇒
-      throw new IllegalArgumentException("Symmetric key parameters required")
+      throw new IllegalStateException("Symmetric key parameters required")
   }
 
   def asymmetric(p: EncryptionParameters): AsymmetricEncryptionParameters = p match {
@@ -48,6 +48,6 @@ object EncryptionParameters {
       ap
 
     case _ ⇒
-      throw new IllegalArgumentException("Asymmetric key parameters required")
+      throw new IllegalStateException("Asymmetric key parameters required")
   }
 }

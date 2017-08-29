@@ -33,7 +33,7 @@ private[shadowcloud] object CryptoModuleRegistry {
         m
 
       case _ ⇒
-        throw new IllegalArgumentException("Stream hashing module required")
+        throw new IllegalStateException("Stream hashing module required")
     }
   }
 
@@ -43,7 +43,7 @@ private[shadowcloud] object CryptoModuleRegistry {
         m
 
       case _ ⇒
-        throw new IllegalArgumentException("Stream encryption module required")
+        throw new IllegalStateException("Stream encryption module required")
     }
   }
 
@@ -53,7 +53,7 @@ private[shadowcloud] object CryptoModuleRegistry {
         m
 
       case _ ⇒
-        throw new IllegalArgumentException("Stream signature module required")
+        throw new IllegalStateException("Stream signature module required")
     }
   }
 }

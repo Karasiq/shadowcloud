@@ -14,7 +14,7 @@ import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
-import com.karasiq.shadowcloud.storage.utils.IndexMerger
+import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}
 
 object StorageIndex {
   // Messages
@@ -53,7 +53,7 @@ private[actors] final class StorageIndex(storageId: StorageId, storageProps: Sto
           dispatcher.forward(message)
 
         case None ⇒
-          sender() ! Status.Failure(StorageException.NotFound(regionId))
+          sender() ! Status.Failure(StorageException.NotFound(StorageUtils.toStoragePath(regionId)))
       }
 
     case SynchronizeAll ⇒

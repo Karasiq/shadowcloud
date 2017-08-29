@@ -14,6 +14,7 @@ import com.karasiq.shadowcloud.actors.internal.RegionTracker
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.{ActorState, MessageStatus}
 import com.karasiq.shadowcloud.config.RegionConfig
+import com.karasiq.shadowcloud.exceptions.SupervisorException
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
@@ -173,10 +174,11 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
             dispatcher.forward(message)
 
           case ActorState.Suspended ⇒
-            sender() ! Status.Failure(new IllegalStateException("Region is suspended"))
+            sender() ! Status.Failure(SupervisorException.IllegalRegionState(regionId,
+              new IllegalStateException("Region is suspended")))
         }
       } else {
-        sender() ! Status.Failure(new NoSuchElementException(regionId))
+        sender() ! Status.Failure(SupervisorException.RegionNotFound(regionId))
       }
 
     case StorageEnvelope(storageId, message) ⇒
@@ -186,10 +188,11 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
             dispatcher.forward(message)
 
           case ActorState.Suspended ⇒
-            sender() ! Status.Failure(new IllegalStateException("Storage is suspended"))
+            sender() ! Status.Failure(SupervisorException.IllegalStorageState(storageId,
+              new IllegalStateException("Storage is suspended")))
         }
       } else {
-        sender() ! Status.Failure(new NoSuchElementException(storageId))
+        sender() ! Status.Failure(SupervisorException.StorageNotFound(storageId))
       }
   }
 

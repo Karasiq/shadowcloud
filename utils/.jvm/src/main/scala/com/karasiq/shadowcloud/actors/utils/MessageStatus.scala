@@ -32,8 +32,8 @@ trait MessageStatus[Key, Value] {
       case scala.util.Failure(error) ⇒
         Future.failed(error)
 
-      case _ ⇒
-        Future.failed(new IllegalStateException())
+      case value ⇒
+        Future.failed(new IllegalArgumentException(value.toString))
     }
   }
 }

@@ -7,7 +7,7 @@ import com.typesafe.config.ConfigFactory
 import org.scalatest.{FlatSpec, Matchers}
 
 import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, StorageConfig}
-import com.karasiq.shadowcloud.crypto.HashingMethod
+import com.karasiq.shadowcloud.model.crypto.HashingMethod
 
 class SCConfigTest extends FlatSpec with Matchers {
   val rootConfig = ConfigFactory.load().getConfig("shadowcloud")

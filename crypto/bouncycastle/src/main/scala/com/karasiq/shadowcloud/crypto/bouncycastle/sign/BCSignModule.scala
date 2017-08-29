@@ -4,8 +4,9 @@ import akka.util.ByteString
 import org.bouncycastle.crypto.{DSA, Signer}
 import org.bouncycastle.crypto.signers.DSADigestSigner
 
-import com.karasiq.shadowcloud.crypto.{OnlyStreamSignModule, SignModuleStreamer, SignParameters}
+import com.karasiq.shadowcloud.crypto.{OnlyStreamSignModule, SignModuleStreamer}
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.BCDigests
+import com.karasiq.shadowcloud.model.crypto.SignParameters
 
 private[bouncycastle] trait BCSignModule extends OnlyStreamSignModule with BCSignKeys
 

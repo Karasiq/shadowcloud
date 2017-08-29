@@ -4,7 +4,8 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.crypto.{HashingMethod, HashingModule, HashingModuleStreamer, StreamHashingModule}
+import com.karasiq.shadowcloud.crypto.{HashingModule, HashingModuleStreamer, StreamHashingModule}
+import com.karasiq.shadowcloud.model.crypto.HashingMethod
 
 private[crypto] final class NoOpHashingModule extends StreamHashingModule {
   def method: HashingMethod = HashingMethod.none

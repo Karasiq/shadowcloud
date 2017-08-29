@@ -4,6 +4,7 @@ import java.security.NoSuchAlgorithmException
 
 import com.karasiq.shadowcloud.config.ProvidersConfig
 import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.model.crypto.{CryptoMethod, EncryptionMethod, HashingMethod, SignMethod}
 import com.karasiq.shadowcloud.utils.ProviderInstantiator
 
 private[shadowcloud] trait CryptoModuleRegistry {

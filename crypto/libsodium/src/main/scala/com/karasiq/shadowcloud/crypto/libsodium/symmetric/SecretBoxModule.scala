@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.crypto.libsodium.symmetric
 import org.abstractj.kalium.NaCl.Sodium
 import org.abstractj.kalium.crypto.SecretBox
 
-import com.karasiq.shadowcloud.crypto.EncryptionMethod
+import com.karasiq.shadowcloud.model.crypto.EncryptionMethod
 
 private[libsodium] object SecretBoxModule extends SymmetricConstants {
   val algorithm = "XSalsa20/Poly1305"

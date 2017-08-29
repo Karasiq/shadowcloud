@@ -5,7 +5,7 @@ import org.bouncycastle.crypto.params.RSAKeyGenerationParameters
 import org.bouncycastle.jcajce.provider.asymmetric.util.PrimeCertaintyCalculator
 
 import com.karasiq.shadowcloud.config.ConfigProps
-import com.karasiq.shadowcloud.crypto.{CryptoMethod, EncryptionMethod, SignMethod}
+import com.karasiq.shadowcloud.model.crypto.{CryptoMethod, EncryptionMethod, SignMethod}
 
 private[bouncycastle] object RSAUtils {
   type KeyGenerator = org.bouncycastle.crypto.AsymmetricCipherKeyPairGenerator

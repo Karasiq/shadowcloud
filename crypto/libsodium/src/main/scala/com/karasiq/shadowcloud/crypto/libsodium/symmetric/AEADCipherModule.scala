@@ -6,8 +6,8 @@ import org.abstractj.kalium.crypto.Aead
 
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters}
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric.AEADCipherModule.AEADCipherOptions
+import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters}
 
 private[libsodium] object AEADCipherModule extends SymmetricConstants {
   val AESKeyBytes: Int = Sodium.CRYPTO_AEAD_AES256GCM_KEYBYTES

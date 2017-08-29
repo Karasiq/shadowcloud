@@ -1,12 +1,10 @@
-package com.karasiq.shadowcloud.crypto
+package com.karasiq.shadowcloud.model.crypto
 
 import scala.language.postfixOps
 
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.index.utils.HasEmpty
-
-sealed trait EncryptionParameters extends Serializable with HasEmpty {
+sealed trait EncryptionParameters extends CryptoParameters {
   def method: EncryptionMethod
 }
 
@@ -28,7 +26,7 @@ case class SymmetricEncryptionParameters(method: EncryptionMethod,
 case class AsymmetricEncryptionParameters(method: EncryptionMethod,
                                           publicKey: ByteString,
                                           privateKey: ByteString) extends EncryptionParameters {
-  def writeOnly: AsymmetricEncryptionParameters = {
+  def toWriteOnly: AsymmetricEncryptionParameters = {
     copy(privateKey = ByteString.empty)
   }
 

@@ -7,7 +7,7 @@ import java.util.stream.Collectors
 
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.crypto.EncryptionParameters
+import com.karasiq.shadowcloud.model.crypto.EncryptionParameters
 import com.karasiq.shadowcloud.test.utils.ResourceUtils
 import com.karasiq.shadowcloud.utils.{ByteStringInputStream, ByteStringOutputStream}
 

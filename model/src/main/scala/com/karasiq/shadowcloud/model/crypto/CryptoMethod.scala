@@ -1,10 +1,11 @@
-package com.karasiq.shadowcloud.crypto
+package com.karasiq.shadowcloud.model.crypto
 
 import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.config.SerializedProps
+import com.karasiq.shadowcloud.model.SCEntity
 
-trait CryptoMethod {
+trait CryptoMethod extends SCEntity {
   def algorithm: String
   def provider: String
   def config: SerializedProps

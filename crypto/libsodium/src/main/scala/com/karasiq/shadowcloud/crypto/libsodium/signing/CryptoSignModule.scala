@@ -4,6 +4,7 @@ import akka.util.ByteString
 import org.abstractj.kalium.keys.{SigningKey, VerifyKey}
 
 import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.model.crypto.{HashingMethod, SignMethod, SignParameters}
 
 private[libsodium] object CryptoSignModule {
   val algorithm = "Ed25519"

@@ -8,27 +8,37 @@ import scala.util.hashing.MurmurHash3
 
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
-import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.crypto.index.IndexEncryption.{CiphertextT, PlaintextT}
 import com.karasiq.shadowcloud.exceptions.CryptoException
+import com.karasiq.shadowcloud.model.crypto.{AsymmetricEncryptionParameters, EncryptionMethod, EncryptionParameters, SymmetricEncryptionParameters}
+import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyId, KeySet}
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 import com.karasiq.shadowcloud.serialization.SerializationModule
 import com.karasiq.shadowcloud.serialization.protobuf.index.EncryptedIndexData
 import com.karasiq.shadowcloud.utils.UUIDUtils
 
 private[shadowcloud] trait IndexEncryption {
-  def encrypt(plaintext: ByteString, dataEncMethod: EncryptionMethod, keys: KeyChain): EncryptedIndexData
+  def encrypt(plaintext: PlaintextT, dataEncMethod: EncryptionMethod, keys: KeyChain): CiphertextT
 
   @throws[CryptoException]
-  def decrypt(data: EncryptedIndexData, keys: KeyChain): ByteString
+  def decrypt(data: CiphertextT, keys: KeyChain): PlaintextT
 }
 
 private[shadowcloud] object IndexEncryption {
-  def getKeyHash(dataId: UUID, keyId: UUID): Int = {
+  private[crypto] type DataId = UUID
+  private[crypto] type NonceT = ByteString
+  type PlaintextT = ByteString
+  type CiphertextT = EncryptedIndexData
+
+  def apply(cryptoModules: CryptoModuleRegistry, serialization: SerializationModule): IndexEncryption = {
+    new DefaultIndexEncryption(cryptoModules, serialization)
+  }
+  
+  def getKeyHash(dataId: DataId, keyId: KeyId): Int = {
     MurmurHash3.arrayHash((UUIDUtils.toBytes(keyId) ++ UUIDUtils.toBytes(dataId)).toArray)
   }
 
-  def getNonce(dataNonce: ByteString, keyNonce: ByteString): ByteString = {
+  def getNonce(dataNonce: NonceT, keyNonce: NonceT): NonceT = {
     require(dataNonce.length == keyNonce.length, "Nonce length not match")
     val bsb = ByteString.newBuilder
     bsb.sizeHint(keyNonce.length)
@@ -38,8 +48,13 @@ private[shadowcloud] object IndexEncryption {
     bsb.result()
   }
 
-  def apply(cryptoModules: CryptoModuleRegistry, serialization: SerializationModule): IndexEncryption = {
-    new DefaultIndexEncryption(cryptoModules, serialization)
+  def updateNonce(keyEncParameters: EncryptionParameters, dataNonce: NonceT): EncryptionParameters = keyEncParameters match {
+    case ap: AsymmetricEncryptionParameters ⇒
+      ap
+
+    case sp: SymmetricEncryptionParameters ⇒
+      // Nonce should be unique
+      sp.copy(nonce = getNonce(dataNonce, sp.nonce))
   }
 }
 
@@ -71,7 +86,7 @@ private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoMod
       val signatures = IndexSignatures(cryptoModules, staticKeys.signing.method)
 
       val dataNonce = generateNonce(staticKeys.encryption)
-      val keyEncParameters = alterWithDataNonce(staticKeys.encryption, dataNonce)
+      val keyEncParameters = IndexEncryption.updateNonce(staticKeys.encryption, dataNonce)
 
       val headerCiphertext = keyEncModule.encrypt(serialization.toBytes(dataEncParameters), keyEncParameters)
       val header = EncryptedIndexData.Header(
@@ -102,22 +117,12 @@ private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoMod
     if (matchingKeys.isEmpty) throw CryptoException.KeyMissing()
     val (keySet, header) = matchingKeys.next()
 
-    val keyEncParameters = alterWithDataNonce(keySet.encryption, header.nonce)
+    val keyEncParameters = IndexEncryption.updateNonce(keySet.encryption, header.nonce)
     val keyEncModule = cryptoModules.encryptionModule(keyEncParameters.method)
 
     val dataEncParameters = serialization.fromBytes[EncryptionParameters](keyEncModule.decrypt(header.data, keyEncParameters))
     val dataEncModule = cryptoModules.encryptionModule(dataEncParameters.method)
 
     dataEncModule.decrypt(data.data, dataEncParameters)
-  }
-
-  private[this] def alterWithDataNonce(keyEncParameters: EncryptionParameters,
-                                       dataNonce: ByteString): EncryptionParameters = keyEncParameters match {
-    case ap: AsymmetricEncryptionParameters ⇒
-      ap
-
-    case sp: SymmetricEncryptionParameters ⇒
-      // Nonce should be unique
-      sp.copy(nonce = IndexEncryption.getNonce(dataNonce, sp.nonce))
   }
 }

@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.crypto
+package com.karasiq.shadowcloud.model.crypto
 
 import scala.language.postfixOps
 

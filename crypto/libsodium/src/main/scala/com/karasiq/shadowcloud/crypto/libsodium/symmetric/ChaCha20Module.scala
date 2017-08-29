@@ -4,7 +4,7 @@ import scala.language.postfixOps
 
 import org.abstractj.kalium.NaCl.Sodium
 
-import com.karasiq.shadowcloud.crypto.EncryptionMethod
+import com.karasiq.shadowcloud.model.crypto.EncryptionMethod
 
 private[libsodium] object ChaCha20Module extends SymmetricConstants {
   val KeyBytes = Sodium.CRYPTO_STREAM_CHACHA20_KEYBYTES

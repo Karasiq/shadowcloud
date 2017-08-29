@@ -3,7 +3,8 @@ package com.karasiq.shadowcloud.crypto.bouncycastle.hashing
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto.{HashingMethod, HashingModule, HashingModuleStreamer, OnlyStreamHashingModule}
+import com.karasiq.shadowcloud.crypto.{HashingModule, HashingModuleStreamer, OnlyStreamHashingModule}
+import com.karasiq.shadowcloud.model.crypto.HashingMethod
 
 private[bouncycastle] object BCDigestModule extends ConfigImplicits {
   def apply(method: HashingMethod): BCDigestModule = {

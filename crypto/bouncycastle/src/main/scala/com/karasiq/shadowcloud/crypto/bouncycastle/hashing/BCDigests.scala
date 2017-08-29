@@ -8,8 +8,8 @@ import org.bouncycastle.crypto.Digest
 
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto.HashingMethod
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCUtils
+import com.karasiq.shadowcloud.model.crypto.HashingMethod
 
 private[bouncycastle] object BCDigests extends ConfigImplicits {
   /** [[org.bouncycastle.jce.provider.BouncyCastleProvider.DIGESTS]] */

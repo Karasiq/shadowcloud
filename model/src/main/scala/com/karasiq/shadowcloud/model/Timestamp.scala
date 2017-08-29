@@ -5,7 +5,7 @@ import scala.language.postfixOps
 import com.karasiq.shadowcloud.utils.Utils
 
 @SerialVersionUID(0L)
-final case class Timestamp(created: Long, lastModified: Long) extends Comparable[Timestamp] {
+final case class Timestamp(created: Long, lastModified: Long) extends SCEntity with Comparable[Timestamp] {
   require(lastModified >= created, "Invalid timestamp")
 
   def modified(at: Long): Timestamp = {

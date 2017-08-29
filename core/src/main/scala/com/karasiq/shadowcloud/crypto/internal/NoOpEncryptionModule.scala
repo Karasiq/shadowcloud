@@ -5,6 +5,7 @@ import scala.language.postfixOps
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters}
 
 private[crypto] final class NoOpEncryptionModule extends StreamEncryptionModule {
   def method: EncryptionMethod = EncryptionMethod.none

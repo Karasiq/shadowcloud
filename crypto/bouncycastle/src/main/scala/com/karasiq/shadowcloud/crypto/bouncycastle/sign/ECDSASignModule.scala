@@ -5,7 +5,8 @@ import scala.language.postfixOps
 import org.bouncycastle.crypto.DSA
 import org.bouncycastle.crypto.signers.ECDSASigner
 
-import com.karasiq.shadowcloud.crypto.{HashingMethod, SignMethod, SignModule, SignModuleStreamer}
+import com.karasiq.shadowcloud.crypto.{SignModule, SignModuleStreamer}
+import com.karasiq.shadowcloud.model.crypto.{HashingMethod, SignMethod}
 
 private[bouncycastle] object ECDSASignModule {
   def apply(method: SignMethod = SignMethod("ECDSA", HashingMethod.default)): ECDSASignModule = {

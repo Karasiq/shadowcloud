@@ -2,8 +2,9 @@ package com.karasiq.shadowcloud.crypto.bouncycastle.sign
 
 import org.bouncycastle.crypto.params.AsymmetricKeyParameter
 
-import com.karasiq.shadowcloud.crypto.{SignModule, SignParameters}
+import com.karasiq.shadowcloud.crypto.SignModule
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{BCAsymmetricKeys, KeyUtils}
+import com.karasiq.shadowcloud.model.crypto.SignParameters
 
 private[bouncycastle] object BCSignKeys {
   def getSignerKey(parameters: SignParameters, sign: Boolean): AsymmetricKeyParameter = {

@@ -1,6 +1,7 @@
 package com.karasiq.shadowcloud.crypto.libsodium.symmetric
 
 import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.model.crypto.EncryptionMethod
 
 private[libsodium] abstract class StreamCipherModule(val method: EncryptionMethod,
                                                      protected val keySize: Int,

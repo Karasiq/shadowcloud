@@ -1,6 +1,8 @@
 package com.karasiq.shadowcloud
 
 package object model {
+  trait SCEntity
+
   type RegionId = String
   object RegionId {
     val empty = ""

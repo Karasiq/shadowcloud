@@ -5,7 +5,7 @@ import scala.language.postfixOps
 import com.typesafe.config.{Config, ConfigException}
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto.HashingMethod
+import com.karasiq.shadowcloud.model.crypto.HashingMethod
 
 private[shadowcloud] case class HashingConfig(rootConfig: Config, chunks: HashingMethod,
                                               chunksEncrypted: HashingMethod, files: HashingMethod,

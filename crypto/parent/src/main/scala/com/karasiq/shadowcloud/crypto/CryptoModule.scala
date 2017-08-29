@@ -4,6 +4,8 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 
+import com.karasiq.shadowcloud.model.crypto.CryptoMethod
+
 trait CryptoModule {
   def method: CryptoMethod
 }

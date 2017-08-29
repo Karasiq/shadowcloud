@@ -4,7 +4,7 @@ import akka.util.ByteString
 import org.bouncycastle.crypto.digests.Blake2bDigest
 
 import com.karasiq.shadowcloud.config.ConfigProps
-import com.karasiq.shadowcloud.crypto.HashingMethod
+import com.karasiq.shadowcloud.model.crypto.HashingMethod
 
 private[bouncycastle] object Blake2b {
   private case class Blake2bOptions(method: HashingMethod) {

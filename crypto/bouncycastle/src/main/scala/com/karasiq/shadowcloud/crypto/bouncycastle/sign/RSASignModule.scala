@@ -8,6 +8,7 @@ import org.bouncycastle.crypto.signers.RSADigestSigner
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.BCDigests
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.RSAUtils
+import com.karasiq.shadowcloud.model.crypto.{HashingMethod, SignMethod, SignParameters}
 
 private[bouncycastle] object RSASignModule {
   // Digest should be in org.bouncycastle.crypto.signers.RSADigestSigner.oidMap

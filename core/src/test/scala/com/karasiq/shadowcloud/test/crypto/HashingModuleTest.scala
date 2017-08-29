@@ -5,7 +5,7 @@ import scala.language.postfixOps
 import akka.util.ByteString
 import org.scalatest.{FlatSpec, Matchers}
 
-import com.karasiq.shadowcloud.crypto.HashingMethod
+import com.karasiq.shadowcloud.model.crypto.HashingMethod
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, TestImplicits}
 
 class HashingModuleTest extends FlatSpec with Matchers with TestImplicits {

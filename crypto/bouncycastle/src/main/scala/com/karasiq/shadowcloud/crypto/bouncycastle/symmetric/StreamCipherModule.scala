@@ -7,6 +7,7 @@ import org.bouncycastle.crypto.StreamCipher
 
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{BCSymmetricKeys, BCUtils}
+import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters}
 
 //noinspection RedundantDefaultArgument
 private[bouncycastle] object StreamCipherModule {

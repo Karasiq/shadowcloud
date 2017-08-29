@@ -7,6 +7,7 @@ import org.abstractj.kalium.NaCl
 
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
+import com.karasiq.shadowcloud.model.crypto.{EncryptionParameters, SymmetricEncryptionParameters}
 
 private[libsodium] object SymmetricCipherModule {
   def requireValidParameters(module: SymmetricCipherModule, parameters: SymmetricEncryptionParameters): Unit = {

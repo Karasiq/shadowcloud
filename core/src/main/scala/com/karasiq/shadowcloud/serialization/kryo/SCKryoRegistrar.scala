@@ -7,11 +7,11 @@ import com.twitter.chill
 import com.twitter.chill.{IKryoRegistrar, _}
 
 import com.karasiq.shadowcloud.config.SerializedProps
-import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
-import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
+import com.karasiq.shadowcloud.model.crypto._
+import com.karasiq.shadowcloud.model.keys.{KeyChain, KeySet}
 
 private[kryo] final class SCKryoRegistrar extends IKryoRegistrar {
   def apply(kryo: Kryo): Unit = {

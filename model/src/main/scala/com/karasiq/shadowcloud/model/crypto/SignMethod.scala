@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.crypto
+package com.karasiq.shadowcloud.model.crypto
 
 import com.karasiq.shadowcloud.config.SerializedProps
 

@@ -6,6 +6,7 @@ import com.typesafe.config.Config
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.internal.{NoOpEncryptionModule, NoOpHashingModule, NoOpSignModule}
+import com.karasiq.shadowcloud.model.crypto.CryptoMethod
 import com.karasiq.shadowcloud.providers.CryptoProvider
 
 private[crypto] final class NoOpCryptoProvider(config: Config) extends CryptoProvider {

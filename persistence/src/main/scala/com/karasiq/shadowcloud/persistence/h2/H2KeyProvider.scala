@@ -10,7 +10,7 @@ import akka.actor.ActorSystem
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
+import com.karasiq.shadowcloud.model.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.persistence.utils.SCQuillEncoders
 import com.karasiq.shadowcloud.providers.KeyProvider
 

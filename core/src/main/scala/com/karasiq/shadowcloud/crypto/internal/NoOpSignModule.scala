@@ -5,6 +5,7 @@ import scala.language.postfixOps
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.crypto._
+import com.karasiq.shadowcloud.model.crypto.{SignMethod, SignParameters}
 
 private[crypto] final class NoOpSignModule extends StreamSignModule {
   def method: SignMethod = SignMethod.none

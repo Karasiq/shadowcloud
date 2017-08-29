@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.model
 import scala.language.{implicitConversions, postfixOps}
 
 @SerialVersionUID(0L)
-final case class Path(nodes: Seq[String]) {
+final case class Path(nodes: Seq[String]) extends SCEntity {
   def isRoot: Boolean = {
     nodes.isEmpty
   }

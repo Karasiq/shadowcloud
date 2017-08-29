@@ -4,6 +4,8 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 
+import com.karasiq.shadowcloud.model.crypto.HashingMethod
+
 trait HashingModule extends CryptoModule {
   def method: HashingMethod
   def createHash(data: ByteString): ByteString

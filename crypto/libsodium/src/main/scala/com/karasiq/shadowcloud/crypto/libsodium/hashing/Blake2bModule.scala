@@ -8,8 +8,9 @@ import org.abstractj.kalium.crypto.Util
 
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto.{HashingMethod, HashingModule, HashingModuleStreamer, StreamHashingModule}
+import com.karasiq.shadowcloud.crypto.{HashingModule, HashingModuleStreamer, StreamHashingModule}
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.Blake2bModule.DigestOptions
+import com.karasiq.shadowcloud.model.crypto.HashingMethod
 
 private[libsodium] object Blake2bModule {
   def apply(method: HashingMethod = HashingMethod("Blake2b")): Blake2bModule = {

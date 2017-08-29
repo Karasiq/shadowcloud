@@ -11,7 +11,7 @@ import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec
 
 import com.karasiq.shadowcloud.config.ConfigProps
-import com.karasiq.shadowcloud.crypto.{CryptoMethod, EncryptionMethod, SignMethod}
+import com.karasiq.shadowcloud.model.crypto.{CryptoMethod, EncryptionMethod, SignMethod}
 
 private[bouncycastle] object ECUtils {
   // Curve list: org.bouncycastle.crypto.ec.CustomNamedCurves.getByName

@@ -9,7 +9,7 @@ import com.karasiq.shadowcloud.index.utils._
 @SerialVersionUID(0L)
 final case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,
                         folders: Set[String] = Set.empty, files: Set[File] = Set.empty)
-  extends HasPath with HasEmpty with HasWithoutData with HasWithoutChunks with Mergeable {
+  extends SCEntity with HasPath with HasEmpty with HasWithoutData with HasWithoutChunks with Mergeable {
 
   type Repr = Folder
   type DiffRepr = FolderDiff

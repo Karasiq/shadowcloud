@@ -14,6 +14,7 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric.{ECIESCipherModule
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.BCDigestModule
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.{ECDSASignModule, RSASignModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, BCBlockCiphers, BlockCipherModule, StreamCipherModule}
+import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod, SignMethod}
 import com.karasiq.shadowcloud.test.crypto.utils.CryptoTestVectors
 import com.karasiq.shadowcloud.utils.HexString
 

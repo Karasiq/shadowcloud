@@ -7,9 +7,9 @@ import akka.util.ByteString
 import com.typesafe.config.{Config, ConfigFactory}
 
 import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, SerializedProps, StorageConfig}
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
+import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.utils.ProviderInstantiator
 

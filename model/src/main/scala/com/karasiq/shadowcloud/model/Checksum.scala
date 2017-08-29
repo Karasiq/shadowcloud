@@ -4,14 +4,14 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.crypto.HashingMethod
 import com.karasiq.shadowcloud.index.utils.HasEmpty
+import com.karasiq.shadowcloud.model.crypto.HashingMethod
 import com.karasiq.shadowcloud.utils.{HexString, MemorySize}
 
 @SerialVersionUID(0L)
 final case class Checksum(method: HashingMethod = HashingMethod.default, encMethod: HashingMethod = HashingMethod.default,
                           size: Long = 0, hash: ByteString = ByteString.empty, encSize: Long = 0,
-                          encHash: ByteString = ByteString.empty) extends HasEmpty {
+                          encHash: ByteString = ByteString.empty) extends SCEntity with HasEmpty {
 
   def isEmpty: Boolean = {
     size == 0 && hash.isEmpty && encSize == 0 && encHash.isEmpty

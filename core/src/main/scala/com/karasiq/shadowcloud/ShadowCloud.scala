@@ -15,11 +15,11 @@ import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.StringEventBus
 import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, StorageConfig}
-import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.config.passwords.PasswordProvider
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, SignMethod}
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
+import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, SignMethod}
+import com.karasiq.shadowcloud.model.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.ops.region.{BackgroundOps, RegionOps}
 import com.karasiq.shadowcloud.ops.storage.StorageOps
 import com.karasiq.shadowcloud.ops.supervisor.RegionSupervisorOps

@@ -4,7 +4,8 @@ import akka.util.ByteString
 import org.abstractj.kalium.crypto.SealedBox
 import org.abstractj.kalium.keys.KeyPair
 
-import com.karasiq.shadowcloud.crypto.{AsymmetricEncryptionParameters, EncryptionMethod, EncryptionModule, EncryptionParameters}
+import com.karasiq.shadowcloud.crypto.EncryptionModule
+import com.karasiq.shadowcloud.model.crypto.{AsymmetricEncryptionParameters, EncryptionMethod, EncryptionParameters}
 
 private[libsodium] object SealedBoxModule {
   val algorithm = "X25519+XSalsa20/Poly1305"

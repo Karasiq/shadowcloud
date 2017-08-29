@@ -11,6 +11,7 @@ import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCSymmetricKeys
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.AEADBlockCipherModule.AEADCipherOptions
+import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters}
 
 //noinspection RedundantDefaultArgument
 private[bouncycastle] object AEADBlockCipherModule {

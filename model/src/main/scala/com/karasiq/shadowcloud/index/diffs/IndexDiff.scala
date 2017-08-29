@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.index.diffs
 import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.index.utils.{FolderDecider, HasEmpty, HasWithoutData, MergeableDiff}
-import com.karasiq.shadowcloud.model.{Chunk, Folder, Path}
+import com.karasiq.shadowcloud.model.{Chunk, Folder, Path, SCEntity}
 import com.karasiq.shadowcloud.utils.Utils
 import com.karasiq.shadowcloud.utils.MergeUtil.{Decider, SplitDecider}
 
@@ -11,7 +11,7 @@ import com.karasiq.shadowcloud.utils.MergeUtil.{Decider, SplitDecider}
 final case class IndexDiff(time: Long = Utils.timestamp,
                            folders: FolderIndexDiff = FolderIndexDiff.empty,
                            chunks: ChunkIndexDiff = ChunkIndexDiff.empty)
-  extends MergeableDiff with HasEmpty with HasWithoutData {
+  extends SCEntity with MergeableDiff with HasEmpty with HasWithoutData {
 
   type Repr = IndexDiff
 

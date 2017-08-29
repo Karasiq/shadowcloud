@@ -7,7 +7,7 @@ import scala.language.postfixOps
 import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 
-import com.karasiq.shadowcloud.crypto.EncryptionParameters
+import com.karasiq.shadowcloud.model.crypto.EncryptionParameters
 
 private[bouncycastle] object BCUtils {
   val provider = new BouncyCastleProvider

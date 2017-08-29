@@ -1,12 +1,16 @@
-package com.karasiq.shadowcloud.crypto
+package com.karasiq.shadowcloud.model.crypto
 
 import scala.language.postfixOps
 
 import akka.util.ByteString
 
 @SerialVersionUID(0L)
-case class SignParameters(method: SignMethod, publicKey: ByteString, privateKey: ByteString) {
-  def readOnly: SignParameters = {
+case class SignParameters(method: SignMethod, publicKey: ByteString, privateKey: ByteString) extends CryptoParameters {
+  def isEmpty: Boolean = {
+    publicKey.isEmpty && privateKey.isEmpty
+  }
+
+  def toReadOnly: SignParameters = {
     copy(privateKey = ByteString.empty)
   }
 

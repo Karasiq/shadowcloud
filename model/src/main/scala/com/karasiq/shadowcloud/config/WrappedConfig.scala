@@ -2,7 +2,9 @@ package com.karasiq.shadowcloud.config
 
 import com.typesafe.config.Config
 
-trait WrappedConfig {
+import com.karasiq.shadowcloud.model.SCEntity
+
+trait WrappedConfig extends SCEntity {
   def rootConfig: Config
 }
 

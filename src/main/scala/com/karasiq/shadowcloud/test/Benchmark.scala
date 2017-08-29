@@ -12,7 +12,7 @@ import akka.stream.scaladsl.{Sink, Source}
 import akka.util.{ByteString, Timeout}
 
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
+import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.streams.chunk.ChunkSplitter

@@ -13,10 +13,10 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.compression.StreamCompression
 import com.karasiq.shadowcloud.config.{CryptoConfig, StorageConfig}
-import com.karasiq.shadowcloud.config.keys.KeyChain
 import com.karasiq.shadowcloud.crypto.index.IndexEncryption
 import com.karasiq.shadowcloud.exceptions.CryptoException
 import com.karasiq.shadowcloud.index.IndexData
+import com.karasiq.shadowcloud.model.keys.KeyChain
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 import com.karasiq.shadowcloud.serialization.StreamSerialization
 import com.karasiq.shadowcloud.serialization.protobuf.index.{EncryptedIndexData, SerializedIndexData}

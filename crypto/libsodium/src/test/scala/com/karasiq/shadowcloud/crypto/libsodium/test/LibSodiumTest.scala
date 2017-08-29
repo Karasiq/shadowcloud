@@ -12,6 +12,7 @@ import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPar
 import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
 import com.karasiq.shadowcloud.crypto.libsodium.signing.CryptoSignModule
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
+import com.karasiq.shadowcloud.model.crypto.{EncryptionParameters, HashingMethod}
 import com.karasiq.shadowcloud.test.crypto.utils.CryptoTestVectors
 import com.karasiq.shadowcloud.utils.HexString
 

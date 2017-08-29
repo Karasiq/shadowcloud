@@ -4,14 +4,14 @@ import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.index.FolderIndex
 import com.karasiq.shadowcloud.index.utils.{FolderDecider, HasEmpty, HasWithoutData, MergeableDiff}
-import com.karasiq.shadowcloud.model.{File, Folder, Path}
+import com.karasiq.shadowcloud.model.{File, Folder, Path, SCEntity}
 import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 import com.karasiq.shadowcloud.utils.MergeUtil.Decider
 import com.karasiq.shadowcloud.utils.MergeUtil.State.{Conflict, Equal, Left, Right}
 
 @SerialVersionUID(0L)
 final case class FolderIndexDiff(folders: Seq[FolderDiff] = Vector.empty)
-  extends MergeableDiff with HasEmpty with HasWithoutData {
+  extends SCEntity with MergeableDiff with HasEmpty with HasWithoutData {
 
   type Repr = FolderIndexDiff
 

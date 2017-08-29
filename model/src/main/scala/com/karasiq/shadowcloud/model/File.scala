@@ -11,7 +11,7 @@ final case class File(path: Path, id: FileId = FileId.create(),
                       revision: Long = 0, timestamp: Timestamp = Timestamp.now,
                       props: SerializedProps = SerializedProps.empty,
                       checksum: Checksum = Checksum.empty, chunks: Seq[Chunk] = Nil)
-  extends HasPath with HasEmpty with HasWithoutData with HasWithoutChunks {
+  extends SCEntity with HasPath with HasEmpty with HasWithoutData with HasWithoutChunks {
 
   type Repr = File
   require(!path.isRoot)

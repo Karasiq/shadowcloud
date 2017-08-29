@@ -4,7 +4,7 @@ import akka.util.ByteString
 import play.api.libs.json._
 
 import com.karasiq.shadowcloud.api.SCApiEncoding
-import com.karasiq.shadowcloud.index.{File, Path}
+import com.karasiq.shadowcloud.model.{File, Path}
 
 trait SCJsonEncoding extends SCApiEncoding {
   type ImplicitsT = SCJsonEncoders

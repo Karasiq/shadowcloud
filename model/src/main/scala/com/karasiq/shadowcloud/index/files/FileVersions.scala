@@ -1,10 +1,9 @@
-package com.karasiq.shadowcloud.index.diffs
+package com.karasiq.shadowcloud.index.files
 
 import scala.collection.GenTraversableOnce
 import scala.language.postfixOps
 
-import com.karasiq.shadowcloud.index.File
-import com.karasiq.shadowcloud.model.FileId
+import com.karasiq.shadowcloud.model.{File, FileId}
 
 object FileVersions {
   def mostRecent(files: GenTraversableOnce[File]): File = {

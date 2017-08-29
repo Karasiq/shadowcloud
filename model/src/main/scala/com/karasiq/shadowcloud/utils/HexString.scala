@@ -7,7 +7,7 @@ import akka.util.ByteString
 object HexString extends ByteStringEncoding {
   private[this] val HEX_DIGITS = Array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f')
 
-  def encode(data: ByteString): String = {
+  def encode(data: Bytes): Encoded = {
     if (data.isEmpty) return ""
     
     val halfLength = data.length << 1
@@ -25,7 +25,7 @@ object HexString extends ByteStringEncoding {
     new String(outArray)
   }
 
-  def decode(data: String): ByteString = {
+  def decode(data: Encoded): Bytes = {
     @inline def hexCharToInt(char: Char): Int = Character.digit(char, 16)
     
     if (data.isEmpty) return ByteString.empty

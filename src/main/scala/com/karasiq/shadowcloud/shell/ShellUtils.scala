@@ -7,12 +7,12 @@ import scala.util.{Failure, Success}
 
 import akka.stream.IOResult
 
-import com.karasiq.shadowcloud.index.{File, Folder}
+import com.karasiq.shadowcloud.model.{File, Folder}
 import com.karasiq.shadowcloud.utils.MemorySize
 
 private[shell] object ShellUtils {
   def toString(f: File): String = {
-    s"${f.path.name} [${Integer.toHexString(f.hashCode())}] (${MemorySize.toString(f.checksum.size)})"
+    s"${f.path.name} [${Integer.toHexString(f.hashCode())}] (${MemorySize(f.checksum.size)})"
   }
 
   def toStrings(folder: Folder): Seq[String] = {
@@ -35,7 +35,7 @@ private[shell] object ShellUtils {
       if (result.status.isFailure) {
         Array(s"Failure: ${result.status.failed.get}")
       } else {
-        Array(s"Success: ${MemorySize.toString(result.count)} written")
+        Array(s"Success: ${MemorySize(result.count)} written")
       }
     }
   }

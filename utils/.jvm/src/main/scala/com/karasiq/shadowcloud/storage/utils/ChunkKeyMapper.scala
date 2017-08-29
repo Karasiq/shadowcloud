@@ -6,8 +6,7 @@ import scala.util.Try
 import akka.util.ByteString
 import com.typesafe.config.Config
 
-import com.karasiq.shadowcloud.index.Chunk
-import com.karasiq.shadowcloud.model.ChunkId
+import com.karasiq.shadowcloud.model.{Chunk, ChunkId}
 import com.karasiq.shadowcloud.utils.Utils
 
 private[shadowcloud] trait ChunkKeyMapper extends (Chunk ⇒ ByteString) {

@@ -23,7 +23,7 @@ import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.exceptions.{RegionException, StorageException}
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
-import com.karasiq.shadowcloud.model.{RegionId, SequenceNr, StorageId}
+import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
@@ -31,7 +31,7 @@ import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStat
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
-import com.karasiq.shadowcloud.utils.{AkkaStreamUtils, MemorySize, Utils}
+import com.karasiq.shadowcloud.utils.{AkkaStreamUtils, SizeUnit, Utils}
 
 object RegionDispatcher {
   // Messages
@@ -316,8 +316,8 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
         log.debug("Storage [{}] health report: {}", storageId, health)
         val wasOffline = {
           val oldHealth = storages.getStorage(storageId).health
-          (!oldHealth.online || oldHealth.canWrite < MemorySize.MB) &&
-            (health.online && health.canWrite > MemorySize.MB)
+          (!oldHealth.online || oldHealth.canWrite < SizeUnit.MB) &&
+            (health.online && health.canWrite > SizeUnit.MB)
         }
         storages.updateHealth(storageId, health)
         if (wasOffline) chunks.retryPendingChunks()

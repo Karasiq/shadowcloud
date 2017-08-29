@@ -11,7 +11,7 @@ import scalaTags.all._
 import org.scalajs.dom
 import org.scalajs.jquery._
 
-import com.karasiq.shadowcloud.index.{Folder, Path}
+import com.karasiq.shadowcloud.model.Folder
 import com.karasiq.shadowcloud.webapp.api.AjaxApi
 import com.karasiq.shadowcloud.webapp.components.file.FileView
 import com.karasiq.shadowcloud.webapp.components.folder.FolderFileList

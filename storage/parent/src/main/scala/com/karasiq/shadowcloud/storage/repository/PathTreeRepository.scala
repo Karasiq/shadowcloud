@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.storage.repository
 
 import akka.stream.scaladsl.Source
 
-import com.karasiq.shadowcloud.index.Path
+import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.repository.wrappers.{PathStringRepositoryWrapper, RepositoryKeyMapper}
 
 trait PathTreeRepository extends Repository[Path] {

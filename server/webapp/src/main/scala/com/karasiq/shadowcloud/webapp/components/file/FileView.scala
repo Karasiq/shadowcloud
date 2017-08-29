@@ -3,8 +3,7 @@ package com.karasiq.shadowcloud.webapp.components.file
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
-import com.karasiq.shadowcloud.index.File
-import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.model.{File, RegionId}
 import com.karasiq.shadowcloud.utils.MemorySize
 import com.karasiq.shadowcloud.webapp.components.metadata.MetadataListView
 import com.karasiq.shadowcloud.webapp.context.AppContext

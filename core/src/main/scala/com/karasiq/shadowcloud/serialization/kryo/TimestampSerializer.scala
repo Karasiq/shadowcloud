@@ -4,7 +4,7 @@ import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.{Input, Output}
 import com.twitter.chill
 
-import com.karasiq.shadowcloud.index.Timestamp
+import com.karasiq.shadowcloud.model.Timestamp
 
 private[kryo] final class TimestampSerializer extends chill.KSerializer[Timestamp](false, true) {
   def read(kryo: Kryo, input: Input, `type`: Class[Timestamp]): Timestamp = {

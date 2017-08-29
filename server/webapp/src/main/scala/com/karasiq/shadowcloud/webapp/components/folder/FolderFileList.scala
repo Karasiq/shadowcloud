@@ -5,8 +5,7 @@ import scalaTags.all._
 
 import rx.{Rx, Var}
 
-import com.karasiq.shadowcloud.index.{File, Folder}
-import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.model.{File, Folder, RegionId}
 import com.karasiq.shadowcloud.utils.MemorySize
 import com.karasiq.shadowcloud.webapp.components.file.FileDownloadLink
 import com.karasiq.shadowcloud.webapp.context.AppContext

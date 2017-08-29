@@ -18,10 +18,9 @@ import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, DeleteChunks
 import com.karasiq.shadowcloud.actors.utils.{MessageStatus, RegionGCState, StorageGCState}
 import com.karasiq.shadowcloud.actors.RegionIndex.WriteDiff
 import com.karasiq.shadowcloud.config.{GCConfig, StorageConfig}
-import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.metadata.MetadataUtils
-import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.model.{Chunk, RegionId}
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}

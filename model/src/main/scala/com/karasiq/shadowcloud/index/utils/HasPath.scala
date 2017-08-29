@@ -1,8 +1,8 @@
 package com.karasiq.shadowcloud.index.utils
 
-import com.karasiq.shadowcloud.index.Path
-
 import scala.language.postfixOps
+
+import com.karasiq.shadowcloud.model.Path
 
 trait HasPath {
   def path: Path

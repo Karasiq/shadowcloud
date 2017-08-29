@@ -9,8 +9,8 @@ import akka.stream.scaladsl.{Flow, Source}
 
 import com.karasiq.shadowcloud.config.{ParallelismConfig, TimeoutsConfig}
 import com.karasiq.shadowcloud.exceptions.SCException
-import com.karasiq.shadowcloud.index.{Chunk, File, Path}
-import com.karasiq.shadowcloud.index.diffs.FileVersions
+import com.karasiq.shadowcloud.index.files.FileVersions
+import com.karasiq.shadowcloud.model.{Chunk, File, Path}
 import com.karasiq.shadowcloud.ops.region.RegionOps
 import com.karasiq.shadowcloud.streams.file.FileIndexer
 

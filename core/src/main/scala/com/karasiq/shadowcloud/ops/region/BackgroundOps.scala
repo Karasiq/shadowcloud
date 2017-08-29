@@ -6,8 +6,7 @@ import akka.stream._
 import akka.stream.scaladsl.Source
 
 import com.karasiq.shadowcloud.config.SCConfig
-import com.karasiq.shadowcloud.index.Chunk
-import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.model.{Chunk, RegionId}
 import com.karasiq.shadowcloud.streams.region.RegionRepairStream
 
 private[shadowcloud] object BackgroundOps {

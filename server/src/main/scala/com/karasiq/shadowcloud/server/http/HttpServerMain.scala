@@ -20,9 +20,8 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.api.SCApiEncoding
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.index.{Chunk, File, Path}
-import com.karasiq.shadowcloud.index.diffs.FileVersions
-import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.index.files.FileVersions
+import com.karasiq.shadowcloud.model.{Chunk, File, Path, RegionId}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges.RangeList

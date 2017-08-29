@@ -4,7 +4,7 @@ import scala.language.postfixOps
 
 import org.scalatest.{FlatSpec, Matchers}
 
-import com.karasiq.shadowcloud.index.{Folder, Timestamp}
+import com.karasiq.shadowcloud.model.{Folder, Timestamp}
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, TestUtils}
 
 class FolderTest extends FlatSpec with Matchers {

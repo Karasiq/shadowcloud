@@ -4,9 +4,9 @@ import java.util.UUID
 
 import scala.util.Try
 
-import com.karasiq.shadowcloud.index.{FolderIndex, Path}
+import com.karasiq.shadowcloud.index.FolderIndex
 import Metadata.Tag.{Disposition ⇒ MDDisposition}
-import com.karasiq.shadowcloud.model.FileId
+import com.karasiq.shadowcloud.model.{FileId, Path}
 import com.karasiq.shadowcloud.utils.Utils
 
 private[shadowcloud] object MetadataUtils {

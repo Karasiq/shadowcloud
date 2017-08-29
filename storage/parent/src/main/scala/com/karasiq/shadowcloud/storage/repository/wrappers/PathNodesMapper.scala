@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.storage.repository.wrappers
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.index.Path
+import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
 import com.karasiq.shadowcloud.utils.ByteStringEncoding
 

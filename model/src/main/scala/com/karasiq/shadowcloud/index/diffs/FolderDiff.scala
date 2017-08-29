@@ -2,14 +2,15 @@ package com.karasiq.shadowcloud.index.diffs
 
 import scala.language.postfixOps
 
-import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.utils._
+import com.karasiq.shadowcloud.model.{File, Folder, Path}
 import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 import com.karasiq.shadowcloud.utils.MergeUtil.SplitDecider
 
-case class FolderDiff(path: Path, time: Long = 0, newFiles: Set[File] = Set.empty,
-                      deletedFiles: Set[File] = Set.empty, newFolders: Set[String] = Set.empty,
-                      deletedFolders: Set[String] = Set.empty)
+@SerialVersionUID(0L)
+final case class FolderDiff(path: Path, time: Long = 0, newFiles: Set[File] = Set.empty,
+                            deletedFiles: Set[File] = Set.empty, newFolders: Set[String] = Set.empty,
+                            deletedFolders: Set[String] = Set.empty)
   extends HasPath with MergeableDiff with HasEmpty with HasWithoutData {
 
   type Repr = FolderDiff

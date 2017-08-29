@@ -11,6 +11,7 @@ import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.model._
 
 private[kryo] final class SCKryoRegistrar extends IKryoRegistrar {
   def apply(kryo: Kryo): Unit = {

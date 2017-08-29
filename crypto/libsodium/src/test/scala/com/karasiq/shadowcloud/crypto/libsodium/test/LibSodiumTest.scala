@@ -22,14 +22,14 @@ class LibSodiumTest extends FlatSpec with Matchers {
   if (LSUtils.isLibraryAvailable) {
     // Encryption
     testAsymmetricEncryption(SealedBoxModule.algorithm, SealedBoxModule())
-    testSymmetricEncryption("XSalsa20/Poly1305", SecretBoxModule(), SecretBoxModule.KEY_BYTES, SecretBoxModule.NONCE_BYTES)
-    testSymmetricEncryption("ChaCha20/Poly1305", AEADCipherModule.ChaCha20_Poly1305(), AEADCipherModule.KEY_BYTES, AEADCipherModule.NONCE_BYTES)
-    testSymmetricEncryption("Salsa20", Salsa20Module(), Salsa20Module.KEY_BYTES, Salsa20Module.NONCE_BYTES)
-    testSymmetricEncryption("XSalsa20", XSalsa20Module(), XSalsa20Module.KEY_BYTES, XSalsa20Module.NONCE_BYTES)
-    testSymmetricEncryption("ChaCha20", ChaCha20Module(), ChaCha20Module.KEY_BYTES, ChaCha20Module.NONCE_BYTES)
+    testSymmetricEncryption("XSalsa20/Poly1305", SecretBoxModule(), SecretBoxModule.KeyBytes, SecretBoxModule.NonceBytes)
+    testSymmetricEncryption("ChaCha20/Poly1305", AEADCipherModule.ChaCha20_Poly1305(), AEADCipherModule.KeyBytes, AEADCipherModule.NonceBytes)
+    testSymmetricEncryption("Salsa20", Salsa20Module(), Salsa20Module.KeyBytes, Salsa20Module.NonceBytes)
+    testSymmetricEncryption("XSalsa20", XSalsa20Module(), XSalsa20Module.KeyBytes, XSalsa20Module.NonceBytes)
+    testSymmetricEncryption("ChaCha20", ChaCha20Module(), ChaCha20Module.KeyBytes, ChaCha20Module.NonceBytes)
 
     if (LSUtils.isAesAvailable) {
-      testSymmetricEncryption("AES/GCM", AEADCipherModule.AES_GCM(), AEADCipherModule.AES_KEY_BYTES, AEADCipherModule.AES_NONCE_BYTES)
+      testSymmetricEncryption("AES/GCM", AEADCipherModule.AES_GCM(), AEADCipherModule.AESKeyBytes, AEADCipherModule.AESNonceBytes)
     } else {
       System.err.println("Hardware AES not supported")
     }

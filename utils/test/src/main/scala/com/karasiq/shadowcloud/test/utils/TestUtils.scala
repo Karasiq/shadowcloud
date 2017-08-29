@@ -8,8 +8,8 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod, SymmetricEncryptionParameters}
-import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.utils.HexString
 
 object TestUtils {

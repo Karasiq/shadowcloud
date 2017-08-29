@@ -20,7 +20,7 @@ object ProtobufUtils {
     if (bs.isEmpty) {
       emptyUUID
     } else {
-      val bb = ByteBuffer.wrap(bs.toByteArray())
+      val bb = ByteBuffer.wrap(bs.toByteArray)
       new UUID(bb.getLong, bb.getLong)
     }
   } { uuid ⇒

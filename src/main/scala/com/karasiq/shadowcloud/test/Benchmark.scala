@@ -16,7 +16,7 @@ import com.karasiq.shadowcloud.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.streams.chunk.ChunkSplitter
-import com.karasiq.shadowcloud.utils.MemorySize
+import com.karasiq.shadowcloud.utils.{MemorySize, SizeUnit}
 
 private object Benchmark extends App {
   implicit val actorSystem = ActorSystem("shadowcloud-benchmark")
@@ -61,10 +61,10 @@ private object Benchmark extends App {
                                       hashing: HashingMethod = sc.config.crypto.hashing.chunks,
                                       fileHashing: HashingMethod = sc.config.crypto.hashing.files): Unit = {
     val modifier = 1
-    val chunkSize = MemorySize.MB * modifier
+    val chunkSize = SizeUnit.MB * modifier
     val chunkCount = 1024 / modifier
-    val mbCount = chunkCount * (chunkSize.toDouble / MemorySize.MB)
-    println(s"Starting write benchmark (${MemorySize.toString(chunkSize)}): $encryption/$hashing/$fileHashing")
+    val mbCount = chunkCount * (chunkSize.toDouble / SizeUnit.MB)
+    println(s"Starting write benchmark (${MemorySize(chunkSize)}): $encryption/$hashing/$fileHashing")
 
     try {
       val startTime = System.nanoTime()
@@ -104,9 +104,9 @@ private object Benchmark extends App {
 
     val bytes = Await.result(future, Duration.Inf)
     val elapsed = (System.nanoTime() - start).nanos
-    val perMb = elapsed / (bytes / MemorySize.MB)
+    val perMb = elapsed / (bytes / SizeUnit.MB)
     val speed = 1.second / perMb
-    println(f"Read benchmark completed, ${MemorySize.toString(bytes)}, ${elapsed.toSeconds} seconds elapsed, ${perMb.toMillis} ms per megabyte, $speed%.2f MB/sec")
+    println(f"Read benchmark completed, ${MemorySize(bytes)}, ${elapsed.toSeconds} seconds elapsed, ${perMb.toMillis} ms per megabyte, $speed%.2f MB/sec")
   }
 
   // Utils

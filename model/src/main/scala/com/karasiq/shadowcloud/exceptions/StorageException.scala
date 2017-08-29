@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.exceptions
 
-import com.karasiq.shadowcloud.index.Path
+import com.karasiq.shadowcloud.model.Path
 
 sealed abstract class StorageException(message: String = null, cause: Throwable = null)
   extends SCException(message, cause) with SCException.IOError with SCException.PathAssociated

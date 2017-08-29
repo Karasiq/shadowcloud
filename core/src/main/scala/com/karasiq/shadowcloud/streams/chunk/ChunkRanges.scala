@@ -4,8 +4,8 @@ import scala.annotation.tailrec
 
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.utils.HasEmpty
+import com.karasiq.shadowcloud.model.Chunk
 import com.karasiq.shadowcloud.utils.Utils
 
 object ChunkRanges {

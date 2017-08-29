@@ -41,7 +41,7 @@ class StreamCompressionTest extends ActorSpec with FlatSpecLike {
 
     s"$compType" should "compress bytes" in {
       val compressed = testCompression(testBytes)
-      // println(s"$compType: ${MemorySize.toString(testBytes.length)} -> ${MemorySize.toString(compressed.length)}")
+      // println(s"$compType: ${MemorySize(testBytes.length)} -> ${MemorySize(compressed.length)}")
       StreamCompressionTest.writeTestVector(compType, testBytes, compressed)
       testDecompression(compressed, testBytes)
     }
@@ -58,12 +58,18 @@ object StreamCompressionTest {
   private[this] val testVectorsFolder = Paths.get("./utils/.jvm/src/test/resources/compression-vectors")
 
   def readTestVector(compType: CompressionType.Value): (ByteString, ByteString) = {
-    val inputStream = Files.newInputStream(ResourceUtils.getPath(s"compression-vectors/$compType"))
-    val objectInputStream = new ObjectInputStream(inputStream)
-    val uncompressed = objectInputStream.readObject().asInstanceOf[ByteString]
-    val compressed = objectInputStream.readObject().asInstanceOf[ByteString]
-    objectInputStream.close()
-    (uncompressed, compressed)
+    ResourceUtils.getPathOption(s"compression-vectors/$compType") match {
+      case Some(path) ⇒
+        val inputStream = Files.newInputStream(path)
+        val objectInputStream = new ObjectInputStream(inputStream)
+        val uncompressed = objectInputStream.readObject().asInstanceOf[ByteString]
+        val compressed = objectInputStream.readObject().asInstanceOf[ByteString]
+        objectInputStream.close()
+        (uncompressed, compressed)
+
+      case None ⇒
+        (ByteString.empty, ByteString.empty)
+    }
   }
 
   def writeTestVector(compType: CompressionType.Value, uncompressed: ByteString, compressed: ByteString): Unit = {

@@ -15,9 +15,9 @@ import org.jsoup.Jsoup
 import org.xml.sax.ContentHandler
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
-import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.metadata.Metadata.Tag.{Disposition ⇒ MDDisposition}
+import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.utils.Utils
 
 private[tika] object TikaAutoParser {

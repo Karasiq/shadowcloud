@@ -35,7 +35,7 @@ case class DiffStats(diffs: Int, files: Int, folders: Int, chunks: Int,
   }
 
   override def toString: String = {
-    s"DiffStats(files = $files, folders = $folders, chunks = $chunks, deletes: $deletes, created bytes: ${MemorySize.toString(createdBytes)}, deleted bytes: ${MemorySize.toString(deletedBytes)})"
+    s"DiffStats(files = $files, folders = $folders, chunks = $chunks, deletes: $deletes, created bytes: ${MemorySize(createdBytes)}, deleted bytes: ${MemorySize(deletedBytes)})"
   }
 }
 

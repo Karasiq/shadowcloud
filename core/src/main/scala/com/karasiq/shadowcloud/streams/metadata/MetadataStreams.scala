@@ -11,10 +11,9 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.compression.StreamCompression
-import com.karasiq.shadowcloud.index.{File, Folder, Path}
 import com.karasiq.shadowcloud.metadata.{Metadata, MetadataUtils}
 import Metadata.Tag.{Disposition ⇒ MDDisposition}
-import com.karasiq.shadowcloud.model.{FileId, RegionId}
+import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.serialization.StreamSerialization
 import com.karasiq.shadowcloud.streams.file.FileIndexer
 import com.karasiq.shadowcloud.streams.utils.ByteStreams

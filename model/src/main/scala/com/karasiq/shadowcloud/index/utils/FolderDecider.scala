@@ -1,11 +1,11 @@
 package com.karasiq.shadowcloud.index.utils
 
-import com.karasiq.shadowcloud.index.File
-import com.karasiq.shadowcloud.utils.MergeUtil.SplitDecider
-
 import scala.language.postfixOps
 
-case class FolderDecider(files: SplitDecider[File], folders: SplitDecider[String])
+import com.karasiq.shadowcloud.model.File
+import com.karasiq.shadowcloud.utils.MergeUtil.SplitDecider
+
+final case class FolderDecider(files: SplitDecider[File], folders: SplitDecider[String])
 
 object FolderDecider {
   def createWins: FolderDecider = FolderDecider(SplitDecider.keepLeft, SplitDecider.keepLeft)

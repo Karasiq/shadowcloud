@@ -8,7 +8,7 @@ import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.{ChunkStatus, WriteStatus}
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
-import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
+import com.karasiq.shadowcloud.utils.{SizeUnit, Utils}
 
 class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
   protected object settings extends ConfigImplicits {
@@ -16,7 +16,7 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
     val indexRF = region.config.indexReplicationFactor
     val dataRF = region.config.dataReplicationFactor
     val randomize = selectorConfig.withDefault(true, _.getBoolean("randomize"))
-    val indexWriteMinSize = selectorConfig.withDefault(MemorySize.MB * 10, _.getBytesInt("index-write-min-size"))
+    val indexWriteMinSize = selectorConfig.withDefault[Long](SizeUnit.MB * 10, _.getBytes("index-write-min-size"))
   }
 
   def available(toWrite: Long = 0): Seq[RegionStorage] = {

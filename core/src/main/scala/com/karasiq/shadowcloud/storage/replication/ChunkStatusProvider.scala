@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.storage.replication
 
 import akka.actor.ActorRef
 
-import com.karasiq.shadowcloud.index.Chunk
+import com.karasiq.shadowcloud.model.Chunk
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 
 object ChunkStatusProvider {

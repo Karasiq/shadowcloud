@@ -11,7 +11,8 @@ import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import org.scalatest.FlatSpecLike
 
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
-import com.karasiq.shadowcloud.index.{IndexData, Path}
+import com.karasiq.shadowcloud.index.IndexData
+import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.repository.{KeyValueRepository, PathTreeRepository, RepositoryKeys}
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}

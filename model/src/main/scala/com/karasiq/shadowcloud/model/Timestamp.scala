@@ -1,10 +1,11 @@
-package com.karasiq.shadowcloud.index
+package com.karasiq.shadowcloud.model
 
 import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.utils.Utils
 
-case class Timestamp(created: Long, lastModified: Long) extends Comparable[Timestamp] {
+@SerialVersionUID(0L)
+final case class Timestamp(created: Long, lastModified: Long) extends Comparable[Timestamp] {
   require(lastModified >= created, "Invalid timestamp")
 
   def modified(at: Long): Timestamp = {
@@ -21,9 +22,11 @@ case class Timestamp(created: Long, lastModified: Long) extends Comparable[Times
 }
 
 object Timestamp {
+  val empty = Timestamp(0L, 0L)
+
   def now: Timestamp = {
-    val ts = Utils.timestamp
-    Timestamp(ts, ts)
+    val timestamp = Utils.timestamp
+    Timestamp(timestamp, timestamp)
   }
 
   implicit val ordering: Ordering[Timestamp] =

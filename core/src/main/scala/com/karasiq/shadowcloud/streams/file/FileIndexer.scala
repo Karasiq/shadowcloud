@@ -13,7 +13,7 @@ import akka.stream.stage._
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.crypto.HashingMethod
-import com.karasiq.shadowcloud.index.{Checksum, Chunk}
+import com.karasiq.shadowcloud.model.{Checksum, Chunk}
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 import com.karasiq.shadowcloud.utils.ChunkUtils
 

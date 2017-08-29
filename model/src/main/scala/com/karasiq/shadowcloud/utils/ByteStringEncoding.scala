@@ -1,8 +1,9 @@
 package com.karasiq.shadowcloud.utils
 
-import akka.util.ByteString
-
 trait ByteStringEncoding {
-  def encode(bytes: ByteString): String
-  def decode(string: String): ByteString
+  final type Bytes = akka.util.ByteString
+  final type Encoded = String
+
+  def encode(bytes: Bytes): Encoded
+  def decode(string: Encoded): Bytes
 }

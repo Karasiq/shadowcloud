@@ -18,7 +18,7 @@ case class StorageHealth(canWrite: Long, totalSpace: Long, usedSpace: Long, onli
   }
 
   override def toString: String = {
-    s"StorageHealth(${if (online) "Online" else "Offline"}, ${MemorySize.toString(canWrite)} available, ${MemorySize.toString(usedSpace)}/${MemorySize.toString(totalSpace)})"
+    s"StorageHealth(${if (online) "Online" else "Offline"}, ${MemorySize(canWrite)} available, ${MemorySize(usedSpace)}/${MemorySize(totalSpace)})"
   }
 }
 

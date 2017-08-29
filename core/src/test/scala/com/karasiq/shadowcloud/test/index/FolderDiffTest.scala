@@ -4,8 +4,9 @@ import scala.language.postfixOps
 
 import org.scalatest.{FlatSpec, Matchers}
 
-import com.karasiq.shadowcloud.index.{Folder, FolderIndex, Path}
+import com.karasiq.shadowcloud.index.FolderIndex
 import com.karasiq.shadowcloud.index.diffs.FolderIndexDiff
+import com.karasiq.shadowcloud.model.{Folder, Path}
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, TestUtils}
 
 class FolderDiffTest extends FlatSpec with Matchers {

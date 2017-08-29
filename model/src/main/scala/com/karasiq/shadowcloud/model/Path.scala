@@ -1,8 +1,9 @@
-package com.karasiq.shadowcloud.index
+package com.karasiq.shadowcloud.model
 
 import scala.language.{implicitConversions, postfixOps}
 
-case class Path(nodes: Seq[String]) {
+@SerialVersionUID(0L)
+final case class Path(nodes: Seq[String]) {
   def isRoot: Boolean = {
     nodes.isEmpty
   }
@@ -43,16 +44,28 @@ case class Path(nodes: Seq[String]) {
   }
 
   override def toString: String = {
-    nodes.mkString("/", "/", "")
+    nodes.mkString(Path.delimiter, Path.delimiter, "")
   }
 }
 
 object Path {
+  private val delimiter = "/"
   val root = Path(Nil)
 
   // Supports only conventional paths
   implicit def fromString(str: String): Path = {
-    val nodes: Seq[String] = str.split("/").filter(_.nonEmpty)
+    val nodes: Seq[String] = str.split(delimiter).filter(_.nonEmpty)
     if (nodes.isEmpty) root else Path(nodes)
   }
+
+  def isConventional(path: Path): Boolean = {
+    path.nodes.forall(!_.contains(delimiter))
+  }
+
+  def isStrictlyConventional(path: Path): Boolean = {
+    val forbiddenChars = """[<>:"/\\|?*]""".r
+    path.nodes.forall(node ⇒ forbiddenChars.findFirstIn(node).isEmpty)
+  }
+
+  implicit val ordering: Ordering[Path] = Ordering.by(path ⇒ (path.nodes.length, path.toString))
 }

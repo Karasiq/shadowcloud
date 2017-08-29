@@ -9,9 +9,8 @@ import rx.async._
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
-import com.karasiq.shadowcloud.index.File
 import com.karasiq.shadowcloud.metadata.Metadata
-import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.model.{File, RegionId}
 import com.karasiq.shadowcloud.webapp.components.common.AppComponents
 import com.karasiq.shadowcloud.webapp.context.AppContext
 

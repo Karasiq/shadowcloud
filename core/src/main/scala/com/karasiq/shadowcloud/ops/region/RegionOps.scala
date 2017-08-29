@@ -13,9 +13,9 @@ import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.RegionGC.GCReport
 import com.karasiq.shadowcloud.config.TimeoutsConfig
-import com.karasiq.shadowcloud.index.{Chunk, File, Folder, Path}
-import com.karasiq.shadowcloud.index.diffs.{FileVersions, FolderIndexDiff, IndexDiff}
-import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.index.files.FileVersions
+import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage

@@ -16,9 +16,8 @@ import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
-import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.model.StorageId
+import com.karasiq.shadowcloud.model.{Chunk, StorageId}
 import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.utils.AkkaStreamUtils

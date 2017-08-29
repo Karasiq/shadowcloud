@@ -17,8 +17,7 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperations}
-import com.karasiq.shadowcloud.index.Chunk
-import com.karasiq.shadowcloud.model.{ChunkId, RegionId, StorageId}
+import com.karasiq.shadowcloud.model.{Chunk, ChunkId, RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository

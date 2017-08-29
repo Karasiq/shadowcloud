@@ -8,8 +8,7 @@ import com.typesafe.config.Config
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.{AsymmetricEncryptionParameters, SymmetricEncryptionParameters}
-import com.karasiq.shadowcloud.index.Chunk
-import com.karasiq.shadowcloud.model.ChunkId
+import com.karasiq.shadowcloud.model.{Chunk, ChunkId}
 import com.karasiq.shadowcloud.storage.utils.ChunkKeyMapper
 
 // Chunk key obfuscation utility

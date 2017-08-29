@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.utils
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.exceptions.SCExceptions
-import com.karasiq.shadowcloud.index.{Chunk, Data}
+import com.karasiq.shadowcloud.model.{Chunk, Data}
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 
 private[shadowcloud] object ChunkUtils {

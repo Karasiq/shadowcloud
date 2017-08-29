@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.index
+package com.karasiq.shadowcloud.model
 
 import scala.language.postfixOps
 
@@ -8,9 +8,11 @@ import com.karasiq.shadowcloud.crypto.HashingMethod
 import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.utils.{HexString, MemorySize}
 
-case class Checksum(method: HashingMethod = HashingMethod.default, encMethod: HashingMethod = HashingMethod.default,
-                    size: Long = 0, hash: ByteString = ByteString.empty, encSize: Long = 0,
-                    encHash: ByteString = ByteString.empty) extends HasEmpty {
+@SerialVersionUID(0L)
+final case class Checksum(method: HashingMethod = HashingMethod.default, encMethod: HashingMethod = HashingMethod.default,
+                          size: Long = 0, hash: ByteString = ByteString.empty, encSize: Long = 0,
+                          encHash: ByteString = ByteString.empty) extends HasEmpty {
+
   def isEmpty: Boolean = {
     size == 0 && hash.isEmpty && encSize == 0 && encHash.isEmpty
   }
@@ -34,8 +36,8 @@ case class Checksum(method: HashingMethod = HashingMethod.default, encMethod: Ha
   override def toString: String = {
     def sizeAndHash(prefix: String, size: Long, hash: ByteString) = {
       if (size == 0 && hash.isEmpty) ""
-      else if (hash.isEmpty) s"$prefix: ${MemorySize.toString(size)}"
-      else s"$prefix: ${MemorySize.toString(size)} [${HexString.encode(hash)}]"
+      else if (hash.isEmpty) s"$prefix: ${MemorySize(size)}"
+      else s"$prefix: ${MemorySize(size)} [${HexString.encode(hash)}]"
     }
     val methods = if (method == encMethod) {
       Seq(method.toString)

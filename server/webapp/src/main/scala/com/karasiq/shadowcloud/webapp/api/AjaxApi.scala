@@ -6,9 +6,8 @@ import autowire._
 
 import com.karasiq.shadowcloud.api.ShadowCloudApi
 import com.karasiq.shadowcloud.api.js.SCAjaxApiClient
-import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.metadata.Metadata.Tag
-import com.karasiq.shadowcloud.model.{FileId, RegionId}
+import com.karasiq.shadowcloud.model.{FileId, Path, RegionId}
 
 object AjaxApi extends ShadowCloudApi with FileApi {
   private[api] val clientFactory = SCAjaxApiClient

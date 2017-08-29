@@ -4,7 +4,7 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.index.Chunk
+import com.karasiq.shadowcloud.model.Chunk
 import com.karasiq.shadowcloud.utils.HexString
 
 trait TestImplicits {

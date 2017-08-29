@@ -4,8 +4,8 @@ import scala.scalajs.js.URIUtils
 
 import play.api.libs.json.{Json, Writes}
 
-import com.karasiq.shadowcloud.index.Path
 import com.karasiq.shadowcloud.index.utils.HasEmpty
+import com.karasiq.shadowcloud.model.Path
 
 case class URLPath(path: Path = Path.root, query: Map[String, String] = Map.empty) extends HasEmpty {
   def isEmpty: Boolean = path.isRoot && query.isEmpty

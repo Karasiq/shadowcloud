@@ -9,7 +9,7 @@ import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
 import org.scalatest.FlatSpecLike
 
-import com.karasiq.shadowcloud.index.Path
+import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.repository.{KeyValueRepository, PathTreeRepository, RepositoryKeys}
 import com.karasiq.shadowcloud.streams.utils.ByteStreams

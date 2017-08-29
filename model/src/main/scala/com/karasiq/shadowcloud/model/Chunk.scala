@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.index
+package com.karasiq.shadowcloud.model
 
 import scala.language.postfixOps
 
@@ -6,8 +6,10 @@ import com.karasiq.shadowcloud.crypto.EncryptionParameters
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData}
 import com.karasiq.shadowcloud.utils.MemorySize
 
-case class Chunk(checksum: Checksum = Checksum.empty, encryption: EncryptionParameters = EncryptionParameters.empty,
-                 data: Data = Data.empty) extends HasEmpty with HasWithoutData {
+@SerialVersionUID(0L)
+final case class Chunk(checksum: Checksum = Checksum.empty,
+                       encryption: EncryptionParameters = EncryptionParameters.empty,
+                       data: Data = Data.empty) extends HasEmpty with HasWithoutData {
   type Repr = Chunk
   
   def isEmpty: Boolean = {
@@ -31,6 +33,6 @@ case class Chunk(checksum: Checksum = Checksum.empty, encryption: EncryptionPara
   }
 
   override def toString: String = {
-    s"Chunk($checksum, $encryption, ${MemorySize.toString(data.plain.length)}/${MemorySize.toString(data.encrypted.length)})"
+    s"Chunk($checksum, $encryption, ${MemorySize(data.plain.length)}/${MemorySize(data.encrypted.length)})"
   }
 }

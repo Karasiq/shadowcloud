@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.storage.repository.wrappers
 
-import com.karasiq.shadowcloud.index.Path
+import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.repository.{KeyValueRepository, PathTreeRepository}
 
 private[repository] final class PathStringRepositoryWrapper(repository: KeyValueRepository, delimiter: String)

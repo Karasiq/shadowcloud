@@ -1,13 +1,15 @@
 package com.karasiq.shadowcloud.index.diffs
 
-import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData, MergeableDiff}
-import com.karasiq.shadowcloud.index.{Chunk, ChunkIndex}
-import com.karasiq.shadowcloud.utils.MergeUtil.{Decider, SplitDecider}
-import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
-
 import scala.language.postfixOps
 
-case class ChunkIndexDiff(newChunks: Set[Chunk] = Set.empty, deletedChunks: Set[Chunk] = Set.empty)
+import com.karasiq.shadowcloud.index.ChunkIndex
+import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData, MergeableDiff}
+import com.karasiq.shadowcloud.model.Chunk
+import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
+import com.karasiq.shadowcloud.utils.MergeUtil.{Decider, SplitDecider}
+
+@SerialVersionUID(0L)
+final case class ChunkIndexDiff(newChunks: Set[Chunk] = Set.empty, deletedChunks: Set[Chunk] = Set.empty)
   extends MergeableDiff with HasEmpty with HasWithoutData {
   
   type Repr = ChunkIndexDiff

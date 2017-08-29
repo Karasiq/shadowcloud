@@ -1,10 +1,15 @@
 package com.karasiq.shadowcloud
 
-import java.util.UUID
-
 package object model {
   type RegionId = String
+  object RegionId {
+    val empty = ""
+  }
+
   type StorageId = String
+  object StorageId {
+    val empty = ""
+  }
 
   type SequenceNr = Long
   object SequenceNr {
@@ -13,10 +18,15 @@ package object model {
 
   type FileId = java.util.UUID
   object FileId {
+    val empty = new FileId(0L, 0L)
+
     def create(): FileId = {
-      UUID.randomUUID()
+      java.util.UUID.randomUUID()
     }
   }
 
   type ChunkId = akka.util.ByteString
+  object ChunkId {
+    val empty = akka.util.ByteString.empty
+  }
 }

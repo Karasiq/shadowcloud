@@ -11,14 +11,21 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.config.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.exceptions.CryptoException
-import com.karasiq.shadowcloud.providers.SCModules
+import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 import com.karasiq.shadowcloud.serialization.SerializationModule
 import com.karasiq.shadowcloud.serialization.protobuf.index.EncryptedIndexData
 import com.karasiq.shadowcloud.utils.UUIDUtils
 
+private[shadowcloud] trait IndexEncryption {
+  def encrypt(plaintext: ByteString, dataEncMethod: EncryptionMethod, keys: KeyChain): EncryptedIndexData
+
+  @throws[CryptoException]
+  def decrypt(data: EncryptedIndexData, keys: KeyChain): ByteString
+}
+
 private[shadowcloud] object IndexEncryption {
   def getKeyHash(dataId: UUID, keyId: UUID): Int = {
-    MurmurHash3.arrayHash((UUIDUtils.uuidToBytes(keyId) ++ UUIDUtils.uuidToBytes(dataId)).toArray)
+    MurmurHash3.arrayHash((UUIDUtils.toBytes(keyId) ++ UUIDUtils.toBytes(dataId)).toArray)
   }
 
   def getNonce(dataNonce: ByteString, keyNonce: ByteString): ByteString = {
@@ -31,18 +38,19 @@ private[shadowcloud] object IndexEncryption {
     bsb.result()
   }
 
-  def apply(modules: SCModules, serialization: SerializationModule): IndexEncryption = {
-    new IndexEncryption(modules, serialization)
+  def apply(cryptoModules: CryptoModuleRegistry, serialization: SerializationModule): IndexEncryption = {
+    new DefaultIndexEncryption(cryptoModules, serialization)
   }
 }
 
-private[shadowcloud] final class IndexEncryption(modules: SCModules, serialization: SerializationModule) {
+private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoModuleRegistry,
+                                                        serialization: SerializationModule) extends IndexEncryption {
   private[this] lazy val secureRandom = new SecureRandom()
 
   def encrypt(plaintext: ByteString, dataEncMethod: EncryptionMethod, keys: KeyChain): EncryptedIndexData = {
     def createEncryptedData(plaintext: ByteString, method: EncryptionMethod): (EncryptedIndexData, EncryptionParameters) = {
       val dataId = UUID.randomUUID()
-      val dataEncModule = modules.crypto.encryptionModule(method)
+      val dataEncModule = cryptoModules.encryptionModule(method)
       val dataEncParameters = dataEncModule.createParameters()
       val ciphertext = dataEncModule.encrypt(plaintext, dataEncParameters)
       (EncryptedIndexData(id = dataId, data = ciphertext), dataEncParameters)
@@ -59,19 +67,20 @@ private[shadowcloud] final class IndexEncryption(modules: SCModules, serializati
     }
 
     def createHeader(encData: EncryptedIndexData, dataEncParameters: EncryptionParameters, staticKeys: KeySet): EncryptedIndexData.Header = {
-      val keyEncModule = modules.crypto.encryptionModule(staticKeys.encryption.method)
-      val keySignModule = modules.crypto.signModule(staticKeys.signing.method)
+      val keyEncModule = cryptoModules.encryptionModule(staticKeys.encryption.method)
+      val signatures = IndexSignatures(cryptoModules, staticKeys.signing.method)
 
       val dataNonce = generateNonce(staticKeys.encryption)
       val keyEncParameters = alterWithDataNonce(staticKeys.encryption, dataNonce)
 
-      val headerData = keyEncModule.encrypt(serialization.toBytes(dataEncParameters), keyEncParameters)
+      val headerCiphertext = keyEncModule.encrypt(serialization.toBytes(dataEncParameters), keyEncParameters)
       val header = EncryptedIndexData.Header(
         keyHash = IndexEncryption.getKeyHash(encData.id, staticKeys.id),
         nonce = dataNonce,
-        data = headerData
+        data = headerCiphertext
       )
-      IndexSignatures.sign(encData, header, keySignModule, staticKeys.signing)
+
+      signatures.sign(encData, header, staticKeys.signing)
     }
 
     val (encData, dataEncParameters) = createEncryptedData(plaintext, dataEncMethod)
@@ -85,8 +94,8 @@ private[shadowcloud] final class IndexEncryption(modules: SCModules, serializati
         .find(key ⇒ IndexEncryption.getKeyHash(data.id, key.id) == header.keyHash)
         .map((_, header))
         .filter { case (key, header) ⇒
-          val keySigning = modules.crypto.signModule(key.signing.method)
-          IndexSignatures.verify(data, header, keySigning, key.signing)
+          val signatures = IndexSignatures(cryptoModules, key.signing.method)
+          signatures.verify(data, header, key.signing)
         }
     }
 
@@ -94,10 +103,10 @@ private[shadowcloud] final class IndexEncryption(modules: SCModules, serializati
     val (keySet, header) = matchingKeys.next()
 
     val keyEncParameters = alterWithDataNonce(keySet.encryption, header.nonce)
-    val keyEncModule = modules.crypto.encryptionModule(keyEncParameters.method)
+    val keyEncModule = cryptoModules.encryptionModule(keyEncParameters.method)
 
     val dataEncParameters = serialization.fromBytes[EncryptionParameters](keyEncModule.decrypt(header.data, keyEncParameters))
-    val dataEncModule = modules.crypto.encryptionModule(dataEncParameters.method)
+    val dataEncModule = cryptoModules.encryptionModule(dataEncParameters.method)
 
     dataEncModule.decrypt(data.data, dataEncParameters)
   }
@@ -108,7 +117,7 @@ private[shadowcloud] final class IndexEncryption(modules: SCModules, serializati
       ap
 
     case sp: SymmetricEncryptionParameters ⇒
-      // Nonce should be unique 
+      // Nonce should be unique
       sp.copy(nonce = IndexEncryption.getNonce(dataNonce, sp.nonce))
   }
 }

@@ -21,7 +21,7 @@ class CryptoTestVectors(testVectorsFolder: FSPath) {
   }
 
   def load(name: String): (EncryptionParameters, ByteString, ByteString) = {
-    val bytes = ByteString(Files.readAllBytes(getVectorResourcePath(name)))
+    val bytes = ResourceUtils.toBytes(getVectorResourceName(name))
     readTestVector(bytes)
   }
 
@@ -39,8 +39,8 @@ class CryptoTestVectors(testVectorsFolder: FSPath) {
     testVectorsFolder.resolve(URLEncoder.encode(name, "UTF-8"))
   }
 
-  private[this] def getVectorResourcePath(name: String): FSPath = {
-    ResourceUtils.getPath(s"test-vectors/${URLEncoder.encode(name, "UTF-8")}")
+  private[this] def getVectorResourceName(name: String): String = {
+    s"test-vectors/${URLEncoder.encode(name, "UTF-8")}"
   }
 
   private[this] def writeTestVector(parameters: EncryptionParameters, plain: ByteString, encrypted: ByteString): ByteString = {

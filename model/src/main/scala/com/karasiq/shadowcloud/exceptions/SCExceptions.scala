@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.exceptions
 
-import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.model.Chunk
 
 object SCExceptions {
   final case class ChunkDataIsEmpty(chunk: Chunk)

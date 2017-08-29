@@ -8,8 +8,7 @@ import akka.stream.{ActorAttributes, Attributes, Supervision}
 import akka.stream.scaladsl.{Flow, Sink, Source}
 
 import com.karasiq.shadowcloud.config.ParallelismConfig
-import com.karasiq.shadowcloud.index.Chunk
-import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.model.{Chunk, RegionId}
 import com.karasiq.shadowcloud.ops.region.RegionOps
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus

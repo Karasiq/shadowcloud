@@ -3,9 +3,8 @@ package com.karasiq.shadowcloud.exceptions
 import java.io.FileNotFoundException
 import java.nio.file.FileAlreadyExistsException
 
-import com.karasiq.shadowcloud.index.{Chunk, Path}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.model.{RegionId, StorageId}
+import com.karasiq.shadowcloud.model.{Chunk, Path, RegionId, StorageId}
 
 abstract class SCException(message: String = null, cause: Throwable = null) extends Exception(message, cause)
 

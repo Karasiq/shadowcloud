@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.api
 
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.index.{File, Path}
+import com.karasiq.shadowcloud.model.{File, Path}
 import com.karasiq.shadowcloud.utils.Base64
 
 object SCApiEncoding {

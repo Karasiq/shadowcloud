@@ -9,22 +9,22 @@ import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.{EncryptionMethod, EncryptionParameters}
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric.AEADCipherModule.AEADCipherOptions
 
-private[libsodium] object AEADCipherModule {
-  val AES_KEY_BYTES: Int = Sodium.CRYPTO_AEAD_AES256GCM_KEYBYTES
-  val AES_NONCE_BYTES: Int = Sodium.CRYPTO_AEAD_AES256GCM_NPUBBYTES
-  val KEY_BYTES: Int = Sodium.CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES
-  val NONCE_BYTES: Int = Sodium.CRYPTO_AEAD_CHACHA20POLY1305_NPUBBYTES
+private[libsodium] object AEADCipherModule extends SymmetricConstants {
+  val AESKeyBytes: Int = Sodium.CRYPTO_AEAD_AES256GCM_KEYBYTES
+  val AESNonceBytes: Int = Sodium.CRYPTO_AEAD_AES256GCM_NPUBBYTES
+  val KeyBytes: Int = Sodium.CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES
+  val NonceBytes: Int = Sodium.CRYPTO_AEAD_CHACHA20POLY1305_NPUBBYTES
 
   def apply(method: EncryptionMethod): AEADCipherModule = {
     new AEADCipherModule(AEADCipherOptions(method))
   }
 
   def AES_GCM(): AEADCipherModule = {
-    apply(EncryptionMethod("AES/GCM", AES_KEY_BYTES * 8))
+    apply(EncryptionMethod("AES/GCM", AESKeyBytes * 8))
   }
 
   def ChaCha20_Poly1305(): AEADCipherModule = {
-    apply(EncryptionMethod("ChaCha20/Poly1305", KEY_BYTES * 8))
+    apply(EncryptionMethod("ChaCha20/Poly1305", KeyBytes * 8))
   }
 
   private case class AEADCipherOptions(method: EncryptionMethod) {
@@ -33,8 +33,8 @@ private[libsodium] object AEADCipherModule {
     val useAes = method.algorithm == "AES/GCM"
     val additionalDataSize = config.withDefault(0, _.getInt("ad-size"))
 
-    val keySize: Int = if (useAes) AES_KEY_BYTES else KEY_BYTES
-    val nonceSize: Int = if (useAes) AES_NONCE_BYTES else NONCE_BYTES
+    val keySize: Int = if (useAes) AESKeyBytes else KeyBytes
+    val nonceSize: Int = if (useAes) AESNonceBytes else NonceBytes
   }
 }
 

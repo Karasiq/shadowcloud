@@ -15,9 +15,8 @@ import com.karasiq.shadowcloud.actors.RegionDispatcher._
 import com.karasiq.shadowcloud.actors.internal.ChunksTracker.ChunkReadStatus
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.exceptions.{RegionException, SCExceptions}
-import com.karasiq.shadowcloud.index.Chunk
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
-import com.karasiq.shadowcloud.model.{ChunkId, RegionId, StorageId}
+import com.karasiq.shadowcloud.model.{Chunk, ChunkId, RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.replication.{ChunkAvailability, ChunkStatusProvider, ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.{ChunkStatus, WriteStatus}
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage

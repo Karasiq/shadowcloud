@@ -1,16 +1,16 @@
-package com.karasiq.shadowcloud.index
+package com.karasiq.shadowcloud.model
 
 import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasPath, HasWithoutChunks, HasWithoutData}
-import com.karasiq.shadowcloud.model.FileId
 import com.karasiq.shadowcloud.utils.Utils
 
-case class File(path: Path, id: FileId = FileId.create(),
-                revision: Long = 0, timestamp: Timestamp = Timestamp.now,
-                props: SerializedProps = SerializedProps.empty,
-                checksum: Checksum = Checksum.empty, chunks: Seq[Chunk] = Nil)
+@SerialVersionUID(0L)
+final case class File(path: Path, id: FileId = FileId.create(),
+                      revision: Long = 0, timestamp: Timestamp = Timestamp.now,
+                      props: SerializedProps = SerializedProps.empty,
+                      checksum: Checksum = Checksum.empty, chunks: Seq[Chunk] = Nil)
   extends HasPath with HasEmpty with HasWithoutData with HasWithoutChunks {
 
   type Repr = File
@@ -35,8 +35,11 @@ case class File(path: Path, id: FileId = FileId.create(),
   override def equals(obj: scala.Any): Boolean = obj match {
     case f: File ⇒
       // Timestamp, props is ignored
-      @inline def chunksEqual: Boolean = (f.chunks.isEmpty || chunks.isEmpty) || (f.chunks == chunks)
-      f.path == path && f.id == id && f.revision == revision && f.checksum == checksum && chunksEqual
+      @inline def isChunksEquals: Boolean = (f.chunks.isEmpty || chunks.isEmpty) || (f.chunks == chunks)
+      f.path == path && f.id == id && f.revision == revision && f.checksum == checksum && isChunksEquals
+
+    case _ ⇒
+      false
   }
 
   override def toString: String = {

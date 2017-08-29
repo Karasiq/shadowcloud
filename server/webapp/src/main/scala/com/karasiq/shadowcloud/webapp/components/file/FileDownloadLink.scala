@@ -5,8 +5,7 @@ import scala.language.postfixOps
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
-import com.karasiq.shadowcloud.index.File
-import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.model.{File, RegionId}
 import com.karasiq.shadowcloud.webapp.api.AjaxApi
 
 object FileDownloadLink { // TODO: Download by UUID

@@ -2,9 +2,8 @@ package com.karasiq.shadowcloud.actors.utils
 
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.index.{Chunk, File}
 import com.karasiq.shadowcloud.index.utils.HasEmpty
-import com.karasiq.shadowcloud.model.FileId
+import com.karasiq.shadowcloud.model.{Chunk, File, FileId}
 import com.karasiq.shadowcloud.utils.Utils
 
 case class RegionGCState(orphanedChunks: Set[Chunk],

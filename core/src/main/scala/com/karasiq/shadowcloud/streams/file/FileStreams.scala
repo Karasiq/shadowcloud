@@ -8,9 +8,8 @@ import akka.stream.{FlowShape, Materializer}
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, Source}
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.index.{Chunk, File, Path}
-import com.karasiq.shadowcloud.index.diffs.FileVersions
-import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.index.files.FileVersions
+import com.karasiq.shadowcloud.model.{Chunk, File, Path, RegionId}
 import com.karasiq.shadowcloud.streams.chunk.ChunkProcessingStreams
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges.RangeList
 import com.karasiq.shadowcloud.streams.region.RegionStreams

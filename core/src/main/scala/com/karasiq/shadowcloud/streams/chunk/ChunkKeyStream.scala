@@ -13,7 +13,7 @@ import com.karasiq.shadowcloud.providers.SCModules
 
 private[shadowcloud] object ChunkKeyStream {
   def apply(registry: SCModules,
-            method: EncryptionMethod = EncryptionMethod.default,
+            method: EncryptionMethod,
             maxKeyReuse: Int = 256): ChunkKeyStream = {
     new ChunkKeyStream(registry, method, maxKeyReuse)
   }

@@ -6,7 +6,7 @@ import java.util.UUID
 import akka.util.ByteString
 
 private[shadowcloud] object UUIDUtils {
-  def uuidToBytes(uuid: UUID): ByteString = {
+  def toBytes(uuid: UUID): ByteString = {
     implicit val byteOrder: ByteOrder = ByteOrder.BIG_ENDIAN
     val builder = ByteString.newBuilder
     builder.sizeHint(16)
@@ -15,7 +15,7 @@ private[shadowcloud] object UUIDUtils {
       .result()
   }
 
-  def bytesToUUID(bytes: ByteString): UUID = {
+  def toUUID(bytes: ByteString): UUID = {
     val bb = bytes.toByteBuffer
     new UUID(bb.getLong, bb.getLong)
   }

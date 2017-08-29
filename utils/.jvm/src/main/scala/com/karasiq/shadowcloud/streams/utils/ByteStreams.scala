@@ -84,7 +84,7 @@ object ByteStreams {
           push(outlet, truncated)
           if (isLimitReached(written + 1)) completeStage()
         } else if (isLimitReached(written + bytes.length)) {
-          failStage(new IOException(s"Write limit reached: ${MemorySize.toString(limit)}"))
+          failStage(new IOException(s"Write limit reached: ${MemorySize(limit)}"))
         } else {
           written += bytes.length
           push(outlet, bytes)

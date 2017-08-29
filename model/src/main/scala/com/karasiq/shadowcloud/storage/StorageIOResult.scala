@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.storage
 import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.exceptions.StorageException
-import com.karasiq.shadowcloud.index.Path
+import com.karasiq.shadowcloud.model.Path
 
 sealed trait StorageIOResult {
   def path: Path

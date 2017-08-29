@@ -6,8 +6,7 @@ import akka.util.ByteString
 import org.scalajs.dom.ext.Ajax
 
 import com.karasiq.shadowcloud.api.{SCApiEncoding, SCApiUtils}
-import com.karasiq.shadowcloud.index.{File, Path}
-import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.model.{File, Path, RegionId}
 import com.karasiq.shadowcloud.webapp.utils.URLPath
 
 trait FileApi {

@@ -7,7 +7,7 @@ import scala.language.{higherKinds, postfixOps}
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
 
-import com.karasiq.shadowcloud.index.{Chunk, Path}
+import com.karasiq.shadowcloud.model.{Chunk, Path}
 
 private[shadowcloud] object Utils {
   // -----------------------------------------------------------------------

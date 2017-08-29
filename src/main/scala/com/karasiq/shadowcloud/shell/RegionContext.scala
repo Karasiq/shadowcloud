@@ -10,9 +10,8 @@ import akka.stream.IOResult
 import akka.stream.scaladsl.{FileIO, Sink}
 
 import com.karasiq.shadowcloud.actors.RegionGC.GCReport
-import com.karasiq.shadowcloud.index.{File, Folder, Path}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.model.{File, Folder, Path, RegionId}
 
 private[shell] object RegionContext {
   def apply(regionId: RegionId)(implicit context: ShellContext): RegionContext = {

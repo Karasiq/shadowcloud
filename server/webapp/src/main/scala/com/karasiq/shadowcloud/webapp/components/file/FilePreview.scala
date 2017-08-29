@@ -10,9 +10,8 @@ import scalaTags.all._
 import rx.Rx
 import rx.async._
 
-import com.karasiq.shadowcloud.index.File
 import com.karasiq.shadowcloud.metadata.Metadata
-import com.karasiq.shadowcloud.model.{FileId, RegionId}
+import com.karasiq.shadowcloud.model.{File, FileId, RegionId}
 import com.karasiq.shadowcloud.webapp.components.file.FilePreview.PreviewVariants
 import com.karasiq.shadowcloud.webapp.components.metadata.MetadataView
 import com.karasiq.shadowcloud.webapp.context.AppContext

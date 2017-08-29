@@ -6,8 +6,7 @@ import scala.language.postfixOps
 import akka.actor.{ActorContext, ActorRef}
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.index.Path
-import com.karasiq.shadowcloud.model.StorageId
+import com.karasiq.shadowcloud.model.{Path, StorageId}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.PathTreeRepository

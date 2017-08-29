@@ -5,11 +5,11 @@ import org.abstractj.kalium.crypto.SecretBox
 
 import com.karasiq.shadowcloud.crypto.EncryptionMethod
 
-private[libsodium] object SecretBoxModule {
+private[libsodium] object SecretBoxModule extends SymmetricConstants {
   val algorithm = "XSalsa20/Poly1305"
 
-  val KEY_BYTES: Int = Sodium.CRYPTO_SECRETBOX_KEYBYTES
-  val NONCE_BYTES: Int = Sodium.CRYPTO_SECRETBOX_NONCEBYTES
+  val KeyBytes: Int = Sodium.CRYPTO_SECRETBOX_KEYBYTES
+  val NonceBytes: Int = Sodium.CRYPTO_SECRETBOX_NONCEBYTES
 
   def apply(method: EncryptionMethod = EncryptionMethod(algorithm, 256)): SecretBoxModule = {
     new SecretBoxModule(method)
@@ -19,8 +19,8 @@ private[libsodium] object SecretBoxModule {
 private[libsodium] final class SecretBoxModule(val method: EncryptionMethod)
   extends SymmetricCipherModule with SymmetricCipherAtomic {
 
-  protected val keySize: Int = SecretBoxModule.KEY_BYTES
-  protected val nonceSize: Int = SecretBoxModule.NONCE_BYTES
+  protected val keySize: Int = SecretBoxModule.KeyBytes
+  protected val nonceSize: Int = SecretBoxModule.NonceBytes
 
   protected def encrypt(data: Array[Byte], key: Array[Byte], nonce: Array[Byte]): Array[Byte] = {
     val secretBox = new SecretBox(key)

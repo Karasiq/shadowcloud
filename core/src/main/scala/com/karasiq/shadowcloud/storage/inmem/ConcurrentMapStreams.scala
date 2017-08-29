@@ -10,7 +10,7 @@ import scala.util.{Failure, Success}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 
 import com.karasiq.shadowcloud.exceptions.StorageException
-import com.karasiq.shadowcloud.index.Path
+import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 

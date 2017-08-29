@@ -3,8 +3,7 @@ package com.karasiq.shadowcloud.storage.utils
 import akka.actor.{ActorContext, ActorRef}
 
 import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, StorageDispatcher, StorageIndex}
-import com.karasiq.shadowcloud.index.Path
-import com.karasiq.shadowcloud.model.{ChunkId, RegionId, SequenceNr, StorageId}
+import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.storage.StorageHealthProvider
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository._

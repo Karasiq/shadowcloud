@@ -6,7 +6,7 @@ import play.api.libs.json._
 
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.crypto._
-import com.karasiq.shadowcloud.index._
+import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.utils.{Base64, HexString}
 
 //noinspection ConvertExpressionToSAM

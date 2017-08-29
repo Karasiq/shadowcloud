@@ -12,7 +12,7 @@ import akka.stream.{IOResult ⇒ AkkaIOResult}
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.exceptions.StorageException
-import com.karasiq.shadowcloud.index.Path
+import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.utils.HexString
 

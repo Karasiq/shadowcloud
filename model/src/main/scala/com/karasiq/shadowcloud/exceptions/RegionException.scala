@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.exceptions
 
-import com.karasiq.shadowcloud.index.{Chunk, Path}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.model.{Chunk, Path}
 
 sealed abstract class RegionException(message: String = null, cause: Throwable = null)
   extends SCException(message, cause)

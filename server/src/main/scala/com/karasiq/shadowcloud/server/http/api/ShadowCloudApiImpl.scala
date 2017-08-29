@@ -6,9 +6,8 @@ import akka.stream.scaladsl.Sink
 
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.api.ShadowCloudApi
-import com.karasiq.shadowcloud.index.{Folder, Path}
 import com.karasiq.shadowcloud.metadata.Metadata
-import com.karasiq.shadowcloud.model.{FileId, RegionId}
+import com.karasiq.shadowcloud.model.{FileId, Folder, Path, RegionId}
 
 private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends ShadowCloudApi {
   import sc.implicits.{executionContext, materializer}

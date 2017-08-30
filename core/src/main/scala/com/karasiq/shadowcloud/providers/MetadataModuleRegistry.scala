@@ -6,7 +6,7 @@ import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Merge}
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.config.ProvidersConfig
-import com.karasiq.shadowcloud.metadata.{Metadata, MetadataParser, MetadataProvider, MimeDetector}
+import com.karasiq.shadowcloud.metadata._
 import com.karasiq.shadowcloud.utils.ProviderInstantiator
 
 private[shadowcloud] trait MetadataModuleRegistry extends MimeDetector with MetadataParser {
@@ -33,7 +33,7 @@ private[shadowcloud] final class MetadataModuleRegistryImpl(providers: Providers
 
   def getMimeType(name: String, data: ByteString): Option[String] = {
     detectors.iterator
-      .map(_.getMimeType(name, data).filterNot(mime ⇒ mime.isEmpty || mime == "application/octet-stream"))
+      .map(_.getMimeType(name, data).filterNot(mime ⇒ mime.isEmpty || mime == MimeDetector.DefaultMime))
       .find(_.nonEmpty)
       .flatten
   }
@@ -49,7 +49,7 @@ private[shadowcloud] final class MetadataModuleRegistryImpl(providers: Providers
       val broadcast = builder.add(Broadcast[ByteString](availableParsers.length))
       val merge = builder.add(Merge[Metadata](availableParsers.length))
       availableParsers.foreach { parser ⇒
-        val parse = builder.add(parser.parseMetadata(name, mime).async)
+        val parse = builder.add(parser.parseMetadata(name, mime)/*.async*/)
         broadcast ~> parse ~> merge
       }
       FlowShape(broadcast.in, merge.out)

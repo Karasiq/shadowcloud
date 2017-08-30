@@ -9,12 +9,10 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.metadata.MimeDetector
 
 object MimeDetectorStream {
-  val defaultMime = "application/octet-stream"
-
   def apply(detector: MimeDetector, fileName: String, probeSize: Int): Flow[ByteString, String, NotUsed] = {
     Flow.fromGraph(new MimeDetectorStream(detector, fileName, probeSize))
-      .recoverWithRetries(1, { case _ ⇒ Source.single(defaultMime) })
-      .orElse(Source.single(defaultMime))
+      .recoverWithRetries(1, { case _ ⇒ Source.single(MimeDetector.DefaultMime) })
+      .orElse(Source.single(MimeDetector.DefaultMime))
       .take(1)
   }
 }
@@ -33,7 +31,7 @@ private final class MimeDetectorStream(detector: MimeDetector, fileName: String,
       if (buffer.length >= probeSize || isClosed(inlet)) {
         val contentType = detector.getMimeType(fileName, buffer.take(probeSize))
         buffer = ByteString.empty
-        push(outlet, contentType.getOrElse(MimeDetectorStream.defaultMime))
+        push(outlet, contentType.getOrElse(MimeDetector.DefaultMime))
         completeStage()
       } else {
         tryPull(inlet)

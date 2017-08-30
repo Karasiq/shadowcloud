@@ -3,8 +3,8 @@ package com.karasiq.shadowcloud.model.crypto
 import com.karasiq.shadowcloud.config.SerializedProps
 
 @SerialVersionUID(0L)
-case class SignMethod(algorithm: String, hashingMethod: HashingMethod, keySize: Int = 256,
-                      config: SerializedProps = SerializedProps.empty, provider: String = "") extends CryptoMethod {
+final case class SignMethod(algorithm: String, hashingMethod: HashingMethod, keySize: Int = 256,
+                            config: SerializedProps = SerializedProps.empty, provider: String = "") extends CryptoMethod {
 
   override def toString: String = {
     if (CryptoMethod.isNoOpMethod(this)) {

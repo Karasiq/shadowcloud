@@ -21,9 +21,9 @@ object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplic
   // -----------------------------------------------------------------------
   // Sub-properties
   // -----------------------------------------------------------------------
-  case class Address(rootConfig: Config, uri: URI, postfix: String) extends WrappedConfig {
+  case class Address(rootConfig: Config, uri: Option[URI], namespace: String) extends WrappedConfig {
     override def toString: String = {
-      s"Address($postfix at $uri)"
+      s"Address(${uri.fold(namespace)(namespace + " at " + _)})"
     }
   }
 
@@ -33,8 +33,8 @@ object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplic
     def apply(config: Config): Address = {
       Address(
         config,
-        URI.create(config.withDefault("file:///", _.getString("uri"))),
-        config.withDefault("default", _.getString("postfix"))
+        config.optional(_.getString("uri")).map(URI.create),
+        config.withDefault("default", _.getString("namespace"))
       )
     }
   }
@@ -48,7 +48,7 @@ object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplic
       if (isEmpty) {
         "Credentials.empty"
       } else {
-        s"Credentials($login:${"*" * password.length})"
+        s"Credentials($login:******)"
       }
     }
   }
@@ -69,11 +69,7 @@ object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplic
     def isEmpty: Boolean = limitSpace.isEmpty
 
     def getLimitedSpace(storageSpace: Long): Long = {
-      if (limitSpace.isEmpty) {
-        storageSpace
-      } else {
-        math.min(storageSpace, limitSpace.get)
-      }
+      limitSpace.fold(storageSpace)(math.min(storageSpace, _))
     }
   }
 

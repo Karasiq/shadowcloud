@@ -5,7 +5,7 @@ import scala.language.postfixOps
 import akka.util.ByteString
 
 @SerialVersionUID(0L)
-case class SignParameters(method: SignMethod, publicKey: ByteString, privateKey: ByteString) extends CryptoParameters {
+final case class SignParameters(method: SignMethod, publicKey: ByteString, privateKey: ByteString) extends CryptoParameters {
   def isEmpty: Boolean = {
     publicKey.isEmpty && privateKey.isEmpty
   }

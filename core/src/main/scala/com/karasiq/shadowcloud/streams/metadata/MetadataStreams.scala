@@ -26,8 +26,8 @@ private[shadowcloud] object MetadataStreams {
 
 private[shadowcloud] final class MetadataStreams(sc: ShadowCloudExtension) {
   def keys(regionId: RegionId): Source[FileId, NotUsed] = {
-    Source.fromFuture(sc.ops.region.getFolder(regionId, MetadataUtils.metadataRoot))
-      .recover { case _ ⇒ Folder(MetadataUtils.metadataRoot) }
+    Source.fromFuture(sc.ops.region.getFolder(regionId, MetadataUtils.MetadataFolder))
+      .recover { case _ ⇒ Folder(MetadataUtils.MetadataFolder) }
       .mapConcat(_.folders.map(UUID.fromString))
       .named("metadataFileKeys")
   }

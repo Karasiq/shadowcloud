@@ -10,10 +10,10 @@ import com.karasiq.shadowcloud.model.{FileId, Path}
 import com.karasiq.shadowcloud.utils.Utils
 
 private[shadowcloud] object MetadataUtils {
-  val metadataRoot = Utils.InternalFolder / "metadata"
+  val MetadataFolder = Utils.InternalFolder / "metadata"
 
   def getFolderPath(fileId: FileId): Path = {
-    metadataRoot / fileId.toString.toLowerCase
+    MetadataFolder / fileId.toString.toLowerCase
   }
 
   def getFilePath(fileId: FileId, disposition: MDDisposition): Path = {
@@ -25,7 +25,7 @@ private[shadowcloud] object MetadataUtils {
   }
 
   def expiredFileIds(index: FolderIndex): Set[FileId] = {
-    val metadataFolders = index.get(metadataRoot)
+    val metadataFolders = index.get(MetadataFolder)
       .map(_.folders)
       .getOrElse(Set.empty)
 

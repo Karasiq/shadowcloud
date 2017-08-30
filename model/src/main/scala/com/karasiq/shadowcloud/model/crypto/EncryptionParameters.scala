@@ -9,9 +9,9 @@ sealed trait EncryptionParameters extends CryptoParameters {
 }
 
 @SerialVersionUID(0L)
-case class SymmetricEncryptionParameters(method: EncryptionMethod,
-                                         key: ByteString,
-                                         nonce: ByteString) extends EncryptionParameters {
+final case class SymmetricEncryptionParameters(method: EncryptionMethod,
+                                               key: ByteString,
+                                               nonce: ByteString) extends EncryptionParameters {
 
   def isEmpty: Boolean = {
     key.isEmpty
@@ -23,9 +23,9 @@ case class SymmetricEncryptionParameters(method: EncryptionMethod,
 }
 
 @SerialVersionUID(0L)
-case class AsymmetricEncryptionParameters(method: EncryptionMethod,
-                                          publicKey: ByteString,
-                                          privateKey: ByteString) extends EncryptionParameters {
+final case class AsymmetricEncryptionParameters(method: EncryptionMethod,
+                                                publicKey: ByteString,
+                                                privateKey: ByteString) extends EncryptionParameters {
   def toWriteOnly: AsymmetricEncryptionParameters = {
     copy(privateKey = ByteString.empty)
   }

@@ -21,8 +21,8 @@ object FileStreams {
 }
 
 final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProcessingStreams) {
-  def readChunkStream(regionId: RegionId, chunks: Seq[Chunk]): Source[ByteString, NotUsed] = {
-    Source.fromIterator(() ⇒ chunks.iterator)
+  def readChunkStream(regionId: RegionId): Flow[Chunk, ByteString, NotUsed] = {
+    Flow[Chunk]
       .map((regionId, _))
       .via(regionStreams.readChunks)
       // .log("chunk-stream-read")
@@ -31,19 +31,28 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
       .named("readChunkStream")
   }
 
-  def readChunkStreamRanged(regionId: RegionId, chunks: Seq[Chunk], ranges: RangeList): Source[ByteString, NotUsed] = {
-    Source.fromIterator(() ⇒ RangeList.mapChunkStream(ranges, chunks).iterator)
+  def readChunkStream(regionId: RegionId, chunks: Seq[Chunk]): Source[ByteString, NotUsed] = {
+    Source.fromIterator(() ⇒ chunks.iterator).via(readChunkStream(regionId))
+  }
+
+  def readChunkStreamRanged(regionId: RegionId): Flow[(Chunk, RangeList), ByteString, NotUsed] = {
+    Flow[(Chunk, RangeList)]
       .log("chunk-ranges")
       .flatMapConcat { case (chunk, ranges) ⇒
-        readChunkStream(regionId, Seq(chunk))
+        Source.single(chunk)
+          .via(readChunkStream(regionId))
           .map(ranges.slice)
       }
       .named("readChunkStreamRanged")
   }
 
+  def readChunkStreamRanged(regionId: RegionId, chunks: Seq[Chunk], ranges: RangeList): Source[ByteString, NotUsed] = {
+    Source.fromIterator(() ⇒ RangeList.mapChunkStream(ranges, chunks).iterator)
+      .via(readChunkStreamRanged(regionId))
+  }
+
   def read(regionId: RegionId, file: File): Source[ByteString, NotUsed] = {
-    readChunkStream(regionId, file.chunks)
-      .named("readFile")
+    readChunkStream(regionId, file.chunks).named("readFile")
   }
 
   def readBy(regionId: RegionId, path: Path, select: Set[File] ⇒ File): Source[ByteString, NotUsed] = {
@@ -54,7 +63,7 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
   }
 
   def readMostRecent(regionId: RegionId, path: Path): Source[ByteString, NotUsed] = {
-    readBy(regionId, path, FileVersions.mostRecent)
+    readBy(regionId, path, FileVersions.mostRecent).named("readMostRecent")
   }
 
   def writeChunkStream(regionId: RegionId): Flow[ByteString, FileIndexer.Result, NotUsed] = {
@@ -62,7 +71,7 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
       .via(chunkProcessing.beforeWrite())
       .map((regionId, _))
       .via(regionStreams.writeChunks)
-      .log("chunk-stream-write")
+      // .log("chunk-stream-write")
       .toMat(chunkProcessing.index())(Keep.right)
 
     val graph = GraphDSL.create(matSink) { implicit builder ⇒ matSink ⇒

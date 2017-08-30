@@ -10,20 +10,30 @@ import com.typesafe.config.Config
 import com.karasiq.shadowcloud.config.{ConfigProps, WrappedConfig, WrappedConfigFactory}
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.index.utils.HasEmpty
+import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.props.StorageProps.{Address, Credentials, Quota}
 import com.karasiq.shadowcloud.utils.Utils
 
-case class StorageProps(rootConfig: Config, storageType: String, address: Address = Address.empty,
-                        credentials: Credentials = Credentials.empty, quota: Quota = Quota.empty,
-                        provider: String = "") extends WrappedConfig
+@SerialVersionUID(0L)
+final case class StorageProps(rootConfig: Config, storageType: String, address: Address = Address.empty,
+                              credentials: Credentials = Credentials.empty, quota: Quota = Quota.empty,
+                              provider: String = "") extends WrappedConfig {
+
+  require(storageType.nonEmpty, "Storage type should not be empty")
+}
 
 object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplicits {
   // -----------------------------------------------------------------------
   // Sub-properties
   // -----------------------------------------------------------------------
-  case class Address(rootConfig: Config, uri: Option[URI], namespace: String) extends WrappedConfig {
+  @SerialVersionUID(0L)
+  final case class Address(rootConfig: Config,
+                     namespace: String,
+                     uri: Option[URI],
+                     path: Path) extends WrappedConfig {
+
     override def toString: String = {
-      s"Address(${uri.fold(namespace)(namespace + " at " + _)})"
+      s"Address($namespace, ${uri.fold(path)(path + " at " + _)})"
     }
   }
 
@@ -33,13 +43,15 @@ object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplic
     def apply(config: Config): Address = {
       Address(
         config,
+        config.withDefault("default", _.getString("namespace")),
         config.optional(_.getString("uri")).map(URI.create),
-        config.withDefault("default", _.getString("namespace"))
+        config.withDefault(Path.root, _.getString("path"))
       )
     }
   }
 
-  case class Credentials(rootConfig: Config, login: String, password: String) extends WrappedConfig with HasEmpty {
+  @SerialVersionUID(0L)
+  final case class Credentials(rootConfig: Config, login: String, password: String) extends WrappedConfig with HasEmpty {
     def isEmpty: Boolean = {
       login.isEmpty && password.isEmpty
     }
@@ -65,12 +77,12 @@ object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplic
     }
   }
 
-  case class Quota(rootConfig: Config, limitSpace: Option[Long]) extends WrappedConfig with HasEmpty {
-    def isEmpty: Boolean = limitSpace.isEmpty
+  @SerialVersionUID(0L)
+  final case class Quota(rootConfig: Config, limitSpace: Option[Long], useSpacePercent: Int) extends WrappedConfig with HasEmpty {
+    require(limitSpace.forall(_ >= 0), "Limit space should be >= 0")
+    require(useSpacePercent >= 0 && useSpacePercent <= 100, "Space percent should be between 0 and 100")
 
-    def getLimitedSpace(storageSpace: Long): Long = {
-      limitSpace.fold(storageSpace)(math.min(storageSpace, _))
-    }
+    def isEmpty: Boolean = limitSpace.isEmpty
   }
 
   object Quota extends WrappedConfigFactory[Quota] {
@@ -79,8 +91,15 @@ object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplic
     def apply(config: Config): Quota = {
       Quota(
         config,
-        config.optional(_.getBytes("limit-space"))
+        config.optional(_.getBytes("limit-space")),
+        config.withDefault(100, _.getInt("use-space-percent"))
       )
+    }
+
+    def limitTotalSpace(quota: Quota, storageSpace: Long): Long = {
+      val limitedSpace = quota.limitSpace.fold(storageSpace)(math.min(storageSpace, _))
+      val percentSpace = if (quota.useSpacePercent == 100) limitedSpace else (limitedSpace * quota.useSpacePercent * 0.01).toLong
+      percentSpace
     }
   }
 

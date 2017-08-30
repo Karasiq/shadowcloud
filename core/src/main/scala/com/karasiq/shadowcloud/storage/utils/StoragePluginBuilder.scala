@@ -20,7 +20,7 @@ object StoragePluginBuilder {
   }
 
   private[this] def getRootPath(props: StorageProps) = {
-    Path.root / (".sc-" + props.address.namespace)
+    props.address.path / (".sc-" + props.address.namespace)
   }
 }
 

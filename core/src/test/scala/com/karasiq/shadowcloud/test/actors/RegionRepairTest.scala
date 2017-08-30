@@ -8,7 +8,9 @@ import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import org.scalatest.FlatSpecLike
 
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
+import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.storage.props.StorageProps
+import com.karasiq.shadowcloud.storage.props.StorageProps.Quota
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.streams.region.RegionRepairStream
 import com.karasiq.shadowcloud.test.utils.{SCExtensionSpec, TestUtils}
@@ -50,7 +52,7 @@ class RegionRepairTest extends SCExtensionSpec with FlatSpecLike {
 
   private[this] def registerRegionAndStorages(): Unit = {
     sc.ops.supervisor.addRegion(testRegionId, sc.configs.regionConfig(testRegionId))
-    sc.ops.supervisor.addStorage(testStorage1, StorageProps.inMemory)
+    sc.ops.supervisor.addStorage(testStorage1, StorageProps.inMemory.copy(quota = Quota(ConfigProps.toConfig(ConfigProps("use-space-percent" → 33)))))
     sc.ops.supervisor.addStorage(testStorage2, StorageProps.inMemory)
     sc.ops.supervisor.register(testRegionId, testStorage1)
     sc.ops.supervisor.register(testRegionId, testStorage2)

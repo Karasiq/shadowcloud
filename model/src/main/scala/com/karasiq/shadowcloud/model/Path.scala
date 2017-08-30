@@ -60,12 +60,12 @@ object Path {
   }
 
   def isConventional(path: Path): Boolean = {
-    path.nodes.forall(!_.contains(Delimiter))
+    path.nodes.forall(node ⇒ node.nonEmpty && !node.contains(Delimiter))
   }
 
   def isStrictlyConventional(path: Path): Boolean = {
     val forbiddenChars = """[<>:"/\\|?*]""".r
-    path.nodes.forall(node ⇒ forbiddenChars.findFirstIn(node).isEmpty)
+    path.nodes.forall(node ⇒ node.nonEmpty && forbiddenChars.findFirstIn(node).isEmpty)
   }
 
   implicit val ordering: Ordering[Path] = Ordering.by(path ⇒ (path.nodes.length, path.toString))

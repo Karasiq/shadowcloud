@@ -25,7 +25,7 @@ private[storage] final class FileStoragePlugin extends StoragePlugin {
     implicit val executionContext: ExecutionContext = FileStoragePlugin.getBlockingDispatcher(context.system)
     implicit val materializer: Materializer = ActorMaterializer()
     
-    val path = Paths.get(props.address.uri)
+    val path = props.address.uri.fold(Paths.get(""))(Paths.get)
     StoragePluginBuilder(storageId, props)
       .withIndexTree(Repositories.fromDirectory(path))
       .withChunksTree(Repositories.fromDirectory(path))

@@ -32,6 +32,10 @@ final class StorageOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(imp
     askStorageIndex(storageId, regionId, RegionIndex.Synchronize, RegionIndex.Synchronize)(timeouts.synchronize)
   }
 
+  def synchronizeAll(storageId: StorageId): Future[Map[RegionId, SyncReport]] = {
+    askStorage(storageId, StorageIndex.SynchronizeAll, StorageIndex.SynchronizeAll)(timeouts.synchronize)
+  }
+
   def writeIndex(storageId: StorageId, regionId: RegionId, diff: IndexDiff): Future[IndexDiff] = {
     askStorageIndex(storageId, regionId, RegionIndex.WriteDiff, RegionIndex.WriteDiff(diff))
   }

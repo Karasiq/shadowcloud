@@ -10,6 +10,7 @@ import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
+import com.karasiq.shadowcloud.actors.RegionIndex.SyncReport
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.props.StorageProps
@@ -21,8 +22,8 @@ object StorageIndex {
   sealed trait Message
   case class OpenIndex(regionId: RegionId) extends Message
   case class CloseIndex(regionId: RegionId) extends Message
-  case object GetIndexes extends Message with MessageStatus[String, Map[String, IndexMerger.State[Long]]]
-  case object SynchronizeAll extends Message
+  case object GetIndexes extends Message with MessageStatus[StorageId, Map[String, IndexMerger.State[Long]]]
+  case object SynchronizeAll extends Message with MessageStatus[StorageId, Map[RegionId, SyncReport]]
   case class Envelope(regionId: RegionId, message: RegionIndex.Message) extends Message
 
   // Props
@@ -58,7 +59,11 @@ private[actors] final class StorageIndex(storageId: StorageId, storageProps: Sto
 
     case SynchronizeAll ⇒
       log.debug("Synchronizing all indexes")
-      subIndexes.values.foreach(_.forward(RegionIndex.Synchronize))
+      val futures = subIndexes.map { case (regionId, dispatcher) ⇒
+        RegionIndex.Synchronize.unwrapFuture(dispatcher ? RegionIndex.Synchronize).map((regionId, _))
+      }
+      val result = Future.sequence(futures.toVector).map(_.toMap)
+      SynchronizeAll.wrapFuture(storageId, result).pipeTo(sender())
 
     case OpenIndex(regionId) ⇒
       log.debug("Starting region index dispatcher: {}", regionId)

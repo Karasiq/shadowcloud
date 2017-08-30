@@ -12,6 +12,7 @@ import com.karasiq.shadowcloud.actors.RegionDispatcher._
 import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.RegionGC.GCReport
+import com.karasiq.shadowcloud.actors.RegionIndex.SyncReport
 import com.karasiq.shadowcloud.config.TimeoutsConfig
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.index.files.FileVersions
@@ -68,8 +69,8 @@ final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(impl
     }
   }
 
-  def synchronize(regionId: RegionId): Unit = {
-    regionSupervisor ! RegionEnvelope(regionId, RegionDispatcher.Synchronize)
+  def synchronize(regionId: RegionId): Future[Map[StorageId, SyncReport]] = {
+    askRegion(regionId, RegionDispatcher.Synchronize, RegionDispatcher.Synchronize)
   }
 
   def getChunkStatus(regionId: RegionId, chunk: Chunk): Future[ChunkStatus] = {

@@ -135,7 +135,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
 
   it should "write index" in {
     storageSubscribe()
-    testRegion ! RegionDispatcher.Synchronize
+    (testRegion ? RegionDispatcher.Synchronize).futureValue
     val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", sequenceNr, diff, remote)) = receiveOne(5 seconds)
     sequenceNr shouldBe 1
     diff.time shouldBe >(TestUtils.testTimestamp)
@@ -164,7 +164,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
 
     // Synchronize
     storageSubscribe()
-    testRegion ! RegionDispatcher.Synchronize
+    (testRegion ? RegionDispatcher.Synchronize).futureValue
     val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", 2, `remoteDiff`, true)) = receiveOne(5 seconds)
     expectNoMsg(1 second)
 
@@ -178,11 +178,11 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
     // Delete #1
     whenReady(Source.single(1L).runWith(regionRepo.delete)) { deleteResult ⇒
       deleteResult.isSuccess shouldBe true
-      testRegion ! RegionDispatcher.Synchronize
+      (testRegion ? RegionDispatcher.Synchronize).futureValue
       val StorageEnvelope("testStorage", StorageEvents.IndexDeleted("testRegion", sequenceNrs)) = receiveOne(5 seconds)
       sequenceNrs shouldBe Set[Long](1)
       storage ! StorageIndex.Envelope("testRegion", RegionIndex.GetIndex)
-      val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((2L, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
+      val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((2, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
       expectNoMsg(1 second)
       testRegion ! RegionDispatcher.GetIndex
       val RegionDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((RegionKey(_, "testStorage", 2), `remoteDiff`)), _)) = receiveOne(1 second)

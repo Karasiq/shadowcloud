@@ -11,8 +11,7 @@ import scalaTags.all._
 import org.scalajs.dom
 import org.scalajs.jquery._
 
-import com.karasiq.shadowcloud.model.Folder
-import com.karasiq.shadowcloud.webapp.api.AjaxApi
+import com.karasiq.shadowcloud.model.{Folder, Path}
 import com.karasiq.shadowcloud.webapp.components.file.FileView
 import com.karasiq.shadowcloud.webapp.components.folder.FolderFileList
 import com.karasiq.shadowcloud.webapp.context.AppContext
@@ -24,11 +23,11 @@ object Main extends JSApp {
     jQuery(() ⇒ {
       implicit val appContext = AppContext()
       val testRegion = "testRegion"
-      val rootFolder = RxWithUpdate(Folder(Path.root))(_ ⇒ AjaxApi.getFolder(testRegion, Path.root))
+      val rootFolder = RxWithUpdate(Folder(Path.root))(_ ⇒ appContext.api.getFolder(testRegion, Path.root))
 
       val input = FormInput.file("File", onchange := Callback.onInput { input ⇒
         val file = input.files.head
-        AjaxApi.uploadFile(testRegion, Path.root / file.name, file).foreach { file ⇒
+        appContext.api.uploadFile(testRegion, Path.root / file.name, file).foreach { file ⇒
           rootFolder.update()
           dom.window.alert(file.toString)
         }

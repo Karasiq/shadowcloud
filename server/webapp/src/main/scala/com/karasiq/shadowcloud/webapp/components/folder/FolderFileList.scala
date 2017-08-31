@@ -29,7 +29,7 @@ class FolderFileList(regionId: RegionId, folder: Rx[Folder])(implicit context: A
 
     val rows = folder.map(_.files.toSeq.sortBy(_.path.name).map { file ⇒
       val content = Seq[Modifier](
-        FileDownloadLink(regionId, file)(file.id.toString),
+        FileDownloadLink(regionId, file, file.id.toString),
         file.path.name,
         MemorySize.toString(file.checksum.size),
         context.timeFormat.timestamp(file.timestamp.lastModified)

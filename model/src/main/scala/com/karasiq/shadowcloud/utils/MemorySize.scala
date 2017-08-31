@@ -1,8 +1,5 @@
 package com.karasiq.shadowcloud.utils
 
-import java.text.{DecimalFormat, DecimalFormatSymbols}
-import java.util.Locale
-
 import scala.language.{implicitConversions, postfixOps}
 
 final case class SizeUnit(name: String, value: BigInt) {
@@ -48,7 +45,7 @@ object MemorySize {
   // -----------------------------------------------------------------------
   // Constants
   // -----------------------------------------------------------------------
-  private[this] val DecimalFormat = new DecimalFormat("#0.##", DecimalFormatSymbols.getInstance(Locale.ENGLISH))
+  // private[this] val DecimalFormat = new DecimalFormat("#0.##", DecimalFormatSymbols.getInstance(Locale.ENGLISH)) // Scala.js linking error
   private[this] val _1024 = 1024L
   private[this] val Log10_1024 = Math.log10(_1024)
   private[this] val UnitPows = SizeUnit.Units.indices.map(Math.pow(_1024, _)).toArray
@@ -60,14 +57,26 @@ object MemorySize {
     def toBytes: Long = unit.longValue * amount
     def toBytesInt: Int = unit.intValue * amount.toInt
     def toBytesBigInt: BigInt = unit.value * amount
-    override def toString: String = amount + " " + unit
+
+    override def toString: String = {
+      // s"$amount $unit"
+      val sb = new StringBuilder(8)
+      sb.append(amount).append(' ').append(unit)
+      sb.result()
+    }
   }
 
   final case class Coarse(amount: Double, unit: SizeUnit) extends MemorySize {
     def toBytes: Long = (amount * unit.longValue).toLong
     def toBytesInt: Int = (amount * unit.intValue).toInt
     def toBytesBigInt: BigInt = (BigDecimal(unit.value) * amount).toBigInt()
-    override def toString: String = DecimalFormat.format(amount) + " " + unit
+
+    override def toString: String = {
+      // DecimalFormat.format(amount) + " " + unit
+      val sb = new StringBuilder(8)
+      sb ++= f"$amount%.2f" += ' ' ++= unit.toString
+      sb.result()
+    }      
   }
 
   // -----------------------------------------------------------------------

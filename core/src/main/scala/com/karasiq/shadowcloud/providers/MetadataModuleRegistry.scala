@@ -44,15 +44,17 @@ private[shadowcloud] final class MetadataModuleRegistryImpl(providers: Providers
 
   def parseMetadata(name: String, mime: String): Flow[ByteString, Metadata, NotUsed] = {
     val availableParsers = parsers.filter(_.canParse(name, mime))
-    Flow.fromGraph(GraphDSL.create() { implicit builder ⇒
+    // println(s"$name $mime -> $availableParsers")
+    val graph = GraphDSL.create() { implicit builder ⇒
       import GraphDSL.Implicits._
       val broadcast = builder.add(Broadcast[ByteString](availableParsers.length))
       val merge = builder.add(Merge[Metadata](availableParsers.length))
       availableParsers.foreach { parser ⇒
-        val parse = builder.add(parser.parseMetadata(name, mime)/*.async*/)
+        val parse = builder.add(parser.parseMetadata(name, mime).async)
         broadcast ~> parse ~> merge
       }
       FlowShape(broadcast.in, merge.out)
-    })
+    }
+    Flow.fromGraph(graph).named("parseMetadata")
   }
 }

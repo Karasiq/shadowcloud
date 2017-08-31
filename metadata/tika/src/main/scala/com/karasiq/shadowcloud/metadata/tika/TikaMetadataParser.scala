@@ -8,7 +8,7 @@ import scala.language.postfixOps
 import akka.NotUsed
 import akka.stream.scaladsl.Source
 import com.typesafe.config.Config
-import org.apache.tika.metadata.{TikaCoreProperties, Metadata ⇒ TikaMetadata}
+import org.apache.tika.metadata.TikaCoreProperties
 import org.apache.tika.parser.{ParseContext, Parser}
 
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits

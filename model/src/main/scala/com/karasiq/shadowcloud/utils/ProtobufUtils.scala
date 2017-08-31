@@ -7,6 +7,8 @@ import akka.util.ByteString
 import com.google.protobuf.{ByteString ⇒ PBByteString}
 import com.trueaccord.scalapb.TypeMapper
 
+import com.karasiq.shadowcloud.model.Path
+
 object ProtobufUtils {
   private[this] val emptyUUID = new UUID(0, 0)
 
@@ -30,4 +32,6 @@ object ProtobufUtils {
     bb.flip()
     PBByteString.copyFrom(bb.array())
   }
+
+  implicit val pathMapper = TypeMapper[Seq[String], Path](Path(_))(_.nodes)
 }

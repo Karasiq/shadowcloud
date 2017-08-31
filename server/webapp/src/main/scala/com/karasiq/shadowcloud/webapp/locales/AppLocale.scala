@@ -64,7 +64,7 @@ object AppLocale {
     val metadataText = "Text"
     val metadataTable = "Table"
     val metadataFileList = "File list"
-    val metadataThumbnail = preview
+    val metadataThumbnail = "Thumbnail"
     val metadataImageData = "Image data"
     val metadataEmbeddedResources = "Embedded resources"
   }

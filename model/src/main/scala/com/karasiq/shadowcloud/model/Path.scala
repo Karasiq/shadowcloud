@@ -49,7 +49,7 @@ final case class Path(nodes: Seq[String]) extends SCEntity {
 }
 
 object Path {
-  private val Delimiter = "/"
+  val Delimiter = "/"
 
   val root = Path(Nil)
 

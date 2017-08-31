@@ -54,7 +54,7 @@ message Metadata {
 
     message EmbeddedResources {
         message EmbeddedResource {
-            string path = 1;
+            repeated string path = 1;
             repeated Metadata metadata = 2;
         }
         repeated EmbeddedResource resources = 1;

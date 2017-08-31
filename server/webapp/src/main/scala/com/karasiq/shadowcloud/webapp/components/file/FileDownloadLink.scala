@@ -6,20 +6,21 @@ import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
 import com.karasiq.shadowcloud.model.{File, RegionId}
-import com.karasiq.shadowcloud.webapp.api.AjaxApi
+import com.karasiq.shadowcloud.webapp.context.AppContext
 
 object FileDownloadLink { // TODO: Download by UUID
-  def apply(regionId: RegionId, file: File): FileDownloadLink = {
-    new FileDownloadLink(regionId, file)
+  def apply(regionId: RegionId, file: File, title: Modifier)(implicit context: AppContext): FileDownloadLink = {
+    new FileDownloadLink(regionId, file, title)
   }
 }
 
-final class FileDownloadLink(regionId: RegionId, file: File) extends BootstrapHtmlComponent {
+final class FileDownloadLink(regionId: RegionId, file: File, title: Modifier)(implicit context: AppContext) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
     a(
-      href := AjaxApi.downloadFileUrl(regionId, file.path),
+      href := context.api.downloadFileUrl(regionId, file.path),
       target := "_blank",
       attr("download") := file.path.name,
+      title,
       md
     )
   }

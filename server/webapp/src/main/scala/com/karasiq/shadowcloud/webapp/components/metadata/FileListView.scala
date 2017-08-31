@@ -4,6 +4,7 @@ import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
 import com.karasiq.shadowcloud.metadata.Metadata
+import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.utils.MemorySize
 import com.karasiq.shadowcloud.webapp.context.AppContext
 
@@ -22,7 +23,7 @@ class FileListView(files: Metadata.FileList)(implicit context: AppContext) exten
     )
     val rows = files.files.map { file ⇒
       TableRow(Seq(
-        file.path.mkString("/"),
+        file.path.mkString(Path.Delimiter),
         MemorySize.toString(file.size),
         context.timeFormat.timestamp(file.timestamp)
       ))

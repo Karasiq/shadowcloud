@@ -9,6 +9,7 @@ import akka.util.ByteString
 import org.apache.commons.io.{FilenameUtils, FileUtils}
 
 import com.karasiq.shadowcloud.ShadowCloud
+import com.karasiq.shadowcloud.utils.MemorySize
 
 object MetadataParserApp extends App {
   val actorSystem = ActorSystem("metadata-parser")
@@ -20,7 +21,7 @@ object MetadataParserApp extends App {
   Source(args.toVector)
     .flatMapConcat { file ⇒
       val mime = parser.getMimeType(file, ByteString(FileUtils.readFileToByteArray(new File(file))))
-        .getOrElse("application/octet-stream")
+        .getOrElse(MimeDetector.DefaultMime)
       println(s"File: $file")
       println(s"Mime type: $mime")
 
@@ -31,23 +32,23 @@ object MetadataParserApp extends App {
             case Metadata.Value.Text(text) ⇒
               (text.format, ByteString(text.data))
 
-            case Metadata.Value.ArchiveFiles(files) ⇒
-              ("files.txt", ByteString(files.files.map(f ⇒ (f.path :+ f.name).mkString("/") + " (" + f.size + " bytes)").mkString("\n")))
+            case Metadata.Value.FileList(files) ⇒
+              ("files.txt", ByteString(files.files.map(f ⇒ s"${f.path} (${MemorySize(f.size)})").mkString("\n")))
 
             case Metadata.Value.ImageData(data) ⇒
               ("imgdata.txt", ByteString(data.toString))
 
-            case Metadata.Value.Preview(preview) ⇒
-              (preview.format, preview.data)
+            case Metadata.Value.Thumbnail(thumbnail) ⇒
+              (thumbnail.format, thumbnail.data)
 
             case Metadata.Value.Table(table) ⇒
-              ("table.txt", ByteString(table.values.map { case (k, vs) ⇒ s"$k: ${vs.values.mkString(", ")}"}.mkString("\n")))
+              ("table.txt", ByteString(table.values.map { case (key, vs) ⇒ s"$key: ${vs.values.mkString(", ")}"}.mkString("\n")))
 
             case Metadata.Value.EmbeddedResources(resources) ⇒
               ("embedded.txt", ByteString(resources.toString))
 
-            case v ⇒
-              (s"${v.getClass.getSimpleName}.txt", ByteString(value.toString))
+            case unknown ⇒
+              (s"${unknown.getClass.getSimpleName}.txt", ByteString(value.toString))
           }
           val fileName = FilenameUtils.getName(file) + "_" + value.tag.fold("unk")(t ⇒
             s"${t.plugin}_${t.parser}_${t.disposition.toString().toLowerCase}.$extension")

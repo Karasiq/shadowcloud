@@ -61,7 +61,7 @@ private object Benchmark extends App {
                                       hashing: HashingMethod = sc.config.crypto.hashing.chunks,
                                       fileHashing: HashingMethod = sc.config.crypto.hashing.files): Unit = {
     val modifier = 1
-    val chunkSize = SizeUnit.MB * modifier
+    val chunkSize = SizeUnit.MB.intValue * modifier
     val chunkCount = 1024 / modifier
     val mbCount = chunkCount * (chunkSize.toDouble / SizeUnit.MB)
     println(s"Starting write benchmark (${MemorySize(chunkSize)}): $encryption/$hashing/$fileHashing")

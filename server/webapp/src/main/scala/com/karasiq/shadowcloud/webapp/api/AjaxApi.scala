@@ -25,6 +25,10 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
     apiClient.getFolder(regionId, path).call()
   }
 
+  def createFolder(regionId: RegionId, path: Path) = {
+    apiClient.createFolder(regionId, path).call()
+  }
+
   def getFileMetadata(regionId: RegionId, fileId: FileId, disposition: Tag.Disposition) = {
     apiClient.getFileMetadata(regionId, fileId, disposition).call()
   }

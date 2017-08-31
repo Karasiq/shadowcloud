@@ -12,6 +12,7 @@ trait AppLocale {
   def unknown: String
   def entries(value: Long): String
 
+  def rootPath: String
   def fileId: String
   def createdDate: String
   def modifiedDate: String
@@ -47,6 +48,7 @@ object AppLocale {
     val unknown = "Unknown"
     def entries(value: Long): String = value.toString + " entries"
 
+    val rootPath = "(Root)"
     val fileId = "File ID"
     val createdDate = "Created"
     val modifiedDate = "Last modified"

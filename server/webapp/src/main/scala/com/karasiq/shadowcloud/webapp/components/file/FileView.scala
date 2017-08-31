@@ -27,7 +27,7 @@ class FileView(regionId: RegionId, file: File)(implicit context: AppContext) ext
     )
 
     div(
-      GridSystem.mkRow(h3(file.path.name)),
+      GridSystem.mkRow(h4(file.path.name)),
       hr,
       Bootstrap.well(
         renderInfo(context.locale.fileId, file.id.toString),

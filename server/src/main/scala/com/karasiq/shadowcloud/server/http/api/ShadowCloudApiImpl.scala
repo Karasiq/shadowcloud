@@ -16,6 +16,11 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
     sc.ops.region.getFolder(regionId, path).map(_.withoutChunks)
   }
 
+  def createFolder(regionId: RegionId, path: Path): Future[Folder] = {
+    sc.ops.region.createFolder(regionId, path)
+      .flatMap(_ ⇒ getFolder(regionId, path))
+  }
+
   def getFileMetadata(regionId: RegionId, fileId: FileId, disposition: Metadata.Tag.Disposition): Future[Seq[Metadata]] = {
     sc.streams.metadata.read(regionId, fileId, disposition)
       .runWith(Sink.seq)

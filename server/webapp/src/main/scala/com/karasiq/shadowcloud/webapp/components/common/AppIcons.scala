@@ -4,11 +4,14 @@ import scala.language.implicitConversions
 import com.karasiq.bootstrap.Bootstrap.default._
 
 object AppIcons {
-  type Icon = IconModifier
+  type Icon = FontAwesomeIcon
 
   val close: Icon = "close"
   val preview: Icon = "file-image-o"
   val metadata: Icon = "file-code-o"
+
+  val folder: Icon = "folder-o"
+  val folderOpen: Icon = "folder-open-o"
 
   private[this] implicit def castStringToIcon(iconName: String): Icon = iconName.faFwIcon
 }

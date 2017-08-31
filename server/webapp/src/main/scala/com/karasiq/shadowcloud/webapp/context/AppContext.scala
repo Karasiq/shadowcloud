@@ -6,6 +6,8 @@ import com.karasiq.shadowcloud.webapp.locales.AppLocale
 import com.karasiq.shadowcloud.webapp.utils.TimeFormat
 
 object AppContext {
+  implicit val jsExecutionContext = scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+
   def apply(): AppContext = {
     new DefaultAppContext()
   }

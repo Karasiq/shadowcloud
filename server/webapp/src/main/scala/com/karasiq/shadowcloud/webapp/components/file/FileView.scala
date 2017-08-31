@@ -5,6 +5,7 @@ import scalaTags.all._
 
 import com.karasiq.shadowcloud.model.{File, RegionId}
 import com.karasiq.shadowcloud.utils.MemorySize
+import com.karasiq.shadowcloud.webapp.components.common.AppIcons
 import com.karasiq.shadowcloud.webapp.components.metadata.MetadataListView
 import com.karasiq.shadowcloud.webapp.context.AppContext
 
@@ -21,8 +22,8 @@ class FileView(regionId: RegionId, file: File)(implicit context: AppContext) ext
     }
 
     val tabs = Seq(
-      NavigationTab(context.locale.preview, "preview", "file-image-o".faFwIcon, FilePreview(regionId, file)),
-      NavigationTab(context.locale.metadata, "metadata", "file-code-o".faFwIcon, MetadataListView(regionId, file))
+      NavigationTab(context.locale.preview, "preview", AppIcons.preview, FilePreview(regionId, file)),
+      NavigationTab(context.locale.metadata, "metadata", AppIcons.metadata, MetadataListView(regionId, file))
     )
 
     div(

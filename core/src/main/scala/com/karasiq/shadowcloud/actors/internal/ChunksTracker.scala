@@ -417,7 +417,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
 
             case WriteStatus.Finished ⇒
               if (newStatus.availability.isEmpty) {
-                log.warning("Chunk is lost: {}", newStatus.chunk)
+                log.debug("Chunk is lost: {}", newStatus.chunk)
                 chunks.delete(status)
               }
           }

@@ -21,6 +21,10 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
       .flatMap(_ ⇒ getFolder(regionId, path))
   }
 
+  def deleteFolder(regionId: RegionId, path: Path): Future[Folder] = {
+    sc.ops.region.deleteFolder(regionId, path)
+  }
+
   def getFileMetadata(regionId: RegionId, fileId: FileId, disposition: Metadata.Tag.Disposition): Future[Seq[Metadata]] = {
     sc.streams.metadata.read(regionId, fileId, disposition)
       .runWith(Sink.seq)

@@ -1,18 +1,27 @@
 package com.karasiq.shadowcloud.webapp.locales
 
+import com.karasiq.shadowcloud.model.Path
+
 trait AppLocale {
   def languageCode: String
 
   def name: String
+  def path: String
   def value: String
   def size: String
+  def empty: String
   def show: String
+  def submit: String
   def cancel: String
   def close: String
   def unknown: String
   def entries(value: Long): String
 
   def rootPath: String
+  def emptyPath: String
+  def createFolder: String
+  def deleteFolder: String
+
   def fileId: String
   def createdDate: String
   def modifiedDate: String
@@ -33,6 +42,8 @@ trait AppLocale {
   def metadataThumbnail: String
   def metadataImageData: String
   def metadataEmbeddedResources: String
+
+  def deleteFolderConfirmation(path: Path): String
 }
 
 object AppLocale {
@@ -40,15 +51,22 @@ object AppLocale {
     val languageCode = "en"
 
     val name = "Name"
+    val path = "Path"
     val value = "Value"
     val size = "Size"
+    val empty = "Empty"
     val show = "Show"
+    val submit = "Submit"
     val cancel = "Cancel"
     val close = "Close"
     val unknown = "Unknown"
-    def entries(value: Long): String = value.toString + " entries"
+    def entries(value: Long): String = value + " entries"
 
     val rootPath = "(Root)"
+    val emptyPath = "(Empty)"
+    val createFolder = "Create folder"
+    val deleteFolder = "Delete folder"
+
     val fileId = "File ID"
     val createdDate = "Created"
     val modifiedDate = "Last modified"
@@ -69,6 +87,10 @@ object AppLocale {
     val metadataThumbnail = "Thumbnail"
     val metadataImageData = "Image data"
     val metadataEmbeddedResources = "Embedded resources"
+
+    def deleteFolderConfirmation(path: Path): String = {
+      s"Are you sure you want to delete folder $path?"
+    }
   }
 
   val default: AppLocale = English

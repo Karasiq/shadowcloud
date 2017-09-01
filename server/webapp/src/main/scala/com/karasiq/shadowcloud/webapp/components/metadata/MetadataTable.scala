@@ -62,12 +62,12 @@ object MetadataTable {
     }
   }
 
-  private[metadata] abstract class Controller(implicit val appContext: AppContext) {
+  private[metadata] sealed abstract class Controller(implicit val appContext: AppContext) {
     def show(metadata: Metadata): Unit
   }
 
   private[metadata] object Controller {
-    def apply(fShow: Metadata ⇒ Unit)(implicit appContext: AppContext): Controller = {
+    def apply(fShow: Metadata ⇒ Unit)(implicit ac: AppContext): Controller = {
       new Controller {
         def show(metadata: Metadata) = fShow(metadata)
       }

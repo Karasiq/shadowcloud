@@ -46,9 +46,9 @@ private[tika] class TikaConversions(plugin: String, parser: String) {
         Metadata.Value.EmbeddedResources(Metadata.EmbeddedResources(resources.toVector))))
   }
 
-  def toArchiveTables(subMetadatas: Seq[TikaMetadata], previewSize: Int): Seq[Metadata] = {
+  def toArchiveTables(subMetadatas: Seq[Metadata], previewSize: Int): Seq[Metadata] = {
     val archiveFiles = for {
-      md ← subMetadatas
+      md ← subMetadatas if md.value.isTable
       path ← TikaAttributes.optional(md, TikaAttributes.ResourceName).map(ps ⇒ Path.fromString(ps).nodes)
       size ← TikaAttributes.optional(md, TikaAttributes.Size).map(_.toLong)
       timestamp = TikaAttributes.optional(md, TikaAttributes.LastModified).fold(0L)(TikaUtils.parseTimeString)
@@ -81,6 +81,15 @@ private[tika] class TikaConversions(plugin: String, parser: String) {
       .sortBy(_.length)(Ordering[Int].reverse)
       .map(result ⇒ Metadata(createTag(MDDisposition.PREVIEW),
         Metadata.Value.Text(Metadata.Text(TikaFormats.Text, result))))
+  }
+
+  def toImageData(metadataTable: Metadata): Option[Metadata] = {
+    assert(metadataTable.value.isTable, s"Not a table: $metadataTable")
+    for {
+      width ← TikaAttributes.optional(metadataTable, TikaAttributes.ImageWidth)
+      height ← TikaAttributes.optional(metadataTable, TikaAttributes.ImageHeight)
+    } yield Metadata(createTag(MDDisposition.METADATA),
+      Metadata.Value.ImageData(Metadata.ImageData(width.toInt, height.toInt)))
   }
 
   private[this] def createTag(disposition: MDDisposition): Option[Metadata.Tag] = {

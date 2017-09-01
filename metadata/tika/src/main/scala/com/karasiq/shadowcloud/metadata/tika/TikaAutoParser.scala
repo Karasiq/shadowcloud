@@ -74,7 +74,8 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
     val subMetadatas = subRawMetadatas.map(conversions.toMetadataTable(_).toSeq) ++ subContents.map(_.extractContents())
 
     val mainMetadatas = mainContents ++ mainMetadata ++
-      conversions.toArchiveTables(subRawMetadatas, autoParserSettings.fileListPreviewSize)
+      mainMetadata.flatMap(conversions.toImageData) ++
+      conversions.toArchiveTables(subMetadatas.flatten, autoParserSettings.fileListPreviewSize)
 
     mainMetadatas ++
       conversions.toTextPreviews(mainMetadatas ++ subMetadatas.flatten,

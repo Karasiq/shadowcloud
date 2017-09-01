@@ -12,20 +12,14 @@ trait SCJsonEncoding extends SCApiEncoding {
 
   import implicits._
 
-  private[this] def toJsonBytes[T: Writes](value: T): ByteString = {
-    ByteString(Json.toBytes(Json.toJson(value)))
-  }
-
-  private[this] def fromJsonBytes[T: Reads](value: ByteString): T = {
-    Json.fromJson[T](Json.parse(value.toArray)).get
-  }
+  private[this] val SlashBytes = ByteString(Path.Delimiter)
 
   def encodePath(path: Path): ByteString = {
-    toJsonBytes(path)
+    if (Path.isConventional(path)) ByteString(path.toString) else toJsonBytes(path)
   }
 
   def decodePath(json: ByteString): Path = {
-    fromJsonBytes[Path](json)
+    if (json.startsWith(SlashBytes)) Path.fromString(json.utf8String) else fromJsonBytes[Path](json)
   }
 
   def encodeFile(file: File): ByteString = {
@@ -34,5 +28,13 @@ trait SCJsonEncoding extends SCApiEncoding {
 
   def decodeFile(fileBytes: ByteString): File = {
     fromJsonBytes[File](fileBytes)
+  }
+
+  private[this] def toJsonBytes[T: Writes](value: T): ByteString = {
+    ByteString(Json.toBytes(Json.toJson(value)))
+  }
+
+  private[this] def fromJsonBytes[T: Reads](value: ByteString): T = {
+    Json.fromJson[T](Json.parse(value.toArray)).get
   }
 }

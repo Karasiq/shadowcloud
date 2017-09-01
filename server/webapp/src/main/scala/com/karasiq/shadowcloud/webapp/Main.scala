@@ -23,7 +23,7 @@ object Main extends JSApp {
     jQuery(() ⇒ {
       implicit val appContext = AppContext()
       val testRegion = "testRegion"
-      val testFolder = Path.root / "TestFolder" / "TestSubFolder" / "TestSubSubFolder"
+      val testFolder = Path.root / "TestFolder" / "TestSubFolder" / "TestSubSubFolder" / "/* TestSubSubSubFolder */"
       appContext.api.createFolder(testRegion, testFolder).foreach(println)
 
       implicit val folderContext = FolderContext(testRegion)
@@ -44,8 +44,8 @@ object Main extends JSApp {
       val container = GridSystem.containerFluid(
         GridSystem.mkRow(input),
         GridSystem.row(
-          GridSystem.col(2).asDiv(folderTree),
-          GridSystem.col(7).asDiv(folderView),
+          GridSystem.col(3).asDiv(folderTree),
+          GridSystem.col(6).asDiv(folderView),
           GridSystem.col(3).asDiv(folderView.selectedFile.map[Frag] {
             case Some(file) ⇒
               FileView(testRegion, file)

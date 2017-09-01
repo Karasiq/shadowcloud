@@ -23,9 +23,11 @@ object Main extends JSApp {
     jQuery(() ⇒ {
       implicit val appContext = AppContext()
       val testRegion = "testRegion"
-      appContext.api.createFolder(testRegion, Path.root / "TestFolder").foreach(println)
+      val testFolder = Path.root / "TestFolder" / "TestSubFolder" / "TestSubSubFolder"
+      appContext.api.createFolder(testRegion, testFolder).foreach(println)
 
       implicit val folderContext = FolderContext(testRegion)
+      folderContext.selected() = testFolder
       val selectedFolderRx = RxUtils.toSelectedFolderRx(folderContext)
 
       val input = FormInput.file("File", onchange := Callback.onInput { input ⇒

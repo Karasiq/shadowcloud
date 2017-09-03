@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.webapp.components.folder
 
 import scala.language.postfixOps
 
-import rx.{Rx, Var}
+import rx._
 
 import com.karasiq.shadowcloud.webapp.context.AppContext.BootstrapContext._
 import scalaTags.all._
@@ -63,21 +63,39 @@ class FolderTree(regionId: RegionId, path: Path)
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
-  private[this] lazy val folderRx = RxUtils.toFolderRx(regionId, Var(path))
-  private[this] lazy val subFoldersRx = Rx {
-    val rootFolder = folderRx.toRx()
-    val subFolders = rootFolder.folders.toVector.sorted
-    for (subFolder ← subFolders)
-      yield FolderTree(regionId, rootFolder.path / subFolder)
+  private[this] lazy val folderRx = {
+    val folderRx = RxUtils.toFolderRx(regionId, Var(path))
+    folderContext.updates.filter(_._1 == path).triggerLater(folderRx.update()) // Subscribe to updates
+    folderRx
   }
+
+  private[this] lazy val subFolderNamesRx = Rx {
+    val rootFolder = folderRx.toRx()
+    val subFolders = rootFolder.folders
+    for (subFolder ← subFolders) yield rootFolder.path / subFolder
+  }
+
+  private[this] lazy val subFolderMapRx = subFolderNamesRx.fold(Map.empty[Path, FolderTree]) { (trees, paths) ⇒
+    val newTrees = (paths -- trees.keySet).map(path ⇒ (path, FolderTree(regionId, path)))
+    val deletedPaths = trees.keySet -- paths
+    trees -- deletedPaths ++ newTrees
+  }
+
+  private[this] lazy val subFoldersRx = subFolderMapRx.map(_.toSeq.sortBy(_._1).map(_._2))
 
   // -----------------------------------------------------------------------
   // Components
   // -----------------------------------------------------------------------
   private[this] implicit val controller = FolderController(
-    folderRx.update,
-    _ ⇒ { folderRx.update(); opened() = true },
-    _ ⇒ deleted() = true
+    () ⇒ folderContext.update(path),
+    folder ⇒ {
+      folderContext.update(folder.path.parent)
+      if (folder.path.parent == path) opened() = true
+    },
+    folder ⇒ {
+      folderContext.update(folder.path.parent)
+      if (folder.path.parent == path) deleted() = true
+    }
   )
 
   private[this] val link = renderLink()

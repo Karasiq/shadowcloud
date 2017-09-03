@@ -172,7 +172,8 @@ lazy val webapp = (project in file("server") / "webapp")
     name := "shadowcloud-webapp",
     scalaJSUseMainModuleInitializer := true,
     ScalaJSDeps.bootstrap,
-    ScalaJSDeps.java8Time
+    ScalaJSDeps.java8Time,
+    ScalaJSDeps.scalaCss
   )
   .dependsOn(autowireApiJS)
   .enablePlugins(ScalaJSPlugin)

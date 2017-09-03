@@ -9,6 +9,7 @@ import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
 import org.scalajs.dom
+import org.scalajs.dom.raw.HTMLStyleElement
 import org.scalajs.jquery._
 
 import com.karasiq.shadowcloud.model.Path
@@ -22,6 +23,14 @@ object Main extends JSApp {
   def main(): Unit = {
     jQuery(() ⇒ {
       implicit val appContext = AppContext()
+
+      // Styles
+      appContext.styles.foreach { stylesheet ⇒
+        import AppContext.CssSettings._
+        dom.document.head.appendChild(stylesheet.render[HTMLStyleElement])
+      }
+
+      // Content
       val testRegion = "testRegion"
       val testFolder = Path.root / "TestFolder" / "TestSubFolder" / "TestSubSubFolder" / "/* TestSubSubSubFolder */"
       appContext.api.createFolder(testRegion, testFolder).foreach(println)
@@ -55,6 +64,7 @@ object Main extends JSApp {
           })
         )
       )
+
       container.applyTo(dom.document.body)
     })
   }

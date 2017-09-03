@@ -27,7 +27,11 @@ object ScalaJSDeps {
   }
 
   def bootstrap: Deps = {
-    libraryDependencies ++= Seq("com.github.karasiq" %%% "scalajs-bootstrap" % "2.0.0")
+    libraryDependencies ++= Seq("com.github.karasiq" %%% "scalajs-bootstrap" % "2.1.0")
+  }
+
+  def scalaCss: Deps = {
+    libraryDependencies ++= Seq("com.github.japgolly.scalacss" %%% "core" % "0.5.3")
   }
 
   def autowire: Deps = {

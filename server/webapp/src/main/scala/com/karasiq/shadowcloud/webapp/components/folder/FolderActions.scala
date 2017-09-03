@@ -9,7 +9,7 @@ import com.karasiq.shadowcloud.model.{Path, RegionId}
 import com.karasiq.shadowcloud.webapp.components.common.AppIcons
 import com.karasiq.shadowcloud.webapp.components.folder.FolderTree.FolderController
 import com.karasiq.shadowcloud.webapp.context.AppContext
-import AppContext.jsExecutionContext
+import AppContext.JsExecutionContext
 
 private[folder] object FolderActions {
   def apply(regionId: RegionId, path: Path)

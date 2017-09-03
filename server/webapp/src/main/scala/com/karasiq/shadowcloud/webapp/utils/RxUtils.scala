@@ -7,7 +7,7 @@ import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 
 private[webapp] object RxUtils {
   import com.karasiq.bootstrap.Bootstrap.default.scalaRxContext
-  import AppContext.jsExecutionContext
+  import AppContext.JsExecutionContext
 
   def toFolderRx(regionId: RegionId, pathRx: Rx[Path])(implicit ac: AppContext): RxWithKey[Path, Folder] = {
     val folderRx = RxWithKey(pathRx.now, Folder.create(pathRx.now))(ac.api.getFolder(regionId, _))

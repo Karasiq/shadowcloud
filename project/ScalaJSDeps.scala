@@ -27,7 +27,7 @@ object ScalaJSDeps {
   }
 
   def bootstrap: Deps = {
-    libraryDependencies ++= Seq("com.github.karasiq" %%% "scalajs-bootstrap" % "2.1.0")
+    libraryDependencies ++= Seq("com.github.karasiq" %%% "scalajs-bootstrap" % "2.1.3")
   }
 
   def scalaCss: Deps = {

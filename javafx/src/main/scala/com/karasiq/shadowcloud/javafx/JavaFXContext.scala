@@ -48,7 +48,12 @@ final class JavaFXContextExtension(system: ExtendedActorSystem) extends Extensio
         }
       }
     })
-    system.registerOnTermination(thread.interrupt())
+
+    system.registerOnTermination {
+      Platform.exit()
+      thread.interrupt()
+    }
+
     thread.start()
     Await.result(initPromise.future, 1 minute)
   }

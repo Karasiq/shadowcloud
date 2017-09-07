@@ -17,5 +17,9 @@ object AppIcons {
   val create: Icon = "plus"
   val delete: Icon = "trash"
 
+  val availability: Icon = "balance-scale"
+  val partiallyAvailable: Icon = "exclamation-triangle"
+  val fullyAvailable: Icon = "check"
+
   private[this] implicit def castStringToIcon(iconName: String): Icon = iconName.faFwIcon
 }

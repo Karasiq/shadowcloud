@@ -52,7 +52,7 @@ object MetadataView {
         this.embeddedResources(resources)
 
       case _ ⇒
-        ()
+        Bootstrap.noContent
     }
   }
 }

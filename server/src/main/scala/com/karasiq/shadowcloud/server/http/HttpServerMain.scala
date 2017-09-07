@@ -181,9 +181,13 @@ object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshall
   val tempDirectory = sys.props.get("shadowcloud.temp-storage-dir")
     .map(Paths.get(_))
     .getOrElse(Files.createTempDirectory("scl-temp-storage"))
+
+  Files.createDirectories(tempDirectory.resolve("second"))
   supervisor.addRegion("testRegion", sc.configs.regionConfig("testRegion"))
   supervisor.addStorage("testStorage", StorageProps.fromDirectory(tempDirectory))
+  supervisor.addStorage("testStorage2", StorageProps.fromDirectory(tempDirectory.resolve("second")))
   supervisor.register("testRegion", "testStorage")
+  supervisor.register("testRegion", "testStorage2")
 
   import scala.concurrent.duration._
   actorSystem.scheduler.scheduleOnce(30 seconds) {

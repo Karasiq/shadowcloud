@@ -7,7 +7,7 @@ import autowire._
 import com.karasiq.shadowcloud.api.{SCApiMeta, ShadowCloudApi}
 import com.karasiq.shadowcloud.api.js.SCAjaxApiClient
 import com.karasiq.shadowcloud.metadata.Metadata.Tag
-import com.karasiq.shadowcloud.model.{FileId, Path, RegionId}
+import com.karasiq.shadowcloud.model.{File, FileId, Path, RegionId}
 
 object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
   private[api] val clientFactory = SCAjaxApiClient
@@ -31,6 +31,14 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
 
   def deleteFolder(regionId: RegionId, path: Path) = {
     apiClient.deleteFolder(regionId, path).call()
+  }
+
+  def getFileById(regionId: RegionId, path: Path, fileId: FileId) = {
+    apiClient.getFileById(regionId, path, fileId).call()
+  }
+
+  def getFileAvailability(regionId: RegionId, file: File) = {
+    apiClient.getFileAvailability(regionId, file).call()
   }
 
   def getFileMetadata(regionId: RegionId, fileId: FileId, disposition: Tag.Disposition) = {

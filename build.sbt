@@ -6,6 +6,7 @@ val commonSettings = Seq(
   isSnapshot := version.value.endsWith("SNAPSHOT"),
   scalaVersion := "2.12.3",
   // crossScalaVersions := Seq("2.11.8", "2.12.3"),
+  resolvers += Resolver.sonatypeRepo("snapshots"),
   licenses := Seq("Apache License, Version 2.0" → url("http://opensource.org/licenses/Apache-2.0"))
 )
 

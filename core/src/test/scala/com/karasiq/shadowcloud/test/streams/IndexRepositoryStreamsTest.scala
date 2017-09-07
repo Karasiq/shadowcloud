@@ -27,9 +27,9 @@ class IndexRepositoryStreamsTest extends SCExtensionSpec with FlatSpecLike {
     testRepository(PathTreeRepository.toKeyValue(Repositories.fromDirectory(Files.createTempDirectory("irp-test")), Path.root / "default"))
   }
 
-  it should "validate path" in {
+  /* it should "validate path" in {
     intercept[IllegalArgumentException](Repositories.fromDirectory(Files.createTempFile("irp-test", "file")))
-  }
+  } */
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()

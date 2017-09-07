@@ -14,7 +14,7 @@ import akka.util.ByteString
 import org.scalatest.FlatSpecLike
 
 import com.karasiq.shadowcloud.actors._
-import com.karasiq.shadowcloud.actors.RegionDispatcher.{ReadChunk, WriteChunk}
+import com.karasiq.shadowcloud.actors.RegionDispatcher.{GetFileAvailability, ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
@@ -96,6 +96,12 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
     wrongChunk shouldNot be(chunk)
     val result = testRegion ? WriteChunk(wrongChunk)
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
+  }
+
+  it should "create availability report" in {
+    val report = (testRegion ? GetFileAvailability(folder.files.head.copy(chunks = Seq(chunk)))).mapTo[GetFileAvailability.Success].futureValue
+    report.result.chunksByStorage shouldBe Map("testStorage" → Set(chunk))
+    report.result.percentagesByStorage shouldBe Map("testStorage" → 100.0)
   }
 
   it should "repair chunk" in {

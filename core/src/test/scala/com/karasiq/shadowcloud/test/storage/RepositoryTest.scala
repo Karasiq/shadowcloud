@@ -24,9 +24,9 @@ class RepositoryTest extends SCExtensionSpec with FlatSpecLike {
     testRepository(PathTreeRepository.toKeyValue(Repositories.fromDirectory(Files.createTempDirectory("crp-test")), Path.root / "default"))
   }
 
-  it should "validate path" in {
+  /* it should "validate path" in {
     intercept[IllegalArgumentException](Repositories.fromDirectory(Files.createTempFile("crp-test", "file")))
-  }
+  } */
 
   private[this] def testRepository(repository: KeyValueRepository): Unit = {
     val chunk = CoreTestUtils.randomChunk

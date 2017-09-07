@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.storage
 
-import java.nio.file.{Files, Path}
+import java.nio.file.Path
 
 import scala.collection.concurrent.{TrieMap, Map ⇒ CMap}
 import scala.concurrent.ExecutionContext
@@ -26,7 +26,7 @@ private[shadowcloud] object Repositories {
   }
 
   def fromDirectory(directory: Path)(implicit ec: ExecutionContext, mat: Materializer): PathTreeRepository = {
-    require(Files.isDirectory(directory), s"Not a directory: $directory")
+    // require(Files.isDirectory(directory), s"Not a directory: $directory")
     FileRepository(directory)
   }
 }

@@ -31,6 +31,10 @@ trait AppLocale {
   def metadata: String
   def content: String
 
+  def storage: String
+  def region: String
+  def availability: String
+
   def metadataParser: String
   def metadataDisposition: String
   def metadataType: String
@@ -75,6 +79,10 @@ object AppLocale {
     val preview = "Preview"
     val metadata = "Metadata"
     val content = "Content"
+
+    val storage = "Storage"
+    val region = "Region"
+    val availability = "Availability"
 
     val metadataParser = "Parser"
     val metadataDisposition = "Disposition"

@@ -17,6 +17,7 @@ import com.karasiq.shadowcloud.config.TimeoutsConfig
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.model._
+import com.karasiq.shadowcloud.model.utils.FileAvailability
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
@@ -39,6 +40,10 @@ final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(impl
 
   def getFiles(regionId: RegionId, path: Path): Future[Set[File]] = {
     askRegion(regionId, RegionDispatcher.GetFiles, RegionDispatcher.GetFiles(path))
+  }
+
+  def getFileAvailability(regionId: RegionId, file: File): Future[FileAvailability] = {
+    askRegion(regionId, RegionDispatcher.GetFileAvailability, RegionDispatcher.GetFileAvailability(file))
   }
 
   def getFolder(regionId: RegionId, path: Path): Future[Folder] = {

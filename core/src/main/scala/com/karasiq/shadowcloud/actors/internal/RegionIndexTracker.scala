@@ -11,7 +11,8 @@ import com.karasiq.shadowcloud.actors.events.RegionEvents
 import com.karasiq.shadowcloud.actors.RegionIndex.{SyncReport, WriteDiff}
 import com.karasiq.shadowcloud.index.FolderIndex
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.model.{RegionId, SequenceNr, StorageId}
+import com.karasiq.shadowcloud.model.{File, RegionId, SequenceNr, StorageId}
+import com.karasiq.shadowcloud.model.utils.FileAvailability
 import com.karasiq.shadowcloud.storage.replication.StorageSelector
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
@@ -132,6 +133,21 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
 
     def toMergedDiff: IndexDiff = {
       globalIndex.mergedDiff.merge(globalIndex.pending)
+    }
+
+    def getFileAvailability(file: File): FileAvailability = {
+      val chunkStoragePairs = file.chunks.flatMap { chunk ⇒
+        chunksTracker.chunks.getChunkStatus(chunk)
+          .toSeq
+          .flatMap(_.availability.hasChunk)
+          .map(_ → chunk)
+      }
+
+      val chunksByStorage = chunkStoragePairs
+        .groupBy(_._1)
+        .mapValues(_.map(_._2).toSet)
+
+      FileAvailability(file, chunksByStorage)
     }
   }
 }

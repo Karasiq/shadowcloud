@@ -52,7 +52,7 @@ final class MetadataListView(regionId: RegionId, file: File)(implicit context: A
           val metadata = context.api.getFileMetadata(regionId, file.id, disposition).toRx(Nil)
           div(metadata.map(MetadataTable(_): Frag))
         } else {
-          ()
+          Bootstrap.noContent
         })
       )
     }

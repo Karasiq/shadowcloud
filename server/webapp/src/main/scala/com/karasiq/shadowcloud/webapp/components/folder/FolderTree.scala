@@ -104,7 +104,7 @@ class FolderTree(regionId: RegionId, path: Path)
   def renderTag(md: ModifierT*): TagT = {
     div(
       Rx[Frag](if (deleted()) {
-        ()
+        Bootstrap.noContent
       } else {
         div(link, content)
       }),
@@ -132,7 +132,7 @@ class FolderTree(regionId: RegionId, path: Path)
       val actions: Frag = if (isSelected) {
         small(Bootstrap.nbsp, FolderActions(regionId, path), FolderTreeStyles.folderActions)
       } else {
-        ()
+        Bootstrap.noContent
       }
 
       span(
@@ -149,7 +149,7 @@ class FolderTree(regionId: RegionId, path: Path)
       if (opened()) {
         div(Rx(div(subFoldersRx.apply().map(_.renderTag()))), FolderTreeStyles.subTree)
       } else {
-        ()
+        Bootstrap.noContent
       }
     }
   }

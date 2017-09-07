@@ -23,7 +23,8 @@ class FileView(regionId: RegionId, file: File)(implicit context: AppContext) ext
 
     val tabs = Seq(
       NavigationTab(context.locale.preview, "preview", AppIcons.preview, FilePreview(regionId, file)),
-      NavigationTab(context.locale.metadata, "metadata", AppIcons.metadata, MetadataListView(regionId, file))
+      NavigationTab(context.locale.metadata, "metadata", AppIcons.metadata, MetadataListView(regionId, file)),
+      NavigationTab(context.locale.availability, "availability", AppIcons.availability, FileAvailabilityView.forFile(regionId, file))
     )
 
     div(

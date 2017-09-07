@@ -7,6 +7,7 @@ import play.api.libs.json._
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.crypto._
+import com.karasiq.shadowcloud.model.utils.FileAvailability
 import com.karasiq.shadowcloud.utils.encoding.{Base64, HexString}
 
 //noinspection ConvertExpressionToSAM
@@ -39,6 +40,7 @@ trait SCJsonEncoders {
   implicit val fileWrites: Writes[File] = Json.writes[File]
   implicit val folderReads: Reads[Folder] = Json.reads[Folder]
   implicit val folderWrites: Writes[Folder] = Json.writes[Folder]
+  implicit val fileAvailabilityFormat: Format[FileAvailability] = Json.format[FileAvailability]
 
   implicit def generatedMessageReadWrites[T <: GeneratedMessage with com.trueaccord.scalapb.Message[T] : GeneratedMessageCompanion]: Reads[T] with Writes[T] = new Reads[T] with Writes[T] {
     def reads(json: JsValue): JsResult[T] = {

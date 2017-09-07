@@ -22,6 +22,7 @@ import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.exceptions.{RegionException, StorageException}
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
+import com.karasiq.shadowcloud.model.utils.FileAvailability
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
@@ -45,10 +46,13 @@ object RegionDispatcher {
   object WriteIndex extends MessageStatus[FolderIndexDiff, IndexDiff]
   case object GetIndex extends Message with MessageStatus[RegionId, IndexMerger.State[RegionKey]]
   case object Synchronize extends Message with MessageStatus[RegionId, Map[StorageId, SyncReport]]
+
   case class GetFiles(path: Path) extends Message
   object GetFiles extends MessageStatus[Path, Set[File]]
   case class GetFolder(path: Path) extends Message
   object GetFolder extends MessageStatus[Path, Folder]
+  case class GetFileAvailability(file: File) extends Message
+  object GetFileAvailability extends MessageStatus[File, FileAvailability]
 
   case class WriteChunk(chunk: Chunk) extends Message
   case object WriteChunk extends MessageStatus[Chunk, Chunk]
@@ -181,6 +185,9 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
 
     case GetIndex ⇒
       sender() ! GetIndex.Success(regionId, indexTracker.indexes.state)
+
+    case GetFileAvailability(file) ⇒
+      sender() ! GetFileAvailability.Success(file, indexTracker.indexes.getFileAvailability(file))
 
     case Synchronize ⇒
       log.info("Force synchronizing indexes of virtual region: {}", regionId)

@@ -56,7 +56,7 @@ class FileAvailabilityView(fileAvailability: FileAvailability)(implicit context:
     val sortedPercentages = fileAvailability.percentagesByStorage.toSeq.sortBy(_._2)(Ordering[Double].reverse)
     div(
       for ((storageId, percentage) ← sortedPercentages)
-        yield div(icon(percentage), Bootstrap.nbsp, storageId, " (", percentage, "%)", textStyle(percentage))
+        yield div(icon(percentage), Bootstrap.nbsp, storageId, f" (%.2f$percentage%%)", textStyle(percentage))
     )
   }
 }

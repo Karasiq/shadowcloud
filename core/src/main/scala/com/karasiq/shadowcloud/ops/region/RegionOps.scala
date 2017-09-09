@@ -17,7 +17,7 @@ import com.karasiq.shadowcloud.config.TimeoutsConfig
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.model._
-import com.karasiq.shadowcloud.model.utils.FileAvailability
+import com.karasiq.shadowcloud.model.utils.{FileAvailability, IndexScope}
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
@@ -34,20 +34,20 @@ final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(impl
   // -----------------------------------------------------------------------
   // Index
   // -----------------------------------------------------------------------
-  def getIndex(regionId: RegionId): Future[IndexMerger.State[RegionKey]] = {
-    askRegion(regionId, RegionDispatcher.GetIndex, RegionDispatcher.GetIndex)
+  def getIndex(regionId: RegionId, scope: IndexScope = IndexScope.default): Future[IndexMerger.State[RegionKey]] = {
+    askRegion(regionId, RegionDispatcher.GetIndex, RegionDispatcher.GetIndex(scope))
   }
 
-  def getFiles(regionId: RegionId, path: Path): Future[Set[File]] = {
-    askRegion(regionId, RegionDispatcher.GetFiles, RegionDispatcher.GetFiles(path))
+  def getFiles(regionId: RegionId, path: Path, scope: IndexScope = IndexScope.default): Future[Set[File]] = {
+    askRegion(regionId, RegionDispatcher.GetFiles, RegionDispatcher.GetFiles(path, scope))
+  }
+
+  def getFolder(regionId: RegionId, path: Path, scope: IndexScope = IndexScope.default): Future[Folder] = {
+    askRegion(regionId, RegionDispatcher.GetFolder, RegionDispatcher.GetFolder(path, scope))
   }
 
   def getFileAvailability(regionId: RegionId, file: File): Future[FileAvailability] = {
     askRegion(regionId, RegionDispatcher.GetFileAvailability, RegionDispatcher.GetFileAvailability(file))
-  }
-
-  def getFolder(regionId: RegionId, path: Path): Future[Folder] = {
-    askRegion(regionId, RegionDispatcher.GetFolder, RegionDispatcher.GetFolder(path))
   }
 
   def writeIndex(regionId: RegionId, diff: FolderIndexDiff): Future[IndexDiff] = {

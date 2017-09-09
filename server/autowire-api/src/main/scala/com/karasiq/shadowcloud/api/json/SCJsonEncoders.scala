@@ -7,7 +7,7 @@ import play.api.libs.json._
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.crypto._
-import com.karasiq.shadowcloud.model.utils.FileAvailability
+import com.karasiq.shadowcloud.model.utils.{FileAvailability, IndexScope}
 import com.karasiq.shadowcloud.utils.encoding.{Base64, HexString}
 
 //noinspection ConvertExpressionToSAM
@@ -41,6 +41,51 @@ trait SCJsonEncoders {
   implicit val folderReads: Reads[Folder] = Json.reads[Folder]
   implicit val folderWrites: Writes[Folder] = Json.writes[Folder]
   implicit val fileAvailabilityFormat: Format[FileAvailability] = Json.format[FileAvailability]
+
+  implicit val indexScopeFormat: Format[IndexScope] = new Format[IndexScope] {
+    def writes(o: IndexScope): JsValue = o match {
+      case IndexScope.Current ⇒
+        JsString("Current")
+
+      case IndexScope.Persisted ⇒
+        JsString("Persisted")
+
+      case IndexScope.UntilSequenceNr(sequenceNr) ⇒
+        JsObject(Map("sequenceNr" → JsNumber(sequenceNr)))
+
+      case IndexScope.UntilTime(timestamp) ⇒
+        JsObject(Map("timestamp" → JsNumber(timestamp)))
+    }
+
+    def reads(json: JsValue): JsResult[IndexScope] = json match {
+      case JsString("Current") ⇒
+        JsSuccess(IndexScope.Current)
+
+      case JsString("Persisted") ⇒
+        JsSuccess(IndexScope.Persisted)
+
+      case JsObject(values) if values.contains("sequenceNr") ⇒
+        values("sequenceNr") match {
+          case JsNumber(sequenceNr) if sequenceNr.isValidLong ⇒
+            JsSuccess(IndexScope.UntilSequenceNr(sequenceNr.longValue()))
+
+          case value ⇒
+            JsError(s"Invalid sequence number: $value")
+        }
+
+      case JsObject(values) if values.contains("timestamp") ⇒
+        values("timestamp") match {
+          case JsNumber(timestamp) if timestamp.isValidLong ⇒
+            JsSuccess(IndexScope.UntilTime(timestamp.longValue()))
+
+          case value ⇒
+            JsError(s"Invalid timestamp: $value")
+        }
+
+      case value ⇒
+        JsError(s"Invalid index scope: $value")
+    }
+  }
 
   implicit def generatedMessageReadWrites[T <: GeneratedMessage with com.trueaccord.scalapb.Message[T] : GeneratedMessageCompanion]: Reads[T] with Writes[T] = new Reads[T] with Writes[T] {
     def reads(json: JsValue): JsResult[T] = {

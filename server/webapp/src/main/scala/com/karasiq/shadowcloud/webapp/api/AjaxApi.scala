@@ -8,6 +8,7 @@ import com.karasiq.shadowcloud.api.{SCApiMeta, ShadowCloudApi}
 import com.karasiq.shadowcloud.api.js.SCAjaxApiClient
 import com.karasiq.shadowcloud.metadata.Metadata.Tag
 import com.karasiq.shadowcloud.model.{File, FileId, Path, RegionId}
+import com.karasiq.shadowcloud.model.utils.IndexScope
 
 object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
   private[api] val clientFactory = SCAjaxApiClient
@@ -21,8 +22,8 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
   private[this] val apiClient = clientFactory[ShadowCloudApi]
   private[this] implicit val ec: ExecutionContext = scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
-  def getFolder(regionId: RegionId, path: Path) = {
-    apiClient.getFolder(regionId, path).call()
+  def getFolder(regionId: RegionId, path: Path, scope: IndexScope = IndexScope.default) = {
+    apiClient.getFolder(regionId, path, scope).call()
   }
 
   def createFolder(regionId: RegionId, path: Path) = {
@@ -33,8 +34,8 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
     apiClient.deleteFolder(regionId, path).call()
   }
 
-  def getFileById(regionId: RegionId, path: Path, fileId: FileId) = {
-    apiClient.getFileById(regionId, path, fileId).call()
+  def getFiles(regionId: RegionId, path: Path, scope: IndexScope = IndexScope.default) = {
+    apiClient.getFiles(regionId, path, scope).call()
   }
 
   def getFileAvailability(regionId: RegionId, file: File) = {

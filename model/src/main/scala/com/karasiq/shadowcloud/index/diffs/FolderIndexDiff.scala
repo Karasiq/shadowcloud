@@ -133,7 +133,7 @@ object FolderIndexDiff {
     }
   }
 
-  // Explicitly deletes sub-items
+  // Explicitly deletes folders
   def deleteFolders(folders: Folder*): FolderIndexDiff = {
     if (folders.isEmpty) {
       empty
@@ -149,11 +149,23 @@ object FolderIndexDiff {
     }
   }
 
-  // Explicitly deletes directory tree
-  def deleteFolderTree(index: FolderIndex, path: Path): FolderIndexDiff = {
+  // Explicitly deletes folder items
+  def deleteFolderItems(index: FolderIndex, path: Path): FolderIndexDiff = {
     val folders = index.get(path).toSeq
       .flatMap(f ⇒ f +: f.folders.toSeq.map(f.path / _).flatMap(index.get))
     deleteFolders(folders:_*)
+  }
+
+  // Explicitly deletes folder tree
+  def deleteFolderTree(index: FolderIndex, path: Path): FolderIndexDiff = {
+    def traverseFolderTree(path: Path): Iterator[Folder] = {
+      val subFolders = index.get(path).toSeq
+        .flatMap(f ⇒ f +: f.folders.toSeq.map(f.path / _).flatMap(index.get))
+      subFolders.iterator ++ subFolders.iterator.flatMap(f ⇒ traverseFolderTree(f.path))
+    }
+
+    val folders = traverseFolderTree(path)
+    deleteFolders(folders.toSeq:_*)
   }
 
   def deleteFiles(files: File*): FolderIndexDiff = {

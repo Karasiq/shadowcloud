@@ -13,13 +13,6 @@ import org.scalajs.dom.raw._
   * Blob/file utility
   */
 object Blobs {
-  private[this] def urlObject: URL.type = {
-    /* js.Dynamic.global.window.URL.asInstanceOf[UndefOr[URL.type]]
-      .orElse(js.Dynamic.global.window.webkitURL.asInstanceOf[UndefOr[URL.type]])
-      .get */
-    URL
-  }
-
   def fromBytes(data: Array[Byte], contentType: String = ""): Blob = {
     import scala.scalajs.js.JSConverters._
     val array = new Uint8Array(data.toJSArray)
@@ -39,18 +32,18 @@ object Blobs {
   }
 
   def saveBlob(blob: Blob, fileName: String): Unit = {
-    val url = urlObject.createObjectURL(blob)
+    val url = URL.createObjectURL(blob)
     val anchor = a(href := url, attr("download") := fileName, target := "_blank", display.none).render
     dom.document.body.appendChild(anchor)
     dom.window.setTimeout(() ⇒ {
       dom.document.body.removeChild(anchor)
-      urlObject.revokeObjectURL(url)
+      URL.revokeObjectURL(url)
     }, 500)
     anchor.click()
   }
 
   def getUrl(blob: Blob): String = {
-    urlObject.createObjectURL(blob)
+    URL.createObjectURL(blob)
   }
 
   def toDataURL(blob: Blob): Future[String] = {

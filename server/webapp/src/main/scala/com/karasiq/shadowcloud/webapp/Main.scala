@@ -13,6 +13,7 @@ import org.scalajs.dom.raw.HTMLStyleElement
 import org.scalajs.jquery._
 
 import com.karasiq.shadowcloud.model.Path
+import com.karasiq.shadowcloud.webapp.components.common.DateInput
 import com.karasiq.shadowcloud.webapp.components.file.FileView
 import com.karasiq.shadowcloud.webapp.components.folder.{FolderFileList, FolderTree}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
@@ -52,6 +53,7 @@ object Main extends JSApp {
 
       val container = GridSystem.containerFluid(
         GridSystem.mkRow(input),
+        GridSystem.mkRow(Form(DateInput("Date"))),
         GridSystem.row(
           GridSystem.col(3).asDiv(folderTree),
           GridSystem.col(6).asDiv(folderView),

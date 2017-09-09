@@ -22,7 +22,7 @@ import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.exceptions.{RegionException, StorageException}
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
-import com.karasiq.shadowcloud.model.utils.FileAvailability
+import com.karasiq.shadowcloud.model.utils.{FileAvailability, IndexScope}
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
@@ -44,12 +44,13 @@ object RegionDispatcher {
 
   case class WriteIndex(diff: FolderIndexDiff) extends Message
   object WriteIndex extends MessageStatus[FolderIndexDiff, IndexDiff]
-  case object GetIndex extends Message with MessageStatus[RegionId, IndexMerger.State[RegionKey]]
+  case class GetIndex(scope: IndexScope = IndexScope.default) extends Message
+  object GetIndex extends MessageStatus[RegionId, IndexMerger.State[RegionKey]]
   case object Synchronize extends Message with MessageStatus[RegionId, Map[StorageId, SyncReport]]
 
-  case class GetFiles(path: Path) extends Message
+  case class GetFiles(path: Path, scope: IndexScope = IndexScope.default) extends Message
   object GetFiles extends MessageStatus[Path, Set[File]]
-  case class GetFolder(path: Path) extends Message
+  case class GetFolder(path: Path, scope: IndexScope = IndexScope.default) extends Message
   object GetFolder extends MessageStatus[Path, Folder]
   case class GetFileAvailability(file: File) extends Message
   object GetFileAvailability extends MessageStatus[File, FileAvailability]
@@ -160,8 +161,8 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
         schedules.writeDiff(diff)
       }
 
-    case GetFiles(path) ⇒
-      val files = indexTracker.indexes.folders
+    case GetFiles(path, scope) ⇒
+      val files = indexTracker.indexes.folders(scope)
         .get(path.parent)
         .map(_.files.filter(_.path == path))
         .filter(_.nonEmpty)
@@ -174,8 +175,8 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
           sender() ! GetFiles.Failure(path, RegionException.FileNotFound(path))
       }
 
-    case GetFolder(path) ⇒
-      indexTracker.indexes.folders.get(path) match {
+    case GetFolder(path, scope) ⇒
+      indexTracker.indexes.folders(scope).get(path) match {
         case Some(folder) ⇒
           sender() ! GetFolder.Success(path, folder)
 
@@ -183,8 +184,8 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
           sender() ! GetFolder.Failure(path, RegionException.DirectoryNotFound(path))
       }
 
-    case GetIndex ⇒
-      sender() ! GetIndex.Success(regionId, indexTracker.indexes.state)
+    case GetIndex(scope) ⇒
+      sender() ! GetIndex.Success(regionId, indexTracker.indexes.getState(scope))
 
     case GetFileAvailability(file) ⇒
       sender() ! GetFileAvailability.Success(file, indexTracker.indexes.getFileAvailability(file))

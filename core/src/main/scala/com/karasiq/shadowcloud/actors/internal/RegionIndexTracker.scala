@@ -12,7 +12,7 @@ import com.karasiq.shadowcloud.actors.RegionIndex.{SyncReport, WriteDiff}
 import com.karasiq.shadowcloud.index.FolderIndex
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.model.{File, RegionId, SequenceNr, StorageId}
-import com.karasiq.shadowcloud.model.utils.FileAvailability
+import com.karasiq.shadowcloud.model.utils.{FileAvailability, IndexScope}
 import com.karasiq.shadowcloud.storage.replication.StorageSelector
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
@@ -115,11 +115,35 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
   // Local index operations
   // -----------------------------------------------------------------------
   object indexes {
-    def folders: FolderIndex = {
-      globalIndex.folders.patch(globalIndex.pending.folders)
+    def folders(scope: IndexScope = IndexScope.Current): FolderIndex = {
+      val index = this.withScope(scope)
+      index.folders.patch(index.pending.folders)
     }
 
-    def state: IndexMerger.State[RegionKey] = {
+    def withScope(scope: IndexScope): IndexMerger[RegionKey] = scope match {
+      case IndexScope.Current ⇒
+        globalIndex
+
+      case IndexScope.Persisted ⇒
+        val filteredState = this.getCurrentState().copy(pending = IndexDiff.empty)
+        IndexMerger.restore(RegionKey.zero, filteredState)
+
+      case IndexScope.UntilSequenceNr(sequenceNr) ⇒
+        val state = this.getCurrentState()
+        val filteredState = state.copy(diffs = state.diffs.filter(_._1.sequenceNr <= sequenceNr), pending = IndexDiff.empty)
+        IndexMerger.restore(RegionKey.zero, filteredState)
+
+      case IndexScope.UntilTime(timestamp) ⇒
+        val state = this.getCurrentState()
+        val filteredState = state.copy(diffs = state.diffs.filter(_._1.timestamp <= timestamp), pending = IndexDiff.empty)
+        IndexMerger.restore(RegionKey.zero, filteredState)
+    }
+
+    def getState(scope: IndexScope): IndexMerger.State[RegionKey] = {
+      IndexMerger.state(this.withScope(scope))
+    }
+
+    private[this] def getCurrentState(): IndexMerger.State[RegionKey] = {
       IndexMerger.state(globalIndex)
     }
 

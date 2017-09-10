@@ -11,8 +11,10 @@ import scalaTags.all._
 import org.scalajs.dom
 import org.scalajs.dom.raw.HTMLStyleElement
 import org.scalajs.jquery._
+import org.threeten.bp.ZoneId
 
 import com.karasiq.shadowcloud.model.Path
+import com.karasiq.shadowcloud.model.utils.IndexScope
 import com.karasiq.shadowcloud.webapp.components.common.DateInput
 import com.karasiq.shadowcloud.webapp.components.file.FileView
 import com.karasiq.shadowcloud.webapp.components.folder.{FolderFileList, FolderTree}
@@ -38,22 +40,37 @@ object Main extends JSApp {
 
       implicit val folderContext = FolderContext(testRegion)
       folderContext.selected() = testFolder
-      val selectedFolderRx = RxUtils.toSelectedFolderRx(folderContext)
 
+      val selectedFolderRx = RxUtils.getSelectedFolderRx
       val input = FormInput.file("File", onchange := Callback.onInput { input ⇒
         val inputFile = input.files.head
-        appContext.api.uploadFile(testRegion, selectedFolderRx.key.now / inputFile.name, inputFile).foreach { file ⇒
-          selectedFolderRx.update()
+        val parent = selectedFolderRx.now.path
+        appContext.api.uploadFile(testRegion, parent / inputFile.name, inputFile).foreach { file ⇒
+          folderContext.update(parent)
           dom.window.alert(file.toString)
         }
       })
 
+      val dateInput = DateInput("Date")
       val folderTree = FolderTree(testRegion, Path.root)
-      val folderView = FolderFileList(testRegion, selectedFolderRx.toRx)
+      val folderView = FolderFileList(testRegion, selectedFolderRx)
+
+      dateInput.selectedDate.foreach {
+        case Some(date) ⇒
+          val timestamp = date
+            .atStartOfDay
+            .atZone(ZoneId.systemDefault)
+            .toInstant
+            .toEpochMilli
+          folderContext.scope() = IndexScope.UntilTime(timestamp)
+
+        case None ⇒ 
+          folderContext.scope() = IndexScope.default
+      }
 
       val container = GridSystem.containerFluid(
         GridSystem.mkRow(input),
-        GridSystem.mkRow(Form(DateInput("Date"))),
+        GridSystem.mkRow(Form(dateInput)),
         GridSystem.row(
           GridSystem.col(3).asDiv(folderTree),
           GridSystem.col(6).asDiv(folderView),

@@ -63,14 +63,10 @@ class FolderTree(regionId: RegionId, path: Path)
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
-  private[this] lazy val folderRx = {
-    val folderRx = RxUtils.toFolderRx(regionId, Var(path))
-    folderContext.updates.filter(_._1 == path).triggerLater(folderRx.update()) // Subscribe to updates
-    folderRx
-  }
+  private[this] lazy val folderRx = RxUtils.toFolderRx(path)
 
   private[this] lazy val subFolderNamesRx = Rx {
-    val rootFolder = folderRx.toRx()
+    val rootFolder = folderRx()
     val subFolders = rootFolder.folders
     for (subFolder ← subFolders) yield rootFolder.path / subFolder
   }

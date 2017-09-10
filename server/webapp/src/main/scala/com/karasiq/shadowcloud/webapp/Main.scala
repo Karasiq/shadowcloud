@@ -11,7 +11,6 @@ import scalaTags.all._
 import org.scalajs.dom
 import org.scalajs.dom.raw.HTMLStyleElement
 import org.scalajs.jquery._
-import org.threeten.bp.ZoneId
 
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.model.utils.IndexScope
@@ -57,11 +56,7 @@ object Main extends JSApp {
 
       dateInput.selectedDate.foreach {
         case Some(date) ⇒
-          val timestamp = date
-            .atStartOfDay
-            .atZone(ZoneId.systemDefault)
-            .toInstant
-            .toEpochMilli
+          val timestamp = DateInput.toTimestamp(date)
           folderContext.scope() = IndexScope.UntilTime(timestamp)
 
         case None ⇒ 

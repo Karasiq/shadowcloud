@@ -6,7 +6,7 @@ import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
 import org.scalajs.dom.raw.HTMLInputElement
-import org.threeten.bp.LocalDate
+import org.threeten.bp.{LocalDate, ZoneId}
 import org.threeten.bp.format.DateTimeFormatterBuilder
 import org.threeten.bp.temporal.ChronoField
 import rx.Var
@@ -14,6 +14,14 @@ import rx.Var
 object DateInput {
   def apply(title: Modifier): DateInput = {
     new DateInput(title)
+  }
+
+  def toTimestamp(date: LocalDate): Long = {
+    date
+      .atStartOfDay
+      .atZone(ZoneId.systemDefault)
+      .toInstant
+      .toEpochMilli
   }
 
   private def popup(selectedDate: Var[Option[LocalDate]]): DatePickerPopup = {

@@ -1,5 +1,6 @@
 package com.karasiq.shadowcloud.actors.internal
 
+import scala.collection.mutable
 import scala.concurrent.Future
 
 import akka.event.Logging
@@ -115,28 +116,19 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
   // Local index operations
   // -----------------------------------------------------------------------
   object indexes {
+    private[this] val indexScopeCache = mutable.WeakHashMap.empty[IndexScope, IndexMerger[RegionKey]]
+
     def folders(scope: IndexScope = IndexScope.Current): FolderIndex = {
       val index = this.withScope(scope)
       index.folders.patch(index.pending.folders)
     }
 
     def withScope(scope: IndexScope): IndexMerger[RegionKey] = scope match {
-      case IndexScope.Current ⇒
-        globalIndex
+      case IndexScope.UntilSequenceNr(_) | IndexScope.UntilTime(_) ⇒
+        getOrCreateScopedIndex(scope)
 
-      case IndexScope.Persisted ⇒
-        val filteredState = this.getCurrentState().copy(pending = IndexDiff.empty)
-        IndexMerger.restore(RegionKey.zero, filteredState)
-
-      case IndexScope.UntilSequenceNr(sequenceNr) ⇒
-        val state = this.getCurrentState()
-        val filteredState = state.copy(diffs = state.diffs.filter(_._1.sequenceNr <= sequenceNr), pending = IndexDiff.empty)
-        IndexMerger.restore(RegionKey.zero, filteredState)
-
-      case IndexScope.UntilTime(timestamp) ⇒
-        val state = this.getCurrentState()
-        val filteredState = state.copy(diffs = state.diffs.filter(_._1.timestamp <= timestamp), pending = IndexDiff.empty)
-        IndexMerger.restore(RegionKey.zero, filteredState)
+      case _ ⇒
+        createScopedIndex(scope)
     }
 
     def getState(scope: IndexScope): IndexMerger.State[RegionKey] = {
@@ -172,6 +164,29 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
         .mapValues(_.map(_._2).toSet)
 
       FileAvailability(file, chunksByStorage)
+    }
+
+    private[this] def createScopedIndex(scope: IndexScope): IndexMerger[RegionKey] = scope match {
+      case IndexScope.Current ⇒
+        globalIndex
+
+      case IndexScope.Persisted ⇒
+        val filteredState = this.getCurrentState().copy(pending = IndexDiff.empty)
+        IndexMerger.restore(RegionKey.zero, filteredState)
+
+      case IndexScope.UntilSequenceNr(sequenceNr) ⇒
+        val state = this.getCurrentState()
+        val filteredState = state.copy(diffs = state.diffs.filter(_._1.sequenceNr <= sequenceNr), pending = IndexDiff.empty)
+        IndexMerger.restore(RegionKey.zero, filteredState)
+
+      case IndexScope.UntilTime(timestamp) ⇒
+        val state = this.getCurrentState()
+        val filteredState = state.copy(diffs = state.diffs.filter(_._1.timestamp <= timestamp), pending = IndexDiff.empty)
+        IndexMerger.restore(RegionKey.zero, filteredState)
+    }
+
+    private[this] def getOrCreateScopedIndex(scope: IndexScope): IndexMerger[RegionKey] = {
+      indexScopeCache.getOrElseUpdate(scope, createScopedIndex(scope))
     }
   }
 }

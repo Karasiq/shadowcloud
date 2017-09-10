@@ -8,6 +8,7 @@ import com.karasiq.shadowcloud.webapp.context.AppContext.BootstrapContext._
 import scalaTags.all._
 
 import com.karasiq.shadowcloud.model.{Folder, Path, RegionId}
+import com.karasiq.shadowcloud.model.utils.IndexScope
 import com.karasiq.shadowcloud.webapp.components.common.AppIcons
 import com.karasiq.shadowcloud.webapp.components.folder.FolderTree.FolderController
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
@@ -126,7 +127,8 @@ class FolderTree(regionId: RegionId, path: Path)
       }
 
       val actions: Frag = if (isSelected) {
-        small(Bootstrap.nbsp, FolderActions(regionId, path), FolderTreeStyles.folderActions)
+        small(Bootstrap.nbsp, FolderActions(regionId, path), FolderTreeStyles.folderActions,
+          folderContext.scope.map(_ == IndexScope.Current).reactiveShow)
       } else {
         Bootstrap.noContent
       }

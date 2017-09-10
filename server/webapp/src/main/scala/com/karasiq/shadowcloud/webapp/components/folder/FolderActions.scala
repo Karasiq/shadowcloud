@@ -20,7 +20,7 @@ private[folder] object FolderActions {
 }
 
 private[folder] class FolderActions(regionId: RegionId, path: Path)
-                   (implicit context: AppContext, fc: FolderController) extends BootstrapHtmlComponent {
+                                   (implicit context: AppContext, fc: FolderController) extends BootstrapHtmlComponent {
 
   def renderTag(md: ModifierT*): TagT = {
     def showCreateFolderModal(): Unit = {

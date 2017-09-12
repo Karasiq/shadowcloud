@@ -42,7 +42,7 @@ class StreamCompressionTest extends ActorSpec with FlatSpecLike {
     s"$compType" should "compress bytes" in {
       val compressed = testCompression(testBytes)
       // println(s"$compType: ${MemorySize(testBytes.length)} -> ${MemorySize(compressed.length)}")
-      StreamCompressionTest.writeTestVector(compType, testBytes, compressed)
+      // StreamCompressionTest.writeTestVector(compType, testBytes, compressed)
       testDecompression(compressed, testBytes)
     }
 
@@ -55,7 +55,7 @@ class StreamCompressionTest extends ActorSpec with FlatSpecLike {
 }
 
 object StreamCompressionTest {
-  private[this] val testVectorsFolder = Paths.get("./utils/.jvm/src/test/resources/compression-vectors")
+  private[this] val testVectorsFolder = Paths.get("./core/assembly/src/test/resources/compression-vectors")
 
   def readTestVector(compType: CompressionType.Value): (ByteString, ByteString) = {
     ResourceUtils.getPathOption(s"compression-vectors/$compType") match {

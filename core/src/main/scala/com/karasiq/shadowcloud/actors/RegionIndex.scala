@@ -153,7 +153,8 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
       updateState(event)
 
     case RecoveryCompleted ⇒
-      synchronization.scheduleIn(10 seconds) // Initial sync
+      // Initial sync
+      synchronization.scheduleIn(/* 10 seconds */)
   }
 
   override def receiveCommand: Receive = {

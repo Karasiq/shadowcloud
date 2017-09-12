@@ -52,7 +52,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
   "Virtual region" should "register storage" in {
     storage ! StorageIndex.OpenIndex("testRegion")
     testRegion ! RegionDispatcher.AttachStorage("testStorage", storageProps, storage, initialHealth)
-    expectNoMsg(100 millis)
+    expectNoMsg(1 second)
   }
 
   it should "write chunk" in {
@@ -61,7 +61,6 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
     // Write chunk
     val result = testRegion ? WriteChunk(chunk)
     result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
-
 
     receiveN(2).map(_.asInstanceOf[StorageEnvelope]).map(_.message).sortBy(_.isInstanceOf[HealthUpdated]) match {
       case StorageEvents.ChunkWritten(ChunkPath("testRegion", chunk.checksum.hash), chunk) +: StorageEvents.HealthUpdated(health) +: Nil ⇒
@@ -143,7 +142,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
     storageSubscribe()
     (testRegion ? RegionDispatcher.Synchronize).futureValue
     val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", sequenceNr, diff, remote)) = receiveOne(5 seconds)
-    sequenceNr shouldBe 1
+    sequenceNr shouldBe 1L
     diff.time shouldBe >(TestUtils.testTimestamp)
     diff.folders shouldBe folderDiff
     diff.chunks.newChunks shouldBe Set(chunk)
@@ -163,20 +162,20 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
       .via(streams.write(regionRepo))
       .toMat(TestSink.probe)(Keep.both)
       .run()
-    sideWrite.sendNext((2, IndexData("testRegion", 2, remoteDiff)))
+    sideWrite.sendNext((2, IndexData("testRegion", 2L, remoteDiff)))
     sideWrite.sendComplete()
-    val IndexIOResult(2, IndexData("testRegion", 2, `remoteDiff`), StorageIOResult.Success(_, _)) = sideWriteResult.requestNext()
+    val IndexIOResult(2, IndexData("testRegion", 2L, `remoteDiff`), StorageIOResult.Success(_, _)) = sideWriteResult.requestNext()
     sideWriteResult.expectComplete()
 
     // Synchronize
     storageSubscribe()
     (testRegion ? RegionDispatcher.Synchronize).futureValue
-    val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", 2, `remoteDiff`, true)) = receiveOne(5 seconds)
+    val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", 2L, `remoteDiff`, true)) = receiveOne(5 seconds)
     expectNoMsg(1 second)
 
     // Verify
     storage ! StorageIndex.Envelope("testRegion", RegionIndex.GetIndex)
-    val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((1, firstDiff), (2, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
+    val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((1L, firstDiff), (2L, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
     firstDiff.folders shouldBe folderDiff
     firstDiff.chunks.newChunks shouldBe Set(chunk)
     firstDiff.chunks.deletedChunks shouldBe empty
@@ -186,12 +185,12 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
       deleteResult.isSuccess shouldBe true
       (testRegion ? RegionDispatcher.Synchronize).futureValue
       val StorageEnvelope("testStorage", StorageEvents.IndexDeleted("testRegion", sequenceNrs)) = receiveOne(5 seconds)
-      sequenceNrs shouldBe Set[Long](1)
+      sequenceNrs shouldBe Set(1L)
       storage ! StorageIndex.Envelope("testRegion", RegionIndex.GetIndex)
-      val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((2, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
+      val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((2L, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
       expectNoMsg(1 second)
       testRegion ! RegionDispatcher.GetIndex()
-      val RegionDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((RegionKey(_, "testStorage", 2), `remoteDiff`)), _)) = receiveOne(1 second)
+      val RegionDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((RegionKey(_, "testStorage", 2L), `remoteDiff`)), _)) = receiveOne(1 second)
     }
 
     storageUnsubscribe()
@@ -216,7 +215,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
     storage ! StorageIndex.GetIndexes
     val StorageIndex.GetIndexes.Success("testStorage", states) = receiveOne(1 seconds)
     states.keySet shouldBe Set("testRegion")
-    val IndexMerger.State(Seq((4, resultDiff)), IndexDiff.empty) = states("testRegion")
+    val IndexMerger.State(Seq((4L, resultDiff)), IndexDiff.empty) = states("testRegion")
     resultDiff.folders shouldBe oldDiff.folders.merge(newDiff)
     resultDiff.chunks shouldBe oldDiff.chunks
     resultDiff.time should be > oldDiff.time

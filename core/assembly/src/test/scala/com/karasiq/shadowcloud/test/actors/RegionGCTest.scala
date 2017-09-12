@@ -20,10 +20,10 @@ class RegionGCTest extends SCExtensionSpec with FlatSpecLike {
 
     val chunk = CoreTestUtils.randomChunk
     sc.ops.region.writeChunk(testRegionId, chunk).futureValue shouldBe chunk
-    sc.ops.region.synchronize(testRegionId)
-    expectNoMsg(1 seconds)
+    sc.ops.region.synchronize(testRegionId).futureValue
     sc.ops.storage.deleteChunks(testStorageId, Set(ChunkPath(testRegionId, chunk.checksum.hash))).futureValue._2.isSuccess shouldBe true
-    whenReady(sc.ops.region.collectGarbage(testRegionId, delete = true), Timeout(10 seconds)) { gcReport ⇒
+    expectNoMsg(1 second)
+    whenReady(sc.ops.region.collectGarbage(testRegionId, delete = true)) { gcReport ⇒
       gcReport.regionId shouldBe testRegionId
       gcReport.regionState.oldFiles shouldBe empty
       gcReport.regionState.orphanedChunks shouldBe Set(chunk)
@@ -66,6 +66,6 @@ class RegionGCTest extends SCExtensionSpec with FlatSpecLike {
     sc.ops.supervisor.addRegion(testRegionId, sc.configs.regionConfig(testRegionId))
     sc.ops.supervisor.addStorage(testStorageId, StorageProps.inMemory) // fromDirectory(Files.createTempDirectory("region-gc-test"))
     sc.ops.supervisor.register(testRegionId, testStorageId)
-    expectNoMsg(300 millis)
+    expectNoMsg(1 second)
   }
 }

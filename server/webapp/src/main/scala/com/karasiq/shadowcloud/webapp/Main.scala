@@ -13,10 +13,9 @@ import org.scalajs.dom.raw.HTMLStyleElement
 import org.scalajs.jquery._
 
 import com.karasiq.shadowcloud.model.Path
-import com.karasiq.shadowcloud.model.utils.IndexScope
-import com.karasiq.shadowcloud.webapp.components.common.DateInput
 import com.karasiq.shadowcloud.webapp.components.file.FileView
 import com.karasiq.shadowcloud.webapp.components.folder.{FolderFileList, FolderTree}
+import com.karasiq.shadowcloud.webapp.components.region.IndexScopeSelector
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.utils.RxUtils
 
@@ -41,7 +40,7 @@ object Main extends JSApp {
       folderContext.selected() = testFolder
 
       val selectedFolderRx = RxUtils.getSelectedFolderRx
-      val input = FormInput.file("File", onchange := Callback.onInput { input ⇒
+      val uploadForm = FormInput.file("File", onchange := Callback.onInput { input ⇒
         val inputFile = input.files.head
         val parent = selectedFolderRx.now.path
         appContext.api.uploadFile(testRegion, parent / inputFile.name, inputFile).foreach { file ⇒
@@ -50,22 +49,17 @@ object Main extends JSApp {
         }
       })
 
-      val dateInput = DateInput("Date")
+      val scopeSelector = IndexScopeSelector()
       val folderTree = FolderTree(testRegion, Path.root)
       val folderView = FolderFileList(testRegion, selectedFolderRx)
 
-      dateInput.selectedDate.foreach {
-        case Some(date) ⇒
-          val timestamp = DateInput.toTimestamp(date)
-          folderContext.scope() = IndexScope.UntilTime(timestamp)
-
-        case None ⇒ 
-          folderContext.scope() = IndexScope.default
-      }
+      scopeSelector.selectedScope.foreach(folderContext.scope() = _)
 
       val container = GridSystem.containerFluid(
-        GridSystem.mkRow(input),
-        GridSystem.mkRow(Form(dateInput)),
+        GridSystem.row(
+          GridSystem.col(6).asDiv(uploadForm),
+          GridSystem.col(6).asDiv(scopeSelector)
+        ),
         GridSystem.row(
           GridSystem.col(3).asDiv(folderTree),
           GridSystem.col(6).asDiv(folderView),

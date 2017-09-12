@@ -21,5 +21,8 @@ object AppIcons {
   val partiallyAvailable: Icon = "exclamation-triangle"
   val fullyAvailable: Icon = "check"
 
+  val currentScope: Icon = "check"
+  val historyScope: Icon = "clock-o"
+
   private[this] implicit def castStringToIcon(iconName: String): Icon = iconName.faFwIcon
 }

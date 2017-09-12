@@ -34,6 +34,10 @@ trait AppLocale {
   def storage: String
   def region: String
   def availability: String
+  def indexScope: String
+  def currentScope: String
+  def historyScope: String
+  def indexSnapshotDate: String
 
   def metadataParser: String
   def metadataDisposition: String
@@ -83,6 +87,10 @@ object AppLocale {
     val storage = "Storage"
     val region = "Region"
     val availability = "Availability"
+    val indexScope = "Index scope"
+    val currentScope = "Current"
+    val historyScope = "History"
+    val indexSnapshotDate = "Snapshot date"
 
     val metadataParser = "Parser"
     val metadataDisposition = "Disposition"

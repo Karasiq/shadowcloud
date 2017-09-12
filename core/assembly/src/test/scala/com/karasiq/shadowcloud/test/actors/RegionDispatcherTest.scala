@@ -6,10 +6,10 @@ import scala.collection.concurrent.TrieMap
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
+import akka.actor.PoisonPill
 import akka.pattern.ask
 import akka.stream.scaladsl.{Keep, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
-import akka.testkit.TestActorRef
 import akka.util.ByteString
 import org.scalatest.FlatSpecLike
 
@@ -43,11 +43,11 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
   val fileRepository = Repository.forChunks(PathTreeRepository.toCategorized(Repositories.fromDirectory(chunksDir)))
   val storageProps = StorageProps.fromDirectory(chunksDir.getParent)
   val index = system.actorOf(StorageIndex.props("testStorage", storageProps, indexRepository), "index")
-  val chunkIO = TestActorRef(ChunkIODispatcher.props("testStorage", storageProps, fileRepository), "chunkIO")
+  val chunkIO = system.actorOf(ChunkIODispatcher.props("testStorage", storageProps, fileRepository), "chunkIO")
   val healthProvider = StorageHealthProviders.fromDirectory(chunksDir, Quota.empty.copy(limitSpace = Some(100L * 1024 * 1024)))
   val initialHealth = healthProvider.health.futureValue
-  val storage = TestActorRef(StorageDispatcher.props("testStorage", storageProps, index, chunkIO, healthProvider), "storage")
-  val testRegion = TestActorRef(RegionDispatcher.props("testRegion", CoreTestUtils.regionConfig("testRegion")), "testRegion")
+  val storage = system.actorOf(StorageDispatcher.props("testStorage", storageProps, index, chunkIO, healthProvider), "storage")
+  val testRegion = system.actorOf(RegionDispatcher.props("testRegion", CoreTestUtils.regionConfig("testRegion")), "testRegion")
 
   "Virtual region" should "register storage" in {
     storage ! StorageIndex.OpenIndex("testRegion")
@@ -110,12 +110,12 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
     val indexRepository = Repository.forIndex(Repository.toCategorized(Repositories.fromConcurrentMap(indexMap)))
     val chunkRepository = Repository.forChunks(Repository.toCategorized(Repositories.fromConcurrentMap(chunksMap)))
     val index = system.actorOf(StorageIndex.props("testMemStorage", storageProps, indexRepository), "index1")
-    val chunkIO = TestActorRef(ChunkIODispatcher.props("testMemStorage", storageProps, chunkRepository), "chunkIO1")
+    val chunkIO = system.actorOf(ChunkIODispatcher.props("testMemStorage", storageProps, chunkRepository), "chunkIO1")
     val healthProvider = StorageHealthProviders.fromMaps(indexMap, chunksMap)
     val initialHealth = healthProvider.health.futureValue
-    val newStorage = TestActorRef(StorageDispatcher.props("testMemStorage", storageProps, index, chunkIO, healthProvider), "storage1")
+    val newStorage = system.actorOf(StorageDispatcher.props("testMemStorage", storageProps, index, chunkIO, healthProvider), "storage1")
     testRegion ! RegionDispatcher.AttachStorage("testMemStorage", storageProps, newStorage, initialHealth)
-    expectNoMsg(100 millis)
+    expectNoMsg(1 second)
 
     // Replicate chunk
     val result = testRegion ? RegionDispatcher.RewriteChunk(chunk, Some(ChunkWriteAffinity(mandatory = Seq("testStorage", "testMemStorage"))))
@@ -124,7 +124,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
 
     // Drop storage
     testRegion ! RegionDispatcher.DetachStorage("testMemStorage")
-    newStorage.stop()
+    newStorage ! PoisonPill
     expectNoMsg(1 second)
   }
 

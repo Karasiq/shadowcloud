@@ -14,12 +14,15 @@ final case class Checksum(method: HashingMethod = HashingMethod.default, encMeth
                           size: Long = 0, hash: ByteString = ByteString.empty, encSize: Long = 0,
                           encHash: ByteString = ByteString.empty) extends SCEntity with HasEmpty {
 
+  @transient
+  private[this] val _hashCode = (size, hash).hashCode()
+
   def isEmpty: Boolean = {
     size == 0 && hash.isEmpty && encSize == 0 && encHash.isEmpty
   }
 
   override def hashCode(): Int = {
-    (method, size, hash).hashCode()
+    _hashCode
   }
 
   override def equals(obj: scala.Any): Boolean = obj match {

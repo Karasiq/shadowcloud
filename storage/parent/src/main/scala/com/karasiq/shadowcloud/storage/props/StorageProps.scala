@@ -28,9 +28,9 @@ object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplic
   // -----------------------------------------------------------------------
   @SerialVersionUID(0L)
   final case class Address(rootConfig: Config,
-                     namespace: String,
-                     uri: Option[URI],
-                     path: Path) extends WrappedConfig {
+                           namespace: String,
+                           uri: Option[URI],
+                           path: Path) extends WrappedConfig {
 
     override def toString: String = {
       s"Address($namespace, ${uri.fold(path)(path + " at " + _)})"

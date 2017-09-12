@@ -190,7 +190,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
       storage ! StorageIndex.Envelope("testRegion", RegionIndex.GetIndex)
       val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((2, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
       expectNoMsg(1 second)
-      testRegion ! RegionDispatcher.GetIndex
+      testRegion ! RegionDispatcher.GetIndex()
       val RegionDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((RegionKey(_, "testStorage", 2), `remoteDiff`)), _)) = receiveOne(1 second)
     }
 

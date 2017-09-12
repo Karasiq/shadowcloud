@@ -8,6 +8,13 @@ import com.karasiq.shadowcloud.config.SerializedProps
 final case class HashingMethod(algorithm: String, config: SerializedProps = SerializedProps.empty,
                                provider: String = "") extends CryptoMethod {
 
+  @transient
+  private[this] val _hashCode = scala.util.hashing.MurmurHash3.productHash(this)
+
+  override def hashCode(): Int = {
+    _hashCode
+  }
+
   override def toString: String = {
     if (CryptoMethod.isNoOpMethod(this)) {
       "HashingMethod.none"

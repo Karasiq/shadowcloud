@@ -12,12 +12,19 @@ final case class Data(plain: ByteString = ByteString.empty, encrypted: ByteStrin
 
   type Repr = Data
 
+  @transient
+  private[this] lazy val _hashCode = scala.util.hashing.MurmurHash3.productHash(this)
+
   def isEmpty: Boolean = {
     plain.isEmpty && encrypted.isEmpty
   }
 
   def withoutData: Data = {
     Data.empty
+  }
+
+  override def hashCode(): Int = {
+    _hashCode
   }
 }
 

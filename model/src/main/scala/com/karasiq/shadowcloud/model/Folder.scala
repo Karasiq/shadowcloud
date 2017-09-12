@@ -5,6 +5,7 @@ import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.index.diffs.FolderDiff
 import com.karasiq.shadowcloud.index.utils._
+import com.karasiq.shadowcloud.utils.Utils
 
 @SerialVersionUID(0L)
 final case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,
@@ -84,7 +85,7 @@ final case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,
   }
 
   override def hashCode(): Int = {
-    (path, folders, files).hashCode()
+    path.hashCode()
   }
 
   override def equals(obj: scala.Any): Boolean = obj match {
@@ -96,7 +97,7 @@ final case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,
   }
 
   override def toString: String = {
-    s"Folder($path, folders: [${folders.mkString(", ")}], files: [${files.mkString(", ")}])"
+    s"Folder($path, folders: [${Utils.printValues(folders)}], files: [${Utils.printValues(files)}])"
   }
 }
 

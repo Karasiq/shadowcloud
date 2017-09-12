@@ -14,7 +14,10 @@ final case class File(path: Path, id: FileId = FileId.create(),
   extends SCEntity with HasPath with HasEmpty with HasWithoutData with HasWithoutChunks {
 
   type Repr = File
-  require(!path.isRoot)
+  require(!path.isRoot, "Root can not be a file")
+
+  @transient
+  private[this] val _hashCode = (path, id, revision, checksum/*, chunks*/).hashCode()
 
   def withoutData: File = {
     copy(chunks = chunks.map(_.withoutData))
@@ -29,12 +32,11 @@ final case class File(path: Path, id: FileId = FileId.create(),
   }
 
   override def hashCode(): Int = {
-    (path, id, revision, checksum /*, chunks */).hashCode()
+    _hashCode
   }
 
   override def equals(obj: scala.Any): Boolean = obj match {
     case f: File ⇒
-      // Timestamp, props is ignored
       @inline def isChunksEquals: Boolean = (f.chunks.isEmpty || chunks.isEmpty) || (f.chunks == chunks)
       f.path == path && f.id == id && f.revision == revision && f.checksum == checksum && isChunksEquals
 

@@ -9,6 +9,13 @@ final case class EncryptionMethod(algorithm: String, keySize: Int = 256,
                                   config: SerializedProps = SerializedProps.empty,
                                   provider: String = "") extends CryptoMethod {
 
+  @transient
+  private[this] val _hashCode = scala.util.hashing.MurmurHash3.productHash(this)
+
+  override def hashCode(): Int = {
+    _hashCode
+  }
+
   override def toString: String = {
     if (CryptoMethod.isNoOpMethod(this)) {
       "EncryptionMethod.none"

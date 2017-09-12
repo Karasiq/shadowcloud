@@ -13,8 +13,15 @@ final case class SymmetricEncryptionParameters(method: EncryptionMethod,
                                                key: ByteString,
                                                nonce: ByteString) extends EncryptionParameters {
 
+  @transient
+  private[this] val _hashCode = scala.util.hashing.MurmurHash3.productHash(this)
+
   def isEmpty: Boolean = {
     key.isEmpty
+  }
+
+  override def hashCode(): Int = {
+    _hashCode
   }
 
   override def toString: String = {
@@ -26,12 +33,20 @@ final case class SymmetricEncryptionParameters(method: EncryptionMethod,
 final case class AsymmetricEncryptionParameters(method: EncryptionMethod,
                                                 publicKey: ByteString,
                                                 privateKey: ByteString) extends EncryptionParameters {
+
+  @transient
+  private[this] val _hashCode = scala.util.hashing.MurmurHash3.productHash(this)
+
   def toWriteOnly: AsymmetricEncryptionParameters = {
     copy(privateKey = ByteString.empty)
   }
 
   def isEmpty: Boolean = {
     publicKey.isEmpty && privateKey.isEmpty
+  }
+
+  override def hashCode(): Int = {
+    _hashCode
   }
 
   override def toString: String = {

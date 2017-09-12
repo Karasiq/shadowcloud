@@ -21,7 +21,7 @@ final case class Chunk(checksum: Checksum = Checksum.empty,
   }
   
   override def hashCode(): Int = {
-    (checksum, encryption).hashCode()
+    checksum.hashCode()
   }
 
   override def equals(obj: scala.Any): Boolean = obj match {

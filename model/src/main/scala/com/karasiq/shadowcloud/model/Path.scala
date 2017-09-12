@@ -4,6 +4,9 @@ import scala.language.{implicitConversions, postfixOps}
 
 @SerialVersionUID(0L)
 final case class Path(nodes: Seq[String]) extends SCEntity {
+  @transient
+  private[this] val _hashCode = scala.util.hashing.MurmurHash3.productHash(this)
+
   def isRoot: Boolean = {
     nodes.isEmpty
   }
@@ -41,6 +44,10 @@ final case class Path(nodes: Seq[String]) extends SCEntity {
 
   def withName(name: String): Path = {
     if (isRoot) this / name else parent / name
+  }
+
+  override def hashCode(): Int = {
+    _hashCode
   }
 
   override def toString: String = {

@@ -5,7 +5,7 @@ scala:
 jdk:
   - oraclejdk8
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION compile coreAssembly/test
-#after_success:
-  #- bash <(curl -s https://codecov.io/bash)
+  - sbt ++$TRAVIS_SCALA_VERSION compile coreAssembly/coverageReport coreAssembly/test
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
 sudo: false

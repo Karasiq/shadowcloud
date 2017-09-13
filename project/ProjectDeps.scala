@@ -25,7 +25,8 @@ object ProjectDeps {
 
     def testKit: Deps = Seq(
       "com.typesafe.akka" %% "akka-testkit" % version,
-      "com.typesafe.akka" %% "akka-stream-testkit" % version
+      "com.typesafe.akka" %% "akka-stream-testkit" % version,
+      "com.typesafe.akka" %% "akka-http-testkit" % httpVersion
     )
 
     def all: Deps = {

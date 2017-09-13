@@ -10,9 +10,9 @@ import org.scalatest.FlatSpecLike
 import com.karasiq.shadowcloud.compression.StreamCompression
 import com.karasiq.shadowcloud.compression.StreamCompression.CompressionType
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, ResourceUtils, TestUtils}
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, ActorSpecImplicits, ResourceUtils, TestUtils}
 
-class StreamCompressionTest extends ActorSpec with FlatSpecLike {
+class StreamCompressionTest extends ActorSpec with ActorSpecImplicits with FlatSpecLike {
   CompressionType.values.foreach(testCompressionStream)
 
   private[this] def testCompressionStream(compType: CompressionType.Value): Unit = {

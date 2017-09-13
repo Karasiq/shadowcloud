@@ -14,6 +14,17 @@ trait SCJsonEncoding extends SCApiEncoding {
 
   private[this] val SlashBytes = ByteString(Path.Delimiter)
 
+  type Encoder[T] = Writes[T]
+  type Decoder[T] = Reads[T]
+
+  def encode[T: Encoder](value: T): ByteString = {
+    toJsonBytes(value)
+  }
+
+  def decode[T: Decoder](valueBytes: ByteString): T = {
+    fromJsonBytes[T](valueBytes)
+  }
+
   def encodePath(path: Path): ByteString = {
     if (Path.isConventional(path)) ByteString(path.toString) else toJsonBytes(path)
   }

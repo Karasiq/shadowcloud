@@ -43,7 +43,7 @@ class HashCodesTest extends FlatSpec with Matchers {
     file1 shouldNot be (file5)
     file1.hashCode() shouldBe file2.hashCode()
     file1.hashCode() shouldBe file3.hashCode()
-    file1.hashCode() shouldNot be (file5.hashCode())
+    // file1.hashCode() shouldNot be (file5.hashCode())
     // file1.hashCode() shouldNot be (file6.hashCode())
   }
 

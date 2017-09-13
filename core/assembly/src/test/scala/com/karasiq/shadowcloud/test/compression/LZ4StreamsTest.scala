@@ -5,9 +5,9 @@ import org.scalatest.FlatSpecLike
 
 import com.karasiq.shadowcloud.compression.lz4.LZ4Streams
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, TestUtils}
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, ActorSpecImplicits, TestUtils}
 
-class LZ4StreamsTest extends ActorSpec with FlatSpecLike {
+class LZ4StreamsTest extends ActorSpec with ActorSpecImplicits with FlatSpecLike {
   val testBytes = TestUtils.indexedBytes._1
 
   "LZ4" should "compress bytes" in {

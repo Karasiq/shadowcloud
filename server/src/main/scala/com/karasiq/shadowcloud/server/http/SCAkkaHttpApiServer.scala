@@ -4,9 +4,11 @@ import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
+import akka.http.scaladsl.marshalling.Marshaller
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{ByteRange, Range}
 import akka.http.scaladsl.server._
+import akka.http.scaladsl.unmarshalling.Unmarshaller
 import autowire.Core.Request
 import play.api.libs.json.Json
 
@@ -19,7 +21,7 @@ import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 private[server] trait SCAkkaHttpApiServer { self: Directives ⇒
   protected val sc: ShadowCloudExtension
 
-  protected object apiInternals {
+  private[http] object SCApiInternals {
     private[this] implicit val executionContext: ExecutionContext = sc.implicits.executionContext
     val apiServer = SCDefaultApiServer
 
@@ -28,12 +30,27 @@ private[server] trait SCAkkaHttpApiServer { self: Directives ⇒
 
     val apiRouter = apiServer.route[ShadowCloudApi](new ShadowCloudApiImpl(sc))
     type RequestT = apiServer.Request
+
+    val apiMediaType = {
+      MediaType.parse(apiServer.payloadContentType).right
+        .getOrElse(sys.error(s"Invalid content type: ${apiServer.payloadContentType}"))
+    }
+
+    val apiContentType = ContentType(apiMediaType, () ⇒ HttpCharsets.`UTF-8`)
   }
 
-  import apiInternals._
+  import SCApiInternals._
   import apiEncoding.implicits._
 
-  protected object apiDirectives {
+  private[http] object SCApiMarshallers {
+    implicit def implicitSCEntityMarshaller[T: apiEncoding.Encoder] =
+      Marshaller.withFixedContentType(apiContentType)(apiEncoding.encode[T])
+
+    implicit def implicitSCEntityUnmarshaller[T: apiEncoding.Decoder] =
+      Unmarshaller.strict(apiEncoding.decode[T])
+  }
+
+  private[http] object SCApiDirectives {
     def extractChunkRanges(fullSize: Long) = headerValueByType[Range](()).map { range ⇒
       ChunkRanges.RangeList(range.ranges.map {
         case ByteRange.FromOffset(offset) ⇒
@@ -65,7 +82,7 @@ private[server] trait SCAkkaHttpApiServer { self: Directives ⇒
         extractUnmatchedPath.flatMap {
           case Uri.Path.Slash(path) ⇒
             extractStrictEntity(timeout).map { entity ⇒
-              Request(path.toString().split("/"), apiInternals.apiServer.decodePayload(entity.data))
+              Request(path.toString().split("/"), SCApiInternals.apiServer.decodePayload(entity.data))
             }
 
           case _ ⇒
@@ -78,16 +95,11 @@ private[server] trait SCAkkaHttpApiServer { self: Directives ⇒
           .filter(apiRouter.isDefinedAt, MalformedRequestContentRejection("Invalid api request", new IllegalArgumentException))
       }
 
-      val contentType = {
-        MediaType.parse(apiServer.payloadContentType).right
-          .getOrElse(sys.error(s"Invalid content type: ${apiServer.payloadContentType}"))
-      }
-
       // checkSameOrigin(HttpOriginRange(HttpOrigin("http://localhost:9000"), HttpOrigin("http://127.0.0.1:9000"))) &
       // validateHeader("Content-Type", apiServer.payloadContentType) &
 
       validateRequestedWith &
-        validateContentType(contentType) &
+        validateContentType(apiMediaType) &
         validateHeader("SC-Accept", _ == apiServer.payloadContentType) &
         extractValidRequest
     }
@@ -99,7 +111,7 @@ private[server] trait SCAkkaHttpApiServer { self: Directives ⇒
     }
   }
 
-  def scApiRoute: Route = (post & pathPrefix("api") & apiDirectives.extractApiRequest) { request ⇒
-    apiDirectives.executeApiRequest(request)
+  def scApiRoute: Route = (post & pathPrefix("api") & SCApiDirectives.extractApiRequest) { request ⇒
+    SCApiDirectives.executeApiRequest(request)
   }
 }

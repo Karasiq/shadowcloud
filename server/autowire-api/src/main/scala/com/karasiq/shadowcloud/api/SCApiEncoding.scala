@@ -1,5 +1,7 @@
 package com.karasiq.shadowcloud.api
 
+import scala.language.higherKinds
+
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.model.{File, Path}
@@ -16,8 +18,14 @@ object SCApiEncoding {
 }
 
 trait SCApiEncoding {
+  type Encoder[T]
+  type Decoder[T]
+
+  def encode[T: Encoder](value: T): ByteString
+  def decode[T: Decoder](valueBytes: ByteString): T
+  
   def encodePath(path: Path): ByteString
-  def decodePath(pathString: ByteString): Path
+  def decodePath(pathBytes: ByteString): Path
 
   def encodeFile(file: File): ByteString
   def decodeFile(fileBytes: ByteString): File

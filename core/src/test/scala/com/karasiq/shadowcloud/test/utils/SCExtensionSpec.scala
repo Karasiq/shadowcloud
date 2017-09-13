@@ -4,6 +4,6 @@ import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.{ShadowCloud, ShadowCloudExtension}
 
-abstract class SCExtensionSpec extends ActorSpec {
+abstract class SCExtensionSpec extends ActorSpec with ActorSpecImplicits {
   implicit val sc: ShadowCloudExtension = ShadowCloud(system)
 }

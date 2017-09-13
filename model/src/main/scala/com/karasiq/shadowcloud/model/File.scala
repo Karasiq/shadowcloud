@@ -17,7 +17,7 @@ final case class File(path: Path, id: FileId = FileId.create(),
   require(!path.isRoot, "Root can not be a file")
 
   @transient
-  private[this] val _hashCode = (path, id, revision, checksum/*, chunks*/).hashCode()
+  private[this] val _hashCode = (path, id/*, revision, checksum, chunks*/).hashCode()
 
   def withoutData: File = {
     copy(chunks = chunks.map(_.withoutData))

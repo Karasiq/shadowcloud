@@ -165,7 +165,11 @@ lazy val server = project
   .settings(commonSettings)
   .settings(
     name := "shadowcloud-server",
-    libraryDependencies ++= ProjectDeps.akka.streams ++ ProjectDeps.akka.http,
+    javaOptions in run ++= Seq("-Dconfig.resource=sc-desktop.conf"),
+    libraryDependencies ++=
+      ProjectDeps.akka.streams ++
+      ProjectDeps.akka.http ++
+      ProjectDeps.akka.testKit.map(_ % "test"),
     scalaJsBundlerAssets in Compile += {
       import com.karasiq.scalajsbundler.dsl._
       Bundle("index", WebDeps.bootstrap, WebDeps.indexHtml, scalaJsApplication(webapp, fastOpt = true, launcher = false).value)
@@ -173,7 +177,7 @@ lazy val server = project
     scalaJsBundlerCompile in Compile <<= (scalaJsBundlerCompile in Compile)
       .dependsOn(fastOptJS in Compile in webapp)
   )
-  .dependsOn(coreAssembly, javafx, autowireApiJVM)
+  .dependsOn(coreAssembly % "compile->compile;test->test", javafx, autowireApiJVM)
   .enablePlugins(ScalaJSBundlerPlugin, JavaAppPackaging)
 
 lazy val webapp = (project in file("server") / "webapp")

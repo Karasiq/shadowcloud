@@ -49,7 +49,7 @@ class TikaMetadataProviderTest extends TestKit(ActorSystem("test")) with FlatSpe
     val metaTable = output.requestNext()
     metaTable.tag shouldBe Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.METADATA))
     println(metaTable)
-    // assert(metaTable.value.table.exists(_.values("created").values == Seq("Mon Jul 26 13:01:12 MSD 2010")))
+    assert(metaTable.value.table.exists(_.values("dcterms:created").values == Seq("2010-07-26T09:01:12Z")))
 
     val textPreview = output.requestNext()
     textPreview.tag shouldBe Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.PREVIEW))

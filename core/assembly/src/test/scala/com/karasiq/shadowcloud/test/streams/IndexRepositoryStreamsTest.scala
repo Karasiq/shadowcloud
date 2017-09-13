@@ -49,9 +49,9 @@ class IndexRepositoryStreamsTest extends SCExtensionSpec with FlatSpecLike {
       .toMat(TestSink.probe)(Keep.both)
       .run()
     write.sendNext((diff.time, IndexData("testRegion", diff.time, diff)))
-    writeResult.request(2)
-    val IndexIOResult(diff.time, IndexData("testRegion", diff.time, `diff`), StorageIOResult.Success(_, _)) = writeResult.expectNext()
     write.sendComplete()
+    writeResult.request(2)
+    val IndexIOResult(diff.time, IndexData("testRegion", diff.time, `diff`), StorageIOResult.Success(_, _)) = writeResult.expectNext(10 seconds)
     writeResult.expectComplete()
 
     // Enumerate diffs

@@ -129,18 +129,24 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
   }
 
   it should "add folder" in {
+    storageSubscribe()
     val diff = FolderIndexDiff.create(folder)
     testRegion ! RegionDispatcher.WriteIndex(diff)
-    val RegionDispatcher.WriteIndex.Success(`diff`, result) = receiveOne(1 second)
-    result.time shouldBe >(TestUtils.testTimestamp)
-    result.folders shouldBe folderDiff
-    // result.chunks.newChunks shouldBe Set(chunk)
-    result.chunks.deletedChunks shouldBe empty
+    receiveWhile(5 seconds) {
+      case RegionDispatcher.WriteIndex.Success(`diff`, result) ⇒
+        result.time shouldBe >(TestUtils.testTimestamp)
+        result.folders shouldBe folderDiff
+        // result.chunks.newChunks shouldBe Set(chunk)
+        result.chunks.deletedChunks shouldBe empty
+
+      case StorageEnvelope(storageId, StorageEvents.PendingIndexUpdated(regionId, diff)) ⇒
+        storageId shouldBe "testStorage"
+        regionId shouldBe "testRegion"
+        diff.folders shouldBe folderDiff
+    }
   }
 
   it should "write index" in {
-    expectNoMsg(1 second)
-    storageSubscribe()
     (testRegion ? RegionDispatcher.Synchronize).futureValue
     val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", sequenceNr, diff, remote)) = receiveOne(5 seconds)
     sequenceNr shouldBe 1L

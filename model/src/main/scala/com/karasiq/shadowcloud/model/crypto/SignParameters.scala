@@ -7,7 +7,7 @@ import akka.util.ByteString
 @SerialVersionUID(0L)
 final case class SignParameters(method: SignMethod, publicKey: ByteString, privateKey: ByteString) extends CryptoParameters {
   @transient
-  private[this] val _hashCode = scala.util.hashing.MurmurHash3.productHash(this)
+  private[this] lazy val _hashCode = scala.util.hashing.MurmurHash3.productHash(this)
 
   def isEmpty: Boolean = {
     publicKey.isEmpty && privateKey.isEmpty

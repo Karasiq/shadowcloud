@@ -60,12 +60,9 @@ final case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,
   }
 
   def patch(diff: FolderDiff): Folder = {
-    this
-      .deleteFiles(diff.deletedFiles)
-      .addFiles(diff.newFiles)
-      .deleteFolders(diff.deletedFolders)
-      .addFolders(diff.newFolders)
-      .copy(timestamp = timestamp.modified(diff.time))
+    copy(path, timestamp.modified(diff.time),
+      folders ++ diff.newFolders -- diff.deletedFolders,
+      files ++ diff.newFiles -- diff.deletedFiles)
   }
 
   def withPath(newPath: Path): Folder = {

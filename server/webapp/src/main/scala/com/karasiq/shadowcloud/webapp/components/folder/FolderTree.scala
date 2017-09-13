@@ -1,6 +1,7 @@
 package com.karasiq.shadowcloud.webapp.components.folder
 
 import scala.language.postfixOps
+import scala.scalajs.js
 
 import rx._
 
@@ -51,7 +52,7 @@ object FolderTree {
   }
 }
 
-class FolderTree(regionId: RegionId, path: Path)
+class FolderTree(val regionId: RegionId, val path: Path)
                 (implicit context: AppContext, folderContext: FolderContext)
   extends BootstrapHtmlComponent {
 
@@ -99,7 +100,9 @@ class FolderTree(regionId: RegionId, path: Path)
   private[this] val content = renderContent()
 
   def renderTag(md: ModifierT*): TagT = {
+    def addReference: ModifierT = _.asInstanceOf[js.Dynamic].folder = this.asInstanceOf[js.Object]
     div(
+      addReference,
       Rx[Frag](if (deleted()) {
         Bootstrap.noContent
       } else {

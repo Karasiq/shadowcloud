@@ -9,7 +9,7 @@ final case class HashingMethod(algorithm: String, config: SerializedProps = Seri
                                provider: String = "") extends CryptoMethod {
 
   @transient
-  private[this] val _hashCode = scala.util.hashing.MurmurHash3.productHash(this)
+  private[this] lazy val _hashCode = scala.util.hashing.MurmurHash3.productHash(this)
 
   override def hashCode(): Int = {
     _hashCode

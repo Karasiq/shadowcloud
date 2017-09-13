@@ -17,7 +17,7 @@ final case class File(path: Path, id: FileId = FileId.create(),
   require(!path.isRoot, "Root can not be a file")
 
   @transient
-  private[this] val _hashCode = (path, id/*, revision, checksum, chunks*/).hashCode()
+  private[this] lazy val _hashCode = (path, id/*, revision, checksum, chunks*/).hashCode()
 
   def withoutData: File = {
     copy(chunks = chunks.map(_.withoutData))
@@ -37,8 +37,8 @@ final case class File(path: Path, id: FileId = FileId.create(),
 
   override def equals(obj: scala.Any): Boolean = obj match {
     case f: File ⇒
-      @inline def isChunksEquals: Boolean = (f.chunks.isEmpty || chunks.isEmpty) || (f.chunks == chunks)
-      f.path == path && f.id == id && f.revision == revision && f.checksum == checksum && isChunksEquals
+      // @inline def isChunksEquals: Boolean = (f.chunks.isEmpty || chunks.isEmpty) || (f.chunks == chunks)
+      f.path == path && f.id == id && f.revision == revision && f.checksum == checksum // && isChunksEquals
 
     case _ ⇒
       false

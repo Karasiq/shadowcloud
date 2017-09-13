@@ -45,7 +45,9 @@ class SerializationModuleTest extends SCExtensionSpec with FlatSpecLike {
     it should "serialize file" in {
       val file = CoreTestUtils.randomFile()
       val bytes = module.toBytes(file)
-      module.fromBytes[File](bytes) shouldBe file
+      val file1 = module.fromBytes[File](bytes)
+      file1 shouldBe file
+      file1.hashCode() shouldBe file.hashCode()
     }
 
     it should "serialize folder" in {

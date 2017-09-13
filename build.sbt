@@ -165,7 +165,6 @@ lazy val server = project
   .settings(commonSettings)
   .settings(
     name := "shadowcloud-server",
-    javaOptions in run ++= Seq("-Dconfig.resource=sc-desktop.conf"),
     libraryDependencies ++=
       ProjectDeps.akka.streams ++
       ProjectDeps.akka.http ++

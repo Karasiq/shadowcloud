@@ -15,7 +15,7 @@ final case class Checksum(method: HashingMethod = HashingMethod.default, encMeth
                           encHash: ByteString = ByteString.empty) extends SCEntity with HasEmpty {
 
   @transient
-  private[this] val _hashCode = (size, hash).hashCode()
+  private[this] lazy val _hashCode = (size, hash).hashCode()
 
   def isEmpty: Boolean = {
     size == 0 && hash.isEmpty && encSize == 0 && encHash.isEmpty

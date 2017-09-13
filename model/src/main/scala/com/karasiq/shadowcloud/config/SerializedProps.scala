@@ -9,7 +9,7 @@ import com.karasiq.shadowcloud.index.utils.HasEmpty
 @SerialVersionUID(0L)
 case class SerializedProps(format: String = "", data: ByteString = ByteString.empty) extends HasEmpty {
   @transient
-  private[this] val _hashCode = MurmurHash3.productHash(this)
+  private[this] lazy val _hashCode = MurmurHash3.productHash(this)
 
   def isEmpty: Boolean = {
     data.isEmpty

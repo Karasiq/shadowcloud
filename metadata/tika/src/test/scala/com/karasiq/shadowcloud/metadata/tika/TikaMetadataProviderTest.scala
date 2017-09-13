@@ -38,7 +38,7 @@ class TikaMetadataProviderTest extends TestKit(ActorSystem("test")) with FlatSpe
       .toMat(TestSink.probe)(Keep.right)
       .run()
 
-    val text = output.requestNext(10 seconds)
+    val text = output.requestNext(1 minute)
     text.tag shouldBe Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.CONTENT))
     text.value.text.exists(t ⇒ t.format == "text/plain" && t.data.contains("Type Classes as Objects and Implicits")) shouldBe true
 
@@ -51,7 +51,7 @@ class TikaMetadataProviderTest extends TestKit(ActorSystem("test")) with FlatSpe
     println(metaTable)
     // assert(metaTable.value.table.exists(_.values("created").values == Seq("Mon Jul 26 13:01:12 MSD 2010")))
 
-    val textPreview = output.requestNext(10 seconds)
+    val textPreview = output.requestNext()
     textPreview.tag shouldBe Some(Metadata.Tag("tika", "auto", Metadata.Tag.Disposition.PREVIEW))
     textPreview.value.text.exists(t ⇒ t.format == "text/plain" && t.data.contains("Type Classes as Objects and Implicits")) shouldBe true
 

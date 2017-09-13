@@ -139,6 +139,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
   }
 
   it should "write index" in {
+    expectNoMsg(1 second)
     storageSubscribe()
     (testRegion ? RegionDispatcher.Synchronize).futureValue
     val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", sequenceNr, diff, remote)) = receiveOne(5 seconds)

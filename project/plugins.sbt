@@ -14,4 +14,6 @@ addSbtPlugin("com.github.karasiq" % "sbt-scalajs-bundler" % "1.0.7")
 
 addSbtPlugin("pl.project13.sbt" % "sbt-jol" % "0.1.2")
 
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.5.1")
+
 libraryDependencies += "com.lihaoyi" %% "scalatags" % "0.5.4"

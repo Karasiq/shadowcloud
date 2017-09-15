@@ -61,7 +61,7 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
     FileSystemUtils.walkFileTree(subDirPath, includeDirs = false)
       // .log("file-repository-tree")
       .map(fsPath ⇒ toVirtualPath(fsPath).toRelative(fromPath))
-      .mapMaterializedValue(_ ⇒ Future.successful(StorageIOResult.Success(subDirPath.toString, 0)))
+      .mapMaterializedValue(_ ⇒ Future.successful(StorageIOResult.Success(toVirtualPath(rootFolder) / fromPath, 0)))
   }
 
   private[this] def toRealPath(path: Path): FSPath = {

@@ -15,7 +15,7 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
     val selectorConfig = region.config.rootConfig.getConfigIfExists("simple-selector")
     val indexRF = region.config.indexReplicationFactor
     val dataRF = region.config.dataReplicationFactor
-    val randomize = selectorConfig.withDefault(true, _.getBoolean("randomize"))
+    val randomize = selectorConfig.withDefault(false, _.getBoolean("randomize"))
     val indexWriteMinSize = selectorConfig.withDefault[Long](SizeUnit.MB * 10, _.getBytes("index-write-min-size"))
   }
 

@@ -93,7 +93,13 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
     case StartGCNow(delete) ⇒
       context.setReceiveTimeout(10 minutes)
       context.become(receiveCollecting(Set(sender()), delete.getOrElse(config.autoDelete)))
-      collectGarbage().map(DeleteGarbage.tupled).pipeTo(self)
+
+      sc.ops.region.synchronize(regionId).foreach { reports ⇒
+        if (reports.exists(_._2.nonEmpty)) log.warning("Pre-GC sync reports: {}", reports)
+        collectGarbage()
+          .map(DeleteGarbage.tupled)
+          .pipeTo(self)
+      }
 
     case Defer(time) ⇒
       if (gcDeadline.timeLeft < time) {
@@ -126,6 +132,7 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
       context.become(receiveCollecting(receivers + newReceiver, newDelete))
 
     case DeleteGarbage(regionState, storageStates) ⇒
+      log.warning("Region GC states: {}, {}", regionState, storageStates)
       val future = deleteGarbage(regionState, storageStates, delete)
         .map(_ ⇒ (regionState, storageStates))
       finishCollecting(receivers, future)
@@ -152,16 +159,18 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
   private[this] def collectGarbage(): Future[(RegionGCState, Seq[(RegionStorage, StorageGCState)])] = {
     val gcUtil = GarbageCollectUtil(config)
 
-    def createStorageState(index: IndexMerger[_], storage: RegionStorage): Future[(RegionStorage, StorageGCState)] = {
-      sc.ops.storage.getChunkKeys(storage.id).map { storageKeys ⇒
-        val relevantKeys = storageKeys
-          .filter(_.regionId == regionId)
-          .map(_.chunkId)
-        (storage, gcUtil.checkStorage(index, storage.config, relevantKeys))
+    def createStorageState(regionIndex: IndexMerger[RegionKey], storage: RegionStorage): Future[(RegionStorage, StorageGCState)] = {
+      val subIndex = {
+        val relevantDiffs = regionIndex.diffs.filterKeys(_.storageId == storage.id)
+        IndexMerger.restore(RegionKey.zero, IndexMerger.State(relevantDiffs.toSeq, regionIndex.pending))
+      }
+      
+      sc.ops.storage.getChunkKeys(storage.id, regionId).map { chunkIds ⇒
+        (storage, gcUtil.checkStorage(subIndex, storage.config, chunkIds))
       }
     }
 
-    def createRegionState(index: IndexMerger[_]): RegionGCState = {
+    def createRegionState(index: IndexMerger[RegionKey]): RegionGCState = {
       gcUtil.checkRegion(index)
     }
 

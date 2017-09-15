@@ -58,12 +58,12 @@ final case class Path(nodes: Seq[String]) extends SCEntity {
 object Path {
   val Delimiter = "/"
 
-  val root = Path(Nil)
+  val root = Path(Vector.empty)
 
   // Supports only conventional paths
   implicit def fromString(str: String): Path = {
-    val nodes: Seq[String] = str.split(Delimiter).filter(_.nonEmpty)
-    if (nodes.isEmpty) root else Path(nodes)
+    val nodes = str.split(Delimiter).filter(_.nonEmpty)
+    if (nodes.isEmpty) root else Path(nodes.toVector)
   }
 
   def isConventional(path: Path): Boolean = {

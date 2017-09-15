@@ -45,7 +45,8 @@ object ChunkIODispatcher {
   case class DeleteChunks(chunks: Set[ChunkPath]) extends Message
   object DeleteChunks extends MessageStatus[Set[ChunkPath], (Set[ChunkPath], StorageIOResult)]
 
-  case object GetKeys extends Message with MessageStatus[NotUsed, Set[ChunkPath]]
+  case class GetKeys(regionId: RegionId) extends Message
+  object GetKeys extends MessageStatus[RegionId, Set[ChunkId]]
 
   // Props
   def props(storageId: StorageId, storageProps: StorageProps, repository: CategorizedRepository[String, ByteString]): Props = {
@@ -134,8 +135,8 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
       log.warning("Deleting chunks from storage: [{}]", Utils.printValues(chunks))
       deleteChunks(chunks).pipeTo(sender())
 
-    case GetKeys ⇒
-      listKeys().pipeTo(sender())
+    case GetKeys(regionId) ⇒
+      listKeys(regionId).pipeTo(sender())
   }
 
   override def preStart(): Unit = {
@@ -160,9 +161,10 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
     repository.subRepository(region)
   }
 
-  private def listKeys(): Future[GetKeys.Status] = {
-    val future = repository.keys.map(ChunkPath.tupled).runFold(Set.empty[ChunkPath])(_ + _)
-    GetKeys.wrapFuture(NotUsed, future)
+  private def listKeys(regionId: RegionId): Future[GetKeys.Status] = {
+    val future = subRepository(regionId).keys
+      .runFold(Set.empty[ChunkId])(_ + _)
+    GetKeys.wrapFuture(storageId, future)
   }
 
   private[this] def writeChunk(path: ChunkPath, chunk: Chunk): Unit = {
@@ -241,8 +243,9 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
 
     val (deleted, ioResult) = Source(byRegion)
       .flatMapConcat { case (repository, chunks) ⇒
+        val deleteSink = Flow[ChunkPath].map(_.chunkId).toMat(repository.delete)(Keep.right)
         Source(chunks)
-          .alsoToMat(Flow[ChunkPath].map(_.chunkId).toMat(repository.delete)(Keep.right))(Keep.right)
+          .alsoToMat(deleteSink)(Keep.right)
           .mapMaterializedValue(matSink ! _)
       }
       .addAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))

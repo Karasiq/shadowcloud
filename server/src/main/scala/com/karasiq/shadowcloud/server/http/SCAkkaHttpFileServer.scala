@@ -26,13 +26,11 @@ trait SCAkkaHttpFileServer { self: SCAkkaHttpApiServer with SCHttpServerSettings
   def scFileRoute: Route = {
     (post & SCApiDirectives.validateRequestedWith) {
       (path("upload" / Segment / SCPath) & extractRequestEntity) { (regionId, path, entity) ⇒
-        val resultStream = entity.withoutSizeLimit().dataBytes
-          .via(sc.streams.metadata.writeFileAndMetadata(regionId, path))
-          .log("uploaded-files")
-          .map(_._1)
-          .map(SCApiInternals.apiEncoding.encodeFile)
+        val dataStream = entity.withoutSizeLimit()
+          .dataBytes
+          .mapMaterializedValue(_ ⇒ NotUsed)
 
-        complete(StatusCodes.OK, HttpEntity(SCApiInternals.apiContentType, resultStream))
+        SCFileDirectives.writeFile(regionId, path, dataStream)
       }
     } ~
     get {
@@ -77,6 +75,16 @@ trait SCAkkaHttpFileServer { self: SCAkkaHttpApiServer with SCHttpServerSettings
 
     def provideTimestamp(file: File): Directive0 = {
       respondWithHeader(`Last-Modified`(DateTime(file.timestamp.lastModified)))
+    }
+
+    def writeFile(regionId: RegionId, path: Path, stream: Source[ByteString, NotUsed]): Route = {
+      val resultStream = stream
+        .via(sc.streams.metadata.writeFileAndMetadata(regionId, path))
+        .log("uploaded-files")
+        .map(_._1)
+        .map(SCApiInternals.apiEncoding.encodeFile)
+
+      complete(StatusCodes.OK, HttpEntity(SCApiInternals.apiContentType, resultStream))
     }
 
     def readChunkStream(regionId: RegionId, chunks: Seq[Chunk], fileName: String = ""): Route = {

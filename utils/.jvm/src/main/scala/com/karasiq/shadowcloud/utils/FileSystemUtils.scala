@@ -23,7 +23,7 @@ private[shadowcloud] object FileSystemUtils {
                    options: Set[FileVisitOption] = Set.empty): Source[Path, NotUsed] = {
     Source.single(folder)
       .mapConcat { path ⇒
-        val builder = Vector.newBuilder[Path]
+        val builder = List.newBuilder[Path]
         val visited = MSet.empty[Path]
         Files.walkFileTree(path, options.asJava, maxDepth, new SimpleFileVisitor[Path] {
           override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {

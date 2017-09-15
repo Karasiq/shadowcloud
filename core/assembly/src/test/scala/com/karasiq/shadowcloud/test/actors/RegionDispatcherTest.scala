@@ -135,14 +135,14 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
     receiveWhile(5 seconds) {
       case RegionDispatcher.WriteIndex.Success(`diff`, result) ⇒
         result.time shouldBe >(TestUtils.testTimestamp)
-        result.folders shouldBe folderDiff
+        result.folders.folders.toSet shouldBe folderDiff.folders.toSet
         // result.chunks.newChunks shouldBe Set(chunk)
         result.chunks.deletedChunks shouldBe empty
 
       case StorageEnvelope(storageId, StorageEvents.PendingIndexUpdated(regionId, diff)) ⇒
         storageId shouldBe "testStorage"
         regionId shouldBe "testRegion"
-        diff.folders shouldBe folderDiff
+        diff.folders.folders.toSet shouldBe folderDiff.folders.toSet
     }
   }
 
@@ -151,7 +151,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
     val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", sequenceNr, diff, remote)) = receiveOne(5 seconds)
     sequenceNr shouldBe 1L
     diff.time shouldBe >(TestUtils.testTimestamp)
-    diff.folders shouldBe folderDiff
+    diff.folders.folders.toSet shouldBe folderDiff.folders.toSet
     diff.chunks.newChunks shouldBe Set(chunk)
     diff.chunks.deletedChunks shouldBe empty
     remote shouldBe false

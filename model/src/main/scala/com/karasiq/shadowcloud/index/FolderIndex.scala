@@ -173,7 +173,7 @@ object FolderIndex {
 
   def traverseFolderTree(index: FolderIndex, path: Path): Iterator[Folder] = {
     def getSubFolders(index: FolderIndex, folder: Folder): Seq[Folder] = {
-      folder.folders.toSeq.map(folder.path / _).flatMap(index.get)
+      folder.folders.toVector.map(folder.path / _).flatMap(index.get)
     }
 
     def traverseFolderTreeRec(index: FolderIndex, folder: Folder): Iterator[Folder] = {

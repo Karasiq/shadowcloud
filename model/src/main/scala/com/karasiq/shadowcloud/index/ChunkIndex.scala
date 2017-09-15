@@ -44,7 +44,7 @@ final case class ChunkIndex(chunks: Set[Chunk] = Set.empty)
   }
 
   def patch(diff: ChunkIndexDiff): ChunkIndex = {
-    deleteChunks(diff.deletedChunks).addChunks(diff.newChunks)
+    if (diff.isEmpty) this else withChunks(chunks ++ diff.newChunks -- diff.deletedChunks)
   }
 
   def isEmpty: Boolean = {

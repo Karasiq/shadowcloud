@@ -7,11 +7,17 @@ import rx.{Rx, Var}
 
 import com.karasiq.shadowcloud.model.utils.IndexScope
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons, DateInput}
-import com.karasiq.shadowcloud.webapp.context.AppContext
+import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 
 object IndexScopeSelector {
   def apply()(implicit context: AppContext): IndexScopeSelector = {
     new IndexScopeSelector
+  }
+
+  def forContext(folderContext: FolderContext)(implicit context: AppContext): IndexScopeSelector = {
+    val scopeSelector = apply()
+    scopeSelector.selectedScope.foreach(folderContext.scope() = _)
+    scopeSelector
   }
 }
 

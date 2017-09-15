@@ -48,7 +48,7 @@ object TestUtils {
 
   def testDiff: IndexDiff = {
     val (_, file) = indexedBytes
-    IndexDiff(testTimestamp, FolderIndexDiff.seq(FolderDiff(Path.root, testTimestamp, newFiles = Set(file))), ChunkIndexDiff(file.chunks.toSet))
+    IndexDiff(testTimestamp, FolderIndexDiff.fromDiffs(FolderDiff(Path.root, testTimestamp, newFiles = Set(file))), ChunkIndexDiff(file.chunks.toSet))
   }
 
   def testSymmetricParameters: EncryptionParameters = {

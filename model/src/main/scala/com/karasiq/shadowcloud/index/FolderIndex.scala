@@ -25,6 +25,20 @@ final case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Fold
     folders.get(folder)
   }
 
+  def filesIterator: Iterator[File] = {
+    folders.valuesIterator.flatMap(_.files.iterator)
+  }
+
+  def getFiles(path: Path): Set[File] = {
+    // require(!path.isRoot, "Invalid file path")
+    Some(path)
+      .filterNot(_.isRoot)
+      .flatMap(path ⇒ get(path.parent))
+      .iterator
+      .flatMap(_.files.iterator.filter(_.path == path))
+      .toSet
+  }
+
   def addFiles(files: GenTraversableOnce[File]): FolderIndex = {
     val diffs = files.toVector.groupBy(_.path.parent).map { case (path, files) ⇒
       FolderDiff(path, files.map(_.timestamp.lastModified).max, newFiles = files.toSet)
@@ -101,6 +115,8 @@ final case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Fold
   }
 
   private[this] def applyDiffs(diffs: GenTraversableOnce[FolderDiff]): FolderIndex = {
+    if (diffs.isEmpty) return this
+    
     val modified = mutable.AnyRefMap[Path, Folder]()
     val deleted = mutable.Set[Path]()
 
@@ -153,5 +169,19 @@ object FolderIndex {
 
   def apply(folders: GenTraversableOnce[Folder]): FolderIndex = {
     empty.addFolders(folders)
+  }
+
+  def traverseFolderTree(index: FolderIndex, path: Path): Iterator[Folder] = {
+    def getSubFolders(index: FolderIndex, folder: Folder): Seq[Folder] = {
+      folder.folders.toSeq.map(folder.path / _).flatMap(index.get)
+    }
+
+    def traverseFolderTreeRec(index: FolderIndex, folder: Folder): Iterator[Folder] = {
+      val subFolders = getSubFolders(index, folder)
+      Iterator.single(folder) ++ subFolders.flatMap(traverseFolderTreeRec(index, _))
+    }
+
+    index.get(path).iterator
+      .flatMap(traverseFolderTreeRec(index, _))
   }
 }

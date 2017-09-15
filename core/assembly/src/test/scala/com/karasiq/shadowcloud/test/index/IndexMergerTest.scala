@@ -66,7 +66,8 @@ class IndexMergerTest extends WordSpec with Matchers {
       "reverse diff" in {
         index.add(diff2Reverse.time, diff2Reverse)
         index.diffs shouldBe Map(diff1.time → diff1, diff2.time → diff2, diff2Reverse.time → diff2Reverse)
-        index.mergedDiff shouldBe diff1.copy(time = diff2Reverse.time)
+        index.mergedDiff shouldBe diff1.copy(time = diff2Reverse.time,
+          folders = diff1.folders.copy(diff1.folders.folders.map(f ⇒ f.copy(time = diff2.time))))
         index.chunks.chunks shouldBe diff1.chunks.newChunks
         index.folders shouldBe FolderIndex.empty.patch(diff1.folders).patch(diff2.folders).patch(diff2Reverse.folders)
       }

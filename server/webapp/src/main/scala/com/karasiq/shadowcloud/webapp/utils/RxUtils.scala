@@ -20,12 +20,10 @@ private[webapp] object RxUtils {
 
   private[this] def createFolderRx(regionId: RegionId, pathRx: Rx[Path], scopeRx: Rx[IndexScope])
                               (implicit ac: AppContext): RxWithKey[(Path, IndexScope), Folder] = {
-    val folderRx = RxWithKey((pathRx.now, scopeRx.now), Folder.create(pathRx.now)) { case (path, scope) ⇒
-      ac.api.getFolder(regionId, path, scope)
+    val folderRx = RxWithKey(Rx((pathRx(), scopeRx())), Folder.create(pathRx.now)) { case (path, scope) ⇒
+      ac.api.getFolder(regionId, path, dropChunks = true, scope)
     }
 
-    pathRx.triggerLater(folderRx.update((pathRx.now, scopeRx.now)))
-    scopeRx.triggerLater(folderRx.update((pathRx.now, scopeRx.now)))
     folderRx
   }
 

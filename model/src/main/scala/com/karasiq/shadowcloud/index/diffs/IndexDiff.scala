@@ -90,7 +90,7 @@ object IndexDiff {
     if (folders.isEmpty) {
       empty
     } else {
-      IndexDiff(folders.map(_.timestamp.lastModified).max, FolderIndexDiff.create(folders: _*))
+      IndexDiff(folders.map(_.timestamp.lastModified).max, FolderIndexDiff.createFolders(folders: _*))
     }
   }
 

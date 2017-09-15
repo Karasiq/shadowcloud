@@ -4,7 +4,7 @@ import scala.language.implicitConversions
 import scalacss.internal.mutable.StyleSheet
 
 import com.karasiq.bootstrap.Bootstrap
-import com.karasiq.shadowcloud.api.ShadowCloudApi
+import com.karasiq.shadowcloud.api.{SCApiMeta, ShadowCloudApi}
 import com.karasiq.shadowcloud.webapp.api.{AjaxApi, FileApi}
 import com.karasiq.shadowcloud.webapp.locales.AppLocale
 import com.karasiq.shadowcloud.webapp.styles.FolderTreeStyles
@@ -30,10 +30,11 @@ object AppContext {
 }
 
 trait AppContext {
-  def api: ShadowCloudApi with FileApi
-  def locale: AppLocale
-  def timeFormat: TimeFormat
-  def styles: Seq[StyleSheet.Base]
+  type ApiT = ShadowCloudApi with FileApi with SCApiMeta
+  val api: ApiT
+  val locale: AppLocale
+  val timeFormat: TimeFormat
+  val styles: Seq[StyleSheet.Base]
 }
 
 class DefaultAppContext extends AppContext {

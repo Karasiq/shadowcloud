@@ -5,6 +5,7 @@ import scala.language.higherKinds
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.model.{File, Path}
+import com.karasiq.shadowcloud.model.utils.IndexScope
 import com.karasiq.shadowcloud.utils.encoding.Base64
 
 object SCApiEncoding {
@@ -29,6 +30,9 @@ trait SCApiEncoding {
 
   def encodeFile(file: File): ByteString
   def decodeFile(fileBytes: ByteString): File
+
+  def encodeScope(scope: IndexScope): ByteString
+  def decodeScope(scopeBytes: ByteString): IndexScope
 
   type ImplicitsT
   val implicits: ImplicitsT

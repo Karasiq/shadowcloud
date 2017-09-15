@@ -13,8 +13,6 @@ import akka.util.{ByteString, Timeout}
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, HashingMethod}
-import com.karasiq.shadowcloud.storage.utils.IndexMerger
-import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.streams.chunk.ChunkSplitter
 import com.karasiq.shadowcloud.utils.{MemorySize, SizeUnit}
 
@@ -95,9 +93,8 @@ private object Benchmark extends App {
 
   private[this] def runReadBenchmark(): Unit = {
     val start = System.nanoTime()
-    val future = Source.fromFuture(sc.ops.region.getIndex("testRegion"))
-      .map(IndexMerger.restore(RegionKey.zero, _))
-      .map(_.folders.folders.values.flatMap(_.files).maxBy(_.checksum.size))
+    val future = Source.fromFuture(sc.ops.region.getFolderIndex("testRegion"))
+      .map(_.filesIterator.maxBy(_.checksum.size))
       .flatMapConcat(file ⇒ sc.streams.file.read("testRegion", file))
       .map(_.length)
       .runWith(Sink.fold(0L)(_ + _))

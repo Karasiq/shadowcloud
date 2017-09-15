@@ -5,6 +5,7 @@ import play.api.libs.json._
 
 import com.karasiq.shadowcloud.api.SCApiEncoding
 import com.karasiq.shadowcloud.model.{File, Path}
+import com.karasiq.shadowcloud.model.utils.IndexScope
 
 trait SCJsonEncoding extends SCApiEncoding {
   type ImplicitsT = SCJsonEncoders
@@ -39,6 +40,14 @@ trait SCJsonEncoding extends SCApiEncoding {
 
   def decodeFile(fileBytes: ByteString): File = {
     fromJsonBytes[File](fileBytes)
+  }
+
+  def encodeScope(scope: IndexScope): ByteString = {
+    toJsonBytes(scope)
+  }
+
+  def decodeScope(scopeBytes: ByteString): IndexScope = {
+    fromJsonBytes[IndexScope](scopeBytes)
   }
 
   private[this] def toJsonBytes[T: Writes](value: T): ByteString = {

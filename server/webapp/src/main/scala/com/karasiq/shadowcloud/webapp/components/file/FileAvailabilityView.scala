@@ -4,39 +4,49 @@ import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
 import rx._
-import async._
 
-import com.karasiq.shadowcloud.index.files.FileVersions
-import com.karasiq.shadowcloud.model.{File, RegionId}
-import com.karasiq.shadowcloud.model.utils.{FileAvailability, IndexScope}
-import com.karasiq.shadowcloud.webapp.components.common.AppIcons
-import com.karasiq.shadowcloud.webapp.context.AppContext
+import com.karasiq.shadowcloud.model.File
+import com.karasiq.shadowcloud.model.utils.FileAvailability
+import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
+import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import AppContext.JsExecutionContext
+import com.karasiq.shadowcloud.webapp.utils.RxWithKey
 
 object FileAvailabilityView {
-  def apply(fileAvailability: FileAvailability)(implicit context: AppContext): FileAvailabilityView = {
-    new FileAvailabilityView(fileAvailability)
+  def apply(file: File)(implicit context: AppContext, folderContext: FolderContext): FileAvailabilityView = {
+    new FileAvailabilityView(file)
   }
 
-  def forFile(regionId: RegionId, file: File, scope: IndexScope = IndexScope.default)
-             (implicit context: AppContext): BootstrapHtmlComponent = {
-
-    new BootstrapHtmlComponent {
-      private[this] lazy val availabilityRx = {
-        val fullFile = context.api.getFiles(regionId, file.path, scope).map(FileVersions.withId(file.id, _))
-        val availability = fullFile.flatMap(context.api.getFileAvailability(regionId, _))
-        availability.toRx(FileAvailability(file, Map.empty))
-      }
-
-      def renderTag(md: ModifierT*) = {
-        div(availabilityRx.map(FileAvailabilityView(_)), md)
-      }
+  private def getAvailabilityRx(file: File)(implicit context: AppContext, folderContext: FolderContext): Rx[FileAvailability] = {
+    val availabilityRx = RxWithKey(Rx((folderContext.regionId, file, folderContext.scope())), FileAvailability(file, Map.empty)) {
+      case (regionId, file, scope) ⇒
+        context.api.getFileAvailability(regionId, file, scope)
     }
+
+    availabilityRx.toRx
   }
 }
 
-class FileAvailabilityView(fileAvailability: FileAvailability)(implicit context: AppContext) extends BootstrapHtmlComponent {
+class FileAvailabilityView(file: File)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
+  val opened = Var(false)
+
   def renderTag(md: ModifierT*): TagT = {
+    val content = Rx {
+      if (opened()) {
+        val availabilityRx = FileAvailabilityView.getAvailabilityRx(file)
+        div(Rx(renderContent(availabilityRx(), md:_*)))
+      } else {
+        Bootstrap.noContent
+      }
+    }
+
+    div(
+      AppComponents.dropDownLink(context.locale.show, opened),
+      content
+    )
+  }
+
+  def renderContent(fileAvailability: FileAvailability, md: ModifierT*): TagT = {
     def icon(percentage: Double) = percentage match {
       case 100 ⇒
         AppIcons.fullyAvailable

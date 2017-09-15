@@ -14,6 +14,7 @@ import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.RegionGC.GCReport
 import com.karasiq.shadowcloud.actors.RegionIndex.SyncReport
 import com.karasiq.shadowcloud.config.TimeoutsConfig
+import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.model._
@@ -34,8 +35,16 @@ final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(impl
   // -----------------------------------------------------------------------
   // Index
   // -----------------------------------------------------------------------
-  def getIndex(regionId: RegionId, scope: IndexScope = IndexScope.default): Future[IndexMerger.State[RegionKey]] = {
-    askRegion(regionId, RegionDispatcher.GetIndex, RegionDispatcher.GetIndex(scope))
+  def getChunkIndex(regionId: RegionId, scope: IndexScope = IndexScope.default): Future[ChunkIndex] = {
+    askRegion(regionId, RegionDispatcher.GetChunkIndex, RegionDispatcher.GetChunkIndex(scope))
+  }
+
+  def getFolderIndex(regionId: RegionId, scope: IndexScope = IndexScope.default): Future[FolderIndex] = {
+    askRegion(regionId, RegionDispatcher.GetFolderIndex, RegionDispatcher.GetFolderIndex(scope))
+  }
+
+  def getIndexSnapshot(regionId: RegionId, scope: IndexScope = IndexScope.default): Future[IndexMerger.State[RegionKey]] = {
+    askRegion(regionId, RegionDispatcher.GetIndexSnapshot, RegionDispatcher.GetIndexSnapshot(scope))
   }
 
   def getFiles(regionId: RegionId, path: Path, scope: IndexScope = IndexScope.default): Future[Set[File]] = {
@@ -55,7 +64,7 @@ final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(impl
   }
 
   def createFolder(regionId: RegionId, path: Path): Future[IndexDiff] = {
-    writeIndex(regionId, FolderIndexDiff.create(Folder.create(path)))
+    writeIndex(regionId, FolderIndexDiff.createFolders(Folder.create(path)))
   }
 
   def deleteFiles(regionId: RegionId, files: File*): Future[IndexDiff] = {

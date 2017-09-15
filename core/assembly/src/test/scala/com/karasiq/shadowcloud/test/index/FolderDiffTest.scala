@@ -42,7 +42,7 @@ class FolderDiffTest extends FlatSpec with Matchers {
   it should "modify folder index" in {
     val index = FolderIndex(Seq(folder1))
     val diff = folder2.diff(folder1)
-    val index1 = index.patch(FolderIndexDiff.seq(diff))
+    val index1 = index.patch(FolderIndexDiff.fromDiffs(diff))
     index1.folders shouldBe Map(
       Path.root → Folder(Path.root, folder1.timestamp, Set(folder1.path.name)),
       folder1.path → folder2
@@ -51,7 +51,7 @@ class FolderDiffTest extends FlatSpec with Matchers {
   }
 
   it should "add folder with parents" in {
-    val index = FolderIndex.empty.patch(FolderIndexDiff.create(Folder.create("/test1/test2/test3/test4")))
+    val index = FolderIndex.empty.patch(FolderIndexDiff.createFolders(Folder.create("/test1/test2/test3/test4")))
     index.folders("/").folders should contain ("test1")
     index.folders("/test1").folders should contain ("test2")
     index.folders("/test1/test2").folders should contain ("test3")
@@ -60,7 +60,7 @@ class FolderDiffTest extends FlatSpec with Matchers {
 
   it should "delete folder with children" in {
     val index = FolderIndex.empty
-      .patch(FolderIndexDiff.create(Folder.create("/test1/test2/test3/test4")))
+      .patch(FolderIndexDiff.createFolders(Folder.create("/test1/test2/test3/test4")))
       .patch(FolderIndexDiff.deleteFolderPaths("/test1"))
     index.folders("/").folders shouldBe empty
     intercept[NoSuchElementException](index.folders("/test1"))
@@ -85,8 +85,9 @@ class FolderDiffTest extends FlatSpec with Matchers {
   it should "merge" in {
     val folder3 = CoreTestUtils.randomFolder(folder1.path)
     val diff = folder2.diff(folder1) // + Folder2 files
-    val diff1 = folder3.diff(folder2) // - Folder1 files, - Folder2 files, + Folder3 files
+    val diff1 = folder3.diff(folder2).copy(time = diff.time + 1) // - Folder1 files, - Folder2 files, + Folder3 files
     val merged = diff.merge(diff1) // - Folder1 files, + Folder3 files
+    merged.time shouldBe diff1.time
     merged.newFiles shouldBe folder3.files
     merged.newFolders shouldBe folder3.folders
     merged.deletedFiles shouldBe folder1.files

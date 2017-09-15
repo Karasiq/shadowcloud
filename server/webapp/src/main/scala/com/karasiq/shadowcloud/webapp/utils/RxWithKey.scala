@@ -5,8 +5,14 @@ import scala.concurrent.{ExecutionContext, Future}
 import rx.{Ctx, Rx, Var}
 
 object RxWithKey {
-  def apply[K, V](initialKey: K, initialValue: V)(getValue: K ⇒ Future[V])(implicit ctx: Ctx.Owner, ec: ExecutionContext): RxWithKey[K, V] = {
+  def static[K, V](initialKey: K, initialValue: V)(getValue: K ⇒ Future[V])(implicit ctx: Ctx.Owner, ec: ExecutionContext): RxWithKey[K, V] = {
     new RxWithKey(initialKey, initialValue, getValue)
+  }
+
+  def apply[K, V](keyRx: Rx[K], initialValue: V)(getValue: K ⇒ Future[V])(implicit ctx: Ctx.Owner, ec: ExecutionContext): RxWithKey[K, V] = {
+    val result = static(keyRx.now, initialValue)(getValue)
+    keyRx.foreach(result.update)
+    result
   }
 }
 

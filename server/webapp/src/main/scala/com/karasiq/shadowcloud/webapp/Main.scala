@@ -49,11 +49,9 @@ object Main extends JSApp {
         }
       })
 
-      val scopeSelector = IndexScopeSelector()
-      val folderTree = FolderTree(testRegion, Path.root)
-      val folderView = FolderFileList(testRegion, selectedFolderRx)
-
-      scopeSelector.selectedScope.foreach(folderContext.scope() = _)
+      val scopeSelector = IndexScopeSelector.forContext(folderContext)
+      val folderTree = FolderTree(Path.root)
+      val folderView = FolderFileList(selectedFolderRx)
 
       val container = GridSystem.containerFluid(
         GridSystem.row(
@@ -64,11 +62,8 @@ object Main extends JSApp {
           GridSystem.col(3).asDiv(folderTree),
           GridSystem.col(6).asDiv(folderView),
           GridSystem.col(3).asDiv(folderView.selectedFile.map[Frag] {
-            case Some(file) ⇒
-              FileView(testRegion, file)
-
-            case None ⇒
-              ()
+            case Some(file) ⇒ FileView(file)
+            case None ⇒ ()
           })
         )
       )

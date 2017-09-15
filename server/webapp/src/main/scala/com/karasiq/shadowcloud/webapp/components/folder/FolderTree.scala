@@ -1,25 +1,28 @@
 package com.karasiq.shadowcloud.webapp.components.folder
 
 import scala.language.postfixOps
-import scala.scalajs.js
 
 import rx._
 
 import com.karasiq.shadowcloud.webapp.context.AppContext.BootstrapContext._
 import scalaTags.all._
 
-import com.karasiq.shadowcloud.model.{Folder, Path, RegionId}
+import org.scalajs.dom.DragEvent
+import org.scalajs.dom.raw.DragEffect
+
+import com.karasiq.shadowcloud.model.{File, Folder, Path}
 import com.karasiq.shadowcloud.model.utils.IndexScope
 import com.karasiq.shadowcloud.webapp.components.common.AppIcons
 import com.karasiq.shadowcloud.webapp.components.folder.FolderTree.FolderController
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
+import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
 import com.karasiq.shadowcloud.webapp.context.AppContext.Implicits._
 import com.karasiq.shadowcloud.webapp.styles.FolderTreeStyles
 import com.karasiq.shadowcloud.webapp.utils.{HasUpdate, RxUtils}
 
 object FolderTree {
-  def apply(regionId: RegionId, path: Path)(implicit context: AppContext, folderContext: FolderContext): FolderTree = {
-    new FolderTree(regionId, path)
+  def apply(path: Path)(implicit context: AppContext, folderContext: FolderContext): FolderTree = {
+    new FolderTree(path)
   }
 
   private def isOpened(path: Path)(implicit folderContext: FolderContext): Boolean = {
@@ -52,9 +55,8 @@ object FolderTree {
   }
 }
 
-class FolderTree(val regionId: RegionId, val path: Path)
-                (implicit context: AppContext, folderContext: FolderContext)
-  extends BootstrapHtmlComponent {
+class FolderTree(val path: Path)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
+  import folderContext.regionId
 
   // -----------------------------------------------------------------------
   // State
@@ -74,7 +76,7 @@ class FolderTree(val regionId: RegionId, val path: Path)
   }
 
   private[this] lazy val subFolderMapRx = subFolderNamesRx.fold(Map.empty[Path, FolderTree]) { (trees, paths) ⇒
-    val newTrees = (paths -- trees.keySet).map(path ⇒ (path, FolderTree(regionId, path)))
+    val newTrees = (paths -- trees.keySet).map(path ⇒ (path, FolderTree(path)))
     val deletedPaths = trees.keySet -- paths
     trees -- deletedPaths ++ newTrees
   }
@@ -82,17 +84,20 @@ class FolderTree(val regionId: RegionId, val path: Path)
   private[this] lazy val subFoldersRx = subFolderMapRx.map(_.toSeq.sortBy(_._1).map(_._2))
 
   // -----------------------------------------------------------------------
-  // Components
+  // Logic
   // -----------------------------------------------------------------------
   private[this] implicit val controller = FolderController(
     () ⇒ folderContext.update(path),
     folder ⇒ {
-      folderContext.update(folder.path.parent)
       if (folder.path.parent == path) opened() = true
+      folderContext.update(folder.path.parent)
     },
     folder ⇒ {
+      if (folder.path.parent == path) {
+        folderRx.kill()
+        deleted() = true
+      }
       folderContext.update(folder.path.parent)
-      if (folder.path.parent == path) deleted() = true
     }
   )
 
@@ -100,19 +105,78 @@ class FolderTree(val regionId: RegionId, val path: Path)
   private[this] val content = renderContent()
 
   def renderTag(md: ModifierT*): TagT = {
-    def addReference: ModifierT = _.asInstanceOf[js.Dynamic].folder = this.asInstanceOf[js.Object]
     div(
-      addReference,
       Rx[Frag](if (deleted()) {
         Bootstrap.noContent
       } else {
-        div(link, content)
-      }),
-      md
+        div(link, content, md)
+      })
     )
   }
 
+  // -----------------------------------------------------------------------
+  // Drag and drop
+  // -----------------------------------------------------------------------
+  private[this] def copyFiles(filePath: Path, readScope: IndexScope): Unit = {
+    context.api.copyFiles(regionId, filePath, filePath.withParent(path), readScope).foreach { _ ⇒
+      folderContext.update(path)
+    }
+  }
+
+  private[this] def copyFile(file: File, readScope: IndexScope): Unit = {
+    val newFileSet = context.api.copyFile(regionId, file, file.path.withParent(path), readScope)
+    newFileSet.foreach(_ ⇒ folderContext.update(path))
+  }
+
+  private[this] def copyFolder(folderPath: Path, readScope: IndexScope): Unit = {
+    val newPath = folderPath.withParent(path)
+    context.api.copyFolder(regionId, folderPath, newPath, readScope).foreach { _ ⇒
+      folderContext.update(path)
+      folderContext.update(newPath)
+    }
+  }
+
+  private[this] def processDropEvent(ev: DragEvent): Unit = {
+    val dataTransfer = ev.dataTransfer
+    // println(DragAndDrop.DataTransferOps(dataTransfer).toMap)
+    val readScope = DragAndDrop.getScope(ev.dataTransfer).getOrElse(IndexScope.default)
+    (DragAndDrop.getRegionId(dataTransfer), DragAndDrop.getPath(dataTransfer), DragAndDrop.getFile(dataTransfer)) match {
+      case (Some(regionId), _, Some(file)) if regionId == folderContext.regionId ⇒
+        ev.preventDefault()
+        copyFile(file, readScope)
+
+      case (Some(regionId), Some(path), _) if regionId == folderContext.regionId ⇒
+        ev.preventDefault()
+        if (DragAndDrop.isFile(dataTransfer)) copyFiles(path, readScope) else copyFolder(path, readScope)
+
+      case _ ⇒
+        // Invalid
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Components
+  // -----------------------------------------------------------------------
   private[this] def renderLink(): ModifierT = {
+    def dragAndDropHandlers: ModifierT = {
+      Seq(
+        draggable,
+        dropzone := "copy",
+        ondragstart := { (ev: DragEvent) ⇒
+          DragAndDrop.addFolderContext(ev.dataTransfer)
+          DragAndDrop.addFolderPath(ev.dataTransfer, path)
+        },
+        ondragover := { (ev: DragEvent) ⇒
+          val isCopyable = true // DragAndDrop.isCopyable(ev.dataTransfer) && !DragAndDrop.decodePath(ev.dataTransfer).contains(path)
+          if (isCopyable) {
+            ev.dataTransfer.dropEffect = DragEffect.Copy
+            ev.preventDefault()
+          }
+        },
+        ondrop := processDropEvent _
+      )
+    }
+
     Rx {
       val isSelected = folderContext.selected() == path
       val isOpened = opened()
@@ -139,7 +203,7 @@ class FolderTree(val regionId: RegionId, val path: Path)
       span(
         a(href := "#", icon, styles, onclick := Callback.onClick(_ ⇒ opened() = !opened.now)),
         Bootstrap.nbsp,
-        a(href := "#", FolderTree.toPathString(path), styles, onclick := Callback.onClick(_ ⇒ folderContext.selected() = path)),
+        a(href := "#", FolderTree.toPathString(path), styles, dragAndDropHandlers, onclick := Callback.onClick(_ ⇒ folderContext.selected() = path)),
         actions
       )
     }

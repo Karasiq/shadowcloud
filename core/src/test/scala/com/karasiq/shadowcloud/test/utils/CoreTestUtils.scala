@@ -59,7 +59,7 @@ object CoreTestUtils extends TestImplicits {
   def randomDiff: IndexDiff = {
     val folder = randomFolder()
     val chunks = folder.files.flatMap(_.chunks)
-    IndexDiff(folder.timestamp.lastModified, FolderIndexDiff.create(folder), ChunkIndexDiff(chunks))
+    IndexDiff(folder.timestamp.lastModified, FolderIndexDiff.createFolders(folder), ChunkIndexDiff(chunks))
   }
 
   private[this] final class TestProviderInstantiator extends ProviderInstantiator {

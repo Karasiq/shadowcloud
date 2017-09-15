@@ -10,7 +10,7 @@ import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.actors.{RegionIndex, StorageIndex}
 import com.karasiq.shadowcloud.actors.events.RegionEvents
 import com.karasiq.shadowcloud.actors.RegionIndex.{SyncReport, WriteDiff}
-import com.karasiq.shadowcloud.index.FolderIndex
+import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.model.{File, RegionId, SequenceNr, StorageId}
 import com.karasiq.shadowcloud.model.utils.{FileAvailability, IndexScope}
@@ -118,7 +118,12 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
   object indexes {
     private[this] val indexScopeCache = mutable.WeakHashMap.empty[IndexScope, IndexMerger[RegionKey]]
 
-    def folders(scope: IndexScope = IndexScope.Current): FolderIndex = {
+    def chunks(scope: IndexScope = IndexScope.default): ChunkIndex = {
+      val index = this.withScope(scope)
+      index.chunks.patch(index.pending.chunks)
+    }
+
+    def folders(scope: IndexScope = IndexScope.default): FolderIndex = {
       val index = this.withScope(scope)
       index.folders.patch(index.pending.folders)
     }

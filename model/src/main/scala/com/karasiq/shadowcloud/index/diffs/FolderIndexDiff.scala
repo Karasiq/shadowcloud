@@ -75,7 +75,7 @@ final case class FolderIndexDiff(folders: Seq[FolderDiff] = Vector.empty)
 object FolderIndexDiff {
   val empty = FolderIndexDiff()
 
-  def seq(diffs: FolderDiff*): FolderIndexDiff = {
+  def fromDiffs(diffs: FolderDiff*): FolderIndexDiff = {
     FolderIndexDiff(diffs)
   }
 
@@ -104,8 +104,22 @@ object FolderIndexDiff {
     }
   }
 
-  def create(folders: Folder*): FolderIndexDiff = {
-    if (folders.isEmpty) empty else FolderIndexDiff(folders.map(FolderDiff.create))
+  def createFolders(folders: Folder*): FolderIndexDiff = {
+    if (folders.isEmpty) {
+      empty
+    } else {
+      val diffs = folders.flatMap { folder ⇒
+        if (folder.path.isRoot) {
+          Seq(FolderDiff.create(folder))
+        } else {
+          Seq(
+            FolderDiff(folder.path.parent, folder.timestamp.created, newFolders = Set(folder.path.name)),
+            FolderDiff.create(folder)
+          )
+        }
+      }
+      FolderIndexDiff(diffs)
+    }
   }
 
   def createFiles(files: File*): FolderIndexDiff = {
@@ -158,13 +172,7 @@ object FolderIndexDiff {
 
   // Explicitly deletes folder tree
   def deleteFolderTree(index: FolderIndex, path: Path): FolderIndexDiff = {
-    def traverseFolderTree(path: Path): Iterator[Folder] = {
-      val subFolders = index.get(path).toSeq
-        .flatMap(f ⇒ f +: f.folders.toSeq.map(f.path / _).flatMap(index.get))
-      subFolders.iterator ++ subFolders.iterator.flatMap(f ⇒ traverseFolderTree(f.path))
-    }
-
-    val folders = traverseFolderTree(path)
+    val folders = FolderIndex.traverseFolderTree(index, path)
     deleteFolders(folders.toSeq:_*)
   }
 
@@ -180,19 +188,60 @@ object FolderIndexDiff {
     }
   }
 
-  def move(folder: Folder, newPath: Path): FolderIndexDiff = {
-    require(!folder.path.isRoot, "Cannot move root")
-    val timestamp = Utils.timestamp
-    val diffs = if (newPath.isRoot) {
-      Seq(FolderDiff.create(folder.withPath(newPath)))
-    } else {
-      Seq(
-        FolderDiff(newPath.parent, timestamp, newFolders = Set(newPath.name)),
-        FolderDiff.create(folder.withPath(newPath))
-      )
-    }
+  def copyFiles(files: Set[File], newPath: Path): FolderIndexDiff = {
+    require(!newPath.isRoot, "Invalid file path")
+    val diff = FolderDiff(newPath.parent, Utils.timestamp, newFiles = files.map(_.copy(path = newPath)))
+    FolderIndexDiff.fromDiffs(diff)
+  }
 
-    deleteFolderPaths(folder.path)
-      .mergeWith(FolderIndexDiff(diffs), FolderDecider.createWins)
+  def copyFile(file: File, newPath: Path): FolderIndexDiff = {
+    copyFiles(Set(file), newPath)
+  }
+
+  def copyFile(index: FolderIndex, path: Path, newPath: Path): FolderIndexDiff = {
+    require(!path.isRoot && !newPath.isRoot, "Invalid file path")
+    val newFiles = index.getFiles(path).map(f ⇒ f.copy(path = newPath))
+    val diff = FolderDiff(newPath.parent, Utils.timestamp, newFiles = newFiles)
+    FolderIndexDiff.fromDiffs(diff)
+  }
+
+  def moveFiles(files: Set[File], newPath: Path): FolderIndexDiff = {
+    val deleteDiff = deleteFiles(files.toSeq:_*)
+    val copyDiff = copyFiles(files, newPath)
+    deleteDiff.mergeWith(copyDiff, FolderDecider.createWins)
+  }
+
+  def moveFile(file: File, newPath: Path): FolderIndexDiff = {
+    moveFiles(Set(file), newPath)
+  }
+
+  def moveFile(index: FolderIndex, path: Path, newPath: Path): FolderIndexDiff = {
+    val deleteDiff = deleteFiles(index.getFiles(path).toSeq: _*)
+    val copyDiff = copyFile(index, path, newPath)
+    deleteDiff.mergeWith(copyDiff, FolderDecider.createWins)
+  }
+
+  def copyFolder(folder: Folder, newPath: Path): FolderIndexDiff = {
+    val newFolder = folder.withPath(newPath)
+    createFolders(newFolder)
+  }
+
+  def copyFolder(index: FolderIndex, path: Path, newPath: Path): FolderIndexDiff = {
+    val folders = FolderIndex.traverseFolderTree(index, path)
+    val newFolders = folders.map(f ⇒ f.withPath(newPath / f.path.toRelative(path)))
+    createFolders(newFolders.toSeq:_*)
+  }
+
+  def moveFolder(folder: Folder, newPath: Path): FolderIndexDiff = {
+    require(!folder.path.isRoot, "Cannot move root")
+    val deleteDiff = deleteFolderPaths(folder.path)
+    val copyDiff = copyFolder(folder, newPath)
+    deleteDiff.mergeWith(copyDiff, FolderDecider.createWins)
+  }
+
+  def moveFolder(index: FolderIndex, path: Path, newPath: Path): FolderIndexDiff = {
+    val copyDiff = copyFolder(index, path, newPath)
+    val deleteDiff = deleteFolderPaths(path)
+    deleteDiff.mergeWith(copyDiff, FolderDecider.createWins)
   }
 }

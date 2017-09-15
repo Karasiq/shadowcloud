@@ -166,7 +166,7 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
     }
 
     for {
-      regionIndex ← sc.ops.region.getIndex(regionId).map(IndexMerger.restore(RegionKey.zero, _))
+      regionIndex ← sc.ops.region.getIndexSnapshot(regionId).map(IndexMerger.restore(RegionKey.zero, _))
       storages ← sc.ops.region.getStorages(regionId)
       regionState = createRegionState(regionIndex)
       storageStates ← Future.sequence(storages.map(createStorageState(regionIndex, _)))

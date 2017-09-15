@@ -3,28 +3,28 @@ package com.karasiq.shadowcloud.webapp.components.file
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
-import com.karasiq.shadowcloud.model.{File, RegionId}
+import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.utils.MemorySize
 import com.karasiq.shadowcloud.webapp.components.common.AppIcons
 import com.karasiq.shadowcloud.webapp.components.metadata.MetadataListView
-import com.karasiq.shadowcloud.webapp.context.AppContext
+import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 
 object FileView {
-  def apply(regionId: RegionId, file: File)(implicit context: AppContext): FileView = {
-    new FileView(regionId, file)
+  def apply(file: File)(implicit context: AppContext, folderContext: FolderContext): FileView = {
+    new FileView(file)
   }
 }
 
-class FileView(regionId: RegionId, file: File)(implicit context: AppContext) extends BootstrapHtmlComponent {
+class FileView(file: File)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
     def renderInfo(name: String, str: String): Frag = {
       span(name + ": " + str, br)
     }
 
     val tabs = Seq(
-      NavigationTab(context.locale.preview, "preview", AppIcons.preview, FilePreview(regionId, file)),
-      NavigationTab(context.locale.metadata, "metadata", AppIcons.metadata, MetadataListView(regionId, file)),
-      NavigationTab(context.locale.availability, "availability", AppIcons.availability, FileAvailabilityView.forFile(regionId, file))
+      NavigationTab(context.locale.preview, "preview", AppIcons.preview, FilePreview(folderContext.regionId, file)),
+      NavigationTab(context.locale.metadata, "metadata", AppIcons.metadata, MetadataListView(folderContext.regionId, file)),
+      NavigationTab(context.locale.availability, "availability", AppIcons.availability, FileAvailabilityView(file))
     )
 
     div(

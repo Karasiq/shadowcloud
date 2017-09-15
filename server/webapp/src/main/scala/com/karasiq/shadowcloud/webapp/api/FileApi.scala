@@ -6,7 +6,7 @@ import akka.util.ByteString
 import org.scalajs.dom.ext.Ajax
 
 import com.karasiq.shadowcloud.api.{SCApiEncoding, SCApiMeta, SCApiUtils}
-import com.karasiq.shadowcloud.model.{File, Path, RegionId}
+import com.karasiq.shadowcloud.model.{File, FileId, Path, RegionId}
 import com.karasiq.shadowcloud.webapp.utils.URLPath
 
 trait FileApi { self: SCApiMeta ⇒
@@ -30,5 +30,12 @@ trait FileApi { self: SCApiMeta ⇒
   def downloadFileUrl(regionId: RegionId, path: Path): String = {
     require(!path.isRoot, "Not a file")
     URLPath(_ / "download" / regionId / SCApiEncoding.toUrlSafe(encoding.encodePath(path)) / path.name).toString
+  }
+
+  def downloadFileUrl(regionId: RegionId, path: Path, fileId: FileId): String = {
+    require(!path.isRoot, "Not a file")
+    URLPath(_ / "download" / regionId / SCApiEncoding.toUrlSafe(encoding.encodePath(path)) / path.name)
+      .withQuery("file-id", fileId.toString)
+      .toString
   }
 }

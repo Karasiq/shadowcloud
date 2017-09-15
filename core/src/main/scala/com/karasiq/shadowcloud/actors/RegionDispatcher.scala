@@ -20,6 +20,7 @@ import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.RegionIndex.SyncReport
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.exceptions.{RegionException, StorageException}
+import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.utils.{FileAvailability, IndexScope}
@@ -44,8 +45,12 @@ object RegionDispatcher {
 
   case class WriteIndex(diff: FolderIndexDiff) extends Message
   object WriteIndex extends MessageStatus[FolderIndexDiff, IndexDiff]
-  case class GetIndex(scope: IndexScope = IndexScope.default) extends Message
-  object GetIndex extends MessageStatus[RegionId, IndexMerger.State[RegionKey]]
+  case class GetChunkIndex(scope: IndexScope = IndexScope.default) extends Message
+  object GetChunkIndex extends MessageStatus[RegionId, ChunkIndex]
+  case class GetFolderIndex(scope: IndexScope = IndexScope.default) extends Message
+  object GetFolderIndex extends MessageStatus[RegionId, FolderIndex]
+  case class GetIndexSnapshot(scope: IndexScope = IndexScope.default) extends Message
+  object GetIndexSnapshot extends MessageStatus[RegionId, IndexMerger.State[RegionKey]]
   case object Synchronize extends Message with MessageStatus[RegionId, Map[StorageId, SyncReport]]
 
   case class GetFiles(path: Path, scope: IndexScope = IndexScope.default) extends Message
@@ -92,14 +97,14 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
   private[this] implicit val sc = ShadowCloud()
   import context.dispatcher
   import sc.implicits.{defaultTimeout, materializer}
-  
+
   val storageTracker = StorageTracker()
   val chunksTracker = ChunksTracker(regionId, regionConfig, storageTracker)
   val indexTracker = RegionIndexTracker(regionId, chunksTracker)
-  
-  private[this] implicit val regionContext = RegionContext(regionId, regionConfig, self, 
+
+  private[this] implicit val regionContext = RegionContext(regionId, regionConfig, self,
     storageTracker, chunksTracker.chunks, indexTracker.globalIndex)
-  
+
   private[this] implicit val storageSelector = StorageSelector.fromClass(regionConfig.storageSelector)
 
   // -----------------------------------------------------------------------
@@ -162,17 +167,11 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
       }
 
     case GetFiles(path, scope) ⇒
-      val files = indexTracker.indexes.folders(scope)
-        .get(path.parent)
-        .map(_.files.filter(_.path == path))
-        .filter(_.nonEmpty)
-
-      files match {
-        case Some(files) ⇒
-          sender() ! GetFiles.Success(path, files)
-
-        case None ⇒
-          sender() ! GetFiles.Failure(path, RegionException.FileNotFound(path))
+      val files = indexTracker.indexes.folders(scope).getFiles(path)
+      if (files.nonEmpty) {
+        sender() ! GetFiles.Success(path, files)
+      } else {
+        sender() ! GetFiles.Failure(path, RegionException.FileNotFound(path))
       }
 
     case GetFolder(path, scope) ⇒
@@ -184,8 +183,14 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
           sender() ! GetFolder.Failure(path, RegionException.DirectoryNotFound(path))
       }
 
-    case GetIndex(scope) ⇒
-      sender() ! GetIndex.Success(regionId, indexTracker.indexes.getState(scope))
+    case GetFolderIndex(scope) ⇒
+      sender() ! GetFolderIndex.Success(regionId, indexTracker.indexes.folders(scope))
+
+    case GetChunkIndex(scope) ⇒
+      sender() ! GetChunkIndex.Success(regionId, indexTracker.indexes.chunks(scope))
+
+    case GetIndexSnapshot(scope) ⇒
+      sender() ! GetIndexSnapshot.Success(regionId, indexTracker.indexes.getState(scope))
 
     case GetFileAvailability(file) ⇒
       sender() ! GetFileAvailability.Success(file, indexTracker.indexes.getFileAvailability(file))

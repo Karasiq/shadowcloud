@@ -12,8 +12,6 @@ import com.karasiq.shadowcloud.model.{Chunk, RegionId}
 import com.karasiq.shadowcloud.ops.region.RegionOps
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
-import com.karasiq.shadowcloud.storage.utils.IndexMerger
-import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import RegionRepairStream.Strategy.{AutoAffinity, SetAffinity, TransformAffinity}
 
 object RegionRepairStream {
@@ -44,13 +42,9 @@ object RegionRepairStream {
       .log("region-repair-request")
       .flatMapConcat { request ⇒
         val chunksSource: Source[Chunk, NotUsed] = if (request.chunks.nonEmpty) {
-          Source(request.chunks.toVector)
+          Source(request.chunks.toList)
         } else {
-          Source.fromFuture(regionOps.getIndex(request.regionId))
-            .mapConcat { state ⇒
-              val index = IndexMerger.restore(RegionKey.zero, state)
-              index.chunks.chunks
-            }
+          Source.fromFuture(regionOps.getChunkIndex(request.regionId)).mapConcat(_.chunks)
         }
 
         chunksSource

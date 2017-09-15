@@ -36,7 +36,7 @@ import com.karasiq.shadowcloud.utils.encoding.{Base64, HexString}
 class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
   val chunk = TestUtils.testChunk
   val folder = CoreTestUtils.randomFolder()
-  val folderDiff = FolderIndexDiff.create(folder)
+  val folderDiff = FolderIndexDiff.createFolders(folder)
   val indexRepository = Repository.forIndex(PathTreeRepository.toCategorized(
     PathNodesMapper.encode(Repositories.fromDirectory(Files.createTempDirectory("vrt-index")), Base64)))
   val chunksDir = Files.createTempDirectory("vrt-chunks")
@@ -130,7 +130,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
 
   it should "add folder" in {
     storageSubscribe()
-    val diff = FolderIndexDiff.create(folder)
+    val diff = FolderIndexDiff.createFolders(folder)
     testRegion ! RegionDispatcher.WriteIndex(diff)
     receiveWhile(5 seconds) {
       case RegionDispatcher.WriteIndex.Success(`diff`, result) ⇒
@@ -196,8 +196,8 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
       storage ! StorageIndex.Envelope("testRegion", RegionIndex.GetIndex)
       val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((2L, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
       expectNoMsg(1 second)
-      testRegion ! RegionDispatcher.GetIndex()
-      val RegionDispatcher.GetIndex.Success(_, IndexMerger.State(Seq((RegionKey(_, "testStorage", 2L), `remoteDiff`)), _)) = receiveOne(1 second)
+      testRegion ! RegionDispatcher.GetIndexSnapshot()
+      val RegionDispatcher.GetIndexSnapshot.Success(_, IndexMerger.State(Seq((RegionKey(_, "testStorage", 2L), `remoteDiff`)), _)) = receiveOne(1 second)
     }
 
     storageUnsubscribe()

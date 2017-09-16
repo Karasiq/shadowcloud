@@ -12,13 +12,23 @@ object MergeUtil {
     sealed trait SingleSide[+T] extends State[T] {
       def value: T
     }
-    case class Left[+T](value: T) extends State[T] with SingleSide[T]
-    case class Right[+T](value: T) extends State[T] with SingleSide[T]
-    case class Equal[+T](value: T) extends State[T]
-    case class Conflict[+T](left: T, right: T) extends State[T]
+
+    sealed trait TwoSides[+T] extends State[T] {
+      def left: T
+      def right: T
+    }
+
+    final case class Left[+T](value: T) extends State[T] with SingleSide[T]
+    final case class Right[+T](value: T) extends State[T] with SingleSide[T]
+    final case class Equal[+T](value: T) extends State[T] with TwoSides[T] {
+      def left = value
+      def right = value
+    }
+    final case class Conflict[+T](left: T, right: T) extends State[T] with TwoSides[T]
   }
-  import State._
   
+  import State.{Conflict, Equal, Left, Right}
+
   type Decider[V] = PartialFunction[State[V], Option[V]]
   type SplitDecider[V] = Equal[V] ⇒ Option[State[V]]
 

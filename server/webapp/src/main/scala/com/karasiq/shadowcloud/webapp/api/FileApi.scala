@@ -19,8 +19,13 @@ trait FileApi { self: SCApiMeta ⇒
       .map(encoding.decodeFile)
   }
 
-  def downloadFile(regionId: RegionId, path: Path, scope: IndexScope): Future[ByteString] = {
+  def downloadMostRecentFile(regionId: RegionId, path: Path, scope: IndexScope = IndexScope.default): Future[ByteString] = {
     Ajax.get(mostRecentFileUrl(regionId, path, scope), responseType = "arraybuffer")
+      .responseBytes
+  }
+
+  def downloadFile(regionId: RegionId, path: Path, id: FileId, scope: IndexScope = IndexScope.default): Future[ByteString] = {
+    Ajax.get(fileUrl(regionId, path, id, scope), responseType = "arraybuffer")
       .responseBytes
   }
 

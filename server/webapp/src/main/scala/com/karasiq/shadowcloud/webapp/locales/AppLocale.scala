@@ -11,6 +11,7 @@ trait AppLocale {
   def size: String
   def empty: String
   def show: String
+  def edit: String
   def submit: String
   def cancel: String
   def close: String
@@ -28,6 +29,7 @@ trait AppLocale {
   def downloadFile: String
   def deleteFile: String
   def playFile: String
+  def viewTextFile: String
 
   def fileId: String
   def createdDate: String
@@ -73,6 +75,7 @@ object AppLocale {
     val size = "Size"
     val empty = "Empty"
     val show = "Show"
+    val edit = "Edit"
     val submit = "Submit"
     val cancel = "Cancel"
     val close = "Close"
@@ -90,6 +93,7 @@ object AppLocale {
     val downloadFile = "Download"
     val deleteFile = "Delete"
     val playFile = "Play"
+    val viewTextFile = "View text"
 
     val fileId = "File ID"
     val createdDate = "Created"

@@ -45,6 +45,7 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
     div(
       renderDownloadLink(),
       renderDelete(),
+      if (TextFileView.canBeViewed(file)) renderEditor() else (),
       if (FileActions.isMediaFile(file)) renderPlayer() else ()
     )
   }
@@ -52,6 +53,17 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
   private[this] def renderDownloadLink(): TagT = {
     FileDownloadLink(file, useId)(AppIcons.download, Bootstrap.nbsp,
       context.locale.downloadFile, attr("download") := file.path.name)
+  }
+
+  private[this] def renderEditor(): TagT = {
+    renderAction(context.locale.viewTextFile, AppIcons.viewText, onclick := Callback.onClick { _ ⇒
+      Modal()
+        .withTitle(context.locale.viewTextFile)
+        .withBody(TextFileView(file))
+        .withButtons(Modal.closeButton(context.locale.close))
+        .withDialogStyle(ModalDialogSize.large)
+        .show()
+    })
   }
 
   private[this] def renderPlayer(): TagT = {

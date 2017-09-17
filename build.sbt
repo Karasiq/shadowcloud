@@ -171,8 +171,11 @@ lazy val server = project
       ProjectDeps.akka.testKit.map(_ % "test"),
     scalaJsBundlerAssets in Compile += {
       import com.karasiq.scalajsbundler.dsl._
-      Bundle("index", WebDeps.indexHtml, WebDeps.bootstrap, WebDeps.videoJS,
-        scalaJsApplication(webapp, fastOpt = true, launcher = false).value)
+      Bundle(
+        "index",
+        WebDeps.indexHtml, WebDeps.bootstrap, WebDeps.videoJS, WebDeps.markedJS,
+        scalaJsApplication(webapp, fastOpt = true, launcher = false).value
+      )
     },
     scalaJsBundlerCompile in Compile <<= (scalaJsBundlerCompile in Compile)
       .dependsOn(fastOptJS in Compile in webapp)
@@ -187,6 +190,7 @@ lazy val webapp = (project in file("server") / "webapp")
     scalaJSUseMainModuleInitializer := true,
     ScalaJSDeps.bootstrap,
     ScalaJSDeps.videoJS,
+    ScalaJSDeps.markedJS,
     ScalaJSDeps.java8Time,
     ScalaJSDeps.scalaCss
   )

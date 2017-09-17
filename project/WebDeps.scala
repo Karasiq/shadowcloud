@@ -54,6 +54,40 @@ object WebDeps {
     )
   }
 
+  def markedJS: Seq[PageContent] = {
+    import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
+
+    val highlightJSLanguages = Seq(
+      "bash", "clojure", "coffeescript", "cpp", "cs", "d", "delphi", "erlang", "fsharp",
+      "go", "groovy", "haskell", "java", "javascript", "json", "lua", "lisp", "markdown",
+      "objectivec", "perl", "php", "python", "ruby", "rust", "scala", "scheme", "sql",
+      "swift", "typescript", "css", "xml"
+    )
+
+    val highlightJSStyle = "github"
+    
+    val markedJS = "org.webjars.bower" % "marked" % "0.3.5"
+    val highlightJS = "org.webjars" % "highlightjs" % "9.2.0"
+    val tabOverrideJS = github("wjbryant", "taboverride", "4.0.3") / "build" / "output"
+
+    val scripts = Seq(
+      // Marked
+      Script from markedJS / "marked.min.js",
+
+      // Highlight.js
+      Script from highlightJS / "highlight.min.js",
+      Style from highlightJS / s"styles/$highlightJSStyle.css",
+
+      // Tab Override
+      Script from tabOverrideJS / "taboverride.min.js"
+    )
+
+    val highlightJSModules = for (lang ← highlightJSLanguages)
+      yield Script from highlightJS / s"languages/$lang.min.js"
+
+    scripts ++ highlightJSModules
+  }
+
   def indexHtml: Seq[PageContent] = {
     Html from Assets.index
   }

@@ -47,7 +47,7 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
         } else {
           allFiles.toVector
         }
-        files.sortBy(_.path.name)
+        files.sortBy(f ⇒ (f.path.name, f.revision))(Ordering.Tuple2(Ordering[String], Ordering[Long].reverse))
       }
 
       sortedFiles.map { file ⇒

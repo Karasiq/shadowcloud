@@ -18,6 +18,8 @@ object AppIcons {
   val delete: Icon = "trash"
   val play: Icon = "play-circle-o"
   val download: Icon = "download"
+  val viewText: Icon = "file-text-o"
+  val editText: Icon = "edit"
 
   val revisions: Icon = "clone"
   val availability: Icon = "balance-scale"

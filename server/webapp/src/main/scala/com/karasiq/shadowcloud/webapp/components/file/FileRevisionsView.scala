@@ -24,6 +24,7 @@ class FileRevisionsView(path: Path)(implicit context: AppContext, folderContext:
         .withTitle(context.locale.file)
         .withBody(FileView(file, useId = true))
         .withButtons(Modal.closeButton(context.locale.close))
+        .withDialogStyle(ModalDialogSize.large)
         .show(events = Map("hidden.bs.modal" → { () ⇒
           fileList.selectedFile() = None 
         }))

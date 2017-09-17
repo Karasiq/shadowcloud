@@ -39,6 +39,10 @@ object ScalaJSDeps {
     )
   }
 
+  def markedJS: Deps = {
+    libraryDependencies += "com.github.karasiq" %%% "scalajs-marked" % "1.0.2"
+  }
+
   def scalaCss: Deps = {
     libraryDependencies ++= Seq("com.github.japgolly.scalacss" %%% "core" % "0.5.3")
   }

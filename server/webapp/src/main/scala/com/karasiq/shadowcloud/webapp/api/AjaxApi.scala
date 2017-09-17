@@ -69,4 +69,12 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
   def createFile(regionId: RegionId, file: File) = {
     apiClient.createFile(regionId, file).call()
   }
+
+  def deleteFiles(regionId: RegionId, path: Path) = {
+    apiClient.deleteFiles(regionId, path).call()
+  }
+
+  def deleteFile(regionId: RegionId, file: File) = {
+    apiClient.deleteFile(regionId, file).call()
+  }
 }

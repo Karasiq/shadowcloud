@@ -5,26 +5,26 @@ import scala.language.postfixOps
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
-import com.karasiq.shadowcloud.model.{File, RegionId}
-import com.karasiq.shadowcloud.webapp.context.AppContext
+import rx.Rx
+
+import com.karasiq.shadowcloud.model.File
+import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
+import com.karasiq.shadowcloud.webapp.utils.RxUtils
 
 object FileDownloadLink {
-  def apply(regionId: RegionId, file: File, useId: Boolean = false)(title: Modifier)
-           (implicit context: AppContext): FileDownloadLink = {
-    new FileDownloadLink(regionId, file, useId)(title)
+  def apply(file: File, useId: Boolean = false)(title: Modifier*)
+           (implicit context: AppContext, folderContext: FolderContext): FileDownloadLink = {
+    new FileDownloadLink(file, useId)(title)
   }
 }
 
-final class FileDownloadLink(regionId: RegionId, file: File, useId: Boolean)(title: Modifier)
-                            (implicit context: AppContext) extends BootstrapHtmlComponent {
-  def renderTag(md: ModifierT*): TagT = {
-    val downloadUrl = if (useId)
-      context.api.downloadFileUrl(regionId, file.path, file.id)
-    else
-      context.api.downloadFileUrl(regionId, file.path)
+final class FileDownloadLink(file: File, useId: Boolean)(title: Modifier*)
+                            (implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
 
+  def renderTag(md: ModifierT*): TagT = {
+    val downloadUrl = RxUtils.getDownloadLinkRx(file, useId)
     a(
-      href := downloadUrl,
+      Rx(href := downloadUrl()).auto,
       target := "_blank",
       // attr("download") := file.path.name,
       title,

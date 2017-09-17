@@ -22,6 +22,10 @@ trait AppLocale {
   def createFolder: String
   def deleteFolder: String
 
+  def downloadFile: String
+  def deleteFile: String
+  def playFile: String
+
   def fileId: String
   def createdDate: String
   def modifiedDate: String
@@ -74,6 +78,10 @@ object AppLocale {
     val emptyPath = "(Empty)"
     val createFolder = "Create folder"
     val deleteFolder = "Delete folder"
+
+    val downloadFile = "Download"
+    val deleteFile = "Delete"
+    val playFile = "Play"
 
     val fileId = "File ID"
     val createdDate = "Created"

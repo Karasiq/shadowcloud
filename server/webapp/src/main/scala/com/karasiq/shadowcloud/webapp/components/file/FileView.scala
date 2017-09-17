@@ -10,12 +10,12 @@ import com.karasiq.shadowcloud.webapp.components.metadata.MetadataListView
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 
 object FileView {
-  def apply(file: File)(implicit context: AppContext, folderContext: FolderContext): FileView = {
-    new FileView(file)
+  def apply(file: File, useId: Boolean = false)(implicit context: AppContext, folderContext: FolderContext): FileView = {
+    new FileView(file, useId)
   }
 }
 
-class FileView(file: File)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
+class FileView(file: File, useId: Boolean)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
     def renderInfo(name: String, str: String): Frag = {
       span(name + ": " + str, br)
@@ -37,6 +37,9 @@ class FileView(file: File)(implicit context: AppContext, folderContext: FolderCo
         renderInfo(context.locale.modifiedDate, context.timeFormat.timestamp(file.timestamp.lastModified)),
         renderInfo(context.locale.size, MemorySize.toString(file.checksum.size))
       ),
+      hr,
+      FileActions(file, useId),
+      hr,
       Navigation.tabs(tabs:_*)
     )
   }

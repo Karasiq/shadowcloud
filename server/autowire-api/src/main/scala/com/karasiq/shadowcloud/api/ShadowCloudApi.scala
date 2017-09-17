@@ -26,4 +26,6 @@ trait ShadowCloudApi {
   def copyFiles(regionId: RegionId, path: Path, newPath: Path, scope: IndexScope = IndexScope.default): Future[Set[File]]
   def copyFile(regionId: RegionId, file: File, newPath: Path, scope: IndexScope = IndexScope.default): Future[Set[File]]
   def createFile(regionId: RegionId, file: File): Future[Set[File]]
+  def deleteFiles(regionId: RegionId, path: Path): Future[Set[File]]
+  def deleteFile(regionId: RegionId, file: File): Future[File]
 }

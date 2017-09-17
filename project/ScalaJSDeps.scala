@@ -33,6 +33,12 @@ object ScalaJSDeps {
     )
   }
 
+  def videoJS: Deps = {
+    libraryDependencies ++= Seq(
+      "com.github.karasiq" %%% "scalajs-videojs" % "1.0.5"
+    )
+  }
+
   def scalaCss: Deps = {
     libraryDependencies ++= Seq("com.github.japgolly.scalacss" %%% "core" % "0.5.3")
   }

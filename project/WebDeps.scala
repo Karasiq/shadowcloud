@@ -22,12 +22,12 @@ object WebDeps {
   def bootstrap: Seq[PageContent] = {
     val bootstrapV = "3.3.7"
     val bootstrapDateV = "1.7.1"
-    val jQueryV = "1.12.0"
+    val jQueryV = "3.2.1"
     val fontAwesomeV = "4.5.0"
 
     val jsDeps = Seq(
       // jQuery
-      Script from url(s"https://code.jquery.com/jquery-$jQueryV.js"),
+      Script from url(s"https://code.jquery.com/jquery-$jQueryV.min.js"),
 
       // Bootstrap
       Style from url(s"https://raw.githubusercontent.com/twbs/bootstrap/v$bootstrapV/dist/css/bootstrap.css"),
@@ -44,6 +44,14 @@ object WebDeps {
       fontPackage("fontawesome-webfont", s"https://raw.githubusercontent.com/FortAwesome/Font-Awesome/v$fontAwesomeV/fonts/fontawesome-webfont")
 
     jsDeps ++ fonts
+  }
+
+  def videoJS: Seq[PageContent] = {
+    val videoJs = github("videojs", "video.js", "v5.8.0") / "dist"
+    Seq(
+      Script from url(videoJs % "video.min.js"),
+      Style from url(videoJs % "video-js.min.css")
+    )
   }
 
   def indexHtml: Seq[PageContent] = {

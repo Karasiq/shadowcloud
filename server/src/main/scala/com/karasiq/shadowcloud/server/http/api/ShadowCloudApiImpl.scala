@@ -82,6 +82,17 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
     } yield newFiles
   }
 
+  def deleteFiles(regionId: RegionId, path: Path) = {
+    sc.ops.region.deleteFiles(regionId, path)
+  }
+
+  def deleteFile(regionId: RegionId, file: File) = {
+    for {
+      actualFile ← getFullFile(regionId, file, IndexScope.default)
+      _ ← sc.ops.region.deleteFiles(regionId, actualFile)
+    } yield actualFile
+  }
+
   private[this] def getFullFile(regionId: RegionId, file: File, scope: IndexScope): Future[File] = {
     if (file.isEmpty) {
       this.getFile(regionId, file.path, file.id, dropChunks = false, scope)

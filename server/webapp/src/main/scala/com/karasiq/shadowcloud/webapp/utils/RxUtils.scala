@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.webapp.utils
 
 import rx.{Rx, Var}
 
-import com.karasiq.shadowcloud.model.{Folder, Path, RegionId}
+import com.karasiq.shadowcloud.model.{File, Folder, Path, RegionId}
 import com.karasiq.shadowcloud.model.utils.IndexScope
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 
@@ -18,8 +18,17 @@ private[webapp] object RxUtils {
     createContextFolderRx(fc.regionId, fc.selected, fc.scope).toRx
   }
 
+  def getDownloadLinkRx(file: File, useId: Boolean = false)(implicit ac: AppContext, fc: FolderContext): Rx[String] = {
+    Rx {
+      if (useId)
+        ac.api.fileUrl(fc.regionId, file.path, file.id, fc.scope())
+      else
+        ac.api.mostRecentFileUrl(fc.regionId, file.path, fc.scope())
+    }
+  }
+
   private[this] def createFolderRx(regionId: RegionId, pathRx: Rx[Path], scopeRx: Rx[IndexScope])
-                              (implicit ac: AppContext): RxWithKey[(Path, IndexScope), Folder] = {
+                                  (implicit ac: AppContext): RxWithKey[(Path, IndexScope), Folder] = {
     val folderRx = RxWithKey(Rx((pathRx(), scopeRx())), Folder.create(pathRx.now)) { case (path, scope) ⇒
       ac.api.getFolder(regionId, path, dropChunks = true, scope)
     }
@@ -28,7 +37,7 @@ private[webapp] object RxUtils {
   }
 
   private[this] def createContextFolderRx(regionId: RegionId, pathRx: Rx[Path], scopeRx: Rx[IndexScope])
-                                     (implicit fc: FolderContext, ac: AppContext): RxWithKey[(Path, IndexScope), Folder] = {
+                                         (implicit fc: FolderContext, ac: AppContext): RxWithKey[(Path, IndexScope), Folder] = {
     val folderRx = createFolderRx(regionId, pathRx, scopeRx)
     fc.updates.filter(_._1 == pathRx.now).triggerLater(folderRx.update()) // Subscribe to updates
     folderRx

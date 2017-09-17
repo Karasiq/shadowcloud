@@ -15,6 +15,7 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.api.SCApiEncoding
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.model.{Chunk, File, Path, RegionId}
+import com.karasiq.shadowcloud.model.utils.IndexScope
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges.RangeList
 import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
@@ -62,7 +63,10 @@ trait SCAkkaHttpFileServer { self: SCAkkaHttpApiServer with SCHttpServerSettings
 
   private[http] object SCFileDirectives {
     def findFiles(regionId: RegionId, path: Path): Directive1[Set[File]] = {
-      onSuccess(sc.ops.region.getFiles(regionId, path))
+      parameter("scope")
+        .map(scope ⇒ SCApiInternals.apiEncoding.decodeScope(SCApiEncoding.toBinary(scope)))
+        .recover(_ ⇒ provide(IndexScope.default: IndexScope))
+        .flatMap(scope ⇒ onSuccess(sc.ops.region.getFiles(regionId, path, scope)))
     }
 
     def findFile(regionId: RegionId, path: Path): Directive1[File] = {

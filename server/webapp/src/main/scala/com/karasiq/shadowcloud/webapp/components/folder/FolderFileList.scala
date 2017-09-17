@@ -62,11 +62,11 @@ class FolderFileList(folder: Rx[Folder], flat: Boolean)(implicit context: AppCon
 
         val content1 = if (flat) {
           Seq[Modifier](
-            FileDownloadLink(folderContext.regionId, file)(file.path.name)
+            FileDownloadLink(file)(file.path.name)
           )
         } else {
           Seq[Modifier](
-            FileDownloadLink(folderContext.regionId, file, useId = true)(file.id.toString),
+            FileDownloadLink(file, useId = true)(file.id.toString),
             file.path.name
           )
         }

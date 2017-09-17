@@ -41,17 +41,19 @@ object Main extends JSApp {
 
       val selectedFolderRx = RxUtils.getSelectedFolderRx
       val uploadForm = FormInput.file("File", onchange := Callback.onInput { input ⇒
-        val inputFile = input.files.head
-        val parent = selectedFolderRx.now.path
-        appContext.api.uploadFile(testRegion, parent / inputFile.name, inputFile).foreach { file ⇒
-          folderContext.update(parent)
-          dom.window.alert(file.toString)
+        input.files.headOption.foreach { inputFile ⇒
+          val parent = selectedFolderRx.now.path
+          appContext.api.uploadFile(testRegion, parent / inputFile.name, inputFile).foreach { file ⇒
+            // TODO: Progress, reset input
+            folderContext.update(parent)
+            dom.window.alert(file.toString)
+          }
         }
       })
 
       val scopeSelector = IndexScopeSelector.forContext(folderContext)
       val folderTree = FolderTree(Path.root)
-      val folderView = FolderFileList(selectedFolderRx)
+      val folderView = FolderFileList(selectedFolderRx.map(_.files))
 
       val container = GridSystem.containerFluid(
         GridSystem.row(
@@ -60,8 +62,8 @@ object Main extends JSApp {
         ),
         GridSystem.row(
           GridSystem.col(3).asDiv(folderTree),
-          GridSystem.col(6).asDiv(folderView),
-          GridSystem.col(3).asDiv(folderView.selectedFile.map[Frag] {
+          GridSystem.col(5).asDiv(folderView),
+          GridSystem.col(4).asDiv(folderView.selectedFile.map[Frag] {
             case Some(file) ⇒ FileView(file)
             case None ⇒ ()
           })

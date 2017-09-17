@@ -17,6 +17,9 @@ trait AppLocale {
   def unknown: String
   def entries(value: Long): String
 
+  def file: String
+  def folder: String
+
   def rootPath: String
   def emptyPath: String
   def createFolder: String
@@ -35,9 +38,11 @@ trait AppLocale {
   def metadata: String
   def content: String
 
+  def availability: String
+  def revisions: String
+
   def storage: String
   def region: String
-  def availability: String
   def indexScope: String
   def currentScope: String
   def historyScope: String
@@ -74,6 +79,9 @@ object AppLocale {
     val unknown = "Unknown"
     def entries(value: Long): String = value + " entries"
 
+    val file = "File"
+    val folder = "Folder"
+
     val rootPath = "(Root)"
     val emptyPath = "(Empty)"
     val createFolder = "Create folder"
@@ -92,9 +100,11 @@ object AppLocale {
     val metadata = "Metadata"
     val content = "Content"
 
+    val availability = "Availability"
+    val revisions = "Revisions"
+
     val storage = "Storage"
     val region = "Region"
-    val availability = "Availability"
     val indexScope = "Index scope"
     val currentScope = "Current"
     val historyScope = "History"

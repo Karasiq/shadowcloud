@@ -19,6 +19,7 @@ object AppIcons {
   val play: Icon = "play-circle-o"
   val download: Icon = "download"
 
+  val revisions: Icon = "clone"
   val availability: Icon = "balance-scale"
   val partiallyAvailable: Icon = "exclamation-triangle"
   val fullyAvailable: Icon = "check"

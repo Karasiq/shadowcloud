@@ -24,6 +24,7 @@ class FileView(file: File, useId: Boolean)(implicit context: AppContext, folderC
     val tabs = Seq(
       NavigationTab(context.locale.preview, "preview", AppIcons.preview, FilePreview(folderContext.regionId, file)),
       NavigationTab(context.locale.metadata, "metadata", AppIcons.metadata, MetadataListView(folderContext.regionId, file)),
+      NavigationTab(context.locale.revisions, "revisions", AppIcons.revisions, FileRevisionsView(file.path)),
       NavigationTab(context.locale.availability, "availability", AppIcons.availability, FileAvailabilityView(file))
     )
 

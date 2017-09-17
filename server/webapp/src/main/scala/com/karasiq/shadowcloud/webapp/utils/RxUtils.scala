@@ -14,6 +14,10 @@ private[webapp] object RxUtils {
     createContextFolderRx(fc.regionId, Var(path), fc.scope).toRx
   }
 
+  def toFilesRx(path: Path)(implicit fc: FolderContext, ac: AppContext): Rx[Set[File]] = {
+    createContextFilesRx(fc.regionId, Var(path), fc.scope).toRx
+  }
+
   def getSelectedFolderRx(implicit fc: FolderContext, ac: AppContext): Rx[Folder] = {
     createContextFolderRx(fc.regionId, fc.selected, fc.scope).toRx
   }
@@ -41,5 +45,14 @@ private[webapp] object RxUtils {
     val folderRx = createFolderRx(regionId, pathRx, scopeRx)
     fc.updates.filter(_._1 == pathRx.now).triggerLater(folderRx.update()) // Subscribe to updates
     folderRx
+  }
+
+  private[this] def createContextFilesRx(regionId: RegionId, pathRx: Rx[Path], scopeRx: Rx[IndexScope])
+                                        (implicit fc: FolderContext, ac: AppContext): RxWithKey[(Path, IndexScope), Set[File]] = {
+    val filesRx = RxWithKey(Rx(pathRx(), scopeRx()), Set.empty[File]) { case (path, scope) ⇒
+      ac.api.getFiles(regionId, path, dropChunks = true, scope = scope)
+    }
+    fc.updates.filter(_._1 == pathRx.now.parent).triggerLater(filesRx.update())
+    filesRx
   }
 }

@@ -7,18 +7,18 @@ import org.scalajs.dom.DragEvent
 import rx.{Rx, Var}
 
 import com.karasiq.shadowcloud.index.files.FileVersions
-import com.karasiq.shadowcloud.model.{File, Folder}
+import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.utils.MemorySize
 import com.karasiq.shadowcloud.webapp.components.file.FileDownloadLink
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 
 object FolderFileList {
-  def apply(folder: Rx[Folder], flat: Boolean = true)(implicit context: AppContext, folderContext: FolderContext): FolderFileList = {
-    new FolderFileList(folder, flat)
+  def apply(files: Rx[Set[File]], flat: Boolean = true)(implicit context: AppContext, folderContext: FolderContext): FolderFileList = {
+    new FolderFileList(files, flat)
   }
 }
 
-class FolderFileList(folder: Rx[Folder], flat: Boolean)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
+class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
   val selectedFile = Var(None: Option[File])
 
   def renderTag(md: ModifierT*): TagT = {
@@ -40,13 +40,15 @@ class FolderFileList(folder: Rx[Folder], flat: Boolean)(implicit context: AppCon
     }
 
     val rows = Rx {
-      val fileSet = folder().files
-      val files = if (flat) {
-        FileVersions.toFlatDirectory(fileSet)
-      } else {
-        fileSet.toSeq
+      val sortedFiles = {
+        val allFiles = filesRx()
+        val files = if (flat) {
+          FileVersions.toFlatDirectory(allFiles)
+        } else {
+          allFiles.toVector
+        }
+        files.sortBy(_.path.name)
       }
-      val sortedFiles = files.sortBy(_.path.name)
 
       sortedFiles.map { file ⇒
         val dragAndDropHandlers = Seq[Modifier](

@@ -66,11 +66,7 @@ private[actors] final class GarbageCollectUtil(config: GCConfig) {
   }
 
   private[this] def orphanedChunks(chunkIndex: ChunkIndex, folderIndex: FolderIndex): Set[Chunk] = {
-    val fileChunks = (for {
-      (_, folder) ← folderIndex.folders
-      file ← folder.files
-      chunk ← file.chunks
-    } yield chunk).toSet
+    val fileChunks = folderIndex.filesIterator.flatMap(_.chunks).toSet
     chunkIndex.chunks.diff(fileChunks)
   }
 

@@ -32,11 +32,7 @@ private[shadowcloud] object MetadataUtils {
     val metadataFileIds = metadataFolders
       .flatMap(name ⇒ Try(UUID.fromString(name)).toOption)
 
-    val actualFileIds = index.folders
-      .flatMap(_._2.files)
-      .map(_.id)
-      .toSet
-
+    val actualFileIds = index.filesIterator.map(_.id).toSet
     metadataFileIds.diff(actualFileIds)
   }
 }

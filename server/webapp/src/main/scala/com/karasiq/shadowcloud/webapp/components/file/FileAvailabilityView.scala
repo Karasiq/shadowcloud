@@ -4,13 +4,13 @@ import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
 import rx._
+import rx.async._
 
 import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.model.utils.FileAvailability
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import AppContext.JsExecutionContext
-import com.karasiq.shadowcloud.webapp.utils.RxWithKey
 
 object FileAvailabilityView {
   def apply(file: File)(implicit context: AppContext, folderContext: FolderContext): FileAvailabilityView = {
@@ -18,12 +18,8 @@ object FileAvailabilityView {
   }
 
   private def getAvailabilityRx(file: File)(implicit context: AppContext, folderContext: FolderContext): Rx[FileAvailability] = {
-    val availabilityRx = RxWithKey(Rx((folderContext.regionId, file, folderContext.scope())), FileAvailability(file, Map.empty)) {
-      case (regionId, file, scope) ⇒
-        context.api.getFileAvailability(regionId, file, scope)
-    }
-
-    availabilityRx.toRx
+    val future = context.api.getFileAvailability(folderContext.regionId, file, folderContext.scope.now)
+    future.toRx(FileAvailability.empty(file))
   }
 }
 
@@ -68,6 +64,7 @@ class FileAvailabilityView(file: File)(implicit context: AppContext, folderConte
 
     val sortedPercentages = fileAvailability.percentagesByStorage.toSeq.sortBy(_._2)(Ordering[Double].reverse)
     div(
+      div(b(context.locale.total, ": ", f"${fileAvailability.totalPercentage}%.2f%%")),
       for ((storageId, percentage) ← sortedPercentages)
         yield div(icon(percentage), Bootstrap.nbsp, storageId, f" ($percentage%.2f%%)", textStyle(percentage))
     )(md:_*)

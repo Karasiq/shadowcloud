@@ -63,7 +63,7 @@ object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshall
 
   import scala.concurrent.duration._
   actorSystem.scheduler.scheduleOnce(30 seconds) {
-    sc.ops.region.collectGarbage("testRegion", delete = false)
+    sc.ops.region.collectGarbage("testRegion", delete = true)
   }
 
   // -----------------------------------------------------------------------

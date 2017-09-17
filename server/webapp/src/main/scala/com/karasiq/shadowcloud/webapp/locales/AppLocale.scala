@@ -16,6 +16,7 @@ trait AppLocale {
   def cancel: String
   def close: String
   def unknown: String
+  def total: String
   def entries(value: Long): String
 
   def file: String
@@ -80,6 +81,7 @@ object AppLocale {
     val cancel = "Cancel"
     val close = "Close"
     val unknown = "Unknown"
+    val total = "Total"
     def entries(value: Long): String = value + " entries"
 
     val file = "File"

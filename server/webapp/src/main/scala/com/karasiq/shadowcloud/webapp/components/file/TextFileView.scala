@@ -29,7 +29,7 @@ object TextFileView {
   )
 
   private[this] val RenderableFormats = Set(
-    "html", "xhtml", "md"
+    "html", "htm", "xhtml", "md"
   )
 
   def apply(file: File)(implicit context: AppContext, folderContext: FolderContext): TextFileView = {
@@ -130,7 +130,7 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
   }
 
   private[this] def renderHtml(extension: String, content: String): TagT = extension match {
-    case "html" | "xhtml" ⇒
+    case "htm" | "html" | "xhtml" ⇒
       div(HtmlUtils.extractContent(content))
 
     case "md" ⇒

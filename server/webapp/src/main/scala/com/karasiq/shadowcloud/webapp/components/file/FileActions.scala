@@ -6,36 +6,13 @@ import scalaTags.all._
 import rx.{Rx, Var}
 
 import com.karasiq.shadowcloud.model.File
-import com.karasiq.shadowcloud.utils.Utils
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
-import com.karasiq.shadowcloud.webapp.utils.RxUtils
-import com.karasiq.videojs.{VideoJSBuilder, VideoSource}
 
 object FileActions {
-  private[this] val AudioFormats = Set("mp3", "flac", "ogg", "wav", "aac")
-  private[this] val VideoFormats = Set("webm", "mp4", "ogv")
-
   def apply(file: File, useId: Boolean = false)(implicit context: AppContext, folderContext: FolderContext): FileActions = {
     new FileActions(file, useId)
-  }
-
-  private def isMediaFile(file: File): Boolean = {
-    testFileFormat(file, VideoFormats ++ AudioFormats)
-  }
-
-  private def isVideoFile(file: File): Boolean = {
-    testFileFormat(file, VideoFormats)
-  }
-
-  private def isAudioFile(file: File): Boolean = {
-    testFileFormat(file, AudioFormats)
-  }
-
-  private[this] def testFileFormat(file: File, formats: Set[String]): Boolean = {
-    val extension = Utils.getFileExtensionLowerCase(file.path.name)
-    formats.contains(extension)
   }
 }
 
@@ -46,7 +23,7 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
       renderDownloadLink(),
       renderDelete(),
       if (TextFileView.canBeViewed(file)) renderEditor() else (),
-      if (FileActions.isMediaFile(file)) renderPlayer() else ()
+      if (MediaFileView.canBeViewed(file)) renderPlayer() else ()
     )
   }
 
@@ -62,44 +39,15 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
         .withBody(TextFileView(file))
         .withButtons(Modal.closeButton(context.locale.close))
         .withDialogStyle(ModalDialogSize.large)
-        .show()
+        .show(backdrop = false)
     })
   }
 
   private[this] def renderPlayer(): TagT = {
-    val fileUrl = RxUtils.getDownloadLinkRx(file, useId)
-
-    def renderVideoPlayer() = {
-      div(Rx {
-        VideoJSBuilder()
-          .sources(VideoSource("", fileUrl()))
-          .autoplay(true)
-          .fluid(true)
-          .loop(true)
-          .build()
-      })
-    }
-
-    def renderAudioPlayer() = {
-      audio(
-        Rx(src := fileUrl()).auto,
-        attr("controls").empty,
-        attr("loop") := true,
-        attr("autoplay") := true
-      )
-    }
-
-    def renderPlayer(): Frag = {
-      if (FileActions.isAudioFile(file))
-        renderAudioPlayer()
-      else
-        renderVideoPlayer()
-    }
-
     val opened = Var(false)
     div(
       renderAction(context.locale.playFile, AppIcons.play, onclick := Callback.onClick(_ ⇒ opened() = !opened.now)),
-      Rx[Frag](if (opened()) renderPlayer() else ())
+      Rx[Frag](if (opened()) MediaFileView(file, useId) else ())
     )
   }
 

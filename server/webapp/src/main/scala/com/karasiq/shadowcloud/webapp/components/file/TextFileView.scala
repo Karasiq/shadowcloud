@@ -106,7 +106,7 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
 
     Form(
       FormInput.textArea(context.locale.edit, rows := 20, newContent.reactiveInput, tabOverride),
-      Form.submit(context.locale.submit)(onclick := Callback.onClick { _ ⇒
+      Form.submit(context.locale.submit)("disabled".classIf(uploading), ButtonStyle.success, onclick := Callback.onClick { _ ⇒
         if (!uploading.now) {
           uploading() = true
           val future = context.api.uploadFile(folderContext.regionId, fileRx.now.path, newContent.now)
@@ -117,7 +117,7 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
             folderContext.update(newFile.path.parent)
           }
         }
-      }, "disabled".classIf(uploading))
+      })
     )
   }
 

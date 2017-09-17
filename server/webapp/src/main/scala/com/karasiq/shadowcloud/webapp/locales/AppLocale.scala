@@ -22,6 +22,11 @@ trait AppLocale {
   def file: String
   def folder: String
 
+  def delete: String
+  def move: String
+  def copy: String
+  def rename: String
+
   def rootPath: String
   def emptyPath: String
   def createFolder: String
@@ -90,6 +95,11 @@ object AppLocale {
 
     val file = "File"
     val folder = "Folder"
+
+    val delete = "Delete"
+    val move = "Move"
+    val copy = "Copy"
+    val rename = "Rename"
 
     val rootPath = "(Root)"
     val emptyPath = "(Empty)"

@@ -16,7 +16,9 @@ object AppIcons {
   val refresh: Icon = "refresh"
   val create: Icon = "plus"
   val delete: Icon = "trash"
-  val play: Icon = "play-circle-o"
+  val rename: Icon = "pencil-square-o"
+
+  val play: Icon = "film"
   val download: Icon = "download"
   val viewText: Icon = "file-text-o"
   val editText: Icon = "edit"

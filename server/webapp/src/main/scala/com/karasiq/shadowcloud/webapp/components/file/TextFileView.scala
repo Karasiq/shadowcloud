@@ -19,7 +19,7 @@ import com.karasiq.shadowcloud.webapp.utils.HtmlUtils
 import com.karasiq.taboverridejs.TabOverride
 
 object TextFileView {
-  private[this] val TextFormats = Set("txt", "ini", "csv")
+  private[this] val TextFormats = Set("txt", "ini", "csv", "log")
 
   private[this] val CodeFormats = Set(
     "sh", "clojure", "coffee", "c", "h", "cpp", "hpp", "cs", "d", "pas", "erl",

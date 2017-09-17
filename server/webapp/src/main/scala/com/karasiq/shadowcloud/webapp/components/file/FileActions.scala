@@ -1,5 +1,7 @@
 package com.karasiq.shadowcloud.webapp.components.file
 
+import scala.concurrent.Future
+
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
@@ -17,10 +19,12 @@ object FileActions {
 }
 
 final class FileActions(file: File, useId: Boolean)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
-  def renderTag(md: ModifierT*): TagT = {
+  private[this] val deleted = Var(false)
 
+  def renderTag(md: ModifierT*): TagT = {
     div(
       renderDownloadLink(),
+      renderRename(),
       renderDelete(),
       if (TextFileView.canBeViewed(file)) renderEditor() else (),
       if (MediaFileView.canBeViewed(file)) renderPlayer() else ()
@@ -51,9 +55,44 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
     )
   }
 
-  private[this] def renderDelete(): TagT = {
-    val deleted = Var(false)
+  private[this] def renderRename(): TagT = {
+    def doRename(newName: String): Future[(Set[File], Set[File])] = {
+      def doCopy() = if (useId) {
+        context.api.copyFile(folderContext.regionId, file, file.path.withName(newName), folderContext.scope.now)
+      } else {
+        context.api.copyFiles(folderContext.regionId, file.path, file.path.withName(newName), folderContext.scope.now)
+      }
 
+      def doDelete() = if (useId) {
+        context.api.deleteFile(folderContext.regionId, file).map(Set(_))
+      } else {
+        context.api.deleteFiles(folderContext.regionId, file.path)
+      }
+
+      for (newFiles ← doCopy(); deletedFiles ← doDelete())
+        yield (newFiles, deletedFiles)
+    }
+
+    def onRename(newName: String): Unit = {
+      doRename(newName).foreach { case (newFiles, deletedFiles) ⇒
+        val parents = (newFiles ++ deletedFiles).map(_.path.parent)
+        parents.foreach(folderContext.update)
+        this.deleted() = true
+      }
+    }
+
+    renderAction(context.locale.rename, AppIcons.rename, onclick := Callback.onClick { _ ⇒
+      val newNameRx = Var(file.path.name)
+      Modal()
+        .withTitle(context.locale.rename)
+        .withButtons(Button(ButtonStyle.success)(context.locale.submit, Modal.dismiss,
+          onclick := Callback.onClick(_ ⇒ onRename(newNameRx.now))), Modal.closeButton(context.locale.cancel))
+        .withBody(Form(FormInput.text(context.locale.name, newNameRx.reactiveInput)))
+        .show()
+    })
+  }
+
+  private[this] def renderDelete(): TagT = {
     def deleteFile(): Unit = {
       val result = if (useId) {
         context.api.deleteFile(folderContext.regionId, file).map(Set(_))

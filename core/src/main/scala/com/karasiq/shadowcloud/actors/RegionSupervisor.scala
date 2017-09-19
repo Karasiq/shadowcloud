@@ -21,25 +21,25 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 object RegionSupervisor {
   // Messages
   sealed trait Message
-  case class AddRegion(regionId: RegionId, regionConfig: RegionConfig) extends Message
-  case class DeleteRegion(regionId: RegionId) extends Message
-  case class AddStorage(storageId: StorageId, props: StorageProps) extends Message
-  case class DeleteStorage(storageId: StorageId) extends Message
-  case class RegisterStorage(regionId: RegionId, storageId: StorageId) extends Message
-  case class UnregisterStorage(regionId: RegionId, storageId: StorageId) extends Message
-  case class SuspendStorage(storageId: StorageId) extends Message
-  case class SuspendRegion(regionId: RegionId) extends Message
-  case class ResumeStorage(storageId: StorageId) extends Message
-  case class ResumeRegion(regionId: RegionId) extends Message
-  case object GetSnapshot extends Message with MessageStatus[NotUsed, RegionTracker.Snapshot]
+  final case class CreateRegion(regionId: RegionId, regionConfig: RegionConfig) extends Message
+  final case class DeleteRegion(regionId: RegionId) extends Message
+  final case class CreateStorage(storageId: StorageId, props: StorageProps) extends Message
+  final case class DeleteStorage(storageId: StorageId) extends Message
+  final case class RegisterStorage(regionId: RegionId, storageId: StorageId) extends Message
+  final case class UnregisterStorage(regionId: RegionId, storageId: StorageId) extends Message
+  final case class SuspendStorage(storageId: StorageId) extends Message
+  final case class SuspendRegion(regionId: RegionId) extends Message
+  final case class ResumeStorage(storageId: StorageId) extends Message
+  final case class ResumeRegion(regionId: RegionId) extends Message
+  final case object GetSnapshot extends Message with MessageStatus[NotUsed, RegionTracker.Snapshot]
 
-  private[actors] case class RenewRegionSubscriptions(regionId: RegionId) extends Message
-  private[actors] case class RenewStorageSubscriptions(storageId: StorageId) extends Message
+  private[actors] final case class RenewRegionSubscriptions(regionId: RegionId) extends Message
+  private[actors] final case class RenewStorageSubscriptions(storageId: StorageId) extends Message
 
   // Snapshot
-  private[actors] case class RegionSnapshot(config: RegionConfig, storages: Set[String], active: Boolean)
-  private[actors] case class StorageSnapshot(props: StorageProps, active: Boolean)
-  private[actors] case class Snapshot(regions: Map[String, RegionSnapshot], storages: Map[String, StorageSnapshot])
+  private[actors] final case class RegionSnapshot(config: RegionConfig, storages: Set[String], active: Boolean)
+  private[actors] final case class StorageSnapshot(props: StorageProps, active: Boolean)
+  private[actors] final case class Snapshot(regions: Map[String, RegionSnapshot], storages: Map[String, StorageSnapshot])
 
   // Props
   def props: Props = {
@@ -116,7 +116,7 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
     // -----------------------------------------------------------------------
     // Regions
     // -----------------------------------------------------------------------
-    case AddRegion(regionId, regionConfig) ⇒
+    case CreateRegion(regionId, regionConfig) ⇒
       persist(RegionAdded(regionId, regionConfig, active = true))(updateState)
 
     case DeleteRegion(regionId) if state.containsRegion(regionId) ⇒
@@ -125,7 +125,7 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
     // -----------------------------------------------------------------------
     // Storages
     // -----------------------------------------------------------------------
-    case AddStorage(storageId, props) ⇒
+    case CreateStorage(storageId, props) ⇒
       persist(StorageAdded(storageId, props, active = true))(updateState)
 
     case DeleteStorage(storageId) if state.containsStorage(storageId) ⇒

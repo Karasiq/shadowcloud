@@ -35,12 +35,12 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
     apiClient.getStorage(storageId).call()
   }
 
-  def addRegion(regionId: RegionId, regionConfig: SerializedProps) = {
-    apiClient.addRegion(regionId, regionConfig).call()
+  def createRegion(regionId: RegionId, regionConfig: SerializedProps) = {
+    apiClient.createRegion(regionId, regionConfig).call()
   }
 
-  def addStorage(storageId: StorageId, storageProps: SerializedProps) = {
-    apiClient.addStorage(storageId, storageProps).call()
+  def createStorage(storageId: StorageId, storageProps: SerializedProps) = {
+    apiClient.createStorage(storageId, storageProps).call()
   }
 
   def suspendRegion(regionId: RegionId) = {

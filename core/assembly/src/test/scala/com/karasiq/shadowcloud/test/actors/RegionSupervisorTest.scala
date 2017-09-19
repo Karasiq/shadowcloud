@@ -20,7 +20,7 @@ class RegionSupervisorTest extends SCExtensionSpec with FlatSpecLike with Matche
   val supervisor = system.actorOf(props, "supervisor")
 
   "Region supervisor" should "add region" in {
-    supervisor ! AddRegion(testRegion, CoreTestUtils.regionConfig("testRegion"))
+    supervisor ! CreateRegion(testRegion, CoreTestUtils.regionConfig("testRegion"))
     val (regions, storages) = requestState()
     regions.keySet shouldBe Set(testRegion)
     val region = regions(testRegion)
@@ -30,7 +30,7 @@ class RegionSupervisorTest extends SCExtensionSpec with FlatSpecLike with Matche
   }
 
   it should "add storage" in {
-    supervisor ! AddStorage(testStorage, StorageProps.inMemory)
+    supervisor ! CreateStorage(testStorage, StorageProps.inMemory)
     val (regions, storages) = requestState()
     regions.keySet shouldBe Set(testRegion)
     storages.keySet shouldBe Set(testStorage)
@@ -69,7 +69,7 @@ class RegionSupervisorTest extends SCExtensionSpec with FlatSpecLike with Matche
   }
 
   it should "suspend storage" in {
-    supervisor ! AddStorage(testStorage, StorageProps.inMemory)
+    supervisor ! CreateStorage(testStorage, StorageProps.inMemory)
     supervisor ! RegisterStorage(testRegion, testStorage)
     supervisor ! SuspendStorage(testStorage)
     val (regions, storages) = requestState()

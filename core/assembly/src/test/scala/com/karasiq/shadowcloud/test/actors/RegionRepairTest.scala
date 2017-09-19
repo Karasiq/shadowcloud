@@ -51,9 +51,9 @@ class RegionRepairTest extends SCExtensionSpec with FlatSpecLike {
   }
 
   private[this] def registerRegionAndStorages(): Unit = {
-    sc.ops.supervisor.addRegion(testRegionId, sc.configs.regionConfig(testRegionId))
-    sc.ops.supervisor.addStorage(testStorage1, StorageProps.inMemory.copy(quota = Quota(ConfigProps.toConfig(ConfigProps("use-space-percent" → 33)))))
-    sc.ops.supervisor.addStorage(testStorage2, StorageProps.inMemory)
+    sc.ops.supervisor.createRegion(testRegionId, sc.configs.regionConfig(testRegionId))
+    sc.ops.supervisor.createStorage(testStorage1, StorageProps.inMemory.copy(quota = Quota(ConfigProps.toConfig(ConfigProps("use-space-percent" → 33)))))
+    sc.ops.supervisor.createStorage(testStorage2, StorageProps.inMemory)
     sc.ops.supervisor.register(testRegionId, testStorage1)
     sc.ops.supervisor.register(testRegionId, testStorage2)
     expectNoMsg(100 millis)

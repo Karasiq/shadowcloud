@@ -36,8 +36,8 @@ class RangedChunkStreamTest extends SCExtensionSpec with FlatSpecLike {
   private[this] def writeTestFile(): Unit = {
     // Write file
     val testStorage = "testStorage"
-    sc.ops.supervisor.addRegion(testRegion, sc.configs.regionConfig(testRegion))
-    sc.ops.supervisor.addStorage(testStorage, StorageProps.inMemory)
+    sc.ops.supervisor.createRegion(testRegion, sc.configs.regionConfig(testRegion))
+    sc.ops.supervisor.createStorage(testStorage, StorageProps.inMemory)
     sc.ops.supervisor.register(testRegion, testStorage)
     Thread.sleep(500)
 

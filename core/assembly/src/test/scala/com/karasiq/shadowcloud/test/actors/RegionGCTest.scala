@@ -63,8 +63,8 @@ class RegionGCTest extends SCExtensionSpec with FlatSpecLike {
   }
 
   private[this] def registerRegionAndStorages(): Unit = {
-    sc.ops.supervisor.addRegion(testRegionId, sc.configs.regionConfig(testRegionId))
-    sc.ops.supervisor.addStorage(testStorageId, StorageProps.inMemory) // fromDirectory(Files.createTempDirectory("region-gc-test"))
+    sc.ops.supervisor.createRegion(testRegionId, sc.configs.regionConfig(testRegionId))
+    sc.ops.supervisor.createStorage(testStorageId, StorageProps.inMemory) // fromDirectory(Files.createTempDirectory("region-gc-test"))
     sc.ops.supervisor.register(testRegionId, testStorageId)
     expectNoMsg(1 second)
   }

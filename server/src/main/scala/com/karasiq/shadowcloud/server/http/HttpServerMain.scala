@@ -55,9 +55,9 @@ object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshall
     .getOrElse(Files.createTempDirectory("scl-temp-storage"))
 
   Files.createDirectories(tempDirectory.resolve("second"))
-  supervisor.addRegion("testRegion", sc.configs.regionConfig("testRegion"))
-  supervisor.addStorage("testStorage", StorageProps.fromDirectory(tempDirectory))
-  supervisor.addStorage("testStorage2", StorageProps.fromDirectory(tempDirectory.resolve("second")))
+  supervisor.createRegion("testRegion", sc.configs.regionConfig("testRegion"))
+  supervisor.createStorage("testStorage", StorageProps.fromDirectory(tempDirectory))
+  supervisor.createStorage("testStorage2", StorageProps.fromDirectory(tempDirectory.resolve("second")))
   supervisor.register("testRegion", "testStorage")
   supervisor.register("testRegion", "testStorage2")
 

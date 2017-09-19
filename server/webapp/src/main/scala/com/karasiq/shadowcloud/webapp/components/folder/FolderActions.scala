@@ -6,7 +6,7 @@ import scalaTags.all._
 import rx.Var
 
 import com.karasiq.shadowcloud.model.{Path, RegionId}
-import com.karasiq.shadowcloud.webapp.components.common.AppIcons
+import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
 import com.karasiq.shadowcloud.webapp.components.folder.FolderTree.FolderController
 import com.karasiq.shadowcloud.webapp.context.AppContext
 import AppContext.JsExecutionContext
@@ -34,7 +34,7 @@ private[folder] class FolderActions(regionId: RegionId, path: Path)
           Modal.button(context.locale.submit, Modal.dismiss, isFolderNameValid.reactiveShow, onclick := Callback.onClick { _ ⇒
             context.api.createFolder(regionId, path / folderNameRx.now).foreach(fc.addFolder)
           }),
-          Modal.closeButton(context.locale.close)
+          AppComponents.modalClose()
         )
         .show()
     }
@@ -44,10 +44,10 @@ private[folder] class FolderActions(regionId: RegionId, path: Path)
         .withTitle(context.locale.deleteFolder)
         .withBody(context.locale.deleteFolderConfirmation(path))
         .withButtons(
-          Modal.button(context.locale.submit, Modal.dismiss, onclick := Callback.onClick { _ ⇒
+          AppComponents.modalSubmit(onclick := Callback.onClick { _ ⇒
             context.api.deleteFolder(regionId, path).foreach(fc.deleteFolder)
           }),
-          Modal.closeButton(context.locale.close)
+          AppComponents.modalClose()
         )
         .show()
     }

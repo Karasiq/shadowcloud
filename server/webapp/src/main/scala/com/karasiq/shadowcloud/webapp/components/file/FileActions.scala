@@ -42,7 +42,7 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
       Modal()
         .withTitle(context.locale.viewTextFile)
         .withBody(TextFileView(file))
-        .withButtons(Modal.closeButton(context.locale.close))
+        .withButtons(AppComponents.modalClose())
         .withDialogStyle(ModalDialogSize.large)
         .show(backdrop = false)
     })
@@ -85,8 +85,10 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
       val newNameRx = Var(file.path.name)
       Modal()
         .withTitle(context.locale.rename)
-        .withButtons(Button(ButtonStyle.success)(context.locale.submit, Modal.dismiss,
-          onclick := Callback.onClick(_ ⇒ onRename(newNameRx.now))), Modal.closeButton(context.locale.cancel))
+        .withButtons(
+          AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ onRename(newNameRx.now))),
+          AppComponents.modalClose()
+        )
         .withBody(Form(FormInput.text(context.locale.name, newNameRx.reactiveInput)))
         .show()
     })

@@ -9,6 +9,7 @@ import scalaTags.all._
 import org.scalajs.dom
 import rx.{Rx, Var}
 
+import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.taboverridejs.TabOverride
 
 object AppComponents {
@@ -30,6 +31,14 @@ object AppComponents {
       dropdownLink(title, opened),
       Rx[Frag](if (opened()) div(content) else ())
     )
+  }
+
+  def modalClose(md: Modifier*)(implicit context: AppContext): Tag = {
+    Modal.closeButton(context.locale.close)(md:_*)
+  }
+
+  def modalSubmit(md: Modifier*)(implicit context: AppContext): Tag = {
+    Button(ButtonStyle.success)(context.locale.submit, Modal.dismiss, md)
   }
 
   def tabOverride: Modifier = { elem ⇒

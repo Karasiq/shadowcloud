@@ -44,7 +44,7 @@ object Shell extends ImplicitConversions {
   }
 
   def createRegion(regionId: RegionId): RegionContext = {
-    regionSupervisor ! RegionSupervisor.AddRegion(regionId, RegionConfig.forId(regionId, actorSystem.settings.config.getConfig("shadowcloud")))
+    regionSupervisor ! RegionSupervisor.CreateRegion(regionId, RegionConfig.forId(regionId, actorSystem.settings.config.getConfig("shadowcloud")))
     openRegion(regionId)
   }
 
@@ -53,7 +53,7 @@ object Shell extends ImplicitConversions {
   }
 
   def createStorage(storageId: StorageId, props: StorageProps): StorageContext = {
-    regionSupervisor ! RegionSupervisor.AddStorage(storageId, props)
+    regionSupervisor ! RegionSupervisor.CreateStorage(storageId, props)
     openStorage(storageId)
   }
 

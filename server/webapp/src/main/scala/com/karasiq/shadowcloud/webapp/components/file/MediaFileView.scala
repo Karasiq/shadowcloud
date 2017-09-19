@@ -7,6 +7,7 @@ import rx.Rx
 
 import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.webapp.components.common.AppComponents
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.utils.RxUtils
 import com.karasiq.videojs.{VideoJSBuilder, VideoSource}
@@ -52,7 +53,7 @@ class MediaFileView(file: File, useId: Boolean)(implicit context: AppContext, fo
         Modal()
           .withTitle(context.locale.image)
           .withBody(baseImage)
-          .withButtons(Modal.closeButton(context.locale.close))
+          .withButtons(AppComponents.modalClose())
           .withDialogStyle(ModalDialogSize.large)
           .show()
       }))

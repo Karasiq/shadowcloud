@@ -4,6 +4,7 @@ import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
 import com.karasiq.shadowcloud.metadata.Metadata
+import com.karasiq.shadowcloud.webapp.components.common.AppComponents
 import com.karasiq.shadowcloud.webapp.context.AppContext
 
 object MetadataTable {
@@ -57,7 +58,7 @@ object MetadataTable {
       Modal()
         .withTitle(context.locale.metadata)
         .withBody(MetadataView(metadata))
-        .withButtons(Modal.closeButton(context.locale.close))
+        .withButtons(AppComponents.modalClose())
         .show()
     }
   }

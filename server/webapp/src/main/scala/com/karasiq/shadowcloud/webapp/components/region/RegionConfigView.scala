@@ -121,7 +121,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
         FormInput.textArea((), rows := 20, newConfigRx.reactiveInput, AppComponents.tabOverride),
         Form.submit(context.locale.submit)(changed.reactiveShow, onclick := Callback.onClick { _ ⇒
           val newConfig = SerializedProps(regionStatus.regionConfig.format, ByteString(newConfigRx.now))
-          context.api.addRegion(regionId, newConfig)
+          context.api.createRegion(regionId, newConfig)
             .foreach(_ ⇒ regionContext.updateRegion(regionId))
         })
       )
@@ -150,8 +150,8 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
           .withTitle(context.locale.registerStorage)
           .withBody(Form(idSelect))
           .withButtons(
-            Button(ButtonStyle.success)(context.locale.submit, Modal.dismiss, onclick := Callback.onClick(_ ⇒ updateStorageList(idSelect.selected.now.toSet))),
-            Modal.closeButton(context.locale.close)
+            AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ updateStorageList(idSelect.selected.now.toSet))),
+            AppComponents.modalClose()
           )
           .show()
       }

@@ -19,12 +19,12 @@ object RegionSupervisorOps {
 }
 
 final class RegionSupervisorOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(implicit ec: ExecutionContext) {
-  def addStorage(storageId: StorageId, storageProps: StorageProps): Unit = {
-    regionSupervisor ! AddStorage(storageId, storageProps)
+  def createStorage(storageId: StorageId, storageProps: StorageProps): Unit = {
+    regionSupervisor ! CreateStorage(storageId, storageProps)
   }
 
-  def addRegion(regionId: RegionId, regionConfig: RegionConfig): Unit = {
-    regionSupervisor ! AddRegion(regionId, regionConfig)
+  def createRegion(regionId: RegionId, regionConfig: RegionConfig): Unit = {
+    regionSupervisor ! CreateRegion(regionId, regionConfig)
   }
 
   def register(regionId: RegionId, storageId: StorageId): Unit = {

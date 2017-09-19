@@ -79,8 +79,8 @@ class SCHttpServerTest extends FlatSpec with Matchers with ScalatestRouteTest {
   }
 
   private[this] def registerRegionAndStorages(): Unit = {
-    sc.ops.supervisor.addRegion(testRegionId, sc.configs.regionConfig(testRegionId))
-    sc.ops.supervisor.addStorage(testStorageId, StorageProps.inMemory)
+    sc.ops.supervisor.createRegion(testRegionId, sc.configs.regionConfig(testRegionId))
+    sc.ops.supervisor.createStorage(testStorageId, StorageProps.inMemory)
     sc.ops.supervisor.register(testRegionId, testStorageId)
   }
 }

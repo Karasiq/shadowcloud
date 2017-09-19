@@ -111,8 +111,8 @@ class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike {
   }
 
   private[this] def registerRegionAndStorages(): Unit = {
-    sc.ops.supervisor.addRegion(testRegionId, sc.configs.regionConfig(testRegionId))
-    sc.ops.supervisor.addStorage(testStorageId, StorageProps.inMemory)
+    sc.ops.supervisor.createRegion(testRegionId, sc.configs.regionConfig(testRegionId))
+    sc.ops.supervisor.createStorage(testStorageId, StorageProps.inMemory)
     sc.ops.supervisor.register(testRegionId, testStorageId)
   }
 

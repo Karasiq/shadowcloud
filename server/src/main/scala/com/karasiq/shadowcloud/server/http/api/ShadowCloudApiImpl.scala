@@ -53,16 +53,16 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
     getRegions().map(_.storages(storageId))
   }
 
-  def addRegion(regionId: RegionId, regionConfig: SerializedProps) = {
+  def createRegion(regionId: RegionId, regionConfig: SerializedProps) = {
     val defaultConfig = sc.configs.regionConfig(regionId)
     val resolvedConfig = RegionConfig(ConfigProps.toConfig(regionConfig).withFallback(defaultConfig.rootConfig))
-    sc.ops.supervisor.addRegion(regionId, resolvedConfig)
+    sc.ops.supervisor.createRegion(regionId, resolvedConfig)
     getRegion(regionId)
   }
 
-  def addStorage(storageId: StorageId, storageProps: SerializedProps) = {
+  def createStorage(storageId: StorageId, storageProps: SerializedProps) = {
     val resolvedProps = StorageProps(ConfigProps.toConfig(storageProps))
-    sc.ops.supervisor.addStorage(storageId, resolvedProps)
+    sc.ops.supervisor.createStorage(storageId, resolvedProps)
     getStorage(storageId)
   }
 

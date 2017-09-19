@@ -2,27 +2,28 @@ package com.karasiq.shadowcloud.serialization.kryo
 
 import scala.language.postfixOps
 
+import akka.util.ByteString
 import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.{Input, Output}
 import com.twitter.chill
 import com.typesafe.config._
 
+import com.karasiq.shadowcloud.config.{ConfigProps, SerializedProps}
 import com.karasiq.shadowcloud.utils.Utils
 
 private[kryo] final class ConfigSerializer(json: Boolean) extends chill.KSerializer[Config](false, true) {
-  private[this] val options = if (json) ConfigRenderOptions.concise() else ConfigRenderOptions.defaults()
-
-  def write(kryo: Kryo, output: Output, cfg: Config): Unit = {
-    val obj = cfg.root()
-    val nonEmpty = !obj.isEmpty
-    output.writeBoolean(nonEmpty)
-    if (nonEmpty) output.writeString(obj.render(options))
+  def write(kryo: Kryo, output: Output, config: Config): Unit = {
+    val serialized = ConfigProps.fromConfig(config, json)
+    output.writeBoolean(serialized.nonEmpty)
+    if (serialized.nonEmpty) output.writeString(serialized.data.utf8String)
   }
 
   def read(kryo: Kryo, input: Input, `type`: Class[Config]): Config = {
-    if (input.readBoolean()) {
+    val isNotEmpty = input.readBoolean()
+    if (isNotEmpty) {
       val configString = input.readString()
-      ConfigFactory.parseString(configString)
+      val serialized = SerializedProps(if (json) "json" else "hocon", ByteString(configString))
+      ConfigProps.toConfig(serialized)
     } else {
       Utils.emptyConfig
     }

@@ -37,7 +37,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
         renderCompactButton(),
         renderGCButton(),
         hr,
-        renderSuspendButton(regionStatus),
+        renderStateButtons(regionStatus),
         renderConfigField(regionStatus),
         hr,
         renderStoragesRegistration(regionStatus)
@@ -94,7 +94,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
     )
   }
 
-  private[this] def renderSuspendButton(regionStatus: RegionStatus) = {
+  private[this] def renderStateButtons(regionStatus: RegionStatus) = {
     def doSuspend() = {
       context.api.suspendRegion(regionId)
         .foreach(_ ⇒ regionContext.updateRegion(regionId))
@@ -105,10 +105,20 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
         .foreach(_ ⇒ regionContext.updateRegion(regionId))
     }
 
-    if (regionStatus.suspended)
+    def doDelete() = {
+      context.api.deleteRegion(regionId)
+        .foreach(_ ⇒ regionContext.updateAll())
+    }
+
+    val suspendButton = if (regionStatus.suspended)
       Button(ButtonStyle.success, ButtonSize.extraSmall)(AppIcons.resume, Bootstrap.nbsp, context.locale.resume, onclick := Callback.onClick(_ ⇒ doResume()))
     else
-      Button(ButtonStyle.danger, ButtonSize.extraSmall)(AppIcons.suspend, Bootstrap.nbsp, context.locale.suspend, onclick := Callback.onClick(_ ⇒ doSuspend()))
+      Button(ButtonStyle.warning, ButtonSize.extraSmall)(AppIcons.suspend, Bootstrap.nbsp, context.locale.suspend, onclick := Callback.onClick(_ ⇒ doSuspend()))
+
+    val deleteButton = Button(ButtonStyle.danger, ButtonSize.extraSmall)(AppIcons.delete, Bootstrap.nbsp,
+      context.locale.delete, onclick := Callback.onClick(_ ⇒ doDelete()))
+
+    ButtonGroup(ButtonGroupSize.extraSmall, suspendButton, deleteButton)
   }
 
   private[this] def renderConfigField(regionStatus: RegionStatus) = {

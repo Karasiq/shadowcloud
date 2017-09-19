@@ -20,11 +20,10 @@ object RegionsView {
 class RegionsView()(implicit context: AppContext, rc: RegionContext) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
     val regionViewsRx = rc.regions.fold(Map.empty[RegionId, Tag]) { case (views, report) ⇒
-      val filteredMap = views.filterKeys(report.regions.contains)
-      val newKeys = report.regions.filterKeys(regionId ⇒ !views.contains(regionId)).map { case (regionId, _) ⇒
-        regionId → renderRegion(regionId)
+      val newMap = report.regions.map { case (regionId, _) ⇒
+        regionId → views.getOrElse(regionId, renderRegion(regionId))
       }
-      filteredMap ++ newKeys
+      newMap
     }
 
     div(

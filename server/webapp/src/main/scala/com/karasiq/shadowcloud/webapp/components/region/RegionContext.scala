@@ -10,8 +10,8 @@ import AppContext.JsExecutionContext
 
 trait RegionContext {
   def regions: Rx[RegionStateReport]
-  def region(id: RegionId): Rx[RegionStatus]
-  def storage(id: StorageId): Rx[StorageStatus]
+  def region(regionId: RegionId): Rx[RegionStatus]
+  def storage(storageId: StorageId): Rx[StorageStatus]
 
   def updateAll(): Unit
   def updateRegion(id: RegionId): Unit
@@ -24,8 +24,14 @@ object RegionContext {
       private[this] val _stateReport = Var(RegionStateReport.empty)
 
       def regions: Rx[RegionStateReport] = _stateReport
-      def region(id: RegionId): Rx[RegionStatus] = regions.map(_.regions(id))
-      def storage(id: StorageId): Rx[StorageStatus] = regions.map(_.storages(id))
+
+      def region(regionId: RegionId): Rx[RegionStatus] = {
+        regions.map(_.regions.getOrElse(regionId, RegionStatus(regionId)))
+      }
+
+      def storage(storageId: StorageId): Rx[StorageStatus] = {
+        regions.map(_.storages.getOrElse(storageId, StorageStatus(storageId)))
+      }
 
       def updateAll(): Unit = {
         ac.api.getRegions().foreach(_stateReport.update)

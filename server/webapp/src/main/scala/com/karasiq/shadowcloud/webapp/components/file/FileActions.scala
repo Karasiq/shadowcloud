@@ -5,6 +5,7 @@ import scala.concurrent.Future
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
+import akka.Done
 import rx.{Rx, Var}
 
 import com.karasiq.shadowcloud.model.File
@@ -56,7 +57,7 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
   }
 
   private[this] def renderRename(): TagT = {
-    def doRename(newName: String): Future[(Set[File], Set[File])] = {
+    def doRename(newName: String): Future[Set[File]] = {
       def doCopy() = if (useId) {
         context.api.copyFile(folderContext.regionId, file, file.path.withName(newName), folderContext.scope.now)
       } else {
@@ -69,14 +70,13 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
         context.api.deleteFiles(folderContext.regionId, file.path)
       }
 
-      for (newFiles ← doCopy(); deletedFiles ← doDelete())
-        yield (newFiles, deletedFiles)
+      for (Done ← doCopy(); deletedFiles ← doDelete())
+        yield deletedFiles
     }
 
     def onRename(newName: String): Unit = {
-      doRename(newName).foreach { case (newFiles, deletedFiles) ⇒
-        val parents = (newFiles ++ deletedFiles).map(_.path.parent)
-        parents.foreach(folderContext.update)
+      doRename(newName).foreach { _ ⇒
+        folderContext.update(file.path.parent)
         this.deleted() = true
       }
     }

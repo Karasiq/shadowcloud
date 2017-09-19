@@ -8,6 +8,7 @@ trait AppLocale {
   def name: String
   def path: String
   def value: String
+  def config: String
   def size: String
   def empty: String
   def show: String
@@ -53,12 +54,25 @@ trait AppLocale {
   def availability: String
   def revisions: String
 
+  def foldersView: String
+  def regionsView: String
+
   def storage: String
+  def storages: String
   def region: String
+  def regions: String
   def indexScope: String
   def currentScope: String
   def historyScope: String
   def indexSnapshotDate: String
+
+  def collectGarbage: String
+  def compactIndex: String
+
+  def registerStorage: String
+  def unregisterStorage: String
+  def suspend: String
+  def resume: String
 
   def metadataParser: String
   def metadataDisposition: String
@@ -82,6 +96,7 @@ object AppLocale {
     val name = "Name"
     val path = "Path"
     val value = "Value"
+    val config = "Config"
     val size = "Size"
     val empty = "Empty"
     val show = "Show"
@@ -127,12 +142,25 @@ object AppLocale {
     val availability = "Availability"
     val revisions = "Revisions"
 
+    val foldersView = "Folders"
+    val regionsView = "Regions"
+
     val storage = "Storage"
+    val storages = "Storages"
     val region = "Region"
+    val regions = "Regions"
     val indexScope = "Index scope"
     val currentScope = "Current"
     val historyScope = "History"
     val indexSnapshotDate = "Snapshot date"
+
+    val collectGarbage = "Collect garbage"
+    val compactIndex = "Compact index"
+
+    val registerStorage = "Register storage"
+    val unregisterStorage = "Unregister storage"
+    val suspend = "Suspend"
+    val resume = "Resume"
 
     val metadataParser = "Parser"
     val metadataDisposition = "Disposition"

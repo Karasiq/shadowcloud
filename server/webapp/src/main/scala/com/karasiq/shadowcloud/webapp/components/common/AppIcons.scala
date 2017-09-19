@@ -7,6 +7,10 @@ object AppIcons {
   type Icon = FontAwesomeIcon
 
   val close: Icon = "close"
+
+  val foldersView: Icon = "folder"
+  val regionsView: Icon = "server"
+
   val preview: Icon = "file-image-o"
   val metadata: Icon = "file-code-o"
 
@@ -17,6 +21,7 @@ object AppIcons {
   val create: Icon = "plus"
   val delete: Icon = "trash"
   val rename: Icon = "pencil-square-o"
+  val compress: Icon = "compress"
 
   val play: Icon = "film"
   val download: Icon = "download"
@@ -30,6 +35,10 @@ object AppIcons {
 
   val currentScope: Icon = "check"
   val historyScope: Icon = "clock-o"
+
+  val register: Icon = "plug"
+  val suspend: Icon = "pause"
+  val resume: Icon = "play"
 
   private[this] implicit def castStringToIcon(iconName: String): Icon = iconName.faFwIcon
 }

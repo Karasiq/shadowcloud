@@ -61,10 +61,10 @@ object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshall
   supervisor.register("testRegion", "testStorage")
   supervisor.register("testRegion", "testStorage2")
 
-  import scala.concurrent.duration._
+  /* import scala.concurrent.duration._
   actorSystem.scheduler.scheduleOnce(30 seconds) {
     sc.ops.region.collectGarbage("testRegion", delete = true)
-  }
+  } */
 
   // -----------------------------------------------------------------------
   // Start server

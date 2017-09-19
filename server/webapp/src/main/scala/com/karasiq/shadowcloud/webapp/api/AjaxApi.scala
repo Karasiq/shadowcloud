@@ -6,6 +6,7 @@ import autowire._
 
 import com.karasiq.shadowcloud.api.{SCApiMeta, ShadowCloudApi}
 import com.karasiq.shadowcloud.api.js.SCAjaxApiClient
+import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.metadata.Metadata.Tag
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.utils.IndexScope
@@ -21,6 +22,78 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
 
   private[this] val apiClient = clientFactory[ShadowCloudApi]
   private[this] implicit val ec: ExecutionContext = scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+
+  def getRegions() = {
+    apiClient.getRegions().call()
+  }
+
+  def getRegion(regionId: RegionId) = {
+    apiClient.getRegion(regionId).call()
+  }
+  
+  def getStorage(storageId: StorageId) = {
+    apiClient.getStorage(storageId).call()
+  }
+
+  def addRegion(regionId: RegionId, regionConfig: SerializedProps) = {
+    apiClient.addRegion(regionId, regionConfig).call()
+  }
+
+  def addStorage(storageId: StorageId, storageProps: SerializedProps) = {
+    apiClient.addStorage(storageId, storageProps).call()
+  }
+
+  def suspendRegion(regionId: RegionId) = {
+    apiClient.suspendRegion(regionId).call()
+  }
+
+  def suspendStorage(storageId: StorageId) = {
+    apiClient.suspendStorage(storageId).call()
+  }
+
+  def resumeRegion(regionId: RegionId) = {
+    apiClient.resumeRegion(regionId).call()
+  }
+
+  def resumeStorage(storageId: StorageId) = {
+    apiClient.resumeStorage(storageId).call()
+  }
+
+  def registerStorage(regionId: RegionId, storageId: StorageId) = {
+    apiClient.registerStorage(regionId, storageId).call()
+  }
+
+  def unregisterStorage(regionId: RegionId, storageId: StorageId) = {
+    apiClient.unregisterStorage(regionId, storageId).call()
+  }
+
+  def deleteRegion(regionId: RegionId) = {
+    apiClient.deleteRegion(regionId).call()
+  }
+
+  def deleteStorage(storageId: StorageId) = {
+    apiClient.deleteStorage(storageId).call()
+  }
+
+  def synchronizeStorage(storageId: StorageId, regionId: RegionId) = {
+    apiClient.synchronizeStorage(storageId, regionId).call()
+  }
+
+  def synchronizeRegion(regionId: RegionId) = {
+    apiClient.synchronizeRegion(regionId).call()
+  }
+
+  def collectGarbage(regionId: RegionId, delete: Boolean) = {
+    apiClient.collectGarbage(regionId, delete).call()
+  }
+
+  def compactIndex(storageId: StorageId, regionId: RegionId) = {
+    apiClient.compactIndex(storageId, regionId).call()
+  }
+
+  def compactIndexes(regionId: RegionId) = {
+    apiClient.compactIndexes(regionId).call()
+  }
 
   def getFolder(regionId: RegionId, path: Path, dropChunks: Boolean = true, scope: IndexScope = IndexScope.default) = {
     apiClient.getFolder(regionId, path, dropChunks, scope).call()

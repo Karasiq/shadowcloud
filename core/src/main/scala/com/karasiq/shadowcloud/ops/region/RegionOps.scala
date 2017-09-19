@@ -11,14 +11,12 @@ import com.karasiq.shadowcloud.actors.{RegionDispatcher, RegionGC}
 import com.karasiq.shadowcloud.actors.RegionDispatcher._
 import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
-import com.karasiq.shadowcloud.actors.RegionGC.GCReport
-import com.karasiq.shadowcloud.actors.RegionIndex.SyncReport
 import com.karasiq.shadowcloud.config.TimeoutsConfig
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.model._
-import com.karasiq.shadowcloud.model.utils.{FileAvailability, IndexScope}
+import com.karasiq.shadowcloud.model.utils.{FileAvailability, GCReport, IndexScope, SyncReport}
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
@@ -85,6 +83,10 @@ final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(impl
 
   def synchronize(regionId: RegionId): Future[Map[StorageId, SyncReport]] = {
     askRegion(regionId, RegionDispatcher.Synchronize, RegionDispatcher.Synchronize)
+  }
+
+  def compactIndex(regionId: RegionId): Unit = {
+    regionSupervisor ! RegionEnvelope(regionId, RegionDispatcher.CompactIndex)
   }
 
   def getChunkStatus(regionId: RegionId, chunk: Chunk): Future[ChunkStatus] = {

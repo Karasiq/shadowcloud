@@ -5,7 +5,6 @@ import scala.scalajs.js.UndefOr
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
-import org.scalajs.dom
 import rx.{Rx, Var}
 
 import com.karasiq.highlightjs.HighlightJS
@@ -16,7 +15,6 @@ import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
 import com.karasiq.shadowcloud.webapp.utils.HtmlUtils
-import com.karasiq.taboverridejs.TabOverride
 
 object TextFileView {
   private[this] val TextFormats = Set("txt", "ini", "csv", "log")
@@ -96,16 +94,11 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
   }
 
   private[this] def renderEditor(content: String): TagT = {
-    val tabOverride: ModifierT = { elem ⇒
-      TabOverride.tabSize(2)
-      TabOverride.set(elem.asInstanceOf[dom.html.TextArea])
-    }
-
     val uploading = Var(false)
     val newContent = Var(content)
 
     Form(
-      FormInput.textArea(context.locale.edit, rows := 20, newContent.reactiveInput, tabOverride),
+      FormInput.textArea(context.locale.edit, rows := 20, newContent.reactiveInput, AppComponents.tabOverride),
       Form.submit(context.locale.submit)("disabled".classIf(uploading), ButtonStyle.success, onclick := Callback.onClick { _ ⇒
         if (!uploading.now) {
           uploading() = true

@@ -10,9 +10,9 @@ import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
-import com.karasiq.shadowcloud.actors.RegionIndex.SyncReport
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
+import com.karasiq.shadowcloud.model.utils.SyncReport
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}
@@ -94,6 +94,6 @@ private[actors] final class StorageIndex(storageId: StorageId, storageProps: Sto
   }
 
   private[this] def stopRegionDispatcher(regionId: RegionId): Unit = {
-    subIndexes.get(regionId).foreach(context.stop)
+    subIndexes.remove(regionId).foreach(context.stop)
   }
 }

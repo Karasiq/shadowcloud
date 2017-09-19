@@ -49,12 +49,16 @@ private[actors] final class StorageTracker(implicit context: ActorContext) exten
     sc.eventStreams.storage.subscribe(context.self, storageId)
   }
 
-  def unregister(dispatcher: ActorRef): Unit = {
-    context.unwatch(dispatcher)
-    storagesByAR.remove(dispatcher).foreach { storage ⇒
-      storagesById -= storage.id
-      sc.eventStreams.storage.unsubscribe(context.self, storage.id)
+  def unregister(storageId: StorageId): Unit = {
+    storagesById.remove(storageId).foreach { storage ⇒
+      storagesByAR -= storage.dispatcher
+      context.unwatch(storage.dispatcher)
     }
+    sc.eventStreams.storage.unsubscribe(context.self, storageId)
+  }
+
+  def unregister(dispatcher: ActorRef): Unit = {
+    storagesByAR.get(dispatcher).foreach(storage ⇒ unregister(storage.id))
   }
 
   // -----------------------------------------------------------------------

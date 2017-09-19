@@ -1,46 +1,76 @@
 package com.karasiq.shadowcloud.api.json
 
+import akka.Done
 import akka.util.ByteString
 import com.trueaccord.scalapb.{GeneratedEnum, GeneratedEnumCompanion, GeneratedMessage, GeneratedMessageCompanion}
 import play.api.libs.json._
 
 import com.karasiq.shadowcloud.config.SerializedProps
+import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
+import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.crypto._
-import com.karasiq.shadowcloud.model.utils.{FileAvailability, IndexScope}
+import com.karasiq.shadowcloud.model.utils._
+import com.karasiq.shadowcloud.model.utils.GCReport.{RegionGCState, StorageGCState}
+import com.karasiq.shadowcloud.model.utils.RegionStateReport.{RegionStatus, StorageStatus}
 import com.karasiq.shadowcloud.utils.encoding.{Base64, HexString}
 
 //noinspection ConvertExpressionToSAM
 trait SCJsonEncoders {
-  implicit val byteStringReads: Reads[ByteString] = Reads(value ⇒ JsSuccess(HexString.decode(value.as[JsString].value)))
-  implicit val byteStringWrites: Writes[ByteString] = Writes(value ⇒ JsString(HexString.encode(value)))
-  implicit val pathReads: Reads[Path] = Json.reads[Path]
-  implicit val pathWrites: Writes[Path] = Json.writes[Path]
-  implicit val serializedPropsReads: Reads[SerializedProps] = Json.reads[SerializedProps]
-  implicit val serializedPropsWrites: Writes[SerializedProps] = Json.writes[SerializedProps]
-  implicit val encryptionMethodReads: Reads[EncryptionMethod] = Json.reads[EncryptionMethod]
-  implicit val encryptionMethodWrites: Writes[EncryptionMethod] = Json.writes[EncryptionMethod]
-  implicit val hashingMethodReads: Reads[HashingMethod] = Json.reads[HashingMethod]
-  implicit val hashingMethodWrites: Writes[HashingMethod] = Json.writes[HashingMethod]
-  implicit val symmetricEncryptionParametersReads: Reads[SymmetricEncryptionParameters] = Json.reads[SymmetricEncryptionParameters]
-  implicit val symmetricEncryptionParametersWrites: Writes[SymmetricEncryptionParameters] = Json.writes[SymmetricEncryptionParameters]
-  implicit val asymmetricEncryptionParametersReads: Reads[AsymmetricEncryptionParameters] = Json.reads[AsymmetricEncryptionParameters]
-  implicit val asymmetricEncryptionParametersWrites: Writes[AsymmetricEncryptionParameters] = Json.writes[AsymmetricEncryptionParameters]
-  implicit val encryptionParametersReads: Reads[EncryptionParameters] = Json.reads[EncryptionParameters]
-  implicit val encryptionParametersWrites: Writes[EncryptionParameters] = Json.writes[EncryptionParameters]
-  implicit val timestampReads: Reads[Timestamp] = Json.reads[Timestamp]
-  implicit val timestampWrites: Writes[Timestamp] = Json.writes[Timestamp]
-  implicit val dataReads: Reads[Data] = Json.reads[Data]
-  implicit val dataWrites: Writes[Data] = Json.writes[Data]
-  implicit val checksumReads: Reads[Checksum] = Json.reads[Checksum]
-  implicit val checksumWrites: Writes[Checksum] = Json.writes[Checksum]
-  implicit val chunkReads: Reads[Chunk] = Json.reads[Chunk]
-  implicit val chunkWrites: Writes[Chunk] = Json.writes[Chunk]
-  implicit val fileReads: Reads[File] = Json.reads[File]
-  implicit val fileWrites: Writes[File] = Json.writes[File]
-  implicit val folderReads: Reads[Folder] = Json.reads[Folder]
-  implicit val folderWrites: Writes[Folder] = Json.writes[Folder]
-  implicit val fileAvailabilityFormat: Format[FileAvailability] = Json.format[FileAvailability]
+  implicit val byteStringFormat = Format[ByteString](
+    Reads(value ⇒ JsSuccess(HexString.decode(value.as[JsString].value))),
+    Writes(value ⇒ JsString(HexString.encode(value)))
+  )
+
+  implicit val akkaDoneFormat = Format[Done](
+    Reads(value ⇒ if (value.asOpt[JsString].exists(_.value == "Done")) JsSuccess(Done) else JsError()),
+    Writes(_ ⇒ JsString("Done"))
+  )
+
+  implicit val pathFormat = Json.format[Path]
+  implicit val serializedPropsFormat = Json.format[SerializedProps]
+  implicit val encryptionMethodFormat = Json.format[EncryptionMethod]
+  implicit val hashingMethodFormat = Json.format[HashingMethod]
+  implicit val symmetricEncryptionParametersFormat = Json.format[SymmetricEncryptionParameters]
+  implicit val asymmetricEncryptionParametersFormat = Json.format[AsymmetricEncryptionParameters]
+  implicit val encryptionParametersFormat = Json.format[EncryptionParameters]
+  implicit val timestampFormat = Json.format[Timestamp]
+  implicit val dataFormat = Json.format[Data]
+  implicit val checksumFormat = Json.format[Checksum]
+  implicit val chunkFormat = Json.format[Chunk]
+  implicit val fileFormat = Json.format[File]
+  implicit val folderFormat = Json.format[Folder]
+
+  implicit def pathMapFormat[V: Format]: Format[Map[Path, V]] = {
+    def pathToString(path: Path) = {
+      if (Path.isConventional(path)) path.toString else Json.toJson(path).toString()
+    }
+
+    def stringToPath(pathString: String) = {
+      if (pathString.startsWith(Path.Delimiter)) Path.fromString(pathString) else Json.parse(pathString).as[Path]
+    }
+
+    jsonMapFormat(pathToString, stringToPath)
+  }
+
+  implicit def sequenceNrMapFormat[V: Format]: Format[Map[SequenceNr, V]] = {
+    jsonMapFormat(_.toString, _.toLong)
+  }
+
+  implicit val chunkIndexFormat = Json.format[ChunkIndex]
+  implicit val folderIndexFormat = Json.format[FolderIndex]
+  implicit val folderDiffFormat = Json.format[FolderDiff]
+  implicit val folderIndexDiffFormat = Json.format[FolderIndexDiff]
+  implicit val chunkIndexDiffFormat = Json.format[ChunkIndexDiff]
+  implicit val indexDiffFormat = Json.format[IndexDiff]
+  implicit val fileAvailabilityFormat = Json.format[FileAvailability]
+  implicit val storageGCStateFormat = Json.format[StorageGCState]
+  implicit val regionGCStateFormat = Json.format[RegionGCState]
+  implicit val gcReportFormat = Json.format[GCReport]
+  implicit val syncReportFormat = Json.format[SyncReport]
+  implicit val storageStatusFormat = Json.format[StorageStatus]
+  implicit val regionStatusFormat = Json.format[RegionStatus]
+  implicit val regionStateReportFormat = Json.format[RegionStateReport]
 
   implicit val indexScopeFormat: Format[IndexScope] = new Format[IndexScope] {
     def writes(o: IndexScope): JsValue = o match {
@@ -114,5 +144,12 @@ trait SCJsonEncoders {
     def writes(o: T): JsValue = {
       JsString(o.name)
     }
+  }
+
+  private[this] def jsonMapFormat[K, V: Format](toString: K ⇒ String, toKey: String ⇒ K): Format[Map[K, V]] = {
+    Format[Map[K, V]](
+      Reads.mapReads[K, V](pathString ⇒ JsSuccess(toKey(pathString))),
+      Writes(map ⇒ Json.toJson(map.map(kv ⇒ (toString(kv._1), kv._2))))
+    )
   }
 }

@@ -9,11 +9,11 @@ import akka.pattern.ask
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.actors.{RegionIndex, StorageIndex}
 import com.karasiq.shadowcloud.actors.events.RegionEvents
-import com.karasiq.shadowcloud.actors.RegionIndex.{SyncReport, WriteDiff}
+import com.karasiq.shadowcloud.actors.RegionIndex.WriteDiff
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.model.{File, RegionId, SequenceNr, StorageId}
-import com.karasiq.shadowcloud.model.utils.{FileAvailability, IndexScope}
+import com.karasiq.shadowcloud.model.utils.{FileAvailability, IndexScope, SyncReport}
 import com.karasiq.shadowcloud.storage.replication.StorageSelector
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.IndexMerger

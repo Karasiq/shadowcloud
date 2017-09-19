@@ -17,10 +17,11 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.utils.Utils
 
 object RegionTracker {
-  case class RegionStatus(regionId: RegionId, regionConfig: RegionConfig, actorState: State, storages: Set[String] = Set.empty)
-  case class StorageStatus(storageId: StorageId, props: StorageProps, actorState: State, regions: Set[String] = Set.empty)
+  final case class RegionStatus(regionId: RegionId, regionConfig: RegionConfig, actorState: State, storages: Set[String] = Set.empty)
+  final case class StorageStatus(storageId: StorageId, storageProps: StorageProps, actorState: State, regions: Set[String] = Set.empty)
 
-  case class Snapshot(regions: Map[String, RegionStatus], storages: Map[String, StorageStatus])
+  @SerialVersionUID(0L)
+  final case class Snapshot(regions: Map[String, RegionStatus], storages: Map[String, StorageStatus])
 
   private[actors] def apply()(implicit context: ActorContext): RegionTracker = {
     new RegionTracker
@@ -72,21 +73,27 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   // Add
   // -----------------------------------------------------------------------
   def addRegion(regionId: RegionId, config: RegionConfig): Unit = {
-    val state = regions.get(regionId)
+    val status = regions.get(regionId)
+    val state = status
       .map(_.actorState)
       .getOrElse(State.Suspended)
 
     State.ifActive(state, _ ! RegionContainer.SetConfig(config))
-    regions += regionId → RegionStatus(regionId, config, state)
+
+    val newStatus = status.fold(RegionStatus(regionId, config, state))(_.copy(regionConfig = config))
+    regions += regionId → newStatus
   }
 
   def addStorage(storageId: StorageId, props: StorageProps): Unit = {
-    val state = storages.get(storageId)
+    val status = storages.get(storageId)
+    val state = status
       .map(_.actorState)
       .getOrElse(State.Suspended)
 
     State.ifActive(state, _ ! StorageContainer.SetProps(props))
-    storages += storageId → StorageStatus(storageId, props, state)
+
+    val newStatus = status.fold(StorageStatus(storageId, props, state))(_.copy(storageProps = props))
+    storages += storageId → newStatus
   }
 
   // -----------------------------------------------------------------------
@@ -195,7 +202,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     (storage.actorState, region.actorState) match {
       case (State.Active(storageDispatcher), State.Active(regionDispatcher)) ⇒
         storageDispatcher ! StorageIndex.OpenIndex(regionId)
-        regionDispatcher ! RegionDispatcher.AttachStorage(storageId, storage.props, storageDispatcher, StorageHealth.empty)
+        regionDispatcher ! RegionDispatcher.AttachStorage(storageId, storage.storageProps, storageDispatcher, StorageHealth.empty)
 
       case _ ⇒
         // Pass

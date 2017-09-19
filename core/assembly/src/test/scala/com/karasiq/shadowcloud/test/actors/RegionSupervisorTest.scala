@@ -36,7 +36,7 @@ class RegionSupervisorTest extends SCExtensionSpec with FlatSpecLike with Matche
     storages.keySet shouldBe Set(testStorage)
     val storage = storages(testStorage)
     storage.regions shouldBe empty
-    storage.props shouldBe StorageProps.inMemory
+    storage.storageProps shouldBe StorageProps.inMemory
     storage.storageId shouldBe testStorage
   }
 

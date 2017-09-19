@@ -1,19 +1,130 @@
 package com.karasiq.shadowcloud.server.http.api
 
 import scala.concurrent.Future
+import scala.language.implicitConversions
 
+import akka.Done
 import akka.stream.scaladsl.Sink
 
 import com.karasiq.shadowcloud.ShadowCloudExtension
+import com.karasiq.shadowcloud.actors.internal.RegionTracker
+import com.karasiq.shadowcloud.actors.utils.ActorState
 import com.karasiq.shadowcloud.api.ShadowCloudApi
+import com.karasiq.shadowcloud.config.{ConfigProps, RegionConfig, SerializedProps}
 import com.karasiq.shadowcloud.index.diffs.FolderIndexDiff
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.model._
-import com.karasiq.shadowcloud.model.utils.IndexScope
+import com.karasiq.shadowcloud.model.utils.{IndexScope, RegionStateReport}
+import com.karasiq.shadowcloud.storage.props.StorageProps
 
 private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends ShadowCloudApi {
   import sc.implicits.{executionContext, materializer}
+
+  def getRegions() = {
+    def toSerializableStorageStatus(storage: RegionTracker.StorageStatus) = {
+      RegionStateReport.StorageStatus(storage.storageId, ConfigProps.fromConfig(storage.storageProps.rootConfig, json = false),
+        storage.actorState == ActorState.Suspended, storage.regions)
+    }
+
+    def toSerializableRegionStatus(region: RegionTracker.RegionStatus) = {
+      RegionStateReport.RegionStatus(region.regionId, ConfigProps.fromConfig(region.regionConfig.rootConfig, json = false),
+        region.actorState == ActorState.Suspended, region.storages)
+    }
+
+    sc.ops.supervisor.getSnapshot().map { snapshot ⇒
+      val storages = snapshot.storages.map { case (storageId, storage) ⇒
+        (storageId, toSerializableStorageStatus(storage))
+      }
+
+      val regions = snapshot.regions.map { case (regionId, region) ⇒
+        (regionId, toSerializableRegionStatus(region))
+      }
+
+      RegionStateReport(regions, storages)
+    }
+  }
+
+  def getRegion(regionId: RegionId) = {
+    getRegions().map(_.regions(regionId))
+  }
+
+  def getStorage(storageId: StorageId) = {
+    getRegions().map(_.storages(storageId))
+  }
+
+  def addRegion(regionId: RegionId, regionConfig: SerializedProps) = {
+    val defaultConfig = sc.configs.regionConfig(regionId)
+    val resolvedConfig = RegionConfig(ConfigProps.toConfig(regionConfig).withFallback(defaultConfig.rootConfig))
+    sc.ops.supervisor.addRegion(regionId, resolvedConfig)
+    getRegion(regionId)
+  }
+
+  def addStorage(storageId: StorageId, storageProps: SerializedProps) = {
+    val resolvedProps = StorageProps(ConfigProps.toConfig(storageProps))
+    sc.ops.supervisor.addStorage(storageId, resolvedProps)
+    getStorage(storageId)
+  }
+
+  def suspendRegion(regionId: RegionId) = {
+    sc.ops.supervisor.suspendRegion(regionId)
+  }
+
+  def suspendStorage(storageId: StorageId) = {
+    sc.ops.supervisor.suspendStorage(storageId)
+  }
+
+  def resumeRegion(regionId: RegionId) = {
+    sc.ops.supervisor.resumeRegion(regionId)
+  }
+
+  def resumeStorage(storageId: StorageId) = {
+    sc.ops.supervisor.resumeStorage(storageId)
+  }
+
+  def registerStorage(regionId: RegionId, storageId: StorageId) = {
+    sc.ops.supervisor.register(regionId, storageId)
+  }
+
+  def unregisterStorage(regionId: RegionId, storageId: StorageId) = {
+    sc.ops.supervisor.unregister(regionId, storageId)
+  }
+
+  def deleteRegion(regionId: RegionId) = {
+    for {
+      region ← getRegion(regionId)
+      _ ← sc.ops.supervisor.deleteRegion(regionId)
+    } yield region
+  }
+
+  def deleteStorage(storageId: StorageId) = {
+    for {
+      storage ← getStorage(storageId)
+      _ ← sc.ops.supervisor.deleteStorage(storageId)
+    } yield storage
+  }
+
+  def synchronizeStorage(storageId: StorageId, regionId: RegionId) = {
+    sc.ops.storage.synchronize(storageId, regionId)
+  }
+
+  def synchronizeRegion(regionId: RegionId) = {
+    sc.ops.region.synchronize(regionId)
+  }
+
+  def collectGarbage(regionId: RegionId, delete: Boolean) = {
+    sc.ops.region.collectGarbage(regionId, delete)
+  }
+
+  def compactIndex(storageId: StorageId, regionId: RegionId) = {
+    sc.ops.storage.compactIndex(storageId, regionId)
+    synchronizeStorage(storageId, regionId)
+  }
+
+  def compactIndexes(regionId: RegionId) = {
+    sc.ops.region.compactIndex(regionId)
+    synchronizeRegion(regionId)
+  }
 
   def getFolder(regionId: RegionId, path: Path, dropChunks: Boolean = true, scope: IndexScope = IndexScope.default) = {
     val future = sc.ops.region.getFolder(regionId, path, scope)
@@ -65,21 +176,18 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
     for {
       files ← sc.ops.region.getFiles(regionId, path, scope)
       _ ← sc.ops.region.writeIndex(regionId, FolderIndexDiff.copyFiles(files, newPath))
-      newFiles ← sc.ops.region.getFiles(regionId, newPath)
-    } yield newFiles
+    } yield Done
   }
 
   def copyFile(regionId: RegionId, file: File, newPath: Path, scope: IndexScope = IndexScope.default) = {
-    val fullFileFuture = getFullFile(regionId, file, scope)
-    fullFileFuture.flatMap(file ⇒ this.createFile(regionId, file.copy(path = newPath)))
+    getFullFile(regionId, file, scope)
+      .map(_.copy(path = newPath))
+      .flatMap(createFile(regionId, _))
   }
 
   def createFile(regionId: RegionId, file: File) = {
     require(file.checksum.size == 0 || file.chunks.nonEmpty, "File is empty")
-    for {
-      _ ← sc.ops.region.writeIndex(regionId, FolderIndexDiff.createFiles(file))
-      newFiles ← sc.ops.region.getFiles(regionId, file.path)
-    } yield newFiles
+    sc.ops.region.writeIndex(regionId, FolderIndexDiff.createFiles(file)).map(_ ⇒ Done)
   }
 
   def deleteFiles(regionId: RegionId, path: Path) = {
@@ -99,5 +207,9 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
     } else {
       Future.successful(file)
     }
+  }
+
+  private[this] implicit def implicitUnitToFutureDone(unit: Unit): Future[Done] = {
+    Future.successful(Done)
   }
 }

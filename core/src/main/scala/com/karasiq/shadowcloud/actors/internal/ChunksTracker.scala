@@ -40,7 +40,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
   // -----------------------------------------------------------------------
   private[this] implicit val sender: ActorRef = context.self
   private[this] val log = Logging(sc.implicits.actorSystem, s"$regionId-chunks")
-  private[this] val chunksMap = mutable.AnyRefMap[ByteString, ChunkStatus]()
+  private[this] val chunksMap = mutable.AnyRefMap[ChunkId, ChunkStatus]()
   private[this] val readingChunks = mutable.AnyRefMap[Chunk, ChunkReadStatus]()
 
   // -----------------------------------------------------------------------
@@ -314,8 +314,19 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
             if (status.availability.isWriting(storageId)) {
               log.warning("Replacing {} with {} on {}", status.chunk, chunk, storageId)
               unregisterChunk(storageId, status.chunk)
-              assert(chunks.getChunkStatus(chunk).isEmpty)
-              registerChunk(storageId, chunk)
+              chunks.getChunkStatus(chunk) match {
+                case Some(oldStatus @ ChunkStatus(WriteStatus.Pending(_), _, availability, _)) if availability.writingChunk.isEmpty ⇒
+                  chunks.delete(oldStatus)
+                  chunks.update(oldStatus.copy(chunk = chunk))
+                  registerChunk(storageId, chunk)
+
+                case Some(_) ⇒
+                  log.error("Chunk conflict: {} / {}", status.chunk, chunk)
+                  status
+
+                case None ⇒
+                  registerChunk(storageId, chunk)
+              }
             } else {
               log.error("Chunk conflict: {} / {}", status.chunk, chunk)
               status
@@ -344,7 +355,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
       }
 
       def unregister(storageId: StorageId): Unit = {
-        chunksMap.foreachValue(markAsLost(_, storageId))
+        chunksMap.values.foreach(markAsLost(_, storageId))
       }
 
       def unregister(dispatcher: ActorRef): Unit = {
@@ -419,6 +430,8 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
               if (newStatus.availability.isEmpty) {
                 log.debug("Chunk is lost: {}", newStatus.chunk)
                 chunks.delete(status)
+              } else {
+                chunks.update(newStatus)
               }
           }
         }

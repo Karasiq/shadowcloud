@@ -23,7 +23,7 @@ object WebDeps {
     val bootstrapV = "3.3.7"
     val bootstrapDateV = "1.7.1"
     val jQueryV = "3.2.1"
-    val fontAwesomeV = "4.5.0"
+    val fontAwesomeV = "4.7.0"
 
     val jsDeps = Seq(
       // jQuery

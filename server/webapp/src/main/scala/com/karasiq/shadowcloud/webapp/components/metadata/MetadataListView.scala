@@ -47,7 +47,7 @@ final class MetadataListView(regionId: RegionId, file: File)(implicit context: A
     def renderDisposition(disposition: Metadata.Tag.Disposition): Tag = {
       val opened = Var(false)
       div(
-        AppComponents.dropDownLink(utils.dispositionToString(disposition), opened),
+        AppComponents.dropdownLink(utils.dispositionToString(disposition), opened),
         Rx[Frag](if (opened()) {
           val metadata = context.api.getFileMetadata(regionId, file.id, disposition).toRx(Nil)
           div(metadata.map(MetadataTable(_): Frag))

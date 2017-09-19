@@ -13,13 +13,13 @@ import com.karasiq.shadowcloud.actors.events.StorageEvents._
 import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperation}
 import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.model.{RegionId, SequenceNr, StorageId}
+import com.karasiq.shadowcloud.model.utils.SyncReport
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.Repository
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
-import com.karasiq.shadowcloud.utils.{DiffStats, Utils}
+import com.karasiq.shadowcloud.utils.DiffStats
 
 object RegionIndex {
   // Types
@@ -27,20 +27,6 @@ object RegionIndex {
     private[actors] def toPersistenceId: String = {
       s"index_${storageId}_$regionId"
     }
-  }
-
-  case class SyncReport(read: Map[SequenceNr, IndexDiff] = Map.empty,
-                        written: Map[SequenceNr, IndexDiff] = Map.empty,
-                        deleted: Set[SequenceNr] = Set.empty) extends HasEmpty {
-    def isEmpty: Boolean = read.isEmpty && written.isEmpty && deleted.isEmpty
-
-    override def toString: String = {
-      s"SyncReport(read = [${Utils.printValues(read)}], written = [${Utils.printValues(written)}], deleted = [${Utils.printValues(deleted, 50)}])"
-    }
-  }
-
-  object SyncReport {
-    val empty = SyncReport()
   }
 
   // Messages
@@ -154,7 +140,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
     case RecoveryCompleted ⇒
       // Initial sync
-      synchronization.scheduleIn(/* 10 seconds */)
+      synchronization.scheduleNext(/* 10 seconds */)
   }
 
   override def receiveCommand: Receive = {
@@ -194,14 +180,17 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
   // Synchronization
   // -----------------------------------------------------------------------
   private[this] object synchronization {
-    def scheduleIn(duration: FiniteDuration = config.syncInterval): Unit = {
-      if (state.pendingSyncReport.nonEmpty) log.info("Synchronization finished: {}", state.pendingSyncReport)
-      state.pendingSync.finish(state.indexId, Synchronize.Success(state.indexId, state.pendingSyncReport))
-      state.pendingSyncReport = SyncReport.empty
-
+    def scheduleNext(duration: FiniteDuration = config.syncInterval): Unit = {
+      this.finish()
       if (log.isDebugEnabled) log.debug("Scheduling synchronize in {}", duration.toCoarsest)
       context.system.scheduler.scheduleOnce(duration, self, Synchronize)
       becomeOrDefault(receiveWait)
+    }
+
+    def finish(): Unit = {
+      if (state.pendingSyncReport.nonEmpty) log.info("Synchronization finished: {}", state.pendingSyncReport)
+      state.pendingSync.finish(state.indexId, Synchronize.Success(state.indexId, state.pendingSyncReport))
+      state.pendingSyncReport = SyncReport.empty
     }
 
     def start(): Unit = {
@@ -293,11 +282,11 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
           case Status.Failure(error) ⇒
             log.error(error, "Write error")
-            scheduleIn()
+            synchronization.scheduleNext()
 
           case StreamCompleted ⇒
             log.debug("Synchronization write completed")
-            deferAsync(NotUsed)(_ ⇒ startCompact())
+            deferAsync(NotUsed)(_ ⇒ startCompactOrFinish())
         }
 
         def becomeWrite(newSequenceNr: SequenceNr, diff: IndexDiff): Unit = {
@@ -320,7 +309,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
         if (state.index.pending.nonEmpty) {
           becomeWrite(maxKey + 1, state.index.pending)
         } else {
-          scheduleIn()
+          startCompactOrFinish()
         }
       }
 
@@ -328,7 +317,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
       becomeOrDefault(receivePreWrite())
     }
 
-    private[this] def startCompact(): Unit = {
+    private[this] def startCompactOrFinish(): Unit = {
       def receiveCompact: Receive = {
         case CompactSuccess(deletedDiffs, newDiff) ⇒
           log.info("Compact success: deleted = {}, new = {}", deletedDiffs, newDiff)
@@ -347,20 +336,20 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
         case Status.Failure(error) ⇒
           log.error(error, "Compact error")
-          scheduleIn()
+          synchronization.scheduleNext()
 
         case StreamCompleted ⇒
           log.debug("Indexes compaction completed")
           state.compactRequested = false
-          deferAsync(NotUsed)(_ ⇒ scheduleIn())
+          deferAsync(NotUsed)(_ ⇒ createSnapshot(() ⇒ synchronization.scheduleNext()))
       }
 
       def becomeCompact(): Unit = {
         def compactIndex(indexState: IndexMerger.State[SequenceNr]): Source[CompactSuccess, NotUsed] = {
-          val index = IndexMerger.restore(0L, indexState)
+          val index = IndexMerger.restore(SequenceNr.zero, indexState)
           log.debug("Compacting diffs: {}", index.diffs)
           val diffs = index.diffs.toVector
-          val newDiff = index.mergedDiff
+          val newDiff = index.mergedDiff.creates
           val newSequenceNr = index.lastSequenceNr + 1
           log.debug("Writing compacted diff #{}: {}", newSequenceNr, newDiff)
           val writeResult = if (newDiff.isEmpty) {
@@ -401,9 +390,9 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
       if (isCompactRequired()) {
         becomeCompact()
       } else if (isSnapshotRequired()) {
-        createSnapshot(() ⇒ scheduleIn())
+        createSnapshot(() ⇒ synchronization.scheduleNext())
       } else {
-        scheduleIn()
+        synchronization.scheduleNext()
       }
     }
   }

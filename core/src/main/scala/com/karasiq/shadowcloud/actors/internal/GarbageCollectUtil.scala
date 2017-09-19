@@ -2,11 +2,11 @@ package com.karasiq.shadowcloud.actors.internal
 
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.actors.utils.{RegionGCState, StorageGCState}
 import com.karasiq.shadowcloud.config.{GCConfig, StorageConfig}
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.metadata.MetadataUtils
 import com.karasiq.shadowcloud.model.{Chunk, File, FileId, Timestamp}
+import com.karasiq.shadowcloud.model.utils.GCReport.{RegionGCState, StorageGCState}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.utils.Utils
 

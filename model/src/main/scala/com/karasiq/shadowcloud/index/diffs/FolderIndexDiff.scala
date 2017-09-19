@@ -44,7 +44,7 @@ final case class FolderIndexDiff(folders: Seq[FolderDiff] = Vector.empty)
   }
 
   def creates: FolderIndexDiff = {
-    withFolders(folders.map(_.creates))
+    withFolders(dropDeleted(folders).map(_.creates))
   }
 
   def deletes: FolderIndexDiff = {
@@ -69,6 +69,11 @@ final case class FolderIndexDiff(folders: Seq[FolderDiff] = Vector.empty)
 
   private[this] def withFolders(folders: Seq[FolderDiff]): FolderIndexDiff = {
     if (folders.isEmpty) FolderIndexDiff.empty else copy(folders)
+  }
+
+  private[this] def dropDeleted(folders: Seq[FolderDiff]): Seq[FolderDiff] = {
+    val deleted = folders.flatMap(fd ⇒ fd.deletedFolders.map(fd.path / _))
+    folders.filterNot(fd ⇒ deleted.exists(fd.path.startsWith))
   }
 }
 

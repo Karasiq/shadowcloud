@@ -24,22 +24,11 @@ object FileAvailabilityView {
 }
 
 class FileAvailabilityView(file: File)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
-  val opened = Var(false)
-
   def renderTag(md: ModifierT*): TagT = {
-    val content = Rx {
-      if (opened()) {
-        val availabilityRx = FileAvailabilityView.getAvailabilityRx(file)
-        div(Rx(renderContent(availabilityRx(), md:_*)))
-      } else {
-        Bootstrap.noContent
-      }
+    AppComponents.dropdown(context.locale.show) {
+      val availabilityRx = FileAvailabilityView.getAvailabilityRx(file)
+      div(Rx(renderContent(availabilityRx(), md:_*)))
     }
-
-    div(
-      AppComponents.dropDownLink(context.locale.show, opened),
-      content
-    )
   }
 
   def renderContent(fileAvailability: FileAvailability, md: ModifierT*): TagT = {

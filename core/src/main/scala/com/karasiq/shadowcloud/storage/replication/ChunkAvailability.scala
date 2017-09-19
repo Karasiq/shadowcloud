@@ -46,7 +46,7 @@ case class ChunkAvailability(hasChunk: Set[String] = Set.empty,
   }
 
   def -(storageId: StorageId): ChunkAvailability = {
-    copy(hasChunk - storageId, writingChunk - storageId, writeFailed - storageId)
+    copy(hasChunk - storageId, writingChunk - storageId, writeFailed - storageId, readFailed - storageId)
   }
 }
 

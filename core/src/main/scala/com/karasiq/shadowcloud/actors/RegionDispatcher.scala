@@ -17,13 +17,12 @@ import com.karasiq.shadowcloud.actors.events.{RegionEvents, StorageEvents}
 import com.karasiq.shadowcloud.actors.internal.{ChunksTracker, RegionIndexTracker, StorageTracker}
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
-import com.karasiq.shadowcloud.actors.RegionIndex.SyncReport
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.exceptions.{RegionException, StorageException}
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
-import com.karasiq.shadowcloud.model.utils.{FileAvailability, IndexScope}
+import com.karasiq.shadowcloud.model.utils.{FileAvailability, IndexScope, SyncReport}
 import com.karasiq.shadowcloud.storage.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
@@ -51,7 +50,9 @@ object RegionDispatcher {
   object GetFolderIndex extends MessageStatus[RegionId, FolderIndex]
   case class GetIndexSnapshot(scope: IndexScope = IndexScope.default) extends Message
   object GetIndexSnapshot extends MessageStatus[RegionId, IndexMerger.State[RegionKey]]
+
   case object Synchronize extends Message with MessageStatus[RegionId, Map[StorageId, SyncReport]]
+  case object CompactIndex extends Message
 
   case class GetFiles(path: Path, scope: IndexScope = IndexScope.default) extends Message
   object GetFiles extends MessageStatus[Path, Set[File]]
@@ -203,6 +204,10 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
       val result = Future.sequence(futures).map(_.toMap)
       Synchronize.wrapFuture(regionId, result).pipeTo(sender())
 
+    case CompactIndex ⇒
+      log.warning("Compacting region index: {}", regionId)
+      storageTracker.storages.foreach(_.dispatcher ! StorageIndex.Envelope(regionId, RegionIndex.Compact))
+
     case GetChunkStatus(chunk) ⇒
       chunksTracker.chunks.getChunkStatus(chunk) match {
         case Some(status) ⇒
@@ -246,23 +251,22 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
         // Ignore
       } else {
         if (isStorageExists) {
-          val oldDispatcher = storageTracker.getDispatcher(storageId)
-          log.warning("Replacing storage {} with new dispatcher: {} -> {}", storageId, oldDispatcher, dispatcher)
+          log.warning("Replacing storage {} dispatcher: {}", storageId, dispatcher)
           indexTracker.storages.state.dropStorageDiffs(storageId)
-          storageTracker.unregister(oldDispatcher)
-          chunksTracker.storages.state.unregister(oldDispatcher)
+          storageTracker.unregister(storageId)
+          chunksTracker.storages.state.unregister(storageId)
         }
 
-        log.info("Registered storage {}: {}", storageId, dispatcher)
+        log.info("Attaching storage {}: {}", storageId, dispatcher)
         storageTracker.register(storageId, props, dispatcher, health)
         self ! PullStorageIndex(storageId)
       }
 
     case DetachStorage(storageId) if storageTracker.contains(storageId) ⇒
-      val dispatcher = storageTracker.getDispatcher(storageId)
+      log.warning("Detaching storage: {}", storageId)
+      chunksTracker.storages.state.unregister(storageId)
       indexTracker.storages.state.dropStorageDiffs(storageId)
-      storageTracker.unregister(dispatcher)
-      chunksTracker.storages.state.unregister(dispatcher)
+      storageTracker.unregister(storageId)
 
     case GetStorages ⇒
       sender() ! GetStorages.Success(regionId, storageTracker.storages)
@@ -346,9 +350,11 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
       if (storageTracker.contains(dispatcher)) {
         val storageId = storageTracker.getStorageId(dispatcher)
         indexTracker.storages.state.dropStorageDiffs(storageId)
-        storageTracker.unregister(dispatcher)
+        storageTracker.unregister(storageId)
+        chunksTracker.storages.state.unregister(storageId)
+      } else {
+        chunksTracker.storages.state.unregister(dispatcher)
       }
-      chunksTracker.storages.state.unregister(dispatcher)
 
     // -----------------------------------------------------------------------
     // GC commands

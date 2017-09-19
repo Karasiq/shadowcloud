@@ -13,16 +13,22 @@ import org.scalajs.dom.raw.HTMLStyleElement
 import org.scalajs.jquery._
 
 import com.karasiq.shadowcloud.model.Path
+import com.karasiq.shadowcloud.webapp.components.common.AppIcons
 import com.karasiq.shadowcloud.webapp.components.file.FileView
 import com.karasiq.shadowcloud.webapp.components.folder.{FolderFileList, FolderTree}
-import com.karasiq.shadowcloud.webapp.components.region.IndexScopeSelector
+import com.karasiq.shadowcloud.webapp.components.region.{IndexScopeSelector, RegionContext, RegionsView}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.utils.RxUtils
+import com.karasiq.taboverridejs.TabOverride
 
 @JSExportAll
 object Main extends JSApp {
   def main(): Unit = {
     jQuery(() ⇒ {
+      // Fixes
+      TabOverride.tabSize(2)
+
+      // Context
       implicit val appContext = AppContext()
 
       // Styles
@@ -55,7 +61,7 @@ object Main extends JSApp {
       val folderTree = FolderTree(Path.root)
       val folderView = FolderFileList(selectedFolderRx.map(_.files))
 
-      val container = GridSystem.containerFluid(
+      val foldersView = GridSystem.containerFluid(
         GridSystem.row(
           GridSystem.col(6).asDiv(uploadForm),
           GridSystem.col(6).asDiv(scopeSelector)
@@ -70,7 +76,19 @@ object Main extends JSApp {
         )
       )
 
-      container.applyTo(dom.document.body)
+      implicit val regionContext = RegionContext()
+      val regionsView = RegionsView()
+
+      val navigationBar = NavigationBar()
+        .withBrand("shadowcloud")
+        .withContentContainer(GridSystem.containerFluid(_))
+        .withStyles(NavigationBarStyle.default, NavigationBarStyle.staticTop)
+        .withTabs(
+          NavigationTab(appContext.locale.foldersView, "folders", AppIcons.foldersView, foldersView),
+          NavigationTab(appContext.locale.regionsView, "regions", AppIcons.regionsView, regionsView)
+        )
+
+      navigationBar.applyTo(dom.document.body)
     })
   }
 }

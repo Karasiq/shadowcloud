@@ -11,10 +11,10 @@ import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, RegionIndex, StorageIn
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
-import com.karasiq.shadowcloud.actors.RegionIndex.SyncReport
 import com.karasiq.shadowcloud.config.TimeoutsConfig
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.model.{Chunk, ChunkId, RegionId, StorageId}
+import com.karasiq.shadowcloud.model.utils.SyncReport
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 

@@ -75,7 +75,7 @@ private[storage] final class DefaultIndexMerger[@specialized(Long) T](firstKey: 
   private[this] def applyDiff(diff: IndexDiff): Unit = {
     _chunks = _chunks.patch(diff.chunks)
     _folders = _folders.patch(diff.folders)
-    _merged = _merged.merge(diff)//.creates
+    _merged = _merged.merge(diff)
   }
 
   private[this] def rebuildIndex(): Unit = {

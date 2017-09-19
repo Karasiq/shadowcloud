@@ -93,23 +93,20 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
       folderContext.update(folder.path.parent)
     },
     folder ⇒ {
-      if (folder.path.parent == path) {
-        folderRx.kill()
-        deleted() = true
-      }
       folderContext.update(folder.path.parent)
+      if (folder.path.parent == path) {
+        deleted() = true
+        folderRx.kill()
+      }
     }
   )
-
-  private[this] val link = renderLink()
-  private[this] val content = renderContent()
 
   def renderTag(md: ModifierT*): TagT = {
     div(
       Rx[Frag](if (deleted()) {
         Bootstrap.noContent
       } else {
-        div(link, content, md)
+        div(renderLink(), renderContent(), md)
       })
     )
   }

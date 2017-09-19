@@ -25,7 +25,7 @@ class EmbeddedResourceView(path: String, metadatas: Seq[Metadata])(implicit cont
 
     div(
       // Link
-      AppComponents.dropDownLink(s"$path (${context.locale.entries(metadatas.length)})", opened),
+      AppComponents.dropdownLink(s"$path (${context.locale.entries(metadatas.length)})", opened),
 
       // Content
       Rx[Frag] {

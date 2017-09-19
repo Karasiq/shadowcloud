@@ -1,8 +1,6 @@
 package com.karasiq.shadowcloud.actors
 
-import java.util.concurrent.TimeoutException
-
-import scala.concurrent.Future
+import scala.concurrent.{Future, TimeoutException}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
@@ -15,12 +13,14 @@ import akka.util.{ByteString, Timeout}
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.internal.GarbageCollectUtil
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, DeleteChunks ⇒ SDeleteChunks}
-import com.karasiq.shadowcloud.actors.utils.{MessageStatus, RegionGCState, StorageGCState}
+import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.RegionIndex.WriteDiff
 import com.karasiq.shadowcloud.config.{GCConfig, StorageConfig}
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.metadata.MetadataUtils
 import com.karasiq.shadowcloud.model.{Chunk, RegionId}
+import com.karasiq.shadowcloud.model.utils.GCReport
+import com.karasiq.shadowcloud.model.utils.GCReport.{RegionGCState, StorageGCState}
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}
@@ -28,13 +28,10 @@ import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
 
 object RegionGC {
-  // Types
-  case class GCReport(regionId: RegionId, regionState: RegionGCState, storageStates: Map[String, StorageGCState])
-
   // Messages
   sealed trait Message
   case class CollectGarbage(delete: Option[Boolean] = None) extends Message with NotInfluenceReceiveTimeout
-  object CollectGarbage extends MessageStatus[String, GCReport]
+  object CollectGarbage extends MessageStatus[RegionId, GCReport]
   case class Defer(time: FiniteDuration) extends Message with NotInfluenceReceiveTimeout
 
   private sealed trait InternalMessage extends Message with PossiblyHarmful

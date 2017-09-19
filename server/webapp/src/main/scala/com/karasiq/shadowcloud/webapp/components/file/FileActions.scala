@@ -57,7 +57,7 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
   }
 
   private[this] def renderRename(): TagT = {
-    def doRename(newName: String): Future[Set[File]] = {
+    def rename(newName: String): Future[Set[File]] = {
       def doCopy() = if (useId) {
         context.api.copyFile(folderContext.regionId, file, file.path.withName(newName), folderContext.scope.now)
       } else {
@@ -74,24 +74,29 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
         yield deletedFiles
     }
 
-    def onRename(newName: String): Unit = {
-      doRename(newName).foreach { _ ⇒
+    def doRename(newName: String): Unit = {
+      rename(newName).foreach { _ ⇒
         folderContext.update(file.path.parent)
         this.deleted() = true
       }
     }
 
-    renderAction(context.locale.rename, AppIcons.rename, onclick := Callback.onClick { _ ⇒
+    def showRenameDialog(): Unit = {
       val newNameRx = Var(file.path.name)
       Modal()
         .withTitle(context.locale.rename)
         .withButtons(
-          AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ onRename(newNameRx.now))),
+          AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ doRename(newNameRx.now))),
           AppComponents.modalClose()
         )
         .withBody(Form(FormInput.text(context.locale.name, newNameRx.reactiveInput)))
         .show()
-    })
+    }
+
+    div(
+      Rx(if (deleted()) textDecoration.`line-through` else textDecoration.none).auto,
+      renderAction(context.locale.rename, AppIcons.rename, onclick := Callback.onClick(_ ⇒ if (!deleted.now) showRenameDialog()))
+    )
   }
 
   private[this] def renderDelete(): TagT = {

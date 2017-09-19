@@ -33,10 +33,14 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
   def renderTag(md: ModifierT*): TagT = {
     div(regionRx.map { regionStatus ⇒
       div(
-        // TODO: Health
-        renderCompactButton(),
-        renderGCButton(),
-        hr,
+        if (!regionStatus.suspended) {
+          Seq(
+            // TODO: Health
+            renderCompactButton(),
+            renderGCButton(),
+            hr,
+          )
+        } else (),
         renderStateButtons(regionStatus),
         renderConfigField(regionStatus),
         hr,

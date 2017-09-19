@@ -70,7 +70,7 @@ class RegionsView()(implicit context: AppContext, rc: RegionContext) extends Boo
 
   private[this] def renderRegion(regionId: RegionId) = {
     AppComponents.dropdown(regionId) {
-      RegionConfigView(regionId)
+      Bootstrap.well(RegionConfigView(regionId))
     }
   }
 }

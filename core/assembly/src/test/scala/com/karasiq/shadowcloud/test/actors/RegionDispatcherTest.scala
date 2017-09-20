@@ -135,14 +135,14 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
     receiveWhile(5 seconds) {
       case RegionDispatcher.WriteIndex.Success(`diff`, result) ⇒
         result.time shouldBe >(TestUtils.testTimestamp)
-        result.folders.folders.toSet shouldBe folderDiff.folders.toSet
+        assert(FolderIndexDiff.equalsIgnoreOrder(result.folders, folderDiff))
         // result.chunks.newChunks shouldBe Set(chunk)
         result.chunks.deletedChunks shouldBe empty
 
       case StorageEnvelope(storageId, StorageEvents.PendingIndexUpdated(regionId, diff)) ⇒
         storageId shouldBe "testStorage"
         regionId shouldBe "testRegion"
-        diff.folders.folders.toSet shouldBe folderDiff.folders.toSet
+        assert(FolderIndexDiff.equalsIgnoreOrder(diff.folders, folderDiff))
     }
   }
 
@@ -151,7 +151,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
     val StorageEnvelope("testStorage", StorageEvents.IndexUpdated("testRegion", sequenceNr, diff, remote)) = receiveOne(5 seconds)
     sequenceNr shouldBe 1L
     diff.time shouldBe >(TestUtils.testTimestamp)
-    diff.folders.folders.toSet shouldBe folderDiff.folders.toSet
+    assert(FolderIndexDiff.equalsIgnoreOrder(diff.folders, folderDiff))
     diff.chunks.newChunks shouldBe Set(chunk)
     diff.chunks.deletedChunks shouldBe empty
     remote shouldBe false
@@ -183,7 +183,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
     // Verify
     storage ! StorageIndex.Envelope("testRegion", RegionIndex.GetIndex)
     val RegionIndex.GetIndex.Success(_, IndexMerger.State(Seq((1L, firstDiff), (2L, `remoteDiff`)), IndexDiff.empty)) = receiveOne(1 second)
-    firstDiff.folders shouldBe folderDiff
+    assert(FolderIndexDiff.equalsIgnoreOrder(firstDiff.folders, folderDiff))
     firstDiff.chunks.newChunks shouldBe Set(chunk)
     firstDiff.chunks.deletedChunks shouldBe empty
 

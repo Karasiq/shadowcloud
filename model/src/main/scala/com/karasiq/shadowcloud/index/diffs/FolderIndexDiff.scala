@@ -109,6 +109,10 @@ object FolderIndexDiff {
     }
   }
 
+  def equalsIgnoreOrder(diff1: FolderIndexDiff, diff2: FolderIndexDiff): Boolean = {
+    diff1.folders.toSet == diff2.folders.toSet
+  }
+
   def createFolders(folders: Folder*): FolderIndexDiff = {
     if (folders.isEmpty) {
       empty

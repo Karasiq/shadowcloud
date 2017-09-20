@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.providers
 
-import com.karasiq.shadowcloud.config.ProvidersConfig
+import com.karasiq.shadowcloud.config.{ConfigProps, ProvidersConfig, SerializedProps}
 import com.karasiq.shadowcloud.storage.StoragePlugin
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.utils.ProviderInstantiator
@@ -8,6 +8,7 @@ import com.karasiq.shadowcloud.utils.ProviderInstantiator
 private[shadowcloud] trait StorageModuleRegistry {
   def storageTypes: Set[String]
   def storagePlugin(storageProps: StorageProps): StoragePlugin
+  def defaultConfig(storageType: String): SerializedProps
 }
 
 private[shadowcloud] object StorageModuleRegistry {
@@ -23,6 +24,8 @@ private[shadowcloud] final class StorageModuleRegistryImpl(providers: ProvidersC
   private[this] val providerMap = providerInstances.toMap
   private[this] val storages = providerInstances
     .foldLeft(PartialFunction.empty[StorageProps, StoragePlugin]) { case (pf, (_, pr)) ⇒ pr.storages.orElse(pf) }
+  private[this] val storageConfigs = providerInstances
+    .foldLeft(PartialFunction.empty[String, SerializedProps]) { case (pf, (_, pr)) ⇒ pr.storageConfigs.orElse(pf) }
 
   def storagePlugin(storageProps: StorageProps): StoragePlugin = {
     if (storageProps.provider.isEmpty) {
@@ -34,5 +37,9 @@ private[shadowcloud] final class StorageModuleRegistryImpl(providers: ProvidersC
 
   val storageTypes: Set[String] = {
     providerMap.values.flatMap(_.storageTypes).toSet
+  }
+
+  def defaultConfig(storageType: String) = {
+    storageConfigs.applyOrElse(storageType, (storageType: String) ⇒ ConfigProps("type" → storageType))
   }
 }

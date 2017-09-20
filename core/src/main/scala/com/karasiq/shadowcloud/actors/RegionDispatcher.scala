@@ -20,10 +20,9 @@ import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.exceptions.{RegionException, StorageException}
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
-import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
-import com.karasiq.shadowcloud.model.utils.{FileAvailability, IndexScope, SyncReport}
-import com.karasiq.shadowcloud.storage.StorageHealth
+import com.karasiq.shadowcloud.model.utils._
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
@@ -41,6 +40,7 @@ object RegionDispatcher {
   case object GetStorages extends Message with MessageStatus[String, Seq[RegionStorage]]
   case class GetChunkStatus(chunk: Chunk) extends Message
   object GetChunkStatus extends MessageStatus[Chunk, ChunkStatus]
+  case object GetHealth extends Message with MessageStatus[RegionId, RegionHealth]
 
   case class WriteIndex(diff: FolderIndexDiff) extends Message
   object WriteIndex extends MessageStatus[FolderIndexDiff, IndexDiff]
@@ -271,6 +271,13 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
     case GetStorages ⇒
       sender() ! GetStorages.Success(regionId, storageTracker.storages)
 
+    case GetHealth ⇒
+      val regionHealth = {
+        val storages = storageTracker.storages.map(s ⇒ (s.id, s.health))
+        RegionHealth(storages.toMap)
+      }
+      sender() ! GetHealth.Success(regionId, regionHealth)
+
     case PullStorageIndex(storageId) if storageTracker.contains(storageId) ⇒
       schedules.deferGC()
       val storage = storageTracker.getStorage(storageId)
@@ -283,8 +290,11 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
 
       indexFuture.onComplete {
         case Success(IndexMerger.State(Nil, IndexDiff.empty)) | Failure(StorageException.NotFound(_)) ⇒
-          val diff = indexTracker.indexes.toMergedDiff
-          if (diff.nonEmpty) indexTracker.storages.io.writeIndex(storage, diff)
+          log.info("Copying index to {}", storageId)
+          val newDiff = indexTracker.indexes.toMergedDiff
+            .copy(chunks = ChunkIndexDiff.empty)
+            .creates
+          if (newDiff.nonEmpty) indexTracker.storages.io.writeIndex(storage, newDiff)
 
         case Success(IndexMerger.State(diffs, pending)) ⇒
           log.debug("Storage {} index fetched: {} ({})", storageId, diffs, pending)

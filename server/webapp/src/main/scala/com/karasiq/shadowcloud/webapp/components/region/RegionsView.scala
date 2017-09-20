@@ -12,14 +12,18 @@ import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
 
 object RegionsView {
-  def apply()(implicit context: AppContext, rc: RegionContext): RegionsView = {
-    new RegionsView()
+  def apply()(implicit context: AppContext, regionContext: RegionContext): RegionsView = {
+    new RegionsView
+  }
+
+  private def newRegionName()(implicit rc: RegionContext): RegionId = {
+    s"region-${rc.regions.now.regions.size}"
   }
 }
 
-class RegionsView()(implicit context: AppContext, rc: RegionContext) extends BootstrapHtmlComponent {
+class RegionsView(implicit context: AppContext, regionContext: RegionContext) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
-    val regionViewsRx = rc.regions.fold(Map.empty[RegionId, Tag]) { case (views, report) ⇒
+    val regionViewsRx = regionContext.regions.fold(Map.empty[RegionId, Tag]) { case (views, report) ⇒
       val newMap = report.regions.map { case (regionId, _) ⇒
         regionId → views.getOrElse(regionId, renderRegion(regionId))
       }
@@ -27,31 +31,20 @@ class RegionsView()(implicit context: AppContext, rc: RegionContext) extends Boo
     }
 
     div(
-      div(
-        h3(context.locale.regions),
-        hr,
-        renderAddButton(),
-        Rx(div(regionViewsRx().values.toSeq)),
-        GridSystem.col(6)
-      ),
-      div(
-        h3(context.locale.storages),
-        hr,
-        // TODO: Storages
-        GridSystem.col(6)
-      )
+      renderAddButton(),
+      Rx(div(regionViewsRx().toSeq.sortBy(_._1).map(_._2)))
     )
   }
 
   private[this] def renderAddButton() = {
     def doCreate(regionId: RegionId) = {
       context.api.createRegion(regionId, SerializedProps.empty).foreach { _ ⇒
-        rc.updateAll()
+        regionContext.updateAll()
       }
     }
 
     def showCreateDialog() = {
-      val newRegionNameRx = Var(s"region-${rc.regions.now.regions.size}")
+      val newRegionNameRx = Var(RegionsView.newRegionName())
       Modal()
         .withTitle(context.locale.createRegion)
         .withBody(Form(FormInput.text(context.locale.regionId, newRegionNameRx.reactiveInput)))

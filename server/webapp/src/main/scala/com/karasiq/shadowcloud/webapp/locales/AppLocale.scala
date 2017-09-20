@@ -69,12 +69,20 @@ trait AppLocale {
   def collectGarbage: String
   def compactIndex: String
 
+  def writableSpace: String
+  def totalSpace: String
+  def freeSpace: String
+  def usedSpace: String
+
   def regionId: String
   def storageId: String
+  def storageType: String
   def createRegion: String
   def createStorage: String
   def registerStorage: String
+  def registerRegion: String
   def unregisterStorage: String
+  def unregisterRegion: String
   def suspend: String
   def resume: String
 
@@ -160,13 +168,21 @@ object AppLocale {
 
     val collectGarbage = "Collect garbage"
     val compactIndex = "Compact index"
+
+    val writableSpace = "Writable space"
+    val totalSpace = "Total space"
+    val freeSpace = "Free space"
+    val usedSpace = "Used space"
     
     val regionId = "Region ID"
     val storageId = "Storage ID"
+    val storageType = "Storage type"
     val createRegion = "Create region"
     val createStorage = "Create storage"
     val registerStorage = "Register storage"
+    val registerRegion = "Register region"
     val unregisterStorage = "Unregister storage"
+    val unregisterRegion = "Unregister region"
     val suspend = "Suspend"
     val resume = "Resume"
 

@@ -7,14 +7,14 @@ import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
 
-import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, RegionIndex, StorageIndex}
+import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, RegionIndex, StorageDispatcher, StorageIndex}
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.config.TimeoutsConfig
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.model.{Chunk, ChunkId, RegionId, StorageId}
-import com.karasiq.shadowcloud.model.utils.SyncReport
+import com.karasiq.shadowcloud.model.utils.{StorageHealth, SyncReport}
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 
@@ -74,6 +74,13 @@ final class StorageOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(imp
   // -----------------------------------------------------------------------
   // Utils
   // -----------------------------------------------------------------------
+  def getHealth(storageId: StorageId, checkNow: Boolean = false): Future[StorageHealth] = {
+    if (checkNow)
+      askStorage(storageId, StorageDispatcher.CheckHealth, StorageDispatcher.CheckHealth)
+    else
+      askStorage(storageId, StorageDispatcher.GetHealth, StorageDispatcher.GetHealth)
+  }
+
   private[this] def askStorage[V](storageId: StorageId, status: MessageStatus[_, V], message: Any)
                                  (implicit timeout: Timeout = timeouts.query): Future[V] = {
     status.unwrapFuture(regionSupervisor ? StorageEnvelope(storageId, message))

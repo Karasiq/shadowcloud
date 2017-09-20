@@ -126,6 +126,23 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
     synchronizeRegion(regionId)
   }
 
+
+  def getRegionHealth(regionId: RegionId) = {
+    sc.ops.region.getHealth(regionId)
+  }
+
+  def getStorageHealth(storageId: StorageId) = {
+    sc.ops.storage.getHealth(storageId)
+  }
+
+  def getStorageTypes() = {
+    Future.successful(sc.modules.storage.storageTypes)
+  }
+
+  def getDefaultStorageConfig(storageType: String) = {
+    Future.successful(sc.modules.storage.defaultConfig(storageType))
+  }
+
   def getFolder(regionId: RegionId, path: Path, dropChunks: Boolean = true, scope: IndexScope = IndexScope.default) = {
     val future = sc.ops.region.getFolder(regionId, path, scope)
     if (dropChunks) future.map(_.withoutChunks) else future

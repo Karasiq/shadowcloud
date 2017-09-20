@@ -7,7 +7,7 @@ import akka.actor.{ActorContext, ActorRef}
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.model.StorageId
-import com.karasiq.shadowcloud.storage.StorageHealth
+import com.karasiq.shadowcloud.model.utils.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage

@@ -9,6 +9,7 @@ import com.karasiq.shadowcloud.webapp.api.{AjaxApi, FileApi}
 import com.karasiq.shadowcloud.webapp.locales.AppLocale
 import com.karasiq.shadowcloud.webapp.styles.FolderTreeStyles
 import com.karasiq.shadowcloud.webapp.utils.TimeFormat
+import com.karasiq.taboverridejs.TabOverride
 
 object AppContext {
   implicit val JsExecutionContext = scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
@@ -17,6 +18,17 @@ object AppContext {
 
   def apply(): AppContext = {
     new DefaultAppContext()
+  }
+
+  def applyStyles()(implicit appContext: AppContext): Unit = {
+    import org.scalajs.dom
+    import org.scalajs.dom.raw.HTMLStyleElement
+
+    TabOverride.tabSize(2)
+    appContext.styles.foreach { stylesheet ⇒
+      import AppContext.CssSettings._
+      dom.document.head.appendChild(stylesheet.render[HTMLStyleElement])
+    }
   }
 
   object Implicits {

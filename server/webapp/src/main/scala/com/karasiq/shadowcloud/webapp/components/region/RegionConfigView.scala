@@ -10,11 +10,12 @@ import rx.{Rx, Var}
 
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
-import com.karasiq.shadowcloud.model.utils.{GCReport, SyncReport}
+import com.karasiq.shadowcloud.model.utils.{GCReport, RegionHealth, SyncReport}
 import com.karasiq.shadowcloud.model.utils.RegionStateReport.RegionStatus
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
 import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
+import com.karasiq.shadowcloud.webapp.utils.RxWithKey
 
 object RegionConfigView {
   def apply(regionId: RegionId)(implicit context: AppContext, regionContext: RegionContext): RegionConfigView = {
@@ -23,22 +24,23 @@ object RegionConfigView {
 }
 
 class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionContext: RegionContext) extends BootstrapHtmlComponent {
-  private[this] val regionRx = regionContext.region(regionId)
-  private[this] val compactStarted = Var(false)
-  private[this] val compactReportRx = Var(Map.empty: Map[StorageId, SyncReport])
-  private[this] val gcStarted = Var(false)
-  private[this] val gcAnalysed = Var(false)
-  private[this] val gcReportRx = Var(None: Option[GCReport])
+  private[this] lazy val regionRx = regionContext.region(regionId)
+  private[this] lazy val regionHealthRx = RxWithKey(regionRx, RegionHealth.empty)(r ⇒ context.api.getRegionHealth(r.regionId))
+  private[this] lazy val compactStarted = Var(false)
+  private[this] lazy val compactReportRx = Var(Map.empty: Map[StorageId, SyncReport])
+  private[this] lazy val gcStarted = Var(false)
+  private[this] lazy val gcAnalysed = Var(false)
+  private[this] lazy val gcReportRx = Var(None: Option[GCReport])
 
   def renderTag(md: ModifierT*): TagT = {
     div(regionRx.map { regionStatus ⇒
       div(
         if (!regionStatus.suspended) {
           Seq(
-            // TODO: Health
+            renderRegionHealth(),
             renderCompactButton(),
             renderGCButton(),
-            hr,
+            hr
           )
         } else (),
         renderStateButtons(regionStatus),
@@ -47,6 +49,10 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
         renderStoragesRegistration(regionStatus)
       )
     })
+  }
+
+  private[this] def renderRegionHealth() = {
+    HealthView(regionHealthRx.toRx)
   }
 
   private[this] def renderGCButton() = {

@@ -18,14 +18,16 @@ import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.model.{Chunk, StorageId}
-import com.karasiq.shadowcloud.storage.{StorageHealth, StorageHealthProvider}
+import com.karasiq.shadowcloud.model.utils.StorageHealth
+import com.karasiq.shadowcloud.storage.StorageHealthProvider
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.utils.AkkaStreamUtils
 
 object StorageDispatcher {
   // Messages
   sealed trait Message
-  object CheckHealth extends Message with NotInfluenceReceiveTimeout with MessageStatus[String, StorageHealth]
+  case object CheckHealth extends Message with NotInfluenceReceiveTimeout with MessageStatus[StorageId, StorageHealth]
+  case object GetHealth extends Message with NotInfluenceReceiveTimeout with MessageStatus[StorageId, StorageHealth]
 
   // Internal messages
   private sealed trait InternalMessage extends PossiblyHarmful
@@ -97,6 +99,9 @@ private final class StorageDispatcher(storageId: StorageId, storageProps: Storag
     // -----------------------------------------------------------------------
     // Storage health
     // -----------------------------------------------------------------------
+    case GetHealth ⇒
+      sender() ! GetHealth.Success(storageId, health)
+
     case CheckHealth ⇒
       healthProvider.health
         .map(CheckHealth.Success(storageId, _))

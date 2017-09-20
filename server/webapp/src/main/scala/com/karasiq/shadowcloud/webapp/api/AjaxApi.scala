@@ -95,6 +95,22 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
     apiClient.compactIndexes(regionId).call()
   }
 
+  def getRegionHealth(regionId: RegionId) = {
+    apiClient.getRegionHealth(regionId).call()
+  }
+
+  def getStorageHealth(storageId: StorageId) = {
+    apiClient.getStorageHealth(storageId).call()
+  }
+
+  def getStorageTypes() = {
+    apiClient.getStorageTypes().call()
+  }
+
+  def getDefaultStorageConfig(storageType: String) = {
+    apiClient.getDefaultStorageConfig(storageType).call()
+  }
+
   def getFolder(regionId: RegionId, path: Path, dropChunks: Boolean = true, scope: IndexScope = IndexScope.default) = {
     apiClient.getFolder(regionId, path, dropChunks, scope).call()
   }

@@ -13,13 +13,13 @@ import com.karasiq.shadowcloud.model.crypto._
 import com.karasiq.shadowcloud.model.utils._
 import com.karasiq.shadowcloud.model.utils.GCReport.{RegionGCState, StorageGCState}
 import com.karasiq.shadowcloud.model.utils.RegionStateReport.{RegionStatus, StorageStatus}
-import com.karasiq.shadowcloud.utils.encoding.{Base64, HexString}
+import com.karasiq.shadowcloud.utils.encoding.Base64
 
 //noinspection ConvertExpressionToSAM
 trait SCJsonEncoders {
   implicit val byteStringFormat = Format[ByteString](
-    Reads(value ⇒ JsSuccess(HexString.decode(value.as[JsString].value))),
-    Writes(value ⇒ JsString(HexString.encode(value)))
+    Reads(value ⇒ JsSuccess(Base64.decode(value.as[String]))),
+    Writes(value ⇒ JsString(Base64.encode(value)))
   )
 
   implicit val akkaDoneFormat = Format[Done](
@@ -71,6 +71,8 @@ trait SCJsonEncoders {
   implicit val storageStatusFormat = Json.format[StorageStatus]
   implicit val regionStatusFormat = Json.format[RegionStatus]
   implicit val regionStateReportFormat = Json.format[RegionStateReport]
+  implicit val storageHealthFormat = Json.format[StorageHealth]
+  implicit val regionHealthFormat = Json.format[RegionHealth]
 
   implicit val indexScopeFormat: Format[IndexScope] = new Format[IndexScope] {
     def writes(o: IndexScope): JsValue = o match {

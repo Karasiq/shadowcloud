@@ -18,7 +18,7 @@ private[shadowcloud] object ConfigProps {
       .setJson(false)
   }
 
-  def fromConfig(config: Config, json: Boolean = true): SerializedProps = {
+  def fromConfig(config: Config, json: Boolean = false): SerializedProps = {
     if (config.entrySet().isEmpty) {
       SerializedProps.empty
     } else {
@@ -33,8 +33,12 @@ private[shadowcloud] object ConfigProps {
     }
   }
 
-  def fromMap(map: Map[String, _]): SerializedProps = {
-    fromConfig(ConfigFactory.parseMap(map.asJava))
+  def fromMap(map: Map[String, _], json: Boolean = false): SerializedProps = {
+    fromConfig(ConfigFactory.parseMap(map.asJava), json)
+  }
+
+  def fromString(configString: String, json: Boolean = false): SerializedProps = {
+    SerializedProps(if (json) "json" else "hocon", ByteString(configString))
   }
 
   def apply(values: (String, _)*): SerializedProps = {
@@ -47,5 +51,9 @@ private[shadowcloud] object ConfigProps {
     } else {
       Utils.emptyConfig
     }
+  }
+
+  def reformat(props: SerializedProps, json: Boolean = false): SerializedProps = {
+    fromConfig(toConfig(props), json)
   }
 }

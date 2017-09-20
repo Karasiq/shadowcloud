@@ -12,7 +12,7 @@ import com.karasiq.shadowcloud.actors.{RegionContainer, RegionDispatcher, Storag
 import com.karasiq.shadowcloud.actors.utils.{ActorState ⇒ State}
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
-import com.karasiq.shadowcloud.storage.StorageHealth
+import com.karasiq.shadowcloud.model.utils.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.utils.Utils
 

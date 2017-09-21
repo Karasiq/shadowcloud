@@ -28,7 +28,7 @@ object FilePreview {
   private def getImagePreview(regionId: RegionId, fileId: FileId)(implicit context: AppContext): Future[PreviewVariants] = {
     val futureMetadata = context.api.getFileMetadata(regionId, fileId, Metadata.Tag.Disposition.PREVIEW)
     futureMetadata.map { metadatas ⇒
-      println(metadatas)
+      // println(metadatas)
       val image = metadatas.flatMap(_.value.thumbnail).headOption
       val text = {
         val texts = metadatas.flatMap(_.value.text)

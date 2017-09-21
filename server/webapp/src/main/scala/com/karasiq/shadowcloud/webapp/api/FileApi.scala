@@ -4,19 +4,21 @@ import scala.concurrent.Future
 
 import akka.util.ByteString
 import org.scalajs.dom.ext.Ajax
+import rx.Rx
 
 import com.karasiq.shadowcloud.api.{SCApiEncoding, SCApiMeta, SCApiUtils}
 import com.karasiq.shadowcloud.model.{File, FileId, Path, RegionId}
 import com.karasiq.shadowcloud.model.utils.IndexScope
-import com.karasiq.shadowcloud.webapp.utils.URLPath
+import com.karasiq.shadowcloud.webapp.utils.{UploadUtils, URLPath}
 
 trait FileApi { self: SCApiMeta ⇒
   import com.karasiq.shadowcloud.api.js.utils.AjaxUtils._
 
-  def uploadFile(regionId: RegionId, path: Path, data: Ajax.InputData): Future[File] = {
-    Ajax.post(uploadFileUrl(regionId, path), data, headers = Map("X-Requested-With" → SCApiUtils.requestedWith), responseType = "arraybuffer")
-      .responseBytes
-      .map(encoding.decodeFile)
+  def uploadFile(regionId: RegionId, path: Path, data: Ajax.InputData): (Rx[Int], Future[File]) = {
+    val (progress, future) = UploadUtils.uploadWithProgress(uploadFileUrl(regionId, path), data,
+      headers = Map("X-Requested-With" → SCApiUtils.requestedWith), responseType = "arraybuffer")
+
+    (progress, future.map(encoding.decodeFile))
   }
 
   def downloadMostRecentFile(regionId: RegionId, path: Path, scope: IndexScope = IndexScope.default): Future[ByteString] = {

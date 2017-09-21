@@ -9,7 +9,7 @@ import org.scalajs.dom.XMLHttpRequest
 object AjaxUtils {
   implicit val executionContext: ExecutionContext = scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
-  implicit class AjaxResultOps(future: Future[XMLHttpRequest]) {
+  implicit class AjaxResultOps(private val future: Future[XMLHttpRequest]) extends AnyVal {
     def responseBytes: Future[ByteString] = {
       future
         .filter(_.status == 200)

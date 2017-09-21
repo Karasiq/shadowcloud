@@ -102,7 +102,7 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
       Form.submit(context.locale.submit)("disabled".classIf(uploading), ButtonStyle.success, onclick := Callback.onClick { _ ⇒
         if (!uploading.now) {
           uploading() = true
-          val future = context.api.uploadFile(folderContext.regionId, fileRx.now.path, newContent.now)
+          val (_, future) = context.api.uploadFile(folderContext.regionId, fileRx.now.path, newContent.now)
           future.onComplete(_ ⇒ uploading() = false)
           future.foreach { newFile ⇒
             editorOpened() = false

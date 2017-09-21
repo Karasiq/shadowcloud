@@ -3,8 +3,6 @@ package com.karasiq.shadowcloud.webapp.components.folder
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
-import org.scalajs.dom
-
 import com.karasiq.shadowcloud.model.{Path, RegionId}
 import com.karasiq.shadowcloud.webapp.components.file.FileView
 import com.karasiq.shadowcloud.webapp.components.region.IndexScopeSelector
@@ -21,13 +19,25 @@ object FoldersPanel {
 class FoldersPanel(regionId: RegionId)(implicit appContext: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
     val selectedFolderRx = RxUtils.getSelectedFolderRx
-    val uploadForm = FormInput.file("File", onchange := Callback.onInput { input ⇒
-      input.files.headOption.foreach { inputFile ⇒
+    val progressBars = div().render
+    val uploadInput = FormInput.file(appContext.locale.file, multiple, onchange := Callback.onInput { input ⇒
+      input.files.foreach { inputFile ⇒
         val parent = selectedFolderRx.now.path
-        appContext.api.uploadFile(regionId, parent / inputFile.name, inputFile).foreach { file ⇒
-          // TODO: Progress, reset input
+        val (progress, future) = appContext.api.uploadFile(regionId, parent / inputFile.name, inputFile)
+
+        val pbStyles = Seq(ProgressBarStyle.success, ProgressBarStyle.striped, ProgressBarStyle.animated)
+        val progressBar = div(
+          div(b(inputFile.name)),
+          ProgressBar.withLabel(progress).renderTag(pbStyles:_*),
+          hr
+        ).render
+        progressBars.appendChild(progressBar)
+        future.onComplete(_ ⇒ progressBars.removeChild(progressBar))
+
+        future.foreach { file ⇒
           folderContext.update(parent)
-          dom.window.alert(file.toString)
+          // dom.window.alert(file.toString)
+          input.form.reset()
         }
       }
     })
@@ -38,7 +48,10 @@ class FoldersPanel(regionId: RegionId)(implicit appContext: AppContext, folderCo
 
     div(
       GridSystem.row(
-        GridSystem.col(6).asDiv(uploadForm),
+        GridSystem.col(6).asDiv(
+          GridSystem.row(Form(uploadInput)),
+          GridSystem.row(progressBars)
+        ),
         GridSystem.col(6).asDiv(scopeSelector)
       ),
       GridSystem.row(

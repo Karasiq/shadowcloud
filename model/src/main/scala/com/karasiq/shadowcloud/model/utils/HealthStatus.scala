@@ -1,5 +1,7 @@
 package com.karasiq.shadowcloud.model.utils
 
+import com.karasiq.shadowcloud.utils.Utils
+
 trait HealthStatus {
   def freeSpace: Long
   def usedSpace: Long
@@ -14,7 +16,7 @@ trait HealthStatus {
 
 object HealthStatus {
   def getUsedPercentage(hs: HealthStatus): Int = {
-    val percentage = if (hs.totalSpace > 0) (hs.usedSpace * 100 / hs.totalSpace).toInt else 0
+    val percentage = Utils.percents(hs.usedSpace, hs.totalSpace).toInt
     math.max(0, math.min(100, percentage))
   }
 }

@@ -110,5 +110,9 @@ private[shadowcloud] object Utils {
     toSafeIdentifier(name) + "-" + java.lang.Long.toHexString(System.nanoTime())
   }
 
+  def percents(value: Double, total: Double): Double = {
+    if (total == 0) 100 else value * 100 / total
+  }
+
   val emptyConfig = ConfigFactory.empty()
 }

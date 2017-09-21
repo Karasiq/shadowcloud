@@ -23,7 +23,7 @@ import com.karasiq.shadowcloud.utils.DiffStats
 
 object RegionIndex {
   // Types
-  case class ID(storageId: StorageId, regionId: RegionId) {
+  final case class RegionIndexId(storageId: StorageId, regionId: RegionId) {
     private[actors] def toPersistenceId: String = {
       s"index_${storageId}_$regionId"
     }
@@ -31,18 +31,18 @@ object RegionIndex {
 
   // Messages
   sealed trait Message
-  case object GetIndex extends Message with MessageStatus[ID, IndexMerger.State[SequenceNr]]
-  case class WriteDiff(diff: IndexDiff) extends Message
+  case object GetIndex extends Message with MessageStatus[RegionIndexId, IndexMerger.State[SequenceNr]]
+  final case class WriteDiff(diff: IndexDiff) extends Message
   object WriteDiff extends MessageStatus[IndexDiff, IndexDiff]
   case object Compact extends Message
-  case object Synchronize extends Message with MessageStatus[ID, SyncReport]
+  case object Synchronize extends Message with MessageStatus[RegionIndexId, SyncReport]
 
   // Internal messages
   private sealed trait InternalMessage extends Message with PossiblyHarmful
-  private case class KeysLoaded(keys: Set[SequenceNr]) extends InternalMessage
-  private case class ReadSuccess(result: IndexIOResult[SequenceNr]) extends InternalMessage
-  private case class WriteSuccess(result: IndexIOResult[SequenceNr]) extends InternalMessage
-  private case class CompactSuccess(deleted: Set[SequenceNr], created: Option[IndexIOResult[SequenceNr]]) extends InternalMessage
+  private final case class KeysLoaded(keys: Set[SequenceNr]) extends InternalMessage
+  private final case class ReadSuccess(result: IndexIOResult[SequenceNr]) extends InternalMessage
+  private final case class WriteSuccess(result: IndexIOResult[SequenceNr]) extends InternalMessage
+  private final case class CompactSuccess(deleted: Set[SequenceNr], created: Option[IndexIOResult[SequenceNr]]) extends InternalMessage
   private case object StreamCompleted extends InternalMessage with DeadLetterSuppression
 
   // Snapshot
@@ -72,7 +72,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
   import RegionIndex._
 
   private[this] object state {
-    val indexId = ID(storageId, regionId)
+    val indexId = RegionIndexId(storageId, regionId)
 
     val index = IndexMerger()
     val streams = IndexRepositoryStreams(config)
@@ -81,7 +81,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
     var diffsSaved = 0
     var diffStats = DiffStats.empty
 
-    val pendingSync = new PendingOperation[ID]
+    val pendingSync = new PendingOperation[RegionIndexId]
     var pendingSyncReport = SyncReport.empty
 
     def updateReport(f: SyncReport ⇒ SyncReport): Unit = {
@@ -97,7 +97,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
   def receiveDefault: Receive = {
     case GetIndex ⇒
       deferAsync(()) { _ ⇒
-        sender() ! GetIndex.Success(ID(storageId, regionId), IndexMerger.state(state.index))
+        sender() ! GetIndex.Success(RegionIndexId(storageId, regionId), IndexMerger.state(state.index))
       }
 
     case WriteDiff(diff) ⇒

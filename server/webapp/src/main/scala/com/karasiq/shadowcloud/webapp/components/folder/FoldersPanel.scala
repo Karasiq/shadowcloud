@@ -27,7 +27,8 @@ class FoldersPanel(regionId: RegionId)(implicit appContext: AppContext, folderCo
     val folderView = FolderFileList(selectedFolderRx.map(_.files))
 
     val uploadButton = Button(ButtonStyle.info)(AppIcons.upload, Bootstrap.nbsp, appContext.locale.uploadFiles, onclick := Callback.onClick { _ ⇒
-      Modal(appContext.locale.uploadFiles, renderUploadForm(), AppComponents.modalClose(), ModalDialogSize.large).show()
+      Modal(appContext.locale.uploadFiles, renderUploadForm(), AppComponents.modalClose(), dialogStyle = ModalDialogSize.large)
+        .show()
     })
 
     div(
@@ -46,7 +47,7 @@ class FoldersPanel(regionId: RegionId)(implicit appContext: AppContext, folderCo
     )
   }
 
-  private[this] def renderUploadForm(): Unit = {
+  private[this] def renderUploadForm(): TagT = {
     // attr("directory").empty, attr("webkitdirectory").empty
     val uploadInput = FormInput.file(appContext.locale.file, multiple, onchange := Callback.onInput { input ⇒
       input.files.foreach { inputFile ⇒

@@ -17,7 +17,7 @@ object GCReport {
     def isEmpty: Boolean = orphanedChunks.isEmpty && oldFiles.isEmpty && expiredMetadata.isEmpty
 
     override def toString: String = {
-      s"GCState(orphaned chunks = [${Utils.printChunkHashes(orphanedChunks)}], old files = [${Utils.printValues(oldFiles)}], expired metadata = [${Utils.printValues(expiredMetadata)}])"
+      s"RegionGCState(orphaned chunks = [${Utils.printChunkHashes(orphanedChunks)}], old files = [${Utils.printValues(oldFiles)}], expired metadata = [${Utils.printValues(expiredMetadata)}])"
     }
   }
 

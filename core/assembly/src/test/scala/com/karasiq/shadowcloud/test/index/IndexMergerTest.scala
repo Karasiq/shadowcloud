@@ -6,7 +6,8 @@ import org.scalatest.{Matchers, WordSpec}
 
 import com.karasiq.shadowcloud.exceptions.SCExceptions
 import com.karasiq.shadowcloud.index.FolderIndex
-import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.model.{Folder, Path}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, TestUtils}
 
@@ -87,6 +88,16 @@ class IndexMergerTest extends WordSpec with Matchers {
         index.chunks.chunks shouldBe empty
         index.folders shouldBe FolderIndex.empty
       }
-    }
+
+      "add and delete folder" in {
+        val diff1 = IndexDiff(folders = FolderIndexDiff.createFolders(Folder("/1"), Folder("/1/2")))
+        val diff2 = IndexDiff(folders = FolderIndexDiff.deleteFolderPaths("/1/2"))
+        index.addPending(diff1)
+        index.addPending(diff2)
+        index.add(1, diff1)
+        index.add(2, diff2)
+        index.folders.patch(index.pending.folders).folders.keySet shouldBe Set[Path](Path.root, "/1")
+      }
+    }                                                              
   }
 }

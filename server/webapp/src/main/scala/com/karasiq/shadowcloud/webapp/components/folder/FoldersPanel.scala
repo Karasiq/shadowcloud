@@ -20,6 +20,7 @@ class FoldersPanel(regionId: RegionId)(implicit appContext: AppContext, folderCo
   def renderTag(md: ModifierT*): TagT = {
     val selectedFolderRx = RxUtils.getSelectedFolderRx
     val progressBars = div().render
+    // attr("directory").empty, attr("webkitdirectory").empty
     val uploadInput = FormInput.file(appContext.locale.file, multiple, onchange := Callback.onInput { input ⇒
       input.files.foreach { inputFile ⇒
         val parent = selectedFolderRx.now.path

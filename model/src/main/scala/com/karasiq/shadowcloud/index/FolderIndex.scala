@@ -156,7 +156,7 @@ final case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Fold
 
       deleteFolders(diff.deletedFolders.map(diff.path / _))
     }
-    withFolders(this.folders ++ modified -- deleted)
+    withFolders((this.folders ++ modified) -- deleted)
   }
 
   private[this] def withFolders(folders: Map[Path, Folder]): FolderIndex = {

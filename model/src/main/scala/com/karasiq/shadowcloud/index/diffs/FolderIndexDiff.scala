@@ -34,7 +34,6 @@ final case class FolderIndexDiff(folders: Seq[FolderDiff] = Vector.empty)
     withFolders(folders)
   }
 
-
   def merge(right: FolderIndexDiff): FolderIndexDiff = {
     mergeWith(right)
   }
@@ -68,7 +67,8 @@ final case class FolderIndexDiff(folders: Seq[FolderDiff] = Vector.empty)
   }
 
   private[this] def withFolders(folders: Seq[FolderDiff]): FolderIndexDiff = {
-    if (folders.isEmpty) FolderIndexDiff.empty else copy(folders)
+    val nonEmptyDiffs = folders.filter(_.nonEmpty).toVector
+    if (nonEmptyDiffs.isEmpty) FolderIndexDiff.empty else copy(nonEmptyDiffs)
   }
 
   private[this] def dropDeleted(folders: Seq[FolderDiff]): Seq[FolderDiff] = {

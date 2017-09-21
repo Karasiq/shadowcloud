@@ -4,6 +4,7 @@ import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
 import com.karasiq.shadowcloud.model.{Path, RegionId}
+import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
 import com.karasiq.shadowcloud.webapp.components.file.FileView
 import com.karasiq.shadowcloud.webapp.components.region.IndexScopeSelector
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
@@ -17,9 +18,35 @@ object FoldersPanel {
 }
 
 class FoldersPanel(regionId: RegionId)(implicit appContext: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
+  private[this] lazy val selectedFolderRx = RxUtils.getSelectedFolderRx
+  private[this] lazy val uploadProgressBars = div().render
+
   def renderTag(md: ModifierT*): TagT = {
-    val selectedFolderRx = RxUtils.getSelectedFolderRx
-    val progressBars = div().render
+    val scopeSelector = IndexScopeSelector.forContext(folderContext)
+    val folderTree = FolderTree(Path.root)
+    val folderView = FolderFileList(selectedFolderRx.map(_.files))
+
+    val uploadButton = Button(ButtonStyle.info)(AppIcons.upload, Bootstrap.nbsp, appContext.locale.uploadFiles, onclick := Callback.onClick { _ ⇒
+      Modal(appContext.locale.uploadFiles, renderUploadForm(), AppComponents.modalClose(), ModalDialogSize.large).show()
+    })
+
+    div(
+      GridSystem.row(
+        GridSystem.col(6).asDiv(uploadButton),
+        GridSystem.col(6).asDiv(scopeSelector)
+      ),
+      GridSystem.row(
+        GridSystem.col(3).asDiv(folderTree),
+        GridSystem.col(5).asDiv(folderView),
+        GridSystem.col(4).asDiv(folderView.selectedFile.map[Frag] {
+          case Some(file) ⇒ FileView(file)
+          case None ⇒ ()
+        })
+      )
+    )
+  }
+
+  private[this] def renderUploadForm(): Unit = {
     // attr("directory").empty, attr("webkitdirectory").empty
     val uploadInput = FormInput.file(appContext.locale.file, multiple, onchange := Callback.onInput { input ⇒
       input.files.foreach { inputFile ⇒
@@ -32,8 +59,8 @@ class FoldersPanel(regionId: RegionId)(implicit appContext: AppContext, folderCo
           ProgressBar.withLabel(progress).renderTag(pbStyles:_*),
           hr
         ).render
-        progressBars.appendChild(progressBar)
-        future.onComplete(_ ⇒ progressBars.removeChild(progressBar))
+        uploadProgressBars.appendChild(progressBar)
+        future.onComplete(_ ⇒ uploadProgressBars.removeChild(progressBar))
 
         future.foreach { file ⇒
           folderContext.update(parent)
@@ -43,26 +70,9 @@ class FoldersPanel(regionId: RegionId)(implicit appContext: AppContext, folderCo
       }
     })
 
-    val scopeSelector = IndexScopeSelector.forContext(folderContext)
-    val folderTree = FolderTree(Path.root)
-    val folderView = FolderFileList(selectedFolderRx.map(_.files))
-
     div(
-      GridSystem.row(
-        GridSystem.col(6).asDiv(
-          GridSystem.row(Form(uploadInput)),
-          GridSystem.row(progressBars)
-        ),
-        GridSystem.col(6).asDiv(scopeSelector)
-      ),
-      GridSystem.row(
-        GridSystem.col(3).asDiv(folderTree),
-        GridSystem.col(5).asDiv(folderView),
-        GridSystem.col(4).asDiv(folderView.selectedFile.map[Frag] {
-          case Some(file) ⇒ FileView(file)
-          case None ⇒ ()
-        })
-      )
+      GridSystem.mkRow(Form(uploadInput)),
+      GridSystem.mkRow(uploadProgressBars)
     )
   }
 }

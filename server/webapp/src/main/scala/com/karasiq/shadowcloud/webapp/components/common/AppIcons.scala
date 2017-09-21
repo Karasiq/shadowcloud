@@ -25,6 +25,7 @@ object AppIcons {
 
   val play: Icon = "film"
   val download: Icon = "download"
+  val upload: Icon = "upload"
   val viewText: Icon = "file-text-o"
   val editText: Icon = "edit"
 

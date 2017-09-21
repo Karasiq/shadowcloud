@@ -37,6 +37,7 @@ trait AppLocale {
   def image: String
   def audio: String
 
+  def uploadFiles: String
   def downloadFile: String
   def deleteFile: String
   def playFile: String
@@ -137,6 +138,7 @@ object AppLocale {
     val audio = "Audio"
     val video = "Video"
 
+    val uploadFiles = "Upload"
     val downloadFile = "Download"
     val deleteFile = "Delete"
     val playFile = "Play"

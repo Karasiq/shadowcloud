@@ -18,7 +18,7 @@ class TextView(text: Metadata.Text)(implicit context: AppContext) extends Bootst
     if (text.format == HtmlUtils.HtmlMime) {
       Bootstrap.well(div(HtmlUtils.extractContent(text.data, text.format)), md)
     } else {
-      pre(text.data, md)
+      Bootstrap.well(text.data, whiteSpace.`pre-wrap`, wordWrap.`break-word`, md)
     }
   }
 }

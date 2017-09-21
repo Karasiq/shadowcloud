@@ -59,6 +59,7 @@ object MetadataTable {
         .withTitle(context.locale.metadata)
         .withBody(MetadataView(metadata))
         .withButtons(AppComponents.modalClose())
+        .withDialogStyle(ModalDialogSize.large)
         .show()
     }
   }

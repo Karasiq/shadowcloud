@@ -159,7 +159,7 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
     def createStorageState(regionIndex: IndexMerger[RegionKey], storage: RegionStorage): Future[(RegionStorage, StorageGCState)] = {
       val subIndex = {
         val relevantDiffs = regionIndex.diffs.filterKeys(_.storageId == storage.id)
-        IndexMerger.restore(RegionKey.zero, IndexMerger.State(relevantDiffs.toSeq, regionIndex.pending))
+        IndexMerger.restore(IndexMerger.State(relevantDiffs.toSeq, regionIndex.pending))
       }
       
       sc.ops.storage.getChunkKeys(storage.id, regionId).map { chunkIds ⇒
@@ -172,7 +172,7 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
     }
 
     for {
-      regionIndex ← sc.ops.region.getIndexSnapshot(regionId).map(IndexMerger.restore(RegionKey.zero, _))
+      regionIndex ← sc.ops.region.getIndexSnapshot(regionId).map(IndexMerger.restore(_))
       storages ← sc.ops.region.getStorages(regionId)
       regionState = createRegionState(regionIndex)
       storageStates ← Future.sequence(storages.map(createStorageState(regionIndex, _)))

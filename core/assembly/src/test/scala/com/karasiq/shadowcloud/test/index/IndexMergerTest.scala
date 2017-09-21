@@ -14,7 +14,7 @@ import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, TestUtils}
 class IndexMergerTest extends WordSpec with Matchers {
   "Index" when {
     "empty" should {
-      val index = IndexMerger()
+      val index = IndexMerger.sequential()
       val diff = TestUtils.testDiff
 
       "add pending diff" in {
@@ -43,7 +43,7 @@ class IndexMergerTest extends WordSpec with Matchers {
     }
 
     "not empty" should {
-      val index = IndexMerger()
+      val index = IndexMerger.sequential()
       val diff1 = TestUtils.testDiff
       val diff2 = CoreTestUtils.randomDiff
       val diff2Reverse = diff2.reverse.copy(time = diff2.time + 1)

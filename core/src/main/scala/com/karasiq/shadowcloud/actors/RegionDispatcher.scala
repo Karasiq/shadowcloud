@@ -316,7 +316,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
         indexTracker.storages.state.addStorageDiffs(storageId, state.diffs)
         val deletedChunks = {
           val oldIndex = indexTracker.storages.state.extractIndex(storageId)
-          val newIndex = IndexMerger.restore(SequenceNr.zero, state)
+          val newIndex = IndexMerger.restore(state)
           newIndex.chunks.diff(oldIndex.chunks).deletedChunks
         }
         deletedChunks.foreach(chunksTracker.storages.state.unregisterChunk(storageId, _))

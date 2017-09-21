@@ -74,7 +74,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
   private[this] object state {
     val indexId = RegionIndexId(storageId, regionId)
 
-    val index = IndexMerger()
+    val index = IndexMerger.sequential()
     val streams = IndexRepositoryStreams(config)
 
     var compactRequested = false
@@ -97,7 +97,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
   def receiveDefault: Receive = {
     case GetIndex ⇒
       deferAsync(()) { _ ⇒
-        sender() ! GetIndex.Success(RegionIndexId(storageId, regionId), IndexMerger.state(state.index))
+        sender() ! GetIndex.Success(RegionIndexId(storageId, regionId), IndexMerger.createState(state.index))
       }
 
     case WriteDiff(diff) ⇒
@@ -346,7 +346,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
       def becomeCompact(): Unit = {
         def compactIndex(indexState: IndexMerger.State[SequenceNr]): Source[CompactSuccess, NotUsed] = {
-          val index = IndexMerger.restore(SequenceNr.zero, indexState)
+          val index = IndexMerger.restore(indexState)
           log.debug("Compacting diffs: {}", index.diffs)
           val diffs = index.diffs.toVector
           val newDiff = index.mergedDiff.creates
@@ -379,7 +379,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
           })
         }
 
-        Source.single(IndexMerger.state(state.index))
+        Source.single(IndexMerger.createState(state.index))
           .filter(_.diffs.length > 1)
           .flatMapConcat(compactIndex)
           .runWith(Sink.actorRef(self, StreamCompleted))
@@ -401,7 +401,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
   // Snapshots
   // -----------------------------------------------------------------------
   private[this] def createSnapshot(after: () ⇒ Unit): Unit = {
-    val snapshot = Snapshot(IndexMerger.state(state.index))
+    val snapshot = Snapshot(IndexMerger.createState(state.index))
     log.info("Saving region index snapshot: {}", snapshot)
     saveSnapshot(snapshot)
 

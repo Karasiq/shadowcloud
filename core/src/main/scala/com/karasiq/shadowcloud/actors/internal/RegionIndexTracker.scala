@@ -35,7 +35,7 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
   // Context
   // -----------------------------------------------------------------------
   private[this] val log = Logging(sc.implicits.actorSystem, s"$regionId-index")
-  val globalIndex = IndexMerger.region
+  val globalIndex = IndexMerger.region()
 
   // -----------------------------------------------------------------------
   // Storages
@@ -49,7 +49,7 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
       }
 
       def extractIndex(storageId: StorageId): IndexMerger[SequenceNr] = {
-        IndexMerger.restore(SequenceNr.zero, IndexMerger.State(extractDiffs(storageId), IndexDiff.empty))
+        IndexMerger.restore(IndexMerger.State(extractDiffs(storageId)))
       }
 
       def addStorageDiffs(storageId: StorageId, diffs: Seq[(SequenceNr, IndexDiff)]): Unit = {
@@ -137,11 +137,11 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
     }
 
     def getState(scope: IndexScope): IndexMerger.State[RegionKey] = {
-      IndexMerger.state(this.withScope(scope))
+      IndexMerger.createState(this.withScope(scope))
     }
 
     private[this] def getCurrentState(): IndexMerger.State[RegionKey] = {
-      IndexMerger.state(globalIndex)
+      IndexMerger.createState(globalIndex)
     }
 
     def pending: IndexDiff = {
@@ -171,23 +171,8 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
       FileAvailability(file, chunksByStorage)
     }
 
-    private[this] def createScopedIndex(scope: IndexScope): IndexMerger[RegionKey] = scope match {
-      case IndexScope.Current ⇒
-        globalIndex
-
-      case IndexScope.Persisted ⇒
-        val filteredState = this.getCurrentState().copy(pending = IndexDiff.empty)
-        IndexMerger.restore(RegionKey.zero, filteredState)
-
-      case IndexScope.UntilSequenceNr(sequenceNr) ⇒
-        val state = this.getCurrentState()
-        val filteredState = state.copy(diffs = state.diffs.filter(_._1.sequenceNr <= sequenceNr), pending = IndexDiff.empty)
-        IndexMerger.restore(RegionKey.zero, filteredState)
-
-      case IndexScope.UntilTime(timestamp) ⇒
-        val state = this.getCurrentState()
-        val filteredState = state.copy(diffs = state.diffs.filter(_._1.timestamp <= timestamp), pending = IndexDiff.empty)
-        IndexMerger.restore(RegionKey.zero, filteredState)
+    private[this] def createScopedIndex(scope: IndexScope): IndexMerger[RegionKey] = {
+      IndexMerger.scopedView(globalIndex, scope)
     }
 
     private[this] def getOrCreateScopedIndex(scope: IndexScope): IndexMerger[RegionKey] = {

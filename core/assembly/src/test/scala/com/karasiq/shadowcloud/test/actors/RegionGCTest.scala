@@ -7,6 +7,7 @@ import org.scalatest.FlatSpecLike
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
+import com.karasiq.shadowcloud.actors.RegionGC.GCStrategy
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, SCExtensionSpec}
@@ -23,7 +24,7 @@ class RegionGCTest extends SCExtensionSpec with FlatSpecLike {
     sc.ops.region.synchronize(testRegionId).futureValue
     sc.ops.storage.deleteChunks(testStorageId, Set(ChunkPath(testRegionId, chunk.checksum.hash))).futureValue._2.isSuccess shouldBe true
     expectNoMsg(1 second)
-    whenReady(sc.ops.region.collectGarbage(testRegionId, delete = true)) { gcReport ⇒
+    whenReady(sc.ops.region.collectGarbage(testRegionId, GCStrategy.Delete)) { gcReport ⇒
       gcReport.regionId shouldBe testRegionId
       gcReport.regionState.oldFiles shouldBe empty
       gcReport.regionState.orphanedChunks shouldBe Set(chunk)
@@ -44,7 +45,7 @@ class RegionGCTest extends SCExtensionSpec with FlatSpecLike {
     sc.ops.storage.writeIndex(testStorageId, testRegionId, IndexDiff.deleteChunks(chunk)).futureValue
     sc.ops.storage.synchronize(testStorageId, testRegionId).futureValue
 
-    whenReady(sc.ops.region.collectGarbage(testRegionId, delete = true), Timeout(10 seconds)) { gcReport ⇒
+    whenReady(sc.ops.region.collectGarbage(testRegionId, GCStrategy.Delete), Timeout(10 seconds)) { gcReport ⇒
       gcReport.regionId shouldBe testRegionId
       gcReport.regionState.oldFiles shouldBe empty
       gcReport.regionState.orphanedChunks shouldBe empty

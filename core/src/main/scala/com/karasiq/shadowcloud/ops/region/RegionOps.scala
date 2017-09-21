@@ -11,6 +11,7 @@ import com.karasiq.shadowcloud.actors.{RegionDispatcher, RegionGC}
 import com.karasiq.shadowcloud.actors.RegionDispatcher._
 import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
+import com.karasiq.shadowcloud.actors.RegionGC.GCStrategy
 import com.karasiq.shadowcloud.config.TimeoutsConfig
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
@@ -150,8 +151,8 @@ final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(impl
   // -----------------------------------------------------------------------
   // Region GC
   // -----------------------------------------------------------------------
-  def collectGarbage(regionId: RegionId, delete: Boolean = false): Future[GCReport] = {
-    askRegion(regionId, RegionGC.CollectGarbage, RegionGC.CollectGarbage(Some(delete)))
+  def collectGarbage(regionId: RegionId, gcStrategy: GCStrategy = GCStrategy.Default): Future[GCReport] = {
+    askRegion(regionId, RegionGC.CollectGarbage, RegionGC.CollectGarbage(gcStrategy))
   }
 
   // -----------------------------------------------------------------------

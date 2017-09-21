@@ -9,6 +9,7 @@ import akka.stream.scaladsl.Sink
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.actors.internal.RegionTracker
 import com.karasiq.shadowcloud.actors.utils.ActorState
+import com.karasiq.shadowcloud.actors.RegionGC.GCStrategy
 import com.karasiq.shadowcloud.api.ShadowCloudApi
 import com.karasiq.shadowcloud.config.{ConfigProps, RegionConfig, SerializedProps}
 import com.karasiq.shadowcloud.index.diffs.FolderIndexDiff
@@ -113,7 +114,7 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
   }
 
   def collectGarbage(regionId: RegionId, delete: Boolean) = {
-    sc.ops.region.collectGarbage(regionId, delete)
+    sc.ops.region.collectGarbage(regionId, if (delete) GCStrategy.Delete else GCStrategy.Preview)
   }
 
   def compactIndex(storageId: StorageId, regionId: RegionId) = {

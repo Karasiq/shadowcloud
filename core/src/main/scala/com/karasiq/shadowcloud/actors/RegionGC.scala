@@ -28,14 +28,22 @@ import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
 
 object RegionGC {
+  // Types
+  sealed trait GCStrategy
+  object GCStrategy {
+    case object Default extends GCStrategy
+    case object Preview extends GCStrategy
+    case object Delete extends GCStrategy
+  }
+
   // Messages
   sealed trait Message
-  case class CollectGarbage(delete: Option[Boolean] = None) extends Message with NotInfluenceReceiveTimeout
+  case class CollectGarbage(strategy: GCStrategy = GCStrategy.Default) extends Message with NotInfluenceReceiveTimeout
   object CollectGarbage extends MessageStatus[RegionId, GCReport]
   case class Defer(time: FiniteDuration) extends Message with NotInfluenceReceiveTimeout
 
   private sealed trait InternalMessage extends Message with PossiblyHarmful
-  private case class StartGCNow(delete: Option[Boolean] = None) extends InternalMessage
+  private case class StartGCNow(strategy: GCStrategy = GCStrategy.Default) extends InternalMessage
   private case class DeleteGarbage(regionState: RegionGCState, storageStates: Seq[(RegionStorage, StorageGCState)]) extends InternalMessage
 
   // Props
@@ -61,10 +69,10 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
   // Receive
   // -----------------------------------------------------------------------
   def receiveIdle: Receive = {
-    case CollectGarbage(delete) ⇒
+    case CollectGarbage(gcStrategy) ⇒
       if (sender() != self || (config.runOnLowSpace.isEmpty && gcDeadline.isOverdue())) {
         log.debug("Starting garbage collection")
-        self.tell(StartGCNow(delete), sender())
+        self.tell(StartGCNow(gcStrategy), sender())
       } else if (config.runOnLowSpace.nonEmpty && gcDeadline.isOverdue()) {
         val freeSpaceFuture = sc.ops.region.getStorages(regionId).map { storages ⇒
           storages
@@ -77,7 +85,7 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
             log.debug("Estimate free space on region {}: {}", regionId, MemorySize(freeSpace))
             if (config.runOnLowSpace.exists(_ > freeSpace)) {
               log.debug("Free space lower than {}, starting GC", MemorySize(config.runOnLowSpace.get))
-              self ! StartGCNow(delete)
+              self ! StartGCNow(gcStrategy)
             }
 
           case Failure(error) ⇒
@@ -87,9 +95,9 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
         // log.debug("Garbage collection will be started in {} minutes", gcDeadline.timeLeft.toMinutes)
       }
 
-    case StartGCNow(delete) ⇒
+    case StartGCNow(gcStrategy) ⇒
       context.setReceiveTimeout(10 minutes)
-      context.become(receiveCollecting(Set(sender()), delete.getOrElse(config.autoDelete)))
+      context.become(receiveCollecting(Set(sender()), gcStrategy))
 
       sc.ops.region.synchronize(regionId).foreach { reports ⇒
         if (reports.exists(_._2.nonEmpty)) log.warning("Pre-GC sync reports: {}", reports)
@@ -122,14 +130,25 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
     self ! Defer(30 minutes)
   }
 
-  def receiveCollecting(receivers: Set[ActorRef], delete: Boolean): Receive = {
-    case CollectGarbage(delete1) ⇒
+  def receiveCollecting(receivers: Set[ActorRef], gcStrategy: GCStrategy): Receive = {
+    case CollectGarbage(strategy1) ⇒
       val newReceiver = sender()
-      val newDelete = delete1.fold(delete)(delete || _)
-      context.become(receiveCollecting(receivers + newReceiver, newDelete))
+      val newStrategy = strategy1 match {
+        case GCStrategy.Default | GCStrategy.Preview ⇒
+          gcStrategy
+
+        case GCStrategy.Delete ⇒
+          GCStrategy.Delete
+      }
+      context.become(receiveCollecting(receivers + newReceiver, newStrategy))
 
     case DeleteGarbage(regionState, storageStates) ⇒
       log.warning("Region GC states: {}, {}", regionState, storageStates)
+      val delete = gcStrategy match {
+        case GCStrategy.Default ⇒ config.autoDelete
+        case GCStrategy.Preview ⇒ false
+        case GCStrategy.Delete ⇒ true
+      }
       val future = deleteGarbage(regionState, storageStates, delete)
         .map(_ ⇒ (regionState, storageStates))
       finishCollecting(receivers, future)

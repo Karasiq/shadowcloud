@@ -120,10 +120,18 @@ final case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Fold
     val modified = mutable.AnyRefMap[Path, Folder]()
     val deleted = mutable.Set[Path]()
 
-    def getOrCreate(path: Path): Folder = {
+    def getFolder(path: Path) = {
       modified.get(path)
         .orElse(this.get(path))
+    }
+
+    def getOrCreate(path: Path): Folder = {
+      getFolder(path)
         .getOrElse(Folder.create(path))
+    }
+
+    def isDeleteOnly(diff: FolderDiff): Boolean = {
+      diff.newFiles.isEmpty && diff.newFolders.isEmpty
     }
 
     @tailrec
@@ -138,16 +146,24 @@ final case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Fold
     def deleteFolders(paths: Set[Path]): Unit = {
       if (paths.isEmpty) return
       deleted ++= paths
-      val children = paths.flatMap { path ⇒
-        getOrCreate(path).folders.map(path / _)
-      }
+
+      val children: Set[Path] =
+        for (path ← paths; folder ← getFolder(path).toSeq; subFolder ← folder.folders)
+          yield path / subFolder
+
       deleteFolders(children)
     }
 
     diffs.foreach { diff ⇒
-      createParentFolders(diff.path)
-      val folder = getOrCreate(diff.path)
-      modified += diff.path → folder.patch(diff)
+      if (isDeleteOnly(diff)) {
+        for (folder ← getFolder(diff.path))
+          modified += diff.path → folder.patch(diff)
+      } else {
+        createParentFolders(diff.path)
+        val folder = getOrCreate(diff.path)
+        modified += diff.path → folder.patch(diff)
+      }
+
 
       diff.newFolders
         .map(diff.path / _)

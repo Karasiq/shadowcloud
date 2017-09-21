@@ -178,7 +178,16 @@ lazy val server = project
       )
     },
     scalaJsBundlerCompile in Compile <<= (scalaJsBundlerCompile in Compile)
-      .dependsOn(fastOptJS in Compile in webapp)
+      .dependsOn(fastOptJS in Compile in webapp),
+    scalaJsBundlerCompilers := {
+      import com.karasiq.scalajsbundler.compilers.{AssetCompilers, ConcatCompiler}
+      import com.karasiq.scalajsbundler.dsl._
+      val concatJs = AssetCompilers {
+        case Mimes.javascript ⇒
+          ConcatCompiler
+      }
+      concatJs <<= AssetCompilers.default
+    }
   )
   .dependsOn(coreAssembly % "compile->compile;test->test", javafx, autowireApiJVM)
   .enablePlugins(ScalaJSBundlerPlugin, JavaAppPackaging)

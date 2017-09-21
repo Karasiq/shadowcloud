@@ -12,7 +12,7 @@ object AjaxUtils {
   implicit class AjaxResultOps(private val future: Future[XMLHttpRequest]) extends AnyVal {
     def responseBytes: Future[ByteString] = {
       future
-        .filter(_.status == 200)
+        // .filter(_.status == 200)
         .map(r ⇒ ByteString(TypedArrayBuffer.wrap(r.response.asInstanceOf[ArrayBuffer])))
     }
 

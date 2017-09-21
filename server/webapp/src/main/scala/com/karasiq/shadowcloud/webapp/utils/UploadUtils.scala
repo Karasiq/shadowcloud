@@ -10,7 +10,6 @@ import rx.{Rx, Var}
 
 import com.karasiq.shadowcloud.api.js.utils.AjaxUtils._
 import com.karasiq.shadowcloud.utils.Utils
-import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
 
 object UploadUtils {
   type XHR = dom.XMLHttpRequest
@@ -28,33 +27,37 @@ object UploadUtils {
       progressRx() = progress.toInt
     }, false)
 
-    completeFuture.onComplete(_ ⇒ progressRx.kill())
+    // completeFuture.onComplete(_ ⇒ progressRx.kill())
     (progressRx, completeFuture.reportFailure.responseBytes)
   }
 
   private[this] def doRequest(method: String, url: String, data: InputData, timeout: Int,
                               headers: Map[String, String], withCredentials: Boolean,
                               responseType: String): (XHR, Future[XHR]) = {
-    val req = new XHR()
+    val xhr = new XHR()
     val promise = Promise[XHR]()
 
-    req.onreadystatechange = { (_: dom.Event) =>
-      if (req.readyState == 4) {
-        if ((req.status >= 200 && req.status < 300) || req.status == 304)
-          promise.success(req)
+    xhr.onreadystatechange = { (_: dom.Event) ⇒
+      if (xhr.readyState == 4) {
+        if ((xhr.status >= 200 && xhr.status < 300) || xhr.status == 304)
+          promise.success(xhr)
         else
-          promise.failure(AjaxException(req))
+          promise.tryFailure(AjaxException(xhr))
       }
     }
-    req.open(method, url)
-    req.responseType = responseType
-    req.timeout = timeout
-    req.withCredentials = withCredentials
-    headers.foreach(x ⇒ req.setRequestHeader(x._1, x._2))
-    if (data == null)
-      req.send()
-    else
-      req.send(data)
-    (req, promise.future)
+
+    xhr.onerror = { (_: dom.Event) ⇒
+      promise.tryFailure(AjaxException(xhr))
+    }
+
+    xhr.open(method, url)
+    xhr.responseType = responseType
+    xhr.timeout = timeout
+    xhr.withCredentials = withCredentials
+    headers.foreach(kv ⇒ xhr.setRequestHeader(kv._1, kv._2))
+
+    if (data == null) xhr.send() else xhr.send(data)
+
+    (xhr, promise.future)
   }
 }

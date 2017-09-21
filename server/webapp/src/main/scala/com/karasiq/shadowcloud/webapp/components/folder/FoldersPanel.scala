@@ -3,77 +3,32 @@ package com.karasiq.shadowcloud.webapp.components.folder
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
-import com.karasiq.shadowcloud.model.{Path, RegionId}
-import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
+import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.webapp.components.file.FileView
-import com.karasiq.shadowcloud.webapp.components.region.IndexScopeSelector
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
-import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
 import com.karasiq.shadowcloud.webapp.utils.RxUtils
 
 object FoldersPanel {
-  def apply(regionId: RegionId)(implicit appContext: AppContext, folderContext: FolderContext): FoldersPanel = {
-    new FoldersPanel(regionId)
+  def apply()(implicit appContext: AppContext, folderContext: FolderContext): FoldersPanel = {
+    new FoldersPanel
   }
 }
 
-class FoldersPanel(regionId: RegionId)(implicit appContext: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
+class FoldersPanel(implicit appContext: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
   private[this] lazy val selectedFolderRx = RxUtils.getSelectedFolderRx
-  private[this] lazy val uploadProgressBars = div().render
 
   def renderTag(md: ModifierT*): TagT = {
-    val scopeSelector = IndexScopeSelector.forContext(folderContext)
     val folderTree = FolderTree(Path.root)
     val folderView = FolderFileList(selectedFolderRx.map(_.files))
 
-    val uploadButton = Button(ButtonStyle.info)(AppIcons.upload, Bootstrap.nbsp, appContext.locale.uploadFiles, onclick := Callback.onClick { _ ⇒
-      Modal(appContext.locale.uploadFiles, renderUploadForm(), AppComponents.modalClose(), dialogStyle = ModalDialogSize.large)
-        .show()
-    })
-
-    div(
-      GridSystem.row(
-        GridSystem.col(6).asDiv(uploadButton),
-        GridSystem.col(6).asDiv(scopeSelector)
-      ),
-      GridSystem.row(
-        GridSystem.col(3).asDiv(folderTree),
-        GridSystem.col(5).asDiv(folderView),
-        GridSystem.col(4).asDiv(folderView.selectedFile.map[Frag] {
-          case Some(file) ⇒ FileView(file)
-          case None ⇒ ()
-        })
-      )
-    )
-  }
-
-  private[this] def renderUploadForm(): TagT = {
-    // attr("directory").empty, attr("webkitdirectory").empty
-    val uploadInput = FormInput.file(appContext.locale.file, multiple, onchange := Callback.onInput { input ⇒
-      input.files.foreach { inputFile ⇒
-        val parent = selectedFolderRx.now.path
-        val (progress, future) = appContext.api.uploadFile(regionId, parent / inputFile.name, inputFile)
-
-        val pbStyles = Seq(ProgressBarStyle.success, ProgressBarStyle.striped, ProgressBarStyle.animated)
-        val progressBar = div(
-          div(b(inputFile.name)),
-          ProgressBar.withLabel(progress).renderTag(pbStyles:_*),
-          hr
-        ).render
-        uploadProgressBars.appendChild(progressBar)
-        future.onComplete(_ ⇒ uploadProgressBars.removeChild(progressBar))
-
-        future.foreach { file ⇒
-          folderContext.update(parent)
-          // dom.window.alert(file.toString)
-          input.form.reset()
-        }
-      }
-    })
-
-    div(
-      GridSystem.mkRow(Form(uploadInput)),
-      GridSystem.mkRow(uploadProgressBars)
+    GridSystem.row(
+      GridSystem.col(3).asDiv(folderTree),
+      GridSystem.col(5).asDiv(folderView),
+      GridSystem.col(4).asDiv(folderView.selectedFile.map[Frag] {
+        case Some(file) ⇒ FileView(file)
+        case None ⇒ ()
+      }),
+      md
     )
   }
 }

@@ -34,6 +34,7 @@ object AppIcons {
   val partiallyAvailable: Icon = "exclamation-triangle"
   val fullyAvailable: Icon = "check"
 
+  val region: Icon = "microchip"
   val currentScope: Icon = "check"
   val historyScope: Icon = "clock-o"
 

@@ -20,6 +20,7 @@ class RegionSelector(implicit context: AppContext, regionContext: RegionContext)
   def renderTag(md: ModifierT*): TagT = {
     val options = regionContext.regions.map { state ⇒
       state.regions
+        .filterNot(_._2.suspended)
         .keys.toSeq
         .sorted
         .map(id ⇒ FormSelectOption(id, id))

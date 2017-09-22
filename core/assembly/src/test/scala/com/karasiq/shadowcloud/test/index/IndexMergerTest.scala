@@ -112,6 +112,22 @@ class IndexMergerTest extends WordSpec with Matchers {
         index.addPending(diff2)
         index.add(1, diff1.merge(diff2))
         index.folders.folders.keySet shouldBe Set(Path.root)
+        index.folders.folders(Path.root) shouldBe empty
+        index.mergedDiff.creates.folders.folders shouldBe empty
+        index.pending.folders.folders shouldBe empty
+      }
+
+      "delete nested file" in {
+        val index = IndexMerger.sequential()
+        val diff1 = IndexDiff(folders = FolderIndexDiff.createFolders(Folder("/1", files = Set(CoreTestUtils.randomFile("/1"))),
+          Folder("/1/2/4/5/6/7/8", files = Set(CoreTestUtils.randomFile("/1/2/4/5/6/7/8")))))
+        val diff2 = IndexDiff(folders = FolderIndexDiff.deleteFolderPaths("/1"))
+
+        index.addPending(diff1)
+        index.addPending(diff2)
+        index.add(1, diff1.merge(diff2))
+        index.folders.folders.keySet shouldBe Set(Path.root)
+        index.folders.folders(Path.root).folders shouldBe empty
         index.mergedDiff.creates.folders.folders shouldBe empty
         index.pending.folders.folders shouldBe empty
       }

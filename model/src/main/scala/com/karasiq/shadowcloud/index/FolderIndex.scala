@@ -136,7 +136,7 @@ final case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Fold
 
     @tailrec
     def createParentFolders(path: Path): Unit = {
-      if (path.isRoot) return
+      if (path.isRoot || deleted.contains(path)) return
       val parent = getOrCreate(path.parent)
       modified += parent.path → parent.addFolders(path.name)
       createParentFolders(parent.path)
@@ -154,7 +154,8 @@ final case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Fold
       deleteFolders(children)
     }
 
-    diffs.foreach { diff ⇒
+    val sortedDiffs = diffs.toVector.sortBy(_.path)(Ordering[Path].reverse)
+    sortedDiffs.foreach { diff ⇒
       if (isDeleteOnly(diff)) {
         for (folder ← getFolder(diff.path))
           modified += diff.path → folder.patch(diff)

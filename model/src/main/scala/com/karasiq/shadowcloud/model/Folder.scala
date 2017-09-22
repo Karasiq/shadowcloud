@@ -10,7 +10,7 @@ import com.karasiq.shadowcloud.utils.Utils
 @SerialVersionUID(0L)
 final case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,
                         folders: Set[String] = Set.empty, files: Set[File] = Set.empty)
-  extends SCEntity with HasPath with HasEmpty with HasWithoutData with HasWithoutChunks with Mergeable {
+  extends SCEntity with HasPath with HasEmpty with HasWithoutData with HasWithoutChunks with HasWithoutKeys with Mergeable {
 
   type Repr = Folder
   type DiffRepr = FolderDiff
@@ -79,6 +79,10 @@ final case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,
 
   def withoutChunks: Folder = {
     copy(files = files.map(_.withoutChunks))
+  }
+
+  def withoutKeys = {
+    copy(files = files.map(_.withoutKeys))
   }
 
   override def hashCode(): Int = {

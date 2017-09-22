@@ -19,13 +19,22 @@ private[shadowcloud] object CryptoProps extends ConfigImplicits {
     EncryptionMethod(algorithm, keySize, props, provider)
   }
 
-  def sign(config: Config): SignMethod = {
+  def signing(config: Config): SignMethod = {
     val algorithm = config.getString("algorithm")
     val hashing = CryptoProps.hashing(config.getConfigOrRef("hashing"))
     val keySize = config.withDefault(256, _.getInt("key-size"))
     val provider = config.withDefault("", _.getString("provider"))
     val props = ConfigProps.fromConfig(withoutPaths(config, "algorithm", "hashing", "key-size", "provider"))
     SignMethod(algorithm, hashing, keySize, props, provider)
+  }
+
+  def keyGeneration(props: SerializedProps): (Option[EncryptionMethod], Option[SignMethod]) = {
+    val encConfig = ConfigProps.toConfig(props)
+
+    val encMethod = encConfig.optional(_.getConfig("encryption")).map(this.encryption)
+    val signMethod = encConfig.optional(_.getConfig("signing")).map(this.signing)
+
+    (encMethod, signMethod)
   }
 
   private[this] def withoutPaths(config: Config, paths: String*): Config = {

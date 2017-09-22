@@ -19,7 +19,7 @@ trait RegionContext {
 }
 
 object RegionContext {
-  def apply()(implicit ac: AppContext, ctx: Ctx.Owner): RegionContext = {
+  def apply()(implicit ac: AppContext, ctxOwner: Ctx.Owner): RegionContext = {
     val context = new RegionContext {
       private[this] val _stateReport = Var(RegionStateReport.empty)
 

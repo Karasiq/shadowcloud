@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.model
 import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.config.SerializedProps
-import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasPath, HasWithoutChunks, HasWithoutData}
+import com.karasiq.shadowcloud.index.utils._
 import com.karasiq.shadowcloud.utils.Utils
 
 @SerialVersionUID(0L)
@@ -11,7 +11,7 @@ final case class File(path: Path, id: FileId = FileId.create(),
                       revision: Long = 0, timestamp: Timestamp = Timestamp.now,
                       props: SerializedProps = SerializedProps.empty,
                       checksum: Checksum = Checksum.empty, chunks: Seq[Chunk] = Nil)
-  extends SCEntity with HasPath with HasEmpty with HasWithoutData with HasWithoutChunks {
+  extends SCEntity with HasPath with HasEmpty with HasWithoutData with HasWithoutChunks with HasWithoutKeys {
 
   type Repr = File
   require(!path.isRoot, "Root can not be a file")
@@ -25,6 +25,10 @@ final case class File(path: Path, id: FileId = FileId.create(),
 
   def withoutChunks: File = {
     copy(chunks = Seq.empty)
+  }
+
+  def withoutKeys = {
+    copy(chunks = chunks.map(_.withoutKeys))
   }
 
   def isEmpty: Boolean = {

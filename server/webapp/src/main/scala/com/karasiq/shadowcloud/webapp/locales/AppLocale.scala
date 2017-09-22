@@ -87,6 +87,17 @@ trait AppLocale {
   def suspend: String
   def resume: String
 
+  def keys: String
+  def keyId: String
+  def keyEncAlgorithm: String
+  def keySignAlgorithm: String
+  def keyPermissions: String
+  def keyForEncryption: String
+  def keyForDecryption: String
+  def generateKey: String
+  def exportKey: String
+  def importKey: String
+
   def metadataParser: String
   def metadataDisposition: String
   def metadataType: String
@@ -187,6 +198,17 @@ object AppLocale {
     val unregisterRegion = "Unregister region"
     val suspend = "Suspend"
     val resume = "Resume"
+
+    val keys = "Keys"
+    val keyId = "Key ID"
+    val keyEncAlgorithm = "Encryption algorithm"
+    val keySignAlgorithm = "Signature algorithm"
+    val keyPermissions = "Key permissions"
+    val keyForEncryption = "Encryption"
+    val keyForDecryption = "Decryption"
+    val generateKey = "Generate key"
+    val exportKey = "Export key"
+    val importKey = "Import key"
 
     val metadataParser = "Parser"
     val metadataDisposition = "Disposition"

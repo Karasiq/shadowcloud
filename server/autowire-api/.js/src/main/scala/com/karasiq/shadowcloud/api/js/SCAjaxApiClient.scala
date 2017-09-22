@@ -20,7 +20,7 @@ trait SCAjaxApiClient extends SCApiClient[JsValue, Reads, Writes] {
       "X-Requested-With" → SCApiUtils.requestedWith
     )
     
-    Ajax.post(url, jsonPayload.toByteBuffer, 15000, headers, responseType = "arraybuffer")
+    Ajax.post(url, jsonPayload.toByteBuffer, /* 15000 */ 0, headers, responseType = "arraybuffer")
       .reportFailure
       .responseBytes
       .map(bs ⇒ Json.parse(bs.toArray))

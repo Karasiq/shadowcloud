@@ -4,8 +4,12 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 
+import com.karasiq.shadowcloud.index.utils.HasWithoutKeys
+
 @SerialVersionUID(0L)
-final case class SignParameters(method: SignMethod, publicKey: ByteString, privateKey: ByteString) extends CryptoParameters {
+final case class SignParameters(method: SignMethod, publicKey: ByteString, privateKey: ByteString) extends CryptoParameters with HasWithoutKeys {
+  type Repr = SignParameters
+
   @transient
   private[this] lazy val _hashCode = scala.util.hashing.MurmurHash3.productHash(this)
 
@@ -15,6 +19,10 @@ final case class SignParameters(method: SignMethod, publicKey: ByteString, priva
 
   def toReadOnly: SignParameters = {
     copy(privateKey = ByteString.empty)
+  }
+
+  def withoutKeys = {
+    copy(publicKey = ByteString.empty, privateKey = ByteString.empty)
   }
 
   override def hashCode(): Int = {

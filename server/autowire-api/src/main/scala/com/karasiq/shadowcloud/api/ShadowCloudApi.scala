@@ -7,6 +7,7 @@ import akka.Done
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.model._
+import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyId, KeySet}
 import com.karasiq.shadowcloud.model.utils._
 
 trait ShadowCloudApi {
@@ -35,6 +36,14 @@ trait ShadowCloudApi {
   def getStorageHealth(storageId: StorageId): Future[StorageHealth]
   def getStorageTypes(): Future[Set[String]]
   def getDefaultStorageConfig(storageType: String): Future[SerializedProps]
+
+  // -----------------------------------------------------------------------
+  // Keys
+  // -----------------------------------------------------------------------
+  def getKeys(): Future[KeyChain]
+  def modifyKey(keyId: KeyId, forEncryption: Boolean, forDecryption: Boolean): Future[Done]
+  def generateKey(forEncryption: Boolean = true, forDecryption: Boolean = true, props: SerializedProps = SerializedProps.empty): Future[KeySet]
+  def addKey(key: KeySet, forEncryption: Boolean = true, forDecryption: Boolean = true): Future[KeySet]
 
   // -----------------------------------------------------------------------
   // Folders

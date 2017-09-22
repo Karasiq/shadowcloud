@@ -1,13 +1,22 @@
 package com.karasiq.shadowcloud.model.keys
 
-import com.karasiq.shadowcloud.index.utils.HasEmpty
+import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutKeys}
 import com.karasiq.shadowcloud.model.SCEntity
 
 @SerialVersionUID(0L)
-final case class KeyChain(encKeys: Seq[KeySet], decKeys: Seq[KeySet]) extends SCEntity with HasEmpty {
-  def isEmpty: Boolean = encKeys.isEmpty && decKeys.isEmpty
+final case class KeyChain(encKeys: Seq[KeySet] = Vector.empty,
+                          decKeys: Seq[KeySet] = Vector.empty,
+                          disabledKeys: Seq[KeySet] = Vector.empty)
+  extends SCEntity with HasEmpty with HasWithoutKeys {
+
+  type Repr = KeyChain
+  def isEmpty: Boolean = encKeys.isEmpty && decKeys.isEmpty && disabledKeys.isEmpty
+
+  def withoutKeys = {
+    copy(encKeys.map(_.withoutKeys), decKeys.map(_.withoutKeys), disabledKeys.map(_.withoutKeys))
+  }
 }
 
 object KeyChain {
-  val empty = KeyChain(Nil, Nil)
+  val empty = new KeyChain()
 }

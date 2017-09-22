@@ -16,12 +16,16 @@ import com.karasiq.shadowcloud.index.diffs.FolderIndexDiff
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.model._
+import com.karasiq.shadowcloud.model.keys.{KeyId, KeySet}
 import com.karasiq.shadowcloud.model.utils.{IndexScope, RegionStateReport}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 
 private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends ShadowCloudApi {
   import sc.implicits.{executionContext, materializer}
 
+  // -----------------------------------------------------------------------
+  // Regions
+  // -----------------------------------------------------------------------
   def getRegions() = {
     def toSerializableStorageStatus(storage: RegionTracker.StorageStatus) = {
       RegionStateReport.StorageStatus(storage.storageId, ConfigProps.fromConfig(storage.storageProps.rootConfig, json = false),
@@ -144,6 +148,30 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
     Future.successful(sc.modules.storage.defaultConfig(storageType))
   }
 
+  // -----------------------------------------------------------------------
+  // Keys
+  // -----------------------------------------------------------------------
+  def getKeys() = {
+    sc.keys.provider.getKeyChain().map(_.withoutKeys)
+  }
+
+  def modifyKey(keyId: KeyId, forEncryption: Boolean, forDecryption: Boolean) = {
+    sc.keys.provider.modifyKeySet(keyId, forEncryption, forDecryption)
+  }
+
+  def generateKey(forEncryption: Boolean, forDecryption: Boolean, props: SerializedProps) = {
+    val (encMethod, signMethod) = sc.keys.getGenerationProps(props)
+    Future(sc.keys.generateKeySet(encMethod, signMethod))(sc.executionContexts.cryptography)
+      .flatMap(sc.keys.provider.addKeySet(_, forEncryption, forDecryption))
+  }
+
+  def addKey(key: KeySet, forEncryption: Boolean, forDecryption: Boolean) = {
+    sc.keys.provider.addKeySet(key, forEncryption, forDecryption)
+  }
+
+  // -----------------------------------------------------------------------
+  // Folders
+  // -----------------------------------------------------------------------
   def getFolder(regionId: RegionId, path: Path, dropChunks: Boolean = true, scope: IndexScope = IndexScope.default) = {
     val future = sc.ops.region.getFolder(regionId, path, scope)
     if (dropChunks) future.map(_.withoutChunks) else future
@@ -173,6 +201,9 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
     } yield newFolder
   }
 
+  // -----------------------------------------------------------------------
+  // Files
+  // -----------------------------------------------------------------------
   def getFiles(regionId: RegionId, path: Path, dropChunks: Boolean = true, scope: IndexScope = IndexScope.default) = {
     val filesFuture = sc.ops.region.getFiles(regionId, path, scope)
     if (dropChunks) filesFuture.map(_.map(_.withoutChunks)) else filesFuture
@@ -219,6 +250,9 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
     } yield actualFile
   }
 
+  // -----------------------------------------------------------------------
+  // Utils
+  // -----------------------------------------------------------------------
   private[this] def getFullFile(regionId: RegionId, file: File, scope: IndexScope): Future[File] = {
     if (file.isEmpty) {
       this.getFile(regionId, file.path, file.id, dropChunks = false, scope)

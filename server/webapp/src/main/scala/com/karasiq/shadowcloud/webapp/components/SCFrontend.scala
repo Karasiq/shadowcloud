@@ -5,6 +5,7 @@ import scalaTags.all._
 
 import com.karasiq.shadowcloud.webapp.components.common.AppIcons
 import com.karasiq.shadowcloud.webapp.components.folder.{FoldersPanel, UploadForm}
+import com.karasiq.shadowcloud.webapp.components.keys.KeysContext
 import com.karasiq.shadowcloud.webapp.components.region.{RegionContext, RegionsStoragesPanel, RegionSwitcher}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 
@@ -14,8 +15,10 @@ object SCFrontend {
   }
 }
 
-class SCFrontend()(implicit appContext: AppContext) extends BootstrapComponent {
+class SCFrontend()(implicit val appContext: AppContext) extends BootstrapComponent {
   implicit val regionContext = RegionContext()
+  implicit val keysContext = KeysContext()
+
   val regionSwitcher = RegionSwitcher()
 
   def render(md: ModifierT*) = {

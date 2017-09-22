@@ -6,11 +6,12 @@ import scala.concurrent.Future
 import scala.language.postfixOps
 import scala.util.Try
 
+import akka.Done
 import akka.actor.ActorSystem
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.model.keys.{KeyChain, KeySet}
+import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyId, KeySet}
 import com.karasiq.shadowcloud.persistence.utils.SCQuillEncoders
 import com.karasiq.shadowcloud.providers.KeyProvider
 
@@ -37,20 +38,18 @@ final class H2KeyProvider(actorSystem: ActorSystem) extends KeyProvider {
 
   //noinspection TypeAnnotation
   private[this] object queries {
-    def addKey(key: DBKey) = quote {
-      query[DBKey].insert(lift(key))
-    }
-
-    /* val getEncKey = quote {
-      query[DBKey].filter(_.forEncryption).take(1)
-    }
-
-    def getDecKey(id: UUID) = quote {
-      query[DBKey].filter(k ⇒ k.id == lift(id) && k.forDecryption).take(1)
-    } */
-
-    val getKeys = quote {
+    val keys = quote {
       query[DBKey]
+    }
+
+    def addKey(key: DBKey) = quote {
+      keys.insert(lift(key))
+    }
+
+    def modifyKey(keyId: KeyId, forEncryption: Boolean, forDecryption: Boolean) = quote {
+      keys
+        .filter(_.id == lift(keyId))
+        .update(_.forEncryption → lift(forEncryption), _.forDecryption → lift(forDecryption))
     }
   }
 
@@ -77,25 +76,21 @@ final class H2KeyProvider(actorSystem: ActorSystem) extends KeyProvider {
     })
   }
 
-  /* def forEncryption(): Future[KeySet] = {
-    Future(db.run(queries.getEncKey).head)
-      .map(conversions.toKeySet)
-      .recoverWith { case _: NoSuchElementException ⇒ createKey() }
+  def modifyKeySet(keyId: KeyId, forEncryption: Boolean, forDecryption: Boolean) = {
+    Future.fromTry(Try {
+      context.run(queries.modifyKey(keyId, forEncryption, forDecryption))
+      Done
+    })
   }
 
-  def forDecryption(keyId: UUID): Future[KeySet] = {
-    Future(db.run(queries.getDecKey(keyId)).head)
-      .map(conversions.toKeySet)
-      .recoverWith { case exc ⇒ Future.failed(CryptoException.KeyMissing(exc)) }
-  } */
-
-  override def getKeyChain(): Future[KeyChain] = {
+  def getKeyChain(): Future[KeyChain] = {
     def readKey(bs: ByteString): KeySet = sc.serialization.fromBytes[KeySet](bs)
     Future.fromTry(Try {
-      val keys = context.run(queries.getKeys)
+      val keys = context.run(queries.keys)
       KeyChain(
         keys.filter(_.forEncryption).map(dk ⇒ readKey(dk.key)),
-        keys.filter(_.forDecryption).map(dk ⇒ readKey(dk.key))
+        keys.filter(_.forDecryption).map(dk ⇒ readKey(dk.key)),
+        keys.filterNot(k ⇒ k.forEncryption || k.forDecryption).map(dk ⇒ readKey(dk.key))
       )
     })
   }

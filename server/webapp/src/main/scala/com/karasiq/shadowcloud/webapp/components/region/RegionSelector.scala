@@ -26,10 +26,10 @@ class RegionSelector(implicit context: AppContext, regionContext: RegionContext)
   val selectedRegion = Var(None: Option[RegionId])
   private[this] val selectField = renderSelectField()
 
-  /* regionContext.regions.foreach { state ⇒
-    if (selectedRegion.now.isEmpty)
+  regionContext.regions.foreach { state ⇒
+    if (selectedRegion.now.isEmpty || state.regions.get(selectedRegion.now.get).forall(_.suspended))
       selectedRegion() = RegionSelector.getRegionIds(state).headOption
-  } */
+  }
 
   def renderTag(md: ModifierT*): TagT = {
     Form(selectField)

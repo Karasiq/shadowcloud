@@ -2,9 +2,12 @@ package com.karasiq.shadowcloud.providers
 
 import scala.concurrent.Future
 
-import com.karasiq.shadowcloud.model.keys.{KeyChain, KeySet}
+import akka.Done
+
+import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyId, KeySet}
 
 trait KeyProvider {
   def addKeySet(key: KeySet, forEncryption: Boolean = true, forDecryption: Boolean = true): Future[KeySet]
+  def modifyKeySet(keyId: KeyId, forEncryption: Boolean, forDecryption: Boolean = true): Future[Done]
   def getKeyChain(): Future[KeyChain]
 }

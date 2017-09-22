@@ -19,7 +19,7 @@ object SigningConfig extends WrappedConfigFactory[SigningConfig] with ConfigImpl
 
   private[this] def getSignMethod(config: Config, path: String): SignMethod = {
     try {
-      CryptoProps.sign(config.getConfigOrRef(path))
+      CryptoProps.signing(config.getConfigOrRef(path))
     } catch { case _: ConfigException.Missing ⇒
       val alg = config.getString(path)
       SignMethod(alg, HashingMethod.default)

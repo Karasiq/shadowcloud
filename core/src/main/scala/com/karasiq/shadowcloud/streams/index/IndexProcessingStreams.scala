@@ -38,19 +38,26 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
       .via(internalStreams.serialize)
       .via(internalStreams.compress)
       .via(internalStreams.encrypt)
-      .map(ed ⇒ ByteString(ed.toByteArray))
+      .log("index-frames-write")
+      .via(internalStreams.writeEncrypted)
       .named("indexPreWrite")
   }
 
   val postRead: Flow[ByteString, IndexData, NotUsed] = Flow[ByteString]
-    .map(bs ⇒ EncryptedIndexData.parseFrom(bs.toArray))
+    .via(internalStreams.readEncrypted)
+    .log("index-frames-read-encrypted")
     .via(internalStreams.decrypt)
     .via(internalStreams.decompress)
     .via(internalStreams.deserialize)
     .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+    .log("index-frames-read")
     .named("indexPostRead")
 
   private[this] object internalStreams {
+    private[this] val keyChainSource = Source.single(NotUsed)
+      .flatMapConcat(_ ⇒ Source.fromFuture(sc.keys.provider.getKeyChain()))
+      .named("keyChainSource")
+
     val serialize = Flow[IndexData].map { data ⇒
       ByteString(SerializedIndexData(sc.serialization.toBytes(data)).toByteArray)
     }
@@ -62,37 +69,43 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
 
     val encrypt = Flow[ByteString]
       .via(AkkaStreamUtils.extractUpstream)
-      .zip(Source.fromFuture(sc.keys.provider.getKeyChain()))
+      .zip(keyChainSource)
       .flatMapConcat { case (source, keyChain) ⇒
         source.via(new IndexEncryptStage(sc.modules.crypto, sc.config.crypto, keyChain))
       }
 
     val decrypt = Flow[EncryptedIndexData]
       .via(AkkaStreamUtils.extractUpstream)
-      .zip(Source.fromFuture(sc.keys.provider.getKeyChain()))
+      .zip(keyChainSource)
       .flatMapConcat { case (source, keyChain) ⇒
         source.via(new IndexDecryptStage(sc.modules.crypto, sc.config.crypto, keyChain))
       }
 
-    val framedWrite = Flow[ByteString]
+    private[this] val framedCompress = Flow[ByteString]
       .via(StreamSerialization.frame(sc.config.serialization.frameLimit))
       .via(StreamCompression.compress(sc.config.serialization.compression))
 
-    val framedRead = Flow[ByteString]
+    private[this] val framedDecompress = Flow[ByteString]
       .via(StreamCompression.decompress)
       .via(StreamSerialization.deframe(sc.config.serialization.frameLimit))
 
     val compress = Flow[ByteString].flatMapConcat { bytes ⇒
       Source.single(bytes)
-        .via(framedWrite)
+        .via(framedCompress)
         .via(ByteStreams.concat)
     }
 
     val decompress = Flow[ByteString].flatMapConcat { compBytes ⇒
       Source.single(compBytes)
-        .via(framedRead)
+        .via(framedDecompress)
         .via(ByteStreams.concat)
     }
+
+    val writeEncrypted = Flow[EncryptedIndexData]
+      .via(StreamSerialization.serializeFramed[EncryptedIndexData](sc.serialization, sc.config.serialization.frameLimit))
+
+    val readEncrypted = Flow[ByteString]
+      .via(StreamSerialization.deserializeFramed[EncryptedIndexData](sc.serialization, sc.config.serialization.frameLimit))
   }
 
   // -----------------------------------------------------------------------
@@ -106,10 +119,12 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
     val shape = FlowShape(inlet, outlet)
 
     def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
+      private[this] val log = Logging(sc.implicits.actorSystem, "IndexEncryptStage")
       private[this] val encryption = IndexEncryption(cryptoModules, sc.serialization)
 
       private[this] def encryptData(data: ByteString): Unit = {
         require(keyChain.encKeys.nonEmpty, "No keys available")
+        log.debug("Encrypting index frame with keys: {}", keyChain.encKeys)
         val result = encryption.encrypt(data, config.encryption.index, keyChain)
         push(outlet, result)
       }
@@ -152,6 +167,7 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
 
       private[this] def tryDecrypt(data: EncryptedIndexData): Unit = {
         try {
+          log.debug("Decrypting index frame {} with keys: {}", data.id, keyChain.decKeys)
           val result = encryption.decrypt(data, keyChain)
           push(outlet, result)
         } catch { case NonFatal(exc) ⇒

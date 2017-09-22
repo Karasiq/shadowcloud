@@ -4,7 +4,10 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 
-sealed trait EncryptionParameters extends CryptoParameters {
+import com.karasiq.shadowcloud.index.utils.HasWithoutKeys
+
+sealed trait EncryptionParameters extends CryptoParameters with HasWithoutKeys {
+  type Repr <: EncryptionParameters
   def method: EncryptionMethod
 }
 
@@ -13,11 +16,17 @@ final case class SymmetricEncryptionParameters(method: EncryptionMethod,
                                                key: ByteString,
                                                nonce: ByteString) extends EncryptionParameters {
 
+  type Repr = SymmetricEncryptionParameters
+
   @transient
   private[this] lazy val _hashCode = scala.util.hashing.MurmurHash3.productHash(this)
 
   def isEmpty: Boolean = {
     key.isEmpty
+  }
+  
+  def withoutKeys = {
+    copy(key = ByteString.empty, nonce = ByteString.empty)
   }
 
   override def hashCode(): Int = {
@@ -32,7 +41,10 @@ final case class SymmetricEncryptionParameters(method: EncryptionMethod,
 @SerialVersionUID(0L)
 final case class AsymmetricEncryptionParameters(method: EncryptionMethod,
                                                 publicKey: ByteString,
-                                                privateKey: ByteString) extends EncryptionParameters {
+                                                privateKey: ByteString)
+  extends EncryptionParameters with HasWithoutKeys {
+
+  type Repr = AsymmetricEncryptionParameters
 
   @transient
   private[this] lazy val _hashCode = scala.util.hashing.MurmurHash3.productHash(this)
@@ -43,6 +55,10 @@ final case class AsymmetricEncryptionParameters(method: EncryptionMethod,
 
   def isEmpty: Boolean = {
     publicKey.isEmpty && privateKey.isEmpty
+  }
+
+  def withoutKeys = {
+    copy(publicKey = ByteString.empty, privateKey = ByteString.empty)
   }
 
   override def hashCode(): Int = {

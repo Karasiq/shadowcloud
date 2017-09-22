@@ -208,20 +208,23 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
       def startRead(keys: Set[SequenceNr]): Unit = {
         def receiveRead: Receive = {
-          case ReadSuccess(IndexIOResult(sequenceNr, data, ioResult)) ⇒
-            require(data.regionId == regionId && data.sequenceNr == sequenceNr, "Diff region or sequenceNr not match")
-            val diff = data.diff
-            ioResult match {
-              case StorageIOResult.Success(path, _) ⇒
-                log.info("Remote diff #{} received from {}: {}", sequenceNr, path, diff)
-                state.updateReport(r ⇒ r.copy(read = r.read + (sequenceNr → diff)))
-                persistAsync(IndexUpdated(regionId, sequenceNr, diff, remote = true))(updateState)
+          case ReadSuccess(indexIOResult @ IndexIOResult(sequenceNr, data, ioResult)) ⇒
+            if (data.regionId == regionId && data.sequenceNr == sequenceNr) {
+              val diff = data.diff
+              ioResult match {
+                case StorageIOResult.Success(path, _) ⇒
+                  log.info("Remote diff #{} received from {}: {}", sequenceNr, path, diff)
+                  state.updateReport(r ⇒ r.copy(read = r.read + (sequenceNr → diff)))
+                  persistAsync(IndexUpdated(regionId, sequenceNr, diff, remote = true))(updateState)
 
-              case StorageIOResult.Failure(path, error) ⇒
-                log.error(error, "Diff #{} read failed from {}", sequenceNr, path)
-                throw error
+                case StorageIOResult.Failure(path, error) ⇒
+                  log.error(error, "Diff #{} read failed from {}", sequenceNr, path)
+                  throw error
+              }
+            } else {
+              log.warning("Diff region or sequenceNr not match: {}", indexIOResult)
             }
-
+            
           case Status.Failure(error) ⇒
             log.error(error, "Diff read failed")
             throw error
@@ -232,15 +235,18 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
         }
 
         def becomeRead(keys: Set[SequenceNr]): Unit = {
-          val keySeq = keys.filter(_ > state.index.lastSequenceNr)
+          val existingKeys = state.index.diffs.keySet
+          val keySeq = keys.diff(existingKeys)
             .toVector
             .sorted
+          
           if (keySeq.nonEmpty) log.debug("Reading diffs: {}", keySeq)
           Source(keySeq)
             .via(state.streams.read(repository))
             .map(ReadSuccess)
             .idleTimeout(sc.config.timeouts.indexRead)
             .runWith(Sink.actorRef(self, StreamCompleted))
+          
           becomeOrDefault(receiveRead)
         }
 

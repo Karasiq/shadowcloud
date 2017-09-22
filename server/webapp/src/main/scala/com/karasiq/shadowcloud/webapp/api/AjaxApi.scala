@@ -9,9 +9,15 @@ import com.karasiq.shadowcloud.api.js.SCAjaxApiClient
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.metadata.Metadata.Tag
 import com.karasiq.shadowcloud.model._
+import com.karasiq.shadowcloud.model.keys.{KeyId, KeySet}
 import com.karasiq.shadowcloud.model.utils.IndexScope
+import com.karasiq.shadowcloud.webapp.context.AppContext
 
 object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
+
+  // -----------------------------------------------------------------------
+  // Context
+  // -----------------------------------------------------------------------
   private[api] val clientFactory = SCAjaxApiClient
 
   type EncodingT = clientFactory.EncodingT
@@ -21,8 +27,11 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
   import encoding.implicits._
 
   private[this] val apiClient = clientFactory[ShadowCloudApi]
-  private[this] implicit val ec: ExecutionContext = scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+  private[this] implicit val implicitExecutionContext: ExecutionContext = AppContext.JsExecutionContext
 
+  // -----------------------------------------------------------------------
+  // Regions
+  // -----------------------------------------------------------------------
   def getRegions() = {
     apiClient.getRegions().call()
   }
@@ -111,6 +120,28 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
     apiClient.getDefaultStorageConfig(storageType).call()
   }
 
+  // -----------------------------------------------------------------------
+  // Keys
+  // -----------------------------------------------------------------------
+  def getKeys() = {
+    apiClient.getKeys().call()
+  }
+
+  def modifyKey(keyId: KeyId, forEncryption: Boolean, forDecryption: Boolean) = {
+    apiClient.modifyKey(keyId, forEncryption, forDecryption).call()
+  }
+
+  def generateKey(forEncryption: Boolean, forDecryption: Boolean, props: SerializedProps) = {
+    apiClient.generateKey(forEncryption, forDecryption, props).call()
+  }
+  
+  def addKey(key: KeySet, forEncryption: Boolean, forDecryption: Boolean) = {
+    apiClient.addKey(key, forEncryption, forDecryption).call()
+  }
+
+  // -----------------------------------------------------------------------
+  // Folders
+  // -----------------------------------------------------------------------
   def getFolder(regionId: RegionId, path: Path, dropChunks: Boolean = true, scope: IndexScope = IndexScope.default) = {
     apiClient.getFolder(regionId, path, dropChunks, scope).call()
   }
@@ -131,6 +162,9 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
     apiClient.mergeFolder(regionId, folder).call()
   }
 
+  // -----------------------------------------------------------------------
+  // Files
+  // -----------------------------------------------------------------------
   def getFiles(regionId: RegionId, path: Path, dropChunks: Boolean = true, scope: IndexScope = IndexScope.default) = {
     apiClient.getFiles(regionId, path, dropChunks, scope).call()
   }

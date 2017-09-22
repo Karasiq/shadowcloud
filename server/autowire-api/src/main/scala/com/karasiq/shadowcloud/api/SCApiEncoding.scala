@@ -22,9 +22,11 @@ trait SCApiEncoding {
   type Encoder[T]
   type Decoder[T]
 
+  // Generic encoding
   def encode[T: Encoder](value: T): ByteString
   def decode[T: Decoder](valueBytes: ByteString): T
-  
+
+  // Static encoding
   def encodePath(path: Path): ByteString
   def decodePath(pathBytes: ByteString): Path
 

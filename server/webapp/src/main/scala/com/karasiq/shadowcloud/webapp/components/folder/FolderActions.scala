@@ -59,7 +59,7 @@ private[folder] class FolderActions(regionId: RegionId, path: Path)
     span(
       renderIcon(AppIcons.refresh, fc.update),
       renderIcon(AppIcons.create, showCreateFolderModal),
-      renderIcon(AppIcons.delete, showDeleteFolderModal),
+      if (!path.isRoot) renderIcon(AppIcons.delete, showDeleteFolderModal) else (),
       md
     )
   }

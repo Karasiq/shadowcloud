@@ -2,14 +2,14 @@ package com.karasiq.shadowcloud.model
 
 import scala.language.postfixOps
 
-import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData}
+import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData, HasWithoutKeys}
 import com.karasiq.shadowcloud.model.crypto.EncryptionParameters
 import com.karasiq.shadowcloud.utils.MemorySize
 
 @SerialVersionUID(0L)
 final case class Chunk(checksum: Checksum = Checksum.empty,
                        encryption: EncryptionParameters = EncryptionParameters.empty,
-                       data: Data = Data.empty) extends SCEntity with HasEmpty with HasWithoutData {
+                       data: Data = Data.empty) extends SCEntity with HasEmpty with HasWithoutData with HasWithoutKeys {
   type Repr = Chunk
   
   def isEmpty: Boolean = {
@@ -19,7 +19,11 @@ final case class Chunk(checksum: Checksum = Checksum.empty,
   def withoutData: Chunk = {
     copy(data = Data.empty)
   }
-  
+
+  def withoutKeys = {
+    copy(encryption = encryption.withoutKeys)
+  }
+
   override def hashCode(): Int = {
     checksum.hashCode()
   }

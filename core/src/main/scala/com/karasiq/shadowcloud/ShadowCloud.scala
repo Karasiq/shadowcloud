@@ -14,7 +14,7 @@ import com.typesafe.config.Config
 import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.StringEventBus
-import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, StorageConfig}
+import com.karasiq.shadowcloud.config._
 import com.karasiq.shadowcloud.config.passwords.PasswordProvider
 import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
@@ -96,7 +96,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
                        signing: SignMethod = config.crypto.signing.index): KeySet = {
       val signingKey = modules.crypto.signModule(signing).createParameters()
       val encryptionKey = modules.crypto.encryptionModule(encryption).createParameters()
-      KeySet(UUID.randomUUID(), signingKey, encryptionKey)
+      KeySet(UUID.randomUUID(), encryptionKey, signingKey)
     }
 
     def getOrGenerateChain(): Future[KeyChain] = {
@@ -110,7 +110,12 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
         } else {
           Future.successful(chain)
         }
-      }
+      }(executionContexts.cryptography)
+    }
+
+    def getGenerationProps(props: SerializedProps): (EncryptionMethod, SignMethod) = {
+      val (encMethod, signMethod) = CryptoProps.keyGeneration(props)
+      (encMethod.getOrElse(config.crypto.encryption.keys), signMethod.getOrElse(config.crypto.signing.index))
     }
   }
 
@@ -150,7 +155,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // Streams
   // -----------------------------------------------------------------------
   object streams {
-    val chunk = ChunkProcessingStreams(modules, config.chunks, config.crypto, config.parallelism)(executionContexts.chunkProcessing)
+    val chunk = ChunkProcessingStreams(modules, config.chunks, config.crypto, config.parallelism)(executionContexts.cryptography)
     val index = IndexProcessingStreams(ShadowCloudExtension.this)
     val region = RegionStreams(actors.regionSupervisor, config.parallelism, config.timeouts)
     val file = FileStreams(region, chunk)
@@ -168,7 +173,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // Utils
   // -----------------------------------------------------------------------
   private[shadowcloud] object executionContexts {
-    val chunkProcessing = ExecutionContext.fromExecutorService(
+    val cryptography = ExecutionContext.fromExecutorService(
       Executors.newWorkStealingPool(sys.runtime.availableProcessors()))
   }
 }

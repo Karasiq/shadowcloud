@@ -10,6 +10,7 @@ import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.crypto._
+import com.karasiq.shadowcloud.model.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.model.utils._
 import com.karasiq.shadowcloud.model.utils.GCReport.{RegionGCState, StorageGCState}
 import com.karasiq.shadowcloud.model.utils.RegionStateReport.{RegionStatus, StorageStatus}
@@ -34,6 +35,8 @@ trait SCJsonEncoders {
   implicit val symmetricEncryptionParametersFormat = Json.format[SymmetricEncryptionParameters]
   implicit val asymmetricEncryptionParametersFormat = Json.format[AsymmetricEncryptionParameters]
   implicit val encryptionParametersFormat = Json.format[EncryptionParameters]
+  implicit val signMethodFormat = Json.format[SignMethod]
+  implicit val signParametersFormat = Json.format[SignParameters]
   implicit val timestampFormat = Json.format[Timestamp]
   implicit val dataFormat = Json.format[Data]
   implicit val checksumFormat = Json.format[Checksum]
@@ -74,7 +77,10 @@ trait SCJsonEncoders {
   implicit val storageHealthFormat = Json.format[StorageHealth]
   implicit val regionHealthFormat = Json.format[RegionHealth]
 
-  implicit val indexScopeFormat: Format[IndexScope] = new Format[IndexScope] {
+  implicit val keySetFormat = Json.format[KeySet]
+  implicit val keyChainFormat = Json.format[KeyChain]
+
+  implicit object IndexScopeFormat extends Format[IndexScope] {
     def writes(o: IndexScope): JsValue = o match {
       case IndexScope.Current ⇒
         JsString("Current")

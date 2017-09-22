@@ -86,12 +86,12 @@ class FolderDiffTest extends FlatSpec with Matchers {
     val folder3 = CoreTestUtils.randomFolder(folder1.path)
     val diff = folder2.diff(folder1) // + Folder2 files
     val diff1 = folder3.diff(folder2).copy(time = diff.time + 1) // - Folder1 files, - Folder2 files, + Folder3 files
-    val merged = diff.merge(diff1) // - Folder1 files, + Folder3 files
+    val merged = diff.merge(diff1) // - Folder1 files, - Folder2 files, + Folder3 files
     merged.time shouldBe diff1.time
     merged.newFiles shouldBe folder3.files
     merged.newFolders shouldBe folder3.folders
-    merged.deletedFiles shouldBe folder1.files
-    merged.deletedFolders shouldBe folder1.folders
+    merged.deletedFiles shouldBe folder2.files
+    merged.deletedFolders shouldBe folder2.folders
   }
 
   it should "diff" in {

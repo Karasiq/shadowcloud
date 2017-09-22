@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.index.diffs
 import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.index.FolderIndex
-import com.karasiq.shadowcloud.index.utils.{FolderDecider, HasEmpty, HasWithoutData, MergeableDiff}
+import com.karasiq.shadowcloud.index.utils._
 import com.karasiq.shadowcloud.model.{File, Folder, Path, SCEntity}
 import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 import com.karasiq.shadowcloud.utils.MergeUtil.Decider
@@ -16,19 +16,22 @@ final case class FolderIndexDiff(folders: Seq[FolderDiff] = Vector.empty)
   type Repr = FolderIndexDiff
 
   // Delete wins by default
-  def mergeWith(diff: FolderIndexDiff, folderDecider: FolderDecider = FolderDecider.mutualExclude): FolderIndexDiff = {
+  def mergeWith(diff: FolderIndexDiff, diffDecider: FolderDiffDecider = FolderDiffDecider.rightWins,
+                folderDecider: FolderDecider = FolderDecider.mutualExclude): FolderIndexDiff = {
     val folders = MergeUtil.mergeByKey[Path, FolderDiff](this.folders, diff.folders, _.path, {
       case Conflict(left, right) ⇒
-        Some(left.mergeWith(right, folderDecider)).filter(_.nonEmpty)
+        Some(left.mergeWith(right, diffDecider, folderDecider))
     })
     withFolders(folders)
   }
 
-  def diffWith(diff: FolderIndexDiff, decider: Decider[FolderDiff] = Decider.diff,
+  def diffWith(diff: FolderIndexDiff,
+               decider: Decider[FolderDiff] = Decider.diff,
+               diffDecider: FolderDiffDecider = FolderDiffDecider.idempotent,
                folderDecider: FolderDecider = FolderDecider.mutualExclude): FolderIndexDiff = {
     val decider1: Decider[FolderDiff] = decider.orElse {
       case Conflict(left, right) ⇒
-        Some(right.diffWith(left, folderDecider)).filter(_.nonEmpty)
+        Some(right.diffWith(left, diffDecider, folderDecider))
     }
     val folders = MergeUtil.mergeByKey[Path, FolderDiff](this.folders, diff.folders, _.path, decider1)
     withFolders(folders)
@@ -217,7 +220,7 @@ object FolderIndexDiff {
   def moveFiles(files: Set[File], newPath: Path): FolderIndexDiff = {
     val deleteDiff = deleteFiles(files.toSeq:_*)
     val copyDiff = copyFiles(files, newPath)
-    deleteDiff.mergeWith(copyDiff, FolderDecider.createWins)
+    deleteDiff.mergeWith(copyDiff, FolderDiffDecider.rightWins, FolderDecider.createWins)
   }
 
   def moveFile(file: File, newPath: Path): FolderIndexDiff = {
@@ -227,7 +230,7 @@ object FolderIndexDiff {
   def moveFile(index: FolderIndex, path: Path, newPath: Path): FolderIndexDiff = {
     val deleteDiff = deleteFiles(index.getFiles(path).toSeq: _*)
     val copyDiff = copyFile(index, path, newPath)
-    deleteDiff.mergeWith(copyDiff, FolderDecider.createWins)
+    deleteDiff.mergeWith(copyDiff, FolderDiffDecider.rightWins, FolderDecider.createWins)
   }
 
   def copyFolder(folder: Folder, newPath: Path): FolderIndexDiff = {
@@ -245,12 +248,12 @@ object FolderIndexDiff {
     require(!folder.path.isRoot, "Cannot move root")
     val deleteDiff = deleteFolderPaths(folder.path)
     val copyDiff = copyFolder(folder, newPath)
-    deleteDiff.mergeWith(copyDiff, FolderDecider.createWins)
+    deleteDiff.mergeWith(copyDiff, FolderDiffDecider.rightWins, FolderDecider.createWins)
   }
 
   def moveFolder(index: FolderIndex, path: Path, newPath: Path): FolderIndexDiff = {
     val copyDiff = copyFolder(index, path, newPath)
     val deleteDiff = deleteFolderPaths(path)
-    deleteDiff.mergeWith(copyDiff, FolderDecider.createWins)
+    deleteDiff.mergeWith(copyDiff, FolderDiffDecider.rightWins, FolderDecider.createWins)
   }
 }

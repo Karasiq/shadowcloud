@@ -169,6 +169,6 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // -----------------------------------------------------------------------
   private[shadowcloud] object executionContexts {
     val chunkProcessing = ExecutionContext.fromExecutorService(
-      Executors.newFixedThreadPool(sys.runtime.availableProcessors()))
+      Executors.newWorkStealingPool(sys.runtime.availableProcessors()))
   }
 }

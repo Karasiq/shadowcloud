@@ -48,7 +48,7 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
     Flow[Path]
       .map(toRealPath)
       .map(file ⇒ (file, Files.size(file)))
-      .addAttributes(Attributes.name("filePreDelete") and ActorAttributes.IODispatcher)
+      .withAttributes(Attributes.name("filePreDelete") and ActorAttributes.IODispatcher)
       .alsoTo(Flow[(FSPath, Long)].map(_._1).to(fileDeleteSink))
       .map(_._2)
       .fold(0L)(_ + _)
@@ -79,6 +79,6 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
   }
 
   private[this] val fileDeleteSink: Sink[FSPath, NotUsed] = Sink.foreach(Files.delete)
-    .addAttributes(Attributes.name("fileDelete") and ActorAttributes.IODispatcher)
+    .withAttributes(Attributes.name("fileDelete") and ActorAttributes.IODispatcher)
     .mapMaterializedValue(_ ⇒ NotUsed)
 }

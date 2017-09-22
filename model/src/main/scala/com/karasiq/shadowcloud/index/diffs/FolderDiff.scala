@@ -15,24 +15,27 @@ final case class FolderDiff(path: Path, time: Long = 0, newFiles: Set[File] = Se
 
   type Repr = FolderDiff
 
-  def mergeWith(diff: FolderDiff, decider: FolderDecider = FolderDecider.mutualExclude): FolderDiff = {
+  def mergeWith(diff: FolderDiff, diffDecider: FolderDiffDecider = FolderDiffDecider.rightWins,
+                folderDecider: FolderDecider = FolderDecider.mutualExclude): FolderDiff = {
     def unifyPaths(files: Set[File]): Set[File] = files.map(f ⇒ f.copy(path = f.path.withParent(this.path)))
 
     require(diff.path == path, "Invalid path")
     val newTimestamp = math.max(time, diff.time)
 
-    val (newFiles, deletedFiles) = MergeUtil.splitSets(this.newFiles ++ diff.newFiles,
-      this.deletedFiles ++ diff.deletedFiles, decider.files)
-    
-    val (newFolders, deletedFolders) = MergeUtil.splitSets(this.newFolders ++ diff.newFolders,
-      this.deletedFolders ++ diff.deletedFolders, decider.folders)
+    val (newFiles, deletedFiles) =
+      diffDecider.files(this.newFiles, this.deletedFiles, diff.newFiles, diff.deletedFiles, folderDecider.files)
+
+    val (newFolders, deletedFolders) =
+      diffDecider.folders(this.newFolders, this.deletedFolders, diff.newFolders, diff.deletedFolders, folderDecider.folders)
 
     copy(path, newTimestamp, unifyPaths(newFiles), unifyPaths(deletedFiles), newFolders, deletedFolders)
   }
 
-  def diffWith(oldDiff: FolderDiff, decider: FolderDecider = FolderDecider.mutualExclude): FolderDiff = {
+  def diffWith(oldDiff: FolderDiff,
+               diffDecider: FolderDiffDecider = FolderDiffDecider.idempotent,
+               folderDecider: FolderDecider = FolderDecider.mutualExclude): FolderDiff = {
     require(oldDiff.path == path, "Invalid path")
-    mergeWith(oldDiff.reverse, decider)
+    mergeWith(oldDiff.reverse, diffDecider, folderDecider)
   }
 
   def merge(right: FolderDiff): FolderDiff = {

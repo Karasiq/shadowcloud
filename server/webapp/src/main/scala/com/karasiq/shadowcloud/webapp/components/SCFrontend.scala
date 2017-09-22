@@ -38,7 +38,7 @@ class SCFrontend()(implicit appContext: AppContext) extends BootstrapComponent {
   }
 
   def renderFoldersPanel(): Tag = {
-    val folderContextRx = regionSwitcher.regionSelector.regionIdRx.fold(None: Option[FolderContext]) { case (oldCtxOpt, newIdOpt) ⇒
+    val folderContextRx = regionSwitcher.regionSelector.selectedRegion.fold(None: Option[FolderContext]) { case (oldCtxOpt, newIdOpt) ⇒
       oldCtxOpt.foreach { oldContext ⇒
         oldContext.scope.kill()
         oldContext.selected.kill()

@@ -6,7 +6,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.NotUsed
-import akka.stream.{ActorAttributes, Attributes, FlowShape}
+import akka.stream.{ActorAttributes, FlowShape}
 import akka.stream.scaladsl.{Flow, GraphDSL, Sink, Source, StreamConverters}
 import akka.util.ByteString
 
@@ -20,10 +20,12 @@ trait BlockingMetadataParser extends MetadataParser {
 
   def parseMetadata(name: String, mime: String): Flow[ByteString, Metadata, NotUsed] = {
     val createInputStream = StreamConverters.asInputStream(5 seconds)
-    val parseInputStream = Flow[InputStream].flatMapConcat { inputStream ⇒
-      parseMetadata(name, mime, inputStream)
-        .alsoTo(Sink.onComplete(_ ⇒ inputStream.close()))
-    }
+    val parseInputStream = Flow[InputStream]
+      .flatMapConcat { inputStream ⇒
+        parseMetadata(name, mime, inputStream)
+          .alsoTo(Sink.onComplete(_ ⇒ inputStream.close()))
+      }
+      .withAttributes(ActorAttributes.dispatcher("shadowcloud.metadata.blocking-dispatcher"))
 
     val blockingFlow = Flow.fromGraph(GraphDSL.create(createInputStream) { implicit builder ⇒ toStream ⇒
       import GraphDSL.Implicits._
@@ -33,7 +35,7 @@ trait BlockingMetadataParser extends MetadataParser {
     })
 
     blockingFlow
-      .addAttributes(Attributes.name("blockingMetadataParser") and ActorAttributes.IODispatcher)
+      .named("blockingParseMetadata")
       .mapMaterializedValue(_ ⇒ NotUsed)
   }
 }

@@ -65,10 +65,10 @@ private[shadowcloud] final class MetadataStreams(sc: ShadowCloudExtension) {
   def create(fileName: String, sizeLimit: Long = sc.config.metadata.fileSizeLimit): Flow[ByteString, Metadata, NotUsed] = {
     val graph = GraphDSL.create() { implicit builder ⇒
       import GraphDSL.Implicits._
-      val bytesInput = builder.add(Broadcast[ByteString](2))
 
+      val bytesInput = builder.add(Broadcast[ByteString](2))
       val extractStream = builder.add(Flow[ByteString].async.prefixAndTail(0).map(_._2))
-      val getContentType = builder.add(MimeDetectorStream(sc.modules.metadata, fileName, sc.config.metadata.mimeProbeSize))
+      val getContentType = builder.add(Flow[ByteString].async.via(MimeDetectorStream(sc.modules.metadata, fileName, sc.config.metadata.mimeProbeSize)))
 
       val zipStreamAndMime = builder.add(Zip[Source[ByteString, NotUsed], String])
 
@@ -103,9 +103,9 @@ private[shadowcloud] final class MetadataStreams(sc: ShadowCloudExtension) {
     // Writes the chunk stream before actual file path is known
     val writeStream = sc.streams.file.write(regionId, path)
     val createMetadataStream = Flow[ByteString]
-      .buffer(5, OverflowStrategy.backpressure) // Buffer byte chunks
+      // .buffer(5, OverflowStrategy.backpressure) // Buffer byte chunks
       .via(create(path.name, metadataSizeLimit))
-      .buffer(5, OverflowStrategy.backpressure) // Buffer metadatas
+      .buffer(10, OverflowStrategy.backpressure) // Buffer metadatas
 
     val graph = GraphDSL.create(writeStream, createMetadataStream)(Keep.none) { implicit builder ⇒ (writeFile, createMetadata) ⇒
       import GraphDSL.Implicits._

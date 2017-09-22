@@ -51,7 +51,7 @@ private[shadowcloud] object FileSystemUtils {
         })
         builder.result()
       }
-      .addAttributes(Attributes.name("walkFileTree") and ActorAttributes.IODispatcher)
+      .withAttributes(Attributes.name("walkFileTree") and ActorAttributes.IODispatcher)
   }
 
   def listSubItems(folder: Path, includeFiles: Boolean = true, includeDirs: Boolean = true): Source[Path, NotUsed] = {

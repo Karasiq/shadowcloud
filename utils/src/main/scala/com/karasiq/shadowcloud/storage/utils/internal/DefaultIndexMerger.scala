@@ -6,7 +6,7 @@ import scala.language.postfixOps
 import com.karasiq.shadowcloud.exceptions.SCExceptions
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.index.utils.FolderDecider
+import com.karasiq.shadowcloud.index.utils.{FolderDecider, FolderDiffDecider}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.utils.MergeUtil.Decider
 
@@ -54,7 +54,7 @@ private[storage] final class DefaultIndexMerger[@specialized(Long) T](firstKey: 
   }
 
   def deletePending(diff: IndexDiff): Unit = {
-    _pending = pending.diffWith(diff, Decider.keepLeft, FolderDecider.mutualExclude, Decider.keepLeft)
+    _pending = pending.diffWith(diff, Decider.keepLeft, FolderDiffDecider.idempotent, FolderDecider.mutualExclude, Decider.keepLeft)
   }
 
   def load(state: IndexMerger.State[T]): Unit = {

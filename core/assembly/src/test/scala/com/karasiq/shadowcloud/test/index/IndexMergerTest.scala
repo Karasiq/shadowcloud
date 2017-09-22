@@ -67,7 +67,7 @@ class IndexMergerTest extends WordSpec with Matchers {
       "reverse diff" in {
         index.add(diff2Reverse.time, diff2Reverse)
         index.diffs shouldBe Map(diff1.time → diff1, diff2.time → diff2, diff2Reverse.time → diff2Reverse)
-        index.mergedDiff shouldBe diff1.copy(time = diff2Reverse.time,
+        index.mergedDiff.creates shouldBe diff1.copy(time = diff2Reverse.time,
           folders = diff1.folders.copy(diff1.folders.folders.map(f ⇒ f.copy(time = diff2.time))))
         index.chunks.chunks shouldBe diff1.chunks.newChunks
         index.folders shouldBe FolderIndex.empty.patch(diff1.folders).patch(diff2.folders).patch(diff2Reverse.folders)
@@ -88,8 +88,11 @@ class IndexMergerTest extends WordSpec with Matchers {
         index.chunks.chunks shouldBe empty
         index.folders shouldBe FolderIndex.empty
       }
+    }
 
+    "merging folders" should {
       "add and delete folder" in {
+        val index = IndexMerger.sequential()
         val diff1 = IndexDiff(folders = FolderIndexDiff.createFolders(Folder("/1"), Folder("/1/2")))
         val diff2 = IndexDiff(folders = FolderIndexDiff.deleteFolderPaths("/1/2"))
         index.addPending(diff1)
@@ -98,6 +101,20 @@ class IndexMergerTest extends WordSpec with Matchers {
         index.add(2, diff2)
         index.folders.patch(index.pending.folders).folders.keySet shouldBe Set[Path](Path.root, "/1")
       }
-    }                                                              
+
+      "delete folder tree" in {
+        val index = IndexMerger.sequential()
+        val diff1 = IndexDiff(folders = FolderIndexDiff.createFolders(Folder("/1", files = Set(CoreTestUtils.randomFile("/1"))),
+          Folder("/1/2", files = Set(CoreTestUtils.randomFile("/1/2"))), Folder("/1/2/3", files = Set(CoreTestUtils.randomFile("/1/2/3")))))
+        val diff2 = IndexDiff(folders = FolderIndexDiff.deleteFolderPaths("/1"))
+
+        index.addPending(diff1)
+        index.addPending(diff2)
+        index.add(1, diff1.merge(diff2))
+        index.folders.folders.keySet shouldBe Set(Path.root)
+        index.mergedDiff.creates.folders.folders shouldBe empty
+        index.pending.folders.folders shouldBe empty
+      }
+    }
   }
 }

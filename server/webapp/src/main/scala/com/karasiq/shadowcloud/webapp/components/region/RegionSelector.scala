@@ -6,28 +6,44 @@ import scalaTags.all._
 import rx.Var
 
 import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.model.utils.RegionStateReport
 import com.karasiq.shadowcloud.webapp.context.AppContext
 
 object RegionSelector {
   def apply()(implicit context: AppContext, regionContext: RegionContext): RegionSelector = {
     new RegionSelector()
   }
+
+  private def getRegionIds(state: RegionStateReport): Seq[RegionId] = {
+    state.regions
+      .filterNot(_._2.suspended)
+      .keys.toSeq
+      .sorted
+  }
 }
 
 class RegionSelector(implicit context: AppContext, regionContext: RegionContext) extends BootstrapHtmlComponent {
-  val regionIdRx = Var(None: Option[RegionId])
+  val selectedRegion = Var(None: Option[RegionId])
+  private[this] val selectField = renderSelectField()
+
+  /* regionContext.regions.foreach { state ⇒
+    if (selectedRegion.now.isEmpty)
+      selectedRegion() = RegionSelector.getRegionIds(state).headOption
+  } */
 
   def renderTag(md: ModifierT*): TagT = {
+    Form(selectField)
+  }
+
+  private[this] def renderSelectField(): FormSelect = {
     val options = regionContext.regions.map { state ⇒
-      state.regions
-        .filterNot(_._2.suspended)
-        .keys.toSeq
-        .sorted
+      RegionSelector.getRegionIds(state)
         .map(id ⇒ FormSelectOption(id, id))
     }
 
     val select = FormInput.select(context.locale.regionId, options)
-    select.selected.map(_.headOption).foreach(this.regionIdRx.update)
-    Form(select)
+    select.selected.foreach(seq ⇒ selectedRegion() = seq.headOption)
+    selectedRegion.foreach(opt ⇒ select.selected() = opt.toSeq)
+    select
   }
 }

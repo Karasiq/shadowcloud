@@ -77,7 +77,7 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
           NotUsed
         }
     }
-    .addAttributes(Attributes.name("chunkWriteQueue") and ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+    .withAttributes(Attributes.name("chunkWriteQueue") and ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
     .to(Sink.ignore)
     .run()
 
@@ -114,7 +114,7 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
         SourceShape(completePromise.out)
       }
     }
-    .addAttributes(Attributes.name("chunkReadQueue") and ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+    .withAttributes(Attributes.name("chunkReadQueue") and ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
     .to(Sink.ignore)
     .run()
 
@@ -248,7 +248,7 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
           .alsoToMat(deleteSink)(Keep.right)
           .mapMaterializedValue(matSink ! _)
       }
-      .addAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+      .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
       .alsoTo(Sink.onComplete(_ ⇒ matSink ! Status.Success(Done)))
       .fold(Set.empty[ChunkPath])(_ + _)
       .toMat(Sink.head)(Keep.right)

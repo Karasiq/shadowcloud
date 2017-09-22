@@ -47,7 +47,7 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
     .via(internalStreams.decrypt)
     .via(internalStreams.decompress)
     .via(internalStreams.deserialize)
-    .addAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+    .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
     .named("indexPostRead")
 
   private[this] object internalStreams {

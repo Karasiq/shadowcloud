@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.index.diffs
 
 import scala.language.postfixOps
 
-import com.karasiq.shadowcloud.index.utils.{FolderDecider, HasEmpty, HasWithoutData, MergeableDiff}
+import com.karasiq.shadowcloud.index.utils._
 import com.karasiq.shadowcloud.model.{Chunk, Folder, Path, SCEntity}
 import com.karasiq.shadowcloud.utils.Utils
 import com.karasiq.shadowcloud.utils.MergeUtil.{Decider, SplitDecider}
@@ -16,16 +16,20 @@ final case class IndexDiff(time: Long = Utils.timestamp,
   type Repr = IndexDiff
 
   // Delete wins by default
-  def mergeWith(diff: IndexDiff, folderDecider: FolderDecider = FolderDecider.mutualExclude,
+  def mergeWith(diff: IndexDiff, folderDiffDecider: FolderDiffDecider = FolderDiffDecider.rightWins,
+                folderDecider: FolderDecider = FolderDecider.mutualExclude,
                 chunkDecider: SplitDecider[Chunk] = SplitDecider.dropDuplicates): IndexDiff = {
     val maxTime = math.max(time, diff.time)
-    withDiffs(folders.mergeWith(diff.folders, folderDecider), chunks.mergeWith(diff.chunks, chunkDecider), maxTime)
+    withDiffs(folders.mergeWith(diff.folders, folderDiffDecider, folderDecider),
+      chunks.mergeWith(diff.chunks, chunkDecider), maxTime)
   }
 
   def diffWith(diff: IndexDiff, decider: Decider[FolderDiff] = Decider.diff,
+               folderDiffDecider: FolderDiffDecider = FolderDiffDecider.idempotent,
                folderDecider: FolderDecider = FolderDecider.mutualExclude,
                chunkDecider: Decider[Chunk] = Decider.diff): IndexDiff = {
-    withDiffs(folders.diffWith(diff.folders, decider, folderDecider), chunks.diffWith(diff.chunks, chunkDecider))
+    withDiffs(folders.diffWith(diff.folders, decider, folderDiffDecider, folderDecider),
+      chunks.diffWith(diff.chunks, chunkDecider))
   }
 
   def merge(right: IndexDiff): IndexDiff = {

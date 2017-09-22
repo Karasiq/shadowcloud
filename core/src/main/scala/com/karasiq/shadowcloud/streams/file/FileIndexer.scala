@@ -22,7 +22,7 @@ private[shadowcloud] object FileIndexer {
 
   def apply(registry: CryptoModuleRegistry, plainHashing: HashingMethod = HashingMethod.default,
             encryptedHashing: HashingMethod = HashingMethod.default): Sink[Chunk, Future[Result]] = {
-    Sink.fromGraph(new FileIndexer(registry, plainHashing, encryptedHashing))
+    Sink.fromGraph(new FileIndexer(registry, plainHashing, encryptedHashing)).named("fileIndexer")
   }
 }
 

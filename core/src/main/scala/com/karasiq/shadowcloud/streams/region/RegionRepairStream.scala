@@ -4,7 +4,7 @@ import scala.concurrent.Promise
 import scala.util.Failure
 
 import akka.NotUsed
-import akka.stream.{ActorAttributes, Attributes, Supervision}
+import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.scaladsl.{Flow, Sink, Source}
 
 import com.karasiq.shadowcloud.config.ParallelismConfig
@@ -57,7 +57,7 @@ object RegionRepairStream {
               .mapAsyncUnordered(parallelism.write)(chunk ⇒ regionOps.rewriteChunk(request.regionId, chunk, newAffinity))
               .map(_.withoutData)
               .log("region-repair-chunk", chunk ⇒ chunk.toString + " at " + request.regionId)
-              .addAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+              .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
               .fold(Vector.empty[Chunk])(_ :+ _)
               .alsoTo(Sink.onComplete {
                 case Failure(error) ⇒
@@ -70,6 +70,6 @@ object RegionRepairStream {
           }
       }
       .to(Sink.ignore)
-      .addAttributes(Attributes.name("regionRepairStream"))
+      .named("regionRepairStream")
   }
 }

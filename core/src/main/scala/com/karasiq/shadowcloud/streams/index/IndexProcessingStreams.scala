@@ -45,7 +45,7 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
 
   val postRead: Flow[ByteString, IndexData, NotUsed] = Flow[ByteString]
     .via(internalStreams.readEncrypted)
-    .log("index-frames-read-encrypted")
+    // .log("index-frames-read-encrypted")
     .via(internalStreams.decrypt)
     .via(internalStreams.decompress)
     .via(internalStreams.deserialize)

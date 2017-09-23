@@ -25,6 +25,7 @@ trait BlockingMetadataParser extends MetadataParser {
         parseMetadata(name, mime, inputStream)
           .alsoTo(Sink.onComplete(_ ⇒ inputStream.close()))
       }
+      .named("parseMetadataInputStream")
       .withAttributes(ActorAttributes.dispatcher("shadowcloud.metadata.blocking-dispatcher"))
 
     val blockingFlow = Flow.fromGraph(GraphDSL.create(createInputStream) { implicit builder ⇒ toStream ⇒

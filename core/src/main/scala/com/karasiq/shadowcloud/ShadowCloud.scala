@@ -172,6 +172,8 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // Utils
   // -----------------------------------------------------------------------
   private[shadowcloud] object executionContexts {
+    val metadata = _actorSystem.dispatchers.lookup("shadowcloud.metadata.default-dispatcher")
+    val metadataBlocking = _actorSystem.dispatchers.lookup("shadowcloud.metadata.blocking-dispatcher")
     val cryptography = _actorSystem.dispatchers.lookup("shadowcloud.crypto.default-dispatcher")
   }
 }

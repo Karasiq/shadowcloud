@@ -10,6 +10,7 @@ import akka.stream.{ActorAttributes, FlowShape}
 import akka.stream.scaladsl.{Flow, GraphDSL, Sink, Source, StreamConverters}
 import akka.util.ByteString
 
+import com.karasiq.shadowcloud.actors.SCDispatchers
 import com.karasiq.shadowcloud.metadata.{Metadata, MetadataParser}
 
 /**
@@ -26,7 +27,7 @@ trait BlockingMetadataParser extends MetadataParser {
           .alsoTo(Sink.onComplete(_ ⇒ inputStream.close()))
       }
       .named("parseMetadataInputStream")
-      .withAttributes(ActorAttributes.dispatcher("shadowcloud.metadata.blocking-dispatcher"))
+      .withAttributes(ActorAttributes.dispatcher(SCDispatchers.metadataBlocking))
 
     val blockingFlow = Flow.fromGraph(GraphDSL.create(createInputStream) { implicit builder ⇒ toStream ⇒
       import GraphDSL.Implicits._

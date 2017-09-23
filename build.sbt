@@ -140,7 +140,7 @@ def metadataPlugin(id: String): Project = {
 
 lazy val metadataParent = Project("metadata-parent", file("metadata") / "parent")
   .settings(commonSettings, libraryDependencies ++= ProjectDeps.akka.streams)
-  .dependsOn(modelJVM)
+  .dependsOn(modelJVM, utilsJVM)
 
 lazy val tikaMetadata = metadataPlugin("tika")
   .settings(libraryDependencies ++= ProjectDeps.tika)

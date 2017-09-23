@@ -10,7 +10,7 @@ import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
 import com.typesafe.config.Config
 
-import com.karasiq.shadowcloud.actors.RegionSupervisor
+import com.karasiq.shadowcloud.actors.{RegionSupervisor, SCDispatchers}
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.StringEventBus
 import com.karasiq.shadowcloud.config._
@@ -172,8 +172,8 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // Utils
   // -----------------------------------------------------------------------
   private[shadowcloud] object executionContexts {
-    val metadata = _actorSystem.dispatchers.lookup("shadowcloud.metadata.default-dispatcher")
-    val metadataBlocking = _actorSystem.dispatchers.lookup("shadowcloud.metadata.blocking-dispatcher")
-    val cryptography = _actorSystem.dispatchers.lookup("shadowcloud.crypto.default-dispatcher")
+    val metadata = _actorSystem.dispatchers.lookup(SCDispatchers.metadata)
+    val metadataBlocking = _actorSystem.dispatchers.lookup(SCDispatchers.metadataBlocking)
+    val cryptography = _actorSystem.dispatchers.lookup(SCDispatchers.cryptography)
   }
 }

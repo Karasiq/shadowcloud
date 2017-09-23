@@ -5,7 +5,7 @@ import akka.actor.ActorRef
 sealed trait ActorState
 
 object ActorState {
-  case class Active(dispatcher: ActorRef) extends ActorState
+  final case class Active(dispatcher: ActorRef) extends ActorState
   case object Suspended extends ActorState
 
   def ifActive(state: ActorState, action: ActorRef ⇒ Unit): Unit = {

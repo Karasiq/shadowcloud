@@ -1,7 +1,6 @@
 package com.karasiq.shadowcloud
 
 import java.util.UUID
-import java.util.concurrent.Executors
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
@@ -173,7 +172,6 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // Utils
   // -----------------------------------------------------------------------
   private[shadowcloud] object executionContexts {
-    val cryptography = ExecutionContext.fromExecutorService(
-      Executors.newWorkStealingPool(sys.runtime.availableProcessors()))
+    val cryptography = _actorSystem.dispatchers.lookup("shadowcloud.crypto.default-dispatcher")
   }
 }

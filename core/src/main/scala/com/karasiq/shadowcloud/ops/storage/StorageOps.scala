@@ -89,6 +89,6 @@ final class StorageOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(imp
   private[this] def askStorageIndex[V](storageId: StorageId, regionId: RegionId,
                                        status: MessageStatus[_, V], message: RegionIndex.Message)
                                       (implicit timeout: Timeout = timeouts.query): Future[V] = {
-    askStorage(storageId, status, StorageIndex.Envelope(regionId, message))
+    askStorage(storageId, status, StorageIndex.Envelope(regionId, message))(timeout)
   }
 }

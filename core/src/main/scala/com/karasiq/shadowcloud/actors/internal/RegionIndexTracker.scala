@@ -85,8 +85,8 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
 
     object io {
       def synchronize(storage: RegionStorage): Future[SyncReport] = {
-        RegionIndex.Synchronize.unwrapFuture(storage.dispatcher ?
-          StorageIndex.Envelope(regionId, RegionIndex.Synchronize))
+        val future = (storage.dispatcher ? StorageIndex.Envelope(regionId, RegionIndex.Synchronize))(sc.config.timeouts.synchronize)
+        RegionIndex.Synchronize.unwrapFuture(future)
       }
 
       def writeIndex(storage: RegionStorage, diff: IndexDiff): Unit = {

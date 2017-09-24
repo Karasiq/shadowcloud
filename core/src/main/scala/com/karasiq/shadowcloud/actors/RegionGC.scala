@@ -155,12 +155,11 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
       finishCollecting(receivers, future)
 
     case Status.Failure(error) ⇒
+      log.error(error, "GC failure")
       finishCollecting(receivers, Future.failed(error))
 
     case ReceiveTimeout ⇒
-      val exception = new TimeoutException("GC timeout")
-      finishCollecting(receivers, Future.failed(exception))
-      // throw exception
+      finishCollecting(receivers, Future.failed(new TimeoutException("GC timeout")))
   }
 
   override def receive: Receive = receiveIdle
@@ -231,7 +230,7 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
       val futures = chunks.map { case (storage, chunks) ⇒
         val paths = chunks.map(ChunkPath(regionId, _))
         if (log.isDebugEnabled) log.debug("Deleting chunks from storage {}: [{}]", storage.id, Utils.printHashes(chunks))
-        SDeleteChunks.unwrapFuture(storage.dispatcher ? SDeleteChunks(paths))
+        SDeleteChunks.unwrapFuture((storage.dispatcher ? SDeleteChunks(paths))(sc.config.timeouts.chunksDelete))
       }
 
       Future.foldLeft(futures.toVector)((Set.empty[ByteString], StorageIOResult.empty)) {

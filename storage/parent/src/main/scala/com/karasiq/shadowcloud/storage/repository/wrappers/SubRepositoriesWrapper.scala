@@ -1,22 +1,20 @@
 package com.karasiq.shadowcloud.storage.repository.wrappers
 
 import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-import akka.{Done, NotUsed}
-import akka.actor.Status
-import akka.stream.{Materializer, OverflowStrategy}
+import akka.NotUsed
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.repository.{CategorizedRepository, Repository}
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
+import com.karasiq.shadowcloud.utils.AkkaStreamUtils
 
 private[repository] final class SubRepositoriesWrapper[CatKey, Key](pathString: String,
                                                                     subRepositories: () ⇒ Source[(CatKey, Repository[Key]), NotUsed])
-                                                                   (implicit ec: ExecutionContext, mat: Materializer)
+                                                                   (implicit ec: ExecutionContext)
   extends CategorizedRepository[CatKey, Key] {
   
   override def subRepository(categoryKey: CatKey): Repository[Key] = {
@@ -29,7 +27,7 @@ private[repository] final class SubRepositoriesWrapper[CatKey, Key](pathString: 
           .take(1)
           .orElse(Source.failed(new NoSuchElementException(categoryKey.toString)))
           .flatMapConcat(repo ⇒ extractSource(repo).mapMaterializedValue(promise.trySuccess))
-          .alsoTo(Sink.onComplete(result ⇒ if (result.isFailure) promise.tryFailure(result.failed.get)))
+          .alsoTo(Sink.onComplete(_.failed.foreach(promise.tryFailure)))
           .mapMaterializedValue(_ ⇒ promise.future)
       }
 
@@ -57,38 +55,38 @@ private[repository] final class SubRepositoriesWrapper[CatKey, Key](pathString: 
       def write(key: Key): Sink[Data, Result] = {
         val promise = Promise[Result]
         Flow[Data]
-          .prefixAndTail(0)
-          .map(_._2)
+          .via(AkkaStreamUtils.extractUpstream)
           .flatMapConcat { source ⇒
             openSubStream(repo ⇒ source.alsoToMat(repo.write(key))(Keep.right))
               .map(_ ⇒ NotUsed)
               .mapMaterializedValue(promise.completeWith)
           }
-          .to(Sink.onComplete(result ⇒ if (result.isFailure) promise.tryFailure(result.failed.get)))
+          .to(Sink.onComplete(_.failed.foreach(promise.tryFailure)))
           .mapMaterializedValue(_ ⇒ promise.future.flatten)
       }
 
       def delete: Sink[Key, Result] = {
-        val (matSink, matResult) = Source.actorRef[Result](10, OverflowStrategy.dropNew)
-          .mapAsync(4)(identity)
-          .idleTimeout(20 seconds)
-          .fold(Seq.empty[StorageIOResult])(_ :+ _)
-          .map(results ⇒ StorageUtils.foldIOResultsIgnoreErrors(results:_*))
-          .toMat(Sink.head)(Keep.both)
-          .run()
-
         Flow[Key]
           .prefixAndTail(0)
           .map(_._2)
           .zip(openSubStream(repo ⇒ Source.single(repo.delete)))
-          .flatMapConcat { case (source, sink) ⇒
-            source
+          .map { case (source, sink) ⇒
+            val promise = Promise[StorageIOResult]
+            val stream = source
               .alsoToMat(sink)(Keep.right)
-              .mapMaterializedValue(matSink ! _)
+              .alsoTo(Sink.onComplete(_.failed.foreach(promise.tryFailure)))
+              .mapMaterializedValue { future ⇒ promise.completeWith(future); NotUsed }
+            (stream, promise.future)
           }
-          .alsoTo(Sink.onComplete(_ ⇒ matSink ! Status.Success(Done)))
+          .alsoToMat(
+            Flow[(Source[Key, NotUsed], Result)]
+              .mapAsync(1)(_._2)
+              .fold(Seq.empty[StorageIOResult])(_ :+ _)
+              .map(results ⇒ StorageUtils.foldIOResultsIgnoreErrors(results:_*))
+              .toMat(Sink.head)(Keep.right)
+          )(Keep.right)
+          .flatMapConcat(_._1)
           .to(Sink.ignore)
-          .mapMaterializedValue(_ ⇒ matResult)
       }
     }
   }
@@ -119,26 +117,29 @@ private[repository] final class SubRepositoriesWrapper[CatKey, Key](pathString: 
   }
 
   def delete: Sink[(CatKey, Key), Result] = {
-    val (matSink, matResult) = Source.actorRef[Result](10, OverflowStrategy.dropNew)
-      .mapAsync(4)(identity)
-      .idleTimeout(20 seconds)
-      .fold(Seq.empty[StorageIOResult])(_ :+ _)
-      .map(results ⇒ StorageUtils.foldIOResultsIgnoreErrors(results:_*))
-      .toMat(Sink.head)(Keep.both)
-      .run()
-
     Flow[(CatKey, Key)]
       .groupBy(100, _._1)
       .prefixAndTail(1)
-      .flatMapConcat { case (head +: Nil, source) ⇒
+      .map { case (head +: Nil, source) ⇒
+        val promise = Promise[StorageIOResult]
         val repository = subRepository(head._1)
-        Source.single(head)
+        val stream = Source.single(head)
           .concat(source)
           .map(_._2)
           .alsoToMat(repository.delete)(Keep.right)
-          .mapMaterializedValue(matSink ! _)
+          .alsoTo(Sink.onComplete(_.failed.foreach(promise.tryFailure)))
+          .mapMaterializedValue { future ⇒ promise.completeWith(future); NotUsed }
+        (stream, promise.future)
       }
-      .to(Sink.onComplete(_ ⇒ matSink ! Status.Success(Done)))
-      .mapMaterializedValue(_ ⇒ matResult)
+      .mergeSubstreams
+      .alsoToMat(
+        Flow[(Source[Key, NotUsed], Result)]
+          .mapAsync(1)(_._2)
+          .fold(Seq.empty[StorageIOResult])(_ :+ _)
+          .map(results ⇒ StorageUtils.foldIOResultsIgnoreErrors(results:_*))
+          .toMat(Sink.head)(Keep.right)
+      )(Keep.right)
+      .flatMapConcat(_._1)
+      .to(Sink.ignore)
   }
 }

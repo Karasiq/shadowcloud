@@ -16,7 +16,8 @@ case class TimeoutsConfig(rootConfig: Config,
                           indexWrite: FiniteDuration,
                           indexRead: FiniteDuration,
                           indexList: FiniteDuration,
-                          synchronize: FiniteDuration) extends WrappedConfig
+                          synchronize: FiniteDuration,
+                          collectGarbage: FiniteDuration) extends WrappedConfig
 
 object TimeoutsConfig extends ConfigImplicits with WrappedConfigFactory[TimeoutsConfig] {
   def apply(config: Config): TimeoutsConfig = {
@@ -32,7 +33,8 @@ object TimeoutsConfig extends ConfigImplicits with WrappedConfigFactory[Timeouts
       config.getFiniteDuration("index-write"),
       config.getFiniteDuration("index-read"),
       config.getFiniteDuration("index-list"),
-      config.getFiniteDuration("synchronize")
+      config.getFiniteDuration("synchronize"),
+      config.getFiniteDuration("collect-garbage")
     )
   }
 }

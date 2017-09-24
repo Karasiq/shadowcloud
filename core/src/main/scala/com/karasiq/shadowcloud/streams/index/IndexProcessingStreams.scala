@@ -35,10 +35,10 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
   // -----------------------------------------------------------------------
   def preWrite(storageConfig: StorageConfig): Flow[IndexData, ByteString, NotUsed] = {
     Flow[IndexData]
+      .log("index-frames-write")
       .via(internalStreams.serialize)
       .via(internalStreams.compress)
       .via(internalStreams.encrypt)
-      .log("index-frames-write")
       .via(internalStreams.writeEncrypted)
       .named("indexPreWrite")
   }

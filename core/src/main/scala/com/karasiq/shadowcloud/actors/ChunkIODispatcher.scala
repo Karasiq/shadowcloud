@@ -21,7 +21,7 @@ import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperations}
 import com.karasiq.shadowcloud.model.{Chunk, ChunkId, RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.props.StorageProps
-import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
+import com.karasiq.shadowcloud.storage.repository.{CategorizedRepository, RepositoryStreams}
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.utils.Utils
@@ -69,7 +69,7 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
     .flatMapConcat { case (path, chunk, promise) ⇒
       val repository = subRepository(path.regionId)
       Source.single(chunk.data.encrypted)
-        .alsoToMat(repository.write(path.chunkId))(Keep.right)
+        .alsoToMat(RepositoryStreams.writeWithRetries(repository, path.chunkId))(Keep.right)
         .completionTimeout(sc.config.timeouts.chunkWrite)
         .map(_ ⇒ NotUsed)
         .mapMaterializedValue { result ⇒
@@ -85,7 +85,7 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
     .queue[(ChunkPath, Chunk, Promise[(Chunk, StorageIOResult)])](sc.config.queues.storageRead, OverflowStrategy.dropNew)
     .flatMapConcat { case (path, chunk, promise) ⇒
       val localRepository = subRepository(path.regionId)
-      val readSource = localRepository.read(path.chunkId)
+      val readSource = RepositoryStreams.readWithRetries(localRepository, path.chunkId)
         .completionTimeout(sc.config.timeouts.chunkRead)
         .via(ByteStreams.limit(chunk.checksum.encSize))
         .via(ByteStreams.concat)

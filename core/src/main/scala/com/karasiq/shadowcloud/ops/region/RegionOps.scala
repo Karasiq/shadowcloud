@@ -83,7 +83,7 @@ final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(impl
   }
 
   def synchronize(regionId: RegionId): Future[Map[StorageId, SyncReport]] = {
-    askRegion(regionId, RegionDispatcher.Synchronize, RegionDispatcher.Synchronize)
+    askRegion(regionId, RegionDispatcher.Synchronize, RegionDispatcher.Synchronize)(timeouts.synchronize)
   }
 
   def compactIndex(regionId: RegionId): Unit = {
@@ -134,7 +134,7 @@ final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(impl
   }
 
   def rewriteChunk(regionId: RegionId, chunk: Chunk, newAffinity: Option[ChunkWriteAffinity]): Future[Chunk] = {
-    askRegion(regionId, WriteChunk, RewriteChunk(chunk, newAffinity))
+    askRegion(regionId, WriteChunk, RewriteChunk(chunk, newAffinity))(timeouts.regionChunkWrite)
   }
 
   // -----------------------------------------------------------------------
@@ -152,7 +152,7 @@ final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(impl
   // Region GC
   // -----------------------------------------------------------------------
   def collectGarbage(regionId: RegionId, gcStrategy: GCStrategy = GCStrategy.Default): Future[GCReport] = {
-    askRegion(regionId, RegionGC.CollectGarbage, RegionGC.CollectGarbage(gcStrategy))
+    askRegion(regionId, RegionGC.CollectGarbage, RegionGC.CollectGarbage(gcStrategy))(timeouts.collectGarbage)
   }
 
   // -----------------------------------------------------------------------

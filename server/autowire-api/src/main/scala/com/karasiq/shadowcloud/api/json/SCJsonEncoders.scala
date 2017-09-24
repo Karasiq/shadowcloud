@@ -5,6 +5,7 @@ import akka.util.ByteString
 import com.trueaccord.scalapb.{GeneratedEnum, GeneratedEnumCompanion, GeneratedMessage, GeneratedMessageCompanion}
 import play.api.libs.json._
 
+import com.karasiq.common.encoding.Base64
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
@@ -14,7 +15,6 @@ import com.karasiq.shadowcloud.model.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.model.utils._
 import com.karasiq.shadowcloud.model.utils.GCReport.{RegionGCState, StorageGCState}
 import com.karasiq.shadowcloud.model.utils.RegionStateReport.{RegionStatus, StorageStatus}
-import com.karasiq.shadowcloud.utils.encoding.Base64
 
 //noinspection ConvertExpressionToSAM
 trait SCJsonEncoders {

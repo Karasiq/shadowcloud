@@ -5,8 +5,8 @@ import scalaTags.all._
 
 import rx.{Rx, Var}
 
+import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.model.utils.HealthStatus
-import com.karasiq.shadowcloud.utils.MemorySize
 import com.karasiq.shadowcloud.webapp.context.AppContext
 
 object HealthView {

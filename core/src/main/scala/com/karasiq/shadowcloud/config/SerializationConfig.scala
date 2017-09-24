@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.config
 
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.compression.StreamCompression
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.config.SerializationConfig.Config
 
 case class SerializationConfig(rootConfig: Config,

@@ -6,9 +6,9 @@ import scalaTags.all._
 import org.scalajs.dom.DragEvent
 import rx.{Rx, Var}
 
+import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.model.File
-import com.karasiq.shadowcloud.utils.MemorySize
 import com.karasiq.shadowcloud.webapp.components.file.FileDownloadLink
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 

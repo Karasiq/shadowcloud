@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.model.utils
 
-import com.karasiq.shadowcloud.utils.MemorySize
+import com.karasiq.common.memory.MemorySize
 
 @SerialVersionUID(0L)
 final case class StorageHealth(writableSpace: Long, totalSpace: Long, usedSpace: Long = 0L, online: Boolean = true) extends HealthStatus {

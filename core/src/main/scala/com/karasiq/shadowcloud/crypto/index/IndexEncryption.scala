@@ -8,6 +8,7 @@ import scala.util.hashing.MurmurHash3
 
 import akka.util.ByteString
 
+import com.karasiq.common.encoding.UUIDEncoding
 import com.karasiq.shadowcloud.crypto.index.IndexEncryption.{CiphertextT, PlaintextT}
 import com.karasiq.shadowcloud.exceptions.CryptoException
 import com.karasiq.shadowcloud.model.crypto.{AsymmetricEncryptionParameters, EncryptionMethod, EncryptionParameters, SymmetricEncryptionParameters}
@@ -15,7 +16,6 @@ import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyId, KeySet}
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 import com.karasiq.shadowcloud.serialization.SerializationModule
 import com.karasiq.shadowcloud.serialization.protobuf.index.EncryptedIndexData
-import com.karasiq.shadowcloud.utils.UUIDUtils
 
 private[shadowcloud] trait IndexEncryption {
   def encrypt(plaintext: PlaintextT, dataEncMethod: EncryptionMethod, keys: KeyChain): CiphertextT
@@ -35,7 +35,7 @@ private[shadowcloud] object IndexEncryption {
   }
   
   def getKeyHash(dataId: DataId, keyId: KeyId): Int = {
-    MurmurHash3.arrayHash((UUIDUtils.toBytes(keyId) ++ UUIDUtils.toBytes(dataId)).toArray)
+    MurmurHash3.arrayHash((UUIDEncoding.toBytes(keyId) ++ UUIDEncoding.toBytes(dataId)).toArray)
   }
 
   def getNonce(dataNonce: NonceT, keyNonce: NonceT): NonceT = {

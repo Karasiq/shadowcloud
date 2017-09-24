@@ -2,9 +2,9 @@ package com.karasiq.shadowcloud.model
 
 import scala.language.postfixOps
 
+import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData, HasWithoutKeys}
 import com.karasiq.shadowcloud.model.crypto.EncryptionParameters
-import com.karasiq.shadowcloud.utils.MemorySize
 
 @SerialVersionUID(0L)
 final case class Chunk(checksum: Checksum = Checksum.empty,

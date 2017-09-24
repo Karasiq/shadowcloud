@@ -4,8 +4,8 @@ import scala.language.postfixOps
 
 import akka.util.ByteString
 
+import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.storage.repository.wrappers.LongSeqRepositoryWrapper
-import com.karasiq.shadowcloud.utils.encoding.HexString
 
 object RepositoryKeys {
   def toHexString(repository: KeyValueRepository): Repository[ByteString] = {

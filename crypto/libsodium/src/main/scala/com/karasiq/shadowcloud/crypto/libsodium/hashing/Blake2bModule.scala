@@ -6,8 +6,8 @@ import akka.util.ByteString
 import org.abstractj.kalium.NaCl
 import org.abstractj.kalium.crypto.Util
 
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.config.ConfigProps
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.{HashingModule, HashingModuleStreamer, StreamHashingModule}
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.Blake2bModule.DigestOptions
 import com.karasiq.shadowcloud.model.crypto.HashingMethod

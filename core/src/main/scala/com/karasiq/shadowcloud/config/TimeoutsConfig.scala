@@ -2,8 +2,8 @@ package com.karasiq.shadowcloud.config
 
 import scala.concurrent.duration.FiniteDuration
 
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.config.QueuesConfig.Config
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 
 case class TimeoutsConfig(rootConfig: Config,
                           query: FiniteDuration,

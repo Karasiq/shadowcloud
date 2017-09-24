@@ -8,7 +8,7 @@ import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.utils.MemorySize
+import com.karasiq.common.memory.MemorySize
 
 object ByteStreams {
   type ByteFlow = Flow[ByteString, ByteString, NotUsed]

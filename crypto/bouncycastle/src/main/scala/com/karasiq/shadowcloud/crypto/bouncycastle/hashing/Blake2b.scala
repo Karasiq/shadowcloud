@@ -8,7 +8,7 @@ import com.karasiq.shadowcloud.model.crypto.HashingMethod
 
 private[bouncycastle] object Blake2b {
   private case class Blake2bOptions(method: HashingMethod) {
-    import com.karasiq.shadowcloud.config.utils.ConfigImplicits._
+    import com.karasiq.common.configs.ConfigImplicits._
     private[this] val config = ConfigProps.toConfig(method.config)
     val digestSize = config.withDefault(256, _.getInt("digest-size"))
     val digestKey = config.withDefault(ByteString.empty, _.getHexString("digest-key"))

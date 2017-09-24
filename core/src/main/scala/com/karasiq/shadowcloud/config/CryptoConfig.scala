@@ -2,8 +2,8 @@ package com.karasiq.shadowcloud.config
 
 import com.typesafe.config.Config
 
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.config.passwords.PasswordProvider
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.providers.{CryptoProvider, KeyProvider}
 
 private[shadowcloud] case class CryptoConfig(rootConfig: Config, hashing: HashingConfig, encryption: EncryptionConfig,

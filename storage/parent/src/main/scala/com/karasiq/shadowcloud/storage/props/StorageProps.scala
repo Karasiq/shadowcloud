@@ -7,8 +7,8 @@ import scala.language.postfixOps
 
 import com.typesafe.config.Config
 
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.config.{ConfigProps, WrappedConfig, WrappedConfigFactory}
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.props.StorageProps.{Address, Credentials, Quota}

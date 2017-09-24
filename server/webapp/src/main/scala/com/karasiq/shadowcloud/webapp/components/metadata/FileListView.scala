@@ -3,9 +3,9 @@ package com.karasiq.shadowcloud.webapp.components.metadata
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
+import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.model.Path
-import com.karasiq.shadowcloud.utils.MemorySize
 import com.karasiq.shadowcloud.webapp.context.AppContext
 
 object FileListView {

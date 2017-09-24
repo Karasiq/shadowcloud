@@ -8,8 +8,8 @@ import akka.stream.scaladsl.{FileIO, Sink, Source}
 import akka.util.ByteString
 import org.apache.commons.io.{FilenameUtils, FileUtils}
 
+import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.utils.MemorySize
 
 object MetadataParserApp extends App {
   val actorSystem = ActorSystem("metadata-parser")

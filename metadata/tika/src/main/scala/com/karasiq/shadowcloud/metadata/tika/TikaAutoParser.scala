@@ -12,7 +12,7 @@ import org.apache.tika.parser.{ParseContext, RecursiveParserWrapper}
 import org.apache.tika.sax._
 import org.xml.sax.ContentHandler
 
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.metadata.tika.utils.TikaConversions
 import com.karasiq.shadowcloud.metadata.tika.utils.TikaUtils.ContentWrapper

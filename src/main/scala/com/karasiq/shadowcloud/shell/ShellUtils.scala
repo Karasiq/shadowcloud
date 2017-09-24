@@ -7,8 +7,8 @@ import scala.util.{Failure, Success}
 
 import akka.stream.IOResult
 
+import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.model.{File, Folder}
-import com.karasiq.shadowcloud.utils.MemorySize
 
 private[shell] object ShellUtils {
   def toString(f: File): String = {

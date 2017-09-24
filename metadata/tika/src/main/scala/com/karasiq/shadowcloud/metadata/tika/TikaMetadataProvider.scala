@@ -4,7 +4,7 @@ import com.typesafe.config.Config
 import org.apache.tika.Tika
 import org.apache.tika.config.TikaConfig
 
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.metadata.MetadataProvider
 
 class TikaMetadataProvider(rootConfig: Config) extends MetadataProvider {

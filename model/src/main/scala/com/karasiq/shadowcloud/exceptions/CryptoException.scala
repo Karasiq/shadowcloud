@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.exceptions
 
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.utils.encoding.HexString
+import com.karasiq.common.encoding.HexString
 
 sealed abstract class CryptoException(message: String = null, cause: Throwable = null) extends SCException(message, cause)
 

@@ -2,13 +2,14 @@ package com.karasiq.shadowcloud.storage.replication.selectors
 
 import scala.util.Random
 
+import com.karasiq.common.configs.ConfigImplicits
+import com.karasiq.common.memory.SizeUnit
 import com.karasiq.shadowcloud.actors.context.RegionContext
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.{ChunkStatus, WriteStatus}
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
-import com.karasiq.shadowcloud.utils.{SizeUnit, Utils}
+import com.karasiq.shadowcloud.utils.Utils
 
 class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
   protected object settings extends ConfigImplicits {

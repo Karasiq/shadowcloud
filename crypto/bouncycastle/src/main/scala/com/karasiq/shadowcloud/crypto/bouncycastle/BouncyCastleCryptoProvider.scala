@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.crypto.bouncycastle
 
 import scala.language.postfixOps
 
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric.{ECIESCipherModule, RSACipherModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigestModule, BCDigests}
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.{ECDSASignModule, RSASignModule}

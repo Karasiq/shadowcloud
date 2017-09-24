@@ -6,7 +6,7 @@ import javax.crypto.spec.SecretKeySpec
 import akka.util.ByteString
 import com.typesafe.config.Config
 
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.model.{Chunk, ChunkId}
 import com.karasiq.shadowcloud.model.crypto.{AsymmetricEncryptionParameters, SymmetricEncryptionParameters}
 import com.karasiq.shadowcloud.storage.utils.ChunkKeyMapper

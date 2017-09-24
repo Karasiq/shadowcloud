@@ -10,6 +10,7 @@ import akka.pattern.{ask, pipe}
 import akka.stream.{OverflowStrategy, QueueOfferResult}
 import akka.stream.scaladsl.{Sink, Source}
 
+import com.karasiq.common.memory.SizeUnit
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.actors.context.RegionContext
@@ -29,7 +30,7 @@ import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStat
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
-import com.karasiq.shadowcloud.utils.{AkkaStreamUtils, SizeUnit, Utils}
+import com.karasiq.shadowcloud.utils.{AkkaStreamUtils, Utils}
 
 object RegionDispatcher {
   // Messages

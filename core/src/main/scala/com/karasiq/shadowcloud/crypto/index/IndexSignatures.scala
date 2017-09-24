@@ -2,12 +2,12 @@ package com.karasiq.shadowcloud.crypto.index
 
 import akka.util.ByteString
 
+import com.karasiq.common.encoding.UUIDEncoding
 import com.karasiq.shadowcloud.crypto.SignModule
 import com.karasiq.shadowcloud.crypto.index.IndexSignatures.{HeaderT, PayloadT}
 import com.karasiq.shadowcloud.model.crypto.{SignMethod, SignParameters}
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 import com.karasiq.shadowcloud.serialization.protobuf.index.EncryptedIndexData
-import com.karasiq.shadowcloud.utils.UUIDUtils
 
 private[shadowcloud] trait IndexSignatures {
   def sign(data: PayloadT, header: HeaderT, signParameters: SignParameters): HeaderT
@@ -19,7 +19,7 @@ private[shadowcloud] object IndexSignatures {
   type HeaderT = EncryptedIndexData.Header
 
   def createPayload(data: EncryptedIndexData, header: EncryptedIndexData.Header): ByteString = {
-    UUIDUtils.toBytes(data.id) ++ header.nonce ++ header.data ++ data.data
+    UUIDEncoding.toBytes(data.id) ++ header.nonce ++ header.data ++ data.data
   }
 
   def apply(signModule: SignModule): IndexSignatures = {

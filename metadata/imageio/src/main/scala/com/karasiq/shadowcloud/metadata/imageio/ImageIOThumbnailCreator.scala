@@ -10,7 +10,7 @@ import akka.stream.scaladsl.{Broadcast, Concat, Flow, GraphDSL}
 import akka.util.ByteString
 import com.typesafe.config.Config
 
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.metadata.{Metadata, MetadataParser}
 import Metadata.Tag.Disposition
 import com.karasiq.shadowcloud.metadata.imageio.utils.ImageIOResizer

@@ -85,4 +85,8 @@ object ProjectDeps {
   def scalafx: Deps = Seq(
     "org.scalafx" %% "scalafx" % "8.0.102-R11"
   )
+
+  def commons: Deps = Seq(
+    "com.github.karasiq" %% "commons-configs" % "1.0.8"
+  )
 }

@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.config
 
 import com.typesafe.config.Config
 
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.model.RegionId
 import com.karasiq.shadowcloud.storage.replication.StorageSelector
 

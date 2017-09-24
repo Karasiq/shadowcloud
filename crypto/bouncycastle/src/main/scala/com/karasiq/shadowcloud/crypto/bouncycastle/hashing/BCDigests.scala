@@ -6,8 +6,8 @@ import scala.language.postfixOps
 
 import org.bouncycastle.crypto.Digest
 
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.config.ConfigProps
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCUtils
 import com.karasiq.shadowcloud.model.crypto.HashingMethod
 

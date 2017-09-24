@@ -34,7 +34,7 @@ private[bouncycastle] object RSAUtils {
   }
 
   private case class RSAOptions(method: CryptoMethod) {
-    import com.karasiq.shadowcloud.config.utils.ConfigImplicits._
+    import com.karasiq.common.configs.ConfigImplicits._
     private[this] val rsaConfig = ConfigProps.toConfig(method.config).getConfigIfExists("rsa")
 
     val keySize = method match {

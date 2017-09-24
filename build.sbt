@@ -24,8 +24,8 @@ lazy val model = crossProject
       (baseDirectory in Compile).value.getParentFile / "src" / "main" / "protobuf"
     )
   )
-  .jvmSettings(libraryDependencies ++= ProjectDeps.akka.actors ++ ProjectDeps.protobuf)
-  .jsSettings(ScalaJSDeps.akka.actors, ScalaJSDeps.protobuf)
+  .jvmSettings(libraryDependencies ++= ProjectDeps.akka.actors ++ ProjectDeps.protobuf ++ ProjectDeps.commons)
+  .jsSettings(ScalaJSDeps.akka.actors, ScalaJSDeps.protobuf, ScalaJSDeps.commons)
 
 lazy val modelJVM = model.jvm
 

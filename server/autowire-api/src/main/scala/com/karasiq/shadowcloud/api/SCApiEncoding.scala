@@ -4,9 +4,9 @@ import scala.language.higherKinds
 
 import akka.util.ByteString
 
+import com.karasiq.common.encoding.Base64
 import com.karasiq.shadowcloud.model.{File, Path}
 import com.karasiq.shadowcloud.model.utils.IndexScope
-import com.karasiq.shadowcloud.utils.encoding.Base64
 
 object SCApiEncoding {
   def toUrlSafe(data: ByteString): String = {

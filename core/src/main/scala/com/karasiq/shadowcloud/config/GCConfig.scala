@@ -5,7 +5,7 @@ import scala.language.postfixOps
 
 import com.typesafe.config.Config
 
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.common.configs.ConfigImplicits
 
 case class GCConfig(rootConfig: Config, runOnLowSpace: Option[Long], autoDelete: Boolean,
                     keepFileRevisions: Int, keepRecentFiles: FiniteDuration) extends WrappedConfig

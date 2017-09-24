@@ -8,8 +8,8 @@ import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
 
+import com.karasiq.common.memory.SizeUnit
 import com.karasiq.shadowcloud.model.{Chunk, Data}
-import com.karasiq.shadowcloud.utils.SizeUnit
 
 private[shadowcloud] object ChunkSplitter {
   def apply(chunkSize: Int = SizeUnit.MB.intValue): Flow[ByteString, Chunk, NotUsed] = {

@@ -4,8 +4,8 @@ import akka.util.ByteString
 import org.abstractj.kalium.NaCl.Sodium
 import org.abstractj.kalium.crypto.Aead
 
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.config.ConfigProps
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric.AEADCipherModule.AEADCipherOptions
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters}
 

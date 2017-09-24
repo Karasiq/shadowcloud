@@ -12,12 +12,12 @@ import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.util.ByteString
 import org.scalatest.{FlatSpec, Matchers}
 
+import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.{ShadowCloud, ShadowCloudExtension}
 import com.karasiq.shadowcloud.api.{SCApiEncoding, SCApiUtils}
 import com.karasiq.shadowcloud.server.http.SCAkkaHttpServer
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.test.utils.TestUtils
-import com.karasiq.shadowcloud.utils.encoding.HexString
 
 class SCHttpServerTest extends FlatSpec with Matchers with ScalatestRouteTest {
   val sc = ShadowCloud(system)

@@ -13,6 +13,7 @@ import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
 import org.scalatest.FlatSpecLike
 
+import com.karasiq.common.encoding.{Base64, HexString}
 import com.karasiq.shadowcloud.actors._
 import com.karasiq.shadowcloud.actors.RegionDispatcher.{GetFileAvailability, ReadChunk, WriteChunk}
 import com.karasiq.shadowcloud.actors.events.StorageEvents
@@ -30,7 +31,6 @@ import com.karasiq.shadowcloud.storage.repository.wrappers.PathNodesMapper
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, SCExtensionSpec, TestUtils}
-import com.karasiq.shadowcloud.utils.encoding.{Base64, HexString}
 
 // Uses local filesystem
 class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {

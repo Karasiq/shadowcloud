@@ -10,6 +10,7 @@ import akka.actor.{Actor, ActorLogging, ActorRef, NotInfluenceReceiveTimeout, Po
 import akka.pattern.{ask, pipe}
 import akka.util.{ByteString, Timeout}
 
+import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.internal.GarbageCollectUtil
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, DeleteChunks ⇒ SDeleteChunks}
@@ -25,7 +26,7 @@ import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
-import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
+import com.karasiq.shadowcloud.utils.Utils
 
 object RegionGC {
   // Types

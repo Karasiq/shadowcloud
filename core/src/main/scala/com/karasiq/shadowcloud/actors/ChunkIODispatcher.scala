@@ -14,6 +14,7 @@ import akka.stream._
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, Sink, Source, Zip}
 import akka.util.ByteString
 
+import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperations}
@@ -24,7 +25,6 @@ import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.utils.Utils
-import com.karasiq.shadowcloud.utils.encoding.HexString
 
 object ChunkIODispatcher {
   case class ChunkPath(regionId: RegionId, chunkId: ChunkId) {

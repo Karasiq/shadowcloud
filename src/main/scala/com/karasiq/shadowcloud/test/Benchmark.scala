@@ -11,10 +11,10 @@ import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.{ByteString, Timeout}
 
+import com.karasiq.common.memory.{MemorySize, SizeUnit}
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.streams.chunk.ChunkSplitter
-import com.karasiq.shadowcloud.utils.{MemorySize, SizeUnit}
 
 private object Benchmark extends App {
   implicit val actorSystem = ActorSystem("shadowcloud-benchmark")

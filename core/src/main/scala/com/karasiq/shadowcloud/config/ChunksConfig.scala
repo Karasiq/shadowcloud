@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.config
 
 import com.typesafe.config.Config
 
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.common.configs.ConfigImplicits
 
 private[shadowcloud] case class ChunksConfig(rootConfig: Config, chunkSize: Int) extends WrappedConfig
 

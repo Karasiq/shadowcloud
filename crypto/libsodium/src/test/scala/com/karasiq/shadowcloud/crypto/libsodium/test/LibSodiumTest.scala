@@ -5,6 +5,7 @@ import scala.language.postfixOps
 import akka.util.ByteString
 import org.scalatest.{FlatSpec, Matchers}
 
+import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.libsodium.asymmetric.SealedBoxModule
@@ -14,7 +15,6 @@ import com.karasiq.shadowcloud.crypto.libsodium.signing.CryptoSignModule
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
 import com.karasiq.shadowcloud.model.crypto.{EncryptionParameters, HashingMethod}
 import com.karasiq.shadowcloud.test.crypto.utils.CryptoTestVectors
-import com.karasiq.shadowcloud.utils.encoding.HexString
 
 class LibSodiumTest extends FlatSpec with Matchers {
   val testVectors = CryptoTestVectors("libsodium")

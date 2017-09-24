@@ -7,10 +7,10 @@ import akka.stream.Materializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
 
+import com.karasiq.common.encoding.{ByteStringEncoding, HexString}
 import com.karasiq.shadowcloud.model.{ChunkId, SequenceNr}
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.repository.wrappers.{RepositoryKeyMapper, RepositoryWrapper, SubRepositoriesWrapper}
-import com.karasiq.shadowcloud.utils.encoding.{ByteStringEncoding, HexString}
 
 trait Repository[Key] {
   final type Data = ByteString

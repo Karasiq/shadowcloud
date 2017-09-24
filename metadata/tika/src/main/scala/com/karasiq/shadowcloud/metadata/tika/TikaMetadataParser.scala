@@ -11,7 +11,7 @@ import com.typesafe.config.Config
 import org.apache.tika.metadata.TikaCoreProperties
 import org.apache.tika.parser.{ParseContext, Parser}
 
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.metadata.utils.BlockingMetadataParser
 import com.karasiq.shadowcloud.utils.Utils

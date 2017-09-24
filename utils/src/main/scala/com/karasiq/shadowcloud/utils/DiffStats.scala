@@ -2,6 +2,7 @@ package com.karasiq.shadowcloud.utils
 
 import scala.language.postfixOps
 
+import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.storage.utils.IndexMerger

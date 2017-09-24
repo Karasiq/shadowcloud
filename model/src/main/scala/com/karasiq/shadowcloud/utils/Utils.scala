@@ -7,8 +7,8 @@ import scala.language.{higherKinds, postfixOps}
 import akka.util.ByteString
 import com.typesafe.config.ConfigFactory
 
+import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.model.{Chunk, Path}
-import com.karasiq.shadowcloud.utils.encoding.HexString
 
 private[shadowcloud] object Utils {
   // -----------------------------------------------------------------------

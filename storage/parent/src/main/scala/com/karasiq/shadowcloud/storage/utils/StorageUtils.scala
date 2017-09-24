@@ -11,10 +11,10 @@ import akka.Done
 import akka.stream.{IOResult ⇒ AkkaIOResult}
 import akka.util.ByteString
 
+import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.StorageIOResult
-import com.karasiq.shadowcloud.utils.encoding.HexString
 
 object StorageUtils {
   def toStoragePath(key: Any, root: Path = Path.root): Path = {

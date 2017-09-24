@@ -12,13 +12,14 @@ import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 
+import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.api.SCApiEncoding
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.model.{Chunk, File, Path, RegionId}
 import com.karasiq.shadowcloud.model.utils.IndexScope
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges.RangeList
-import com.karasiq.shadowcloud.utils.{MemorySize, Utils}
+import com.karasiq.shadowcloud.utils.Utils
 
 trait SCAkkaHttpFileServer { self: SCAkkaHttpApiServer with SCHttpServerSettings with Directives ⇒
   // -----------------------------------------------------------------------

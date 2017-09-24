@@ -7,10 +7,11 @@ import scalaTags.all._
 
 import rx.{Rx, Var}
 
+import com.karasiq.common.memory.SizeUnit
 import com.karasiq.highlightjs.HighlightJS
 import com.karasiq.markedjs.{Marked, MarkedOptions, MarkedRenderer}
 import com.karasiq.shadowcloud.model.File
-import com.karasiq.shadowcloud.utils.{SizeUnit, Utils}
+import com.karasiq.shadowcloud.utils.Utils
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext

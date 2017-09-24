@@ -10,12 +10,12 @@ import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
 import com.typesafe.config.Config
 
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.actors.{RegionSupervisor, SCDispatchers}
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.StringEventBus
 import com.karasiq.shadowcloud.config._
 import com.karasiq.shadowcloud.config.passwords.PasswordProvider
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, SignMethod}
 import com.karasiq.shadowcloud.model.keys.{KeyChain, KeySet}

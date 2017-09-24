@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.config
 
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, HashingMethod, SignMethod}
 
 private[shadowcloud] object CryptoProps extends ConfigImplicits {

@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.server.http
 
+import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.ShadowCloudExtension
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 
 trait SCHttpServerSettings {
   protected val sc: ShadowCloudExtension

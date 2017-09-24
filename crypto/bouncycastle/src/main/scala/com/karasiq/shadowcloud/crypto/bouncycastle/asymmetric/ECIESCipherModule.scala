@@ -14,8 +14,9 @@ import org.bouncycastle.crypto.macs.HMac
 import org.bouncycastle.crypto.params.{AsymmetricKeyParameter, ECPublicKeyParameters, IESParameters, IESWithCipherParameters}
 import org.bouncycastle.crypto.parsers.ECIESPublicKeyParser
 
+import com.karasiq.common.configs.ConfigImplicits
+import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.config.{ConfigProps, CryptoProps}
-import com.karasiq.shadowcloud.config.utils.ConfigImplicits
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric.ECIESCipherModule.IESOptions
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.BCDigests
@@ -23,7 +24,6 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{BCUtils, ECUtils}
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.BCECKeys
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.BlockCipherModule
 import com.karasiq.shadowcloud.model.crypto.{AsymmetricEncryptionParameters, EncryptionMethod, EncryptionParameters, HashingMethod}
-import com.karasiq.shadowcloud.utils.encoding.HexString
 
 private[bouncycastle] object ECIESCipherModule {
   import ConfigImplicits._

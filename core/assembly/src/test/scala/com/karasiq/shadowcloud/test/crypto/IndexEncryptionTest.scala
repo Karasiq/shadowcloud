@@ -4,9 +4,9 @@ import java.util.UUID
 
 import org.scalatest.{FlatSpec, Matchers}
 
+import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.crypto.index.IndexEncryption
 import com.karasiq.shadowcloud.test.utils.TestUtils
-import com.karasiq.shadowcloud.utils.encoding.HexString
 
 class IndexEncryptionTest extends FlatSpec with Matchers {
   "Index encryption" should "create key hash" in {

@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.persistence.h2
 
-import scala.concurrent.ExecutionContext
-
 import akka.actor.{ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
 import com.typesafe.config.Config
 
@@ -23,10 +21,8 @@ final class H2DBExtension(system: ExtendedActorSystem) extends Extension {
     private[this] val sc = ShadowCloud(system)
     val config: Config = sc.config.rootConfig.getConfig("persistence.h2")
 
-    implicit def executionContext: ExecutionContext = {
-      val dispatcherName = config.getString("dispatcher")
-      system.dispatchers.lookup(dispatcherName)
-    }
+    val dispatcherId = config.getString("dispatcher")
+    implicit lazy val executionContext = system.dispatchers.lookup(dispatcherId)
 
     private[H2DBExtension] def getDbPassword(): String = {
       sc.passwords.getOrAsk("persistence.h2.password", "h2-db").replace(' ', '_')

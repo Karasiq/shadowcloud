@@ -5,6 +5,7 @@ import java.util.UUID
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
+import akka.Done
 import akka.actor.{ActorContext, ActorRef, ActorSystem, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
 import akka.stream.{ActorMaterializer, Materializer}
 import akka.util.Timeout
@@ -22,7 +23,7 @@ import com.karasiq.shadowcloud.model.keys.{KeyChain, KeySet}
 import com.karasiq.shadowcloud.ops.region.{BackgroundOps, RegionOps}
 import com.karasiq.shadowcloud.ops.storage.StorageOps
 import com.karasiq.shadowcloud.ops.supervisor.RegionSupervisorOps
-import com.karasiq.shadowcloud.providers.{KeyProvider, SCModules}
+import com.karasiq.shadowcloud.providers.{KeyProvider, SCModules, SessionProvider}
 import com.karasiq.shadowcloud.serialization.{SerializationModule, SerializationModules}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams.chunk.ChunkProcessingStreams
@@ -124,6 +125,18 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     def getOrAsk(configPath: String, passwordId: String): String = {
       import ConfigImplicits._
       rootConfig.withDefault(provider.askPassword(passwordId), _.getString(configPath))
+    }
+  }
+
+  object sessions {
+    val provider: SessionProvider = provInstantiator.getInstance(config.persistence.sessionProvider)
+
+    def set(storageId: StorageId, key: String, data: AnyRef): Future[Done] = {
+      provider.storeSession(storageId, key, serialization.toBytes(data))
+    }
+
+    def get[T <: AnyRef](storageId: StorageId, key: String): Future[T] = {
+      provider.loadSession(storageId, key).map(serialization.fromBytes)
     }
   }
 

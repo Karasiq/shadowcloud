@@ -12,5 +12,5 @@ abstract class StorageProvider extends ModuleProvider {
 
   def storageTypes: Set[String] = Set.empty
   def storages: StoragePF = PartialFunction.empty
-  def storageConfigs: StorageConfigPF
+  def storageConfigs: StorageConfigPF = PartialFunction.empty
 }

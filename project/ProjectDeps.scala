@@ -89,4 +89,8 @@ object ProjectDeps {
   def commons: Deps = Seq(
     "com.github.karasiq" %% "commons-configs" % "1.0.8"
   )
+
+  def gdrive: Deps = Seq(
+    "com.github.karasiq" %% "gdrive-api" % "1.0.1"
+  )
 }

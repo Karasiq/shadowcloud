@@ -88,7 +88,8 @@ lazy val coreAssembly = (project in file("core/assembly"))
   .dependsOn(
     core % "compile->compile;test->test", persistence,
     bouncyCastleCrypto, libsodiumCrypto,
-    tikaMetadata, imageioMetadata
+    tikaMetadata, imageioMetadata,
+    googleDriveStorage
   )
   .aggregate(
     core, persistence,
@@ -123,9 +124,22 @@ lazy val libsodiumCrypto = cryptoPlugin("libsodium")
   .settings(libraryDependencies ++= ProjectDeps.libSodiumJni)
 
 // Storage plugins
+def storagePlugin(id: String): Project = {
+  val prefixedId = s"storage-$id"
+  Project(prefixedId, file("storage") / id)
+    .settings(
+      commonSettings,
+      name := s"shadowcloud-$prefixedId"
+    )
+    .dependsOn(core % "provided", storageParent % "provided", testUtilsJVM % "test")
+}
+
 lazy val storageParent = Project("storage-parent", file("storage") / "parent")
   .settings(commonSettings, libraryDependencies ++= ProjectDeps.akka.streams)
-  .dependsOn(modelJVM, testUtilsJVM % "test")
+  .dependsOn(modelJVM, utilsJVM, testUtilsJVM % "test")
+
+lazy val googleDriveStorage = storagePlugin("gdrive")
+  .settings(libraryDependencies ++= ProjectDeps.gdrive)
 
 // Metadata plugins
 def metadataPlugin(id: String): Project = {

@@ -63,12 +63,14 @@ case class StoragePluginBuilder(storageId: StorageId,
   }
 
   def createStorage()(implicit context: ActorContext): ActorRef = {
+    import context.dispatcher
     require(index.nonEmpty, "Index repository not provided")
     require(chunks.nonEmpty, "Chunks repository not provided")
     // require(health.nonEmpty, "Health provider not provided")
 
     val indexSynchronizer = context.actorOf(StorageIndex.props(storageId, props, index.get), "index")
     val chunkIO = context.actorOf(ChunkIODispatcher.props(storageId, props, chunks.get), "chunks")
-    context.actorOf(StorageDispatcher.props(storageId, props, indexSynchronizer, chunkIO, health.getOrElse(StorageHealthProvider.unlimited)), "storageDispatcher")
+    val healthProvider = StorageHealthProvider.applyQuota(health.getOrElse(StorageHealthProvider.unlimited), props.quota)
+    context.actorOf(StorageDispatcher.props(storageId, props, indexSynchronizer, chunkIO, healthProvider), "storageDispatcher")
   }
 }

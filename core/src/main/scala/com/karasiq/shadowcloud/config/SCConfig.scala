@@ -8,7 +8,7 @@ private[shadowcloud] case class SCConfig(rootConfig: Config, chunks: ChunksConfi
                                          crypto: CryptoConfig, storage: StoragesConfig,
                                          metadata: MetadataConfig, parallelism: ParallelismConfig,
                                          queues: QueuesConfig, timeouts: TimeoutsConfig,
-                                         serialization: SerializationConfig) extends WrappedConfig
+                                         serialization: SerializationConfig, persistence: PersistenceConfig) extends WrappedConfig
 
 private[shadowcloud] object SCConfig extends WrappedConfigFactory[SCConfig] with ConfigImplicits {
   def apply(config: Config): SCConfig = {
@@ -21,7 +21,8 @@ private[shadowcloud] object SCConfig extends WrappedConfigFactory[SCConfig] with
       ParallelismConfig(config.getConfig("parallelism")),
       QueuesConfig(config.getConfig("queues")),
       TimeoutsConfig(config.getConfig("timeouts")),
-      SerializationConfig(config.getConfig("serialization"))
+      SerializationConfig(config.getConfig("serialization")),
+      PersistenceConfig(config.getConfig("persistence"))
     )
   }
 }

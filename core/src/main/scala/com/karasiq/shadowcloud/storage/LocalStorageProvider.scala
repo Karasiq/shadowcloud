@@ -8,9 +8,7 @@ import com.karasiq.shadowcloud.storage.files.FileStoragePlugin
 import com.karasiq.shadowcloud.storage.inmem.InMemoryStoragePlugin
 
 private[storage] final class LocalStorageProvider extends StorageProvider {
-  override def storageTypes: Set[String] = {
-    Set("memory", "files")
-  }
+  override val storageTypes = Set("memory", "files")
 
   override def storages: StoragePF = {
     case props if props.storageType == "memory" ⇒
@@ -20,7 +18,7 @@ private[storage] final class LocalStorageProvider extends StorageProvider {
       new FileStoragePlugin
   }
 
-  def storageConfigs: StorageConfigPF = {
+  override def storageConfigs: StorageConfigPF = {
     case "memory" ⇒
       ConfigProps("type" → "memory")
 

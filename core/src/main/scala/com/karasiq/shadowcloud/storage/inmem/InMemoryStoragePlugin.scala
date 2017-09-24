@@ -20,7 +20,7 @@ private[storage] final class InMemoryStoragePlugin extends StoragePlugin {
     StoragePluginBuilder(storageId, props)
       .withIndexTree(PathTreeRepository(Repositories.fromConcurrentMap(indexMap)))
       .withChunksTree(PathTreeRepository(Repositories.fromConcurrentMap(chunkMap)))
-      .withHealth(StorageHealthProviders.fromMaps(props.quota, indexMap, chunkMap))
+      .withHealth(StorageHealthProviders.fromMaps(indexMap, chunkMap))
       .createStorage()
   }
 }

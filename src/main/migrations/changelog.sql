@@ -29,3 +29,11 @@ CREATE TABLE sc_akka_snapshots (
 
 CREATE INDEX snapshot_index
   ON sc_akka_snapshots (persistence_id, sequence_nr DESC, timestamp DESC);
+
+--changeset shadowcloud:4
+CREATE TABLE sc_sessions (
+  storage_id VARCHAR NOT NULL,
+  key VARCHAR NOT NULL,
+  data VARBINARY NOT NULL,
+  PRIMARY KEY (storage_id, key)
+);

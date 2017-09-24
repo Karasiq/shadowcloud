@@ -101,9 +101,12 @@ private[shadowcloud] final class MetadataStreams(sc: ShadowCloudExtension) {
                            metadataSizeLimit: Long = sc.config.metadata.fileSizeLimit
                           ): Flow[ByteString, (File, Seq[File]), NotUsed] = {
     // Writes the chunk stream before actual file path is known
-    val writeStream = sc.streams.file.write(regionId, path)
+    val writeStream = Flow[ByteString]
+      .async
+      .via(sc.streams.file.write(regionId, path))
+
     val createMetadataStream = Flow[ByteString]
-      // .buffer(5, OverflowStrategy.backpressure) // Buffer byte chunks
+      .async // .buffer(5, OverflowStrategy.backpressure) // Buffer byte chunks
       .via(create(path.name, metadataSizeLimit))
       .buffer(10, OverflowStrategy.backpressure) // Buffer metadatas
 
@@ -124,15 +127,15 @@ private[shadowcloud] final class MetadataStreams(sc: ShadowCloudExtension) {
             Source.fromFuture(sc.ops.region.createFile(regionId, newFile))
           }
         }
+        .log("metadata-files")
         .recoverWithRetries(1, { case _ ⇒ Source.empty })
         .fold(Vector.empty[File])(_ :+ _)
       )
       val zipFileAndMetadata = builder.add(Zip[File, Seq[File]])
 
-      bytesInput ~> writeFile
+      bytesInput ~> writeFile ~> fileInput
       bytesInput ~> createMetadata ~> writeMetadataChunks ~> extractMetadataSource ~> zipSourceAndFile.in0
 
-      writeFile ~> fileInput
       fileInput ~> zipSourceAndFile.in1
       fileInput ~> zipFileAndMetadata.in0
 

@@ -87,11 +87,11 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ac: Acto
       .mapMaterializedValue(future ⇒ StorageUtils.wrapFuture(key, future.map(_ ⇒ StorageIOResult.Success(key, 0)))) */
     
     val blockingSink = StreamConverters.asInputStream(15 seconds).mapMaterializedValue { inputStream ⇒
-      val future = getFolder(key.parent).map { folder ⇒
+      val future = createFolder(key.parent).map { folder ⇒
         if (service.fileExists(folder.id, key.name)) throw StorageException.AlreadyExists(key)
         service.upload(folder.id, key.name, inputStream)
       }
-      future.onComplete(_ ⇒ inputStream.close())
+      future.failed.foreach(_ ⇒ inputStream.close())
       StorageUtils.wrapFuture(key, future.map(_ ⇒ StorageIOResult.Success(key, 0)))
     }
 
@@ -112,6 +112,10 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ac: Acto
       .recover { case error ⇒ StorageIOResult.Failure(Path.root, StorageUtils.wrapException(Path.root, error)) }
       .orElse(Source.single(StorageIOResult.Success(Path.root, 0)))
       .toMat(Sink.head)(Keep.right)
+  }
+
+  private[this] def createFolder(path: Path) = {
+    Future(foldersCache.getOrElseUpdate(path, service.createFolder(path.nodes)))
   }
 
   private[this] def getFolder(path: Path) = {

@@ -14,6 +14,6 @@ class GDriveStorageProvider(sc: ShadowCloudExtension) extends StorageProvider {
 
   override def storageConfigs: StorageConfigPF = {
     case "gdrive" ⇒
-      ConfigProps("credentials.login" → "example@gmail.com")
+      ConfigProps("type" → "gdrive", "credentials.login" → "example@gmail.com")
   }
 }

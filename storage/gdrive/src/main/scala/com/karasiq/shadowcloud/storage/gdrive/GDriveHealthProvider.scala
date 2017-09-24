@@ -19,7 +19,7 @@ private[gdrive] class GDriveHealthProvider(service: GDriveService)(implicit ec: 
       val total = driveQuota.totalSize
       val used = driveQuota.usedSize
       val free = total - used
-      StorageHealth.normalized(free, total, free)
+      StorageHealth.normalized(free, total, used)
     }
   }
 }

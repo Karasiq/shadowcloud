@@ -65,8 +65,8 @@ final class H2SessionProvider(actorSystem: ActorSystem) extends SessionProvider 
   }
 
   def storeSession(storageId: StorageId, key: String, data: ByteString) = {
-    Future(runQuery(queries.updateSession(storageId, key, data)))
-      .recoverWith { case _ ⇒ Future(runQuery(queries.createSession(storageId, key, data))) }
+    Future(runQuery(queries.createSession(storageId, key, data)))
+      .recoverWith { case _ ⇒ Future(runQuery(queries.updateSession(storageId, key, data))) }
       .map(_ ⇒ Done)
   }
 

@@ -58,10 +58,8 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ac: Acto
         if (service.fileExists(folder.id, key.name)) throw StorageException.AlreadyExists(key)
         service.upload(folder.id, key.name, inputStream)
       }
-      future.onComplete(_ ⇒ inputStream.close())
-      future
-        .map(_ ⇒ StorageIOResult.Success(key, 0))
-        .recover { case error ⇒ StorageIOResult.Failure(key, StorageUtils.wrapException(key, error)) }
+      // future.onComplete(_ ⇒ inputStream.close())
+      StorageUtils.wrapFuture(key, future.map(_ ⇒ StorageIOResult.Success(key, 0)))
     }
   }
 

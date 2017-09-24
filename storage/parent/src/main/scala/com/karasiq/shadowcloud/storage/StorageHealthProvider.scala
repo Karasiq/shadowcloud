@@ -23,7 +23,7 @@ object StorageHealthProvider {
       QuotedStorageHealthProvider(hp, quota)
   }
   
-  private final case class QuotedStorageHealthProvider(underlying: StorageHealthProvider, quota: Quota) extends StorageHealthProvider {
+  private final case class QuotedStorageHealthProvider(underlying: StorageHealthProvider, quota: Quota)(implicit ec: ExecutionContext) extends StorageHealthProvider {
     def health: Future[StorageHealth] = underlying.health.map { sh ⇒
       val newTotalSpace = Quota.limitTotalSpace(quota, sh.totalSpace)
       StorageHealth.normalized(sh.writableSpace, newTotalSpace, sh.usedSpace, sh.online)

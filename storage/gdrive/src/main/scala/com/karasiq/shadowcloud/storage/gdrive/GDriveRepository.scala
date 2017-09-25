@@ -1,17 +1,16 @@
 package com.karasiq.shadowcloud.storage.gdrive
 
-import java.io.{BufferedInputStream, BufferedOutputStream, FileNotFoundException}
+import java.io.FileNotFoundException
 
 import scala.collection.concurrent.TrieMap
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.NotUsed
-import akka.actor.ActorContext
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source, StreamConverters}
+import com.google.common.io.CountingOutputStream
 
-import com.karasiq.common.memory.SizeUnit
 import com.karasiq.gdrive.files.{GDrive, GDriveService}
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.model.Path
@@ -20,14 +19,14 @@ import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 
 private[gdrive] object GDriveRepository {
-  def apply(service: GDriveService)(implicit ac: ActorContext): GDriveRepository = {
+  def apply(service: GDriveService)(implicit ec: ExecutionContext): GDriveRepository = {
     new GDriveRepository(service)
   }
 }
 
-private[gdrive] class GDriveRepository(service: GDriveService)(implicit ac: ActorContext) extends PathTreeRepository {
-  import ac.dispatcher // Blocking dispatcher
-  private[this] val foldersCache = TrieMap.empty[Path, GDrive.Entity]
+private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: ExecutionContext) extends PathTreeRepository {
+  private[this] val foldersCache = TrieMap.empty[Path, String]
+  private[this] val filesCache = TrieMap.empty[Path, String]
 
   def keys = {
     subKeys(Path.root)
@@ -60,36 +59,34 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ac: Acto
   }
 
   def read(key: Path) = {
-    /* def loadFileBytes() = {
-      Source.single(key)
-        .mapAsync(1)(key ⇒ getFile(key).map { file ⇒
-          val outputStream = ByteStringOutputStream()
-          service.download(file.get.id, outputStream)
-          outputStream.toByteString
-        })
-        .alsoToMat(Sink.head)(Keep.right)
-        .mapMaterializedValue(future ⇒ StorageUtils.wrapFuture(key, future.map(bytes ⇒ StorageIOResult.Success(key, bytes.length))))
-    } */
+    /* val concatSource = Source.single(key)
+      .mapAsync(1)(key ⇒ getFileId(key).map { fileId ⇒
+        val outputStream = ByteStringOutputStream()
+        service.download(fileId, outputStream)
+        outputStream.toByteString
+      })
+      .alsoToMat(Sink.head)(Keep.right)
+      .mapMaterializedValue(future ⇒ StorageUtils.wrapFuture(key, future.map(bytes ⇒ StorageIOResult.Success(key, bytes.length)))) */
 
-    def loadFileBytesBlocking() = {
-      StreamConverters.asOutputStream(15 seconds).mapMaterializedValue { outputStream ⇒
-        val bufferedOutputStream = new BufferedOutputStream(outputStream, SizeUnit.MB.intValue)
-        val future = getFile(key).map(fo ⇒ fo.foreach(file ⇒ service.download(file.id, bufferedOutputStream)))
-        future.onComplete(_ ⇒ bufferedOutputStream.close())
-        StorageUtils.wrapFuture(key, future.map(_ ⇒ StorageIOResult.Success(key, 0)))
-      }
+    val blockingSource = StreamConverters.asOutputStream(15 seconds).mapMaterializedValue { outputStream ⇒
+      val countingOutputStream = new CountingOutputStream(outputStream)
+      val future = getFileId(key)
+        .map { fileId ⇒ service.download(fileId, countingOutputStream); countingOutputStream.getCount }
+
+      future.onComplete(_ ⇒ countingOutputStream.close())
+      StorageUtils.wrapFuture(key, future.map(StorageIOResult.Success(key, _)))
     }
 
-    loadFileBytesBlocking().named("gdriveRead")
+    blockingSource.named("gdriveRead")
   }
 
   def write(key: Path) = {
     /* val concatSink = Flow[ByteString]
       .via(ByteStreams.concat)
       .flatMapConcat { bytes ⇒
-        val future = getFolder(key.parent).map { folder ⇒
-          if (service.fileExists(folder.id, key.name)) throw StorageException.AlreadyExists(key)
-          service.upload(folder.id, key.name, ByteStringInputStream(bytes))
+        val future = getFolderId(key.parent).zip(isFileExists(key)).map { case (folderId, isFileExists) ⇒
+          if (isFileExists) throw StorageException.AlreadyExists(key)
+          service.upload(folderId, key.name, ByteStringInputStream(bytes))
         }
         Source.fromFuture(future).map(_ ⇒ bytes)
       }
@@ -98,12 +95,11 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ac: Acto
       .mapMaterializedValue(future ⇒ StorageUtils.wrapFuture(key, future.map(_ ⇒ StorageIOResult.Success(key, 0)))) */
     
     val blockingSink = StreamConverters.asInputStream(15 seconds).mapMaterializedValue { inputStream ⇒
-      val bufferedInputStream = new BufferedInputStream(inputStream, SizeUnit.MB.intValue)
-      val future = createFolder(key.parent).map { folder ⇒
-        if (service.fileExists(folder.id, key.name)) throw StorageException.AlreadyExists(key)
-        service.upload(folder.id, key.name, bufferedInputStream)
+      val future = getOrCreateFolderId(key.parent).zip(isFileExists(key)).map { case (folderId, isFileExists) ⇒
+        if (isFileExists) throw StorageException.AlreadyExists(key)
+        service.upload(folderId, key.name, inputStream)
       }
-      future.failed.foreach(_ ⇒ bufferedInputStream.close())
+      future.failed.foreach(_ ⇒ inputStream.close())
       StorageUtils.wrapFuture(key, future.map(_ ⇒ StorageIOResult.Success(key, 0)))
     }
 
@@ -114,8 +110,9 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ac: Acto
     Flow[Path]
       // .log("gdrive-delete")
       .mapAsync(1) { path ⇒
-        val future = getFile(path)
-          .map(fo ⇒ fo.foreach(file ⇒ service.delete(file.id)))
+        filesCache -= path
+        val future = getFileId(path)
+          .map(fileId ⇒ service.delete(fileId))
           .map(_ ⇒ StorageIOResult.Success(path, 0))
         StorageUtils.wrapFuture(path, future)
       }
@@ -126,16 +123,23 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ac: Acto
       .toMat(Sink.head)(Keep.right)
   }
 
-  private[this] def createFolder(path: Path) = {
-    Future(foldersCache.getOrElseUpdate(path, service.createFolder(path.nodes)))
+  private[this] def getOrCreateFolderId(path: Path) = {
+    Future(foldersCache.getOrElseUpdate(path, service.createFolder(path.nodes).id))
   }
 
-  private[this] def getFolder(path: Path) = {
-    Future(foldersCache.getOrElseUpdate(path, service.folder(path.nodes)))
+  private[this] def getFolderId(path: Path) = {
+    Future(foldersCache.getOrElseUpdate(path, service.folder(path.nodes).id))
   }
 
-  private[this] def getFile(path: Path) = {
-    getFolder(path.parent)
-      .map(folder ⇒ service.files(folder.id, path.name).headOption)
+  private[this] def getFileId(path: Path) = {
+    getFolderId(path.parent).map { folderId ⇒
+      filesCache.getOrElseUpdate(path, service.files(folderId, path.name).head.id)
+    }
+  }
+
+  private[this] def isFileExists(path: Path) = {
+    getFileId(path)
+      .map(_ ⇒ true)
+      .recover { case _ ⇒ false }
   }
 }

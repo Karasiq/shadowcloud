@@ -25,7 +25,7 @@ private[gdrive] class GDriveStoragePlugin(implicit sc: ShadowCloudExtension) ext
 
   def createStorage(storageId: StorageId, props: StorageProps)(implicit context: ActorContext) = {
     val proxyProps = Props(new Actor {
-      import context.{dispatcher ⇒ executionContext}
+      import context.{dispatcher ⇒ executionContext} // Blocking dispatcher
 
       def receiveAuthorized(storageDispatcher: ActorRef): Receive = {
         case message if sender() == storageDispatcher ⇒

@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.storage.gdrive
 
-import java.io.FileNotFoundException
-
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
@@ -12,7 +10,7 @@ import akka.stream.scaladsl.{Flow, Keep, Sink, Source, StreamConverters}
 import com.google.common.io.CountingOutputStream
 
 import com.karasiq.gdrive.files.{GDrive, GDriveService}
-import com.karasiq.shadowcloud.exceptions.StorageException
+import com.karasiq.shadowcloud.exceptions.{SCException, StorageException}
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
@@ -37,7 +35,7 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
 
     def traverseFolder(): Future[FileMapT] = {
       Future(service.traverseFolder(fromPath.nodes))
-        .recover { case _: NoSuchElementException | _: FileNotFoundException ⇒ Map.empty }
+        .recover { case error if SCException.isNotFound(error) ⇒ Map.empty }
     }
     
     Source.single(NotUsed)
@@ -140,6 +138,6 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
   private[this] def isFileExists(path: Path) = {
     getFileId(path)
       .map(_ ⇒ true)
-      .recover { case _ ⇒ false }
+      .recover { case error if SCException.isNotFound(error) ⇒ false }
   }
 }

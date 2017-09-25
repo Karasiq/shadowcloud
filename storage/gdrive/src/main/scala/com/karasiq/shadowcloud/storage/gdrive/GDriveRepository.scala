@@ -6,10 +6,11 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.NotUsed
+import akka.actor.ActorContext
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source, StreamConverters}
-import com.google.common.io.CountingOutputStream
+import com.google.common.io.CountingInputStream
 
-import com.karasiq.gdrive.files.{GDrive, GDriveService}
+import com.karasiq.gdrive.files.GDriveService
 import com.karasiq.shadowcloud.exceptions.{SCException, StorageException}
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.StorageIOResult
@@ -17,12 +18,18 @@ import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 
 private[gdrive] object GDriveRepository {
-  def apply(service: GDriveService)(implicit ec: ExecutionContext): GDriveRepository = {
-    new GDriveRepository(service)
+  def create(service: GDriveService)(execCtx: ExecutionContext, fileExecCtx: ExecutionContext): GDriveRepository = {
+    new GDriveRepository(service)(execCtx, fileExecCtx)
+  }
+
+  def apply(service: GDriveService)(implicit ac: ActorContext): GDriveRepository = {
+    val dispatchers = ac.system.dispatchers
+    create(service)(dispatchers.lookup(GDriveDispatchers.apiDispatcherId), dispatchers.lookup(GDriveDispatchers.fileDispatcherId))
   }
 }
 
-private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: ExecutionContext) extends PathTreeRepository {
+private[gdrive] class GDriveRepository(service: GDriveService)(execCtx: ExecutionContext, fileExecCtx: ExecutionContext) extends PathTreeRepository {
+  private[this] implicit val implicitExecCtx = execCtx
   private[this] val foldersCache = TrieMap.empty[Path, String]
   private[this] val filesCache = TrieMap.empty[Path, String]
 
@@ -31,9 +38,9 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
   }
 
   override def subKeys(fromPath: Path) = {
-    type FileMapT = Map[Seq[String], Seq[GDrive.Entity]]
+    type EntityMap = Map[service.EntityPath, service.EntityList]
 
-    def traverseFolder(): Future[FileMapT] = {
+    def traverseFolder(): Future[EntityMap] = {
       Future(service.traverseFolder(fromPath.nodes))
         .recover { case error if SCException.isNotFound(error) ⇒ Map.empty }
     }
@@ -41,8 +48,8 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
     Source.single(NotUsed)
       .map(_ ⇒ traverseFolder())
       .alsoToMat(
-        Flow[Future[FileMapT]]
-          .mapAsync(1)(future ⇒ StorageUtils.wrapFuture(fromPath, future.map(map ⇒ StorageIOResult.Success(fromPath, map.size))))
+        Flow[Future[EntityMap]]
+          .mapAsync(1)(f ⇒ StorageUtils.wrapCountFuture(fromPath, f.map(_.size)))
           .toMat(Sink.head)(Keep.right)
       )(Keep.right)
       .mapAsync(1)(identity)
@@ -66,13 +73,22 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
       .alsoToMat(Sink.head)(Keep.right)
       .mapMaterializedValue(future ⇒ StorageUtils.wrapFuture(key, future.map(bytes ⇒ StorageIOResult.Success(key, bytes.length)))) */
 
-    val blockingSource = StreamConverters.asOutputStream(15 seconds).mapMaterializedValue { outputStream ⇒
+    /* val blockingSource1 = StreamConverters.asOutputStream(15 seconds).mapMaterializedValue { outputStream ⇒
       val countingOutputStream = new CountingOutputStream(outputStream)
       val future = getFileId(key)
-        .map { fileId ⇒ service.download(fileId, countingOutputStream); countingOutputStream.getCount }
+        .flatMap(fileId ⇒ Future { service.download(fileId, countingOutputStream); countingOutputStream.getCount }(fileExecCtx))
 
-      future.onComplete(_ ⇒ countingOutputStream.close())
-      StorageUtils.wrapFuture(key, future.map(StorageIOResult.Success(key, _)))
+      future.onComplete(_ ⇒ countingOutputStream.close())(fileExecCtx)
+      StorageUtils.wrapCountFuture(key, future)
+    } */
+
+    val blockingSource = {
+      val streamFuture = getFileId(key).map { fileId ⇒
+        StreamConverters.fromInputStream(() ⇒ service.download(fileId))
+          .mapMaterializedValue(StorageUtils.wrapIOResult(key, _))
+      }
+
+      Source.fromFutureSource(streamFuture).mapMaterializedValue(_.flatten)
     }
 
     blockingSource.named("gdriveRead")
@@ -93,12 +109,13 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
       .mapMaterializedValue(future ⇒ StorageUtils.wrapFuture(key, future.map(_ ⇒ StorageIOResult.Success(key, 0)))) */
     
     val blockingSink = StreamConverters.asInputStream(15 seconds).mapMaterializedValue { inputStream ⇒
-      val future = getOrCreateFolderId(key.parent).zip(isFileExists(key)).map { case (folderId, isFileExists) ⇒
+      val countingInputStream = new CountingInputStream(inputStream)
+      val future = getOrCreateFolderId(key.parent).zip(isFileExists(key)).flatMap { case (folderId, isFileExists) ⇒
         if (isFileExists) throw StorageException.AlreadyExists(key)
-        service.upload(folderId, key.name, inputStream)
+        Future { service.upload(folderId, key.name, inputStream); countingInputStream.getCount }(fileExecCtx)
       }
-      future.failed.foreach(_ ⇒ inputStream.close())
-      StorageUtils.wrapFuture(key, future.map(_ ⇒ StorageIOResult.Success(key, 0)))
+      future.failed.foreach(_ ⇒ countingInputStream.close())(fileExecCtx)
+      StorageUtils.wrapCountFuture(key, future)
     }
 
     blockingSink.named("gdriveWrite")

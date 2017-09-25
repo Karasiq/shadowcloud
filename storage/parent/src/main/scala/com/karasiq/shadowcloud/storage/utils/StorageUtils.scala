@@ -66,6 +66,10 @@ object StorageUtils {
     future.recover { case error ⇒ StorageIOResult.Failure(path, StorageUtils.wrapException(path, error)) }
   }
 
+  def wrapCountFuture[N](path: Path, future: Future[N])(implicit ec: ExecutionContext, num: Numeric[N]): Future[StorageIOResult] = {
+    wrapFuture(path, future.map(count ⇒ StorageIOResult.Success(path, num.toLong(count))))
+  }
+
   def unwrapFuture(future: Future[_ <: StorageIOResult])(implicit ec: ExecutionContext): Future[StorageIOResult] = {
     future.flatMap {
       case r: StorageIOResult.Success ⇒

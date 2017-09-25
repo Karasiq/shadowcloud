@@ -21,11 +21,10 @@ private[gdrive] object GDriveStoragePlugin {
 
 private[gdrive] class GDriveStoragePlugin(implicit sc: ShadowCloudExtension) extends StoragePlugin {
   private[this] def defaultConfig = sc.config.rootConfig.getConfigIfExists("storage.gdrive")
-  private[this] def dispatcherId = "shadowcloud.storage.gdrive.blocking-dispatcher"
 
   def createStorage(storageId: StorageId, props: StorageProps)(implicit context: ActorContext) = {
     val proxyProps = Props(new Actor {
-      import context.{dispatcher ⇒ executionContext} // Blocking dispatcher
+      import context.{dispatcher ⇒ executionContext} // API dispatcher
 
       def receiveAuthorized(storageDispatcher: ActorRef): Receive = {
         case message if sender() == storageDispatcher ⇒
@@ -60,6 +59,6 @@ private[gdrive] class GDriveStoragePlugin(implicit sc: ShadowCloudExtension) ext
       }
     })
 
-    context.actorOf(proxyProps.withDispatcher(dispatcherId), Utils.uniqueActorName("gdrive-proxy"))
+    context.actorOf(proxyProps.withDispatcher(GDriveDispatchers.apiDispatcherId), Utils.uniqueActorName("gdrive-proxy"))
   }
 }

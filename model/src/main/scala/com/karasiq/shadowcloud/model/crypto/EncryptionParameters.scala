@@ -90,4 +90,9 @@ object EncryptionParameters {
     case _ ⇒
       throw new IllegalStateException("Asymmetric key parameters required")
   }
+
+  def hasKeys(p: EncryptionParameters): Boolean = p match {
+    case SymmetricEncryptionParameters(_, key, _) ⇒ key.nonEmpty
+    case AsymmetricEncryptionParameters(_, pubKey, privKey) ⇒ pubKey.nonEmpty || privKey.nonEmpty
+  }
 }

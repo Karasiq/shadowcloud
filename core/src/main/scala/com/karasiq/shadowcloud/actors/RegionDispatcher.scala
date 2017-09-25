@@ -7,7 +7,7 @@ import scala.util.{Failure, Success}
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Kill, PossiblyHarmful, Props, Status, Terminated}
 import akka.pattern.{ask, pipe}
-import akka.stream.{OverflowStrategy, QueueOfferResult}
+import akka.stream.{ActorAttributes, OverflowStrategy, QueueOfferResult, Supervision}
 import akka.stream.scaladsl.{Sink, Source}
 
 import com.karasiq.common.memory.SizeUnit
@@ -125,6 +125,8 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
     .log("region-grouped-diff")
     .map(WriteIndexDiff)
     .to(Sink.actorRef(self, Kill))
+    .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+    .named("regionPendingQueue")
     .run()
 
   // -----------------------------------------------------------------------

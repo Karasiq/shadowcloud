@@ -29,11 +29,8 @@ final case class Chunk(checksum: Checksum = Checksum.empty,
   }
 
   override def equals(obj: scala.Any): Boolean = obj match {
-    case ch: Chunk ⇒
-      checksum == ch.checksum && encryption == ch.encryption
-
-    case _ ⇒
-      false
+    case ch: Chunk ⇒ checksum == ch.checksum
+    case _ ⇒ false
   }
 
   override def toString: String = {

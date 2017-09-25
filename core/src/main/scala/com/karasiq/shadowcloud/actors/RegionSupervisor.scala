@@ -5,7 +5,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.NotUsed
-import akka.actor.{ActorLogging, OneForOneStrategy, Props, Status, SupervisorStrategy}
+import akka.actor.{ActorLogging, Props, Status}
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import akka.util.Timeout
 
@@ -199,10 +199,11 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
   // -----------------------------------------------------------------------
   // Supervisor strategy
   // -----------------------------------------------------------------------
-  override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {
+  /* override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {
     case _: IllegalArgumentException ⇒
-      SupervisorStrategy.Resume
-  }
+      SupervisorStrategy.Escalate
+      // SupervisorStrategy.Resume
+  } */ 
 }
 
 private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒

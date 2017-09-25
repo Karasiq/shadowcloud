@@ -3,12 +3,11 @@ package com.karasiq.shadowcloud.actors
 import java.io.IOException
 
 import scala.concurrent.{Future, Promise}
-import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-import akka.{Done, NotUsed}
-import akka.actor.{Actor, ActorLogging, Kill, Props, Status}
+import akka.NotUsed
+import akka.actor.{Actor, ActorLogging, Kill, Props}
 import akka.pattern.pipe
 import akka.stream._
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, Sink, Source, Zip}
@@ -18,13 +17,13 @@ import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperations}
-import com.karasiq.shadowcloud.model.{Chunk, ChunkId, RegionId, StorageId}
+import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.props.StorageProps
-import com.karasiq.shadowcloud.storage.repository.{CategorizedRepository, RepositoryStreams}
+import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
-import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.utils.{AkkaStreamUtils, Utils}
 
 object ChunkIODispatcher {
   case class ChunkPath(regionId: RegionId, chunkId: ChunkId) {
@@ -69,15 +68,15 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
     .flatMapConcat { case (path, chunk, promise) ⇒
       val repository = subRepository(path.regionId)
       Source.single(chunk.data.encrypted)
-        .alsoToMat(RepositoryStreams.writeWithRetries(repository, path.chunkId))(Keep.right)
-        .completionTimeout(sc.config.timeouts.chunkWrite)
+        //.alsoToMat(RepositoryStreams.writeWithRetries(repository, path.chunkId))(Keep.right)
+        .alsoToMat(repository.write(path.chunkId))(Keep.right)
+        .alsoTo(Sink.onComplete(_.failed.foreach(promise.tryFailure)))
         .map(_ ⇒ NotUsed)
-        .mapMaterializedValue { result ⇒
-          promise.completeWith(result)
-          NotUsed
-        }
+        .mapMaterializedValue { f ⇒ promise.completeWith(f); NotUsed }
+        .completionTimeout(sc.config.timeouts.chunkWrite)
     }
-    .withAttributes(Attributes.name("chunkWriteQueue") and ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+    .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+    .named("chunkWriteQueue")
     .to(Sink.ignore)
     .run()
 
@@ -85,25 +84,19 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
     .queue[(ChunkPath, Chunk, Promise[(Chunk, StorageIOResult)])](sc.config.queues.storageRead, OverflowStrategy.dropNew)
     .flatMapConcat { case (path, chunk, promise) ⇒
       val localRepository = subRepository(path.regionId)
-      val readSource = RepositoryStreams.readWithRetries(localRepository, path.chunkId)
+      val readSource = localRepository.read(path.chunkId)// RepositoryStreams.readWithRetries(localRepository, path.chunkId)
         .completionTimeout(sc.config.timeouts.chunkRead)
         .via(ByteStreams.limit(chunk.checksum.encSize))
         .via(ByteStreams.concat)
         .map(bs ⇒ chunk.copy(data = chunk.data.copy(encrypted = bs)))
-        .recover { case _ ⇒ chunk }
+        // .recover { case _ ⇒ chunk }
 
       GraphDSL.create(readSource) { implicit builder ⇒ readSource ⇒
         import GraphDSL.Implicits._
 
         val zipResults = builder.add(Zip[Chunk, StorageIOResult]())
         val completePromise = builder.add(Flow[(Chunk, StorageIOResult)]
-          .alsoTo(Sink.onComplete {
-            case Failure(exc) ⇒
-              promise.tryFailure(exc)
-
-            case _ ⇒
-              // Ignore
-          })
+          .alsoTo(Sink.onComplete(_.failed.foreach(promise.tryFailure)))
           .alsoTo(Sink.foreach[(Chunk, StorageIOResult)](promise.trySuccess))
           .map(_ ⇒ NotUsed)
         )
@@ -114,7 +107,8 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
         SourceShape(completePromise.out)
       }
     }
-    .withAttributes(Attributes.name("chunkReadQueue") and ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+    .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+    .named("chunkReadQueue")
     .to(Sink.ignore)
     .run()
 
@@ -228,31 +222,23 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
   }
 
   private[this] def deleteChunks(paths: Set[ChunkPath]): Future[DeleteChunks.Status] = {
-    val byRegion = paths.groupBy(_.regionId).toVector.map { case (region, chunks) ⇒
+    val pathsByRegion = paths.groupBy(_.regionId).toVector.map { case (region, chunks) ⇒
       val localRepository = subRepository(region)
       localRepository → chunks
     }
 
-    val (matSink, matResult) = Source.actorRef[Future[StorageIOResult]](10, OverflowStrategy.dropNew)
-      .mapAsync(4)(identity)
-      .idleTimeout(20 seconds)
-      .fold(Seq.empty[StorageIOResult])(_ :+ _)
-      .map(results ⇒ StorageUtils.foldIOResultsIgnoreErrors(results:_*))
-      .toMat(Sink.head)(Keep.both)
-      .run()
+    val (ioResult, deleted) = Source(pathsByRegion)
+      .viaMat(AkkaStreamUtils.flatMapConcatMat { case (repository, chunks) ⇒
+        val deleteSink = Flow[ChunkPath]
+          .map(_.chunkId)
+          .toMat(repository.delete)(Keep.right)
 
-    val (deleted, ioResult) = Source(byRegion)
-      .flatMapConcat { case (repository, chunks) ⇒
-        val deleteSink = Flow[ChunkPath].map(_.chunkId).toMat(repository.delete)(Keep.right)
         Source(chunks)
           .alsoToMat(deleteSink)(Keep.right)
-          .mapMaterializedValue(matSink ! _)
-      }
-      .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
-      .alsoTo(Sink.onComplete(_ ⇒ matSink ! Status.Success(Done)))
-      .fold(Set.empty[ChunkPath])(_ + _)
-      .toMat(Sink.head)(Keep.right)
-      .mapMaterializedValue((_, matResult))
+          .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+      })(Keep.right)
+      .mapMaterializedValue(_.map(StorageUtils.foldIOResultsIgnoreErrors))
+      .toMat(Sink.fold(Set.empty[ChunkPath])(_ + _))(Keep.both)
       .named("deleteChunks")
       .run()
 

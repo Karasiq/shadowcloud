@@ -4,9 +4,11 @@ import scala.collection.concurrent.TrieMap
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
+import scala.util.Try
 
 import akka.NotUsed
 import akka.actor.ActorContext
+import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source, StreamConverters}
 import com.google.common.io.CountingInputStream
 
@@ -31,7 +33,6 @@ private[gdrive] object GDriveRepository {
 private[gdrive] class GDriveRepository(service: GDriveService)(execCtx: ExecutionContext, fileExecCtx: ExecutionContext) extends PathTreeRepository {
   private[this] implicit val implicitExecCtx = execCtx
   private[this] val foldersCache = TrieMap.empty[Path, String]
-  private[this] val filesCache = TrieMap.empty[Path, String]
 
   def keys = {
     subKeys(Path.root)
@@ -60,6 +61,7 @@ private[gdrive] class GDriveRepository(service: GDriveService)(execCtx: Executio
       .mapConcat(_.toVector)
       // .log("gdrive-keys")
       .map(_.toRelative(fromPath))
+      .withAttributes(ActorAttributes.supervisionStrategy(Supervision.stoppingDecider))
       .named("gdriveKeys")
   }
 
@@ -83,8 +85,8 @@ private[gdrive] class GDriveRepository(service: GDriveService)(execCtx: Executio
     } */
 
     val blockingSource = {
-      val streamFuture = getFileId(key).map { fileId ⇒
-        StreamConverters.fromInputStream(() ⇒ service.download(fileId))
+      val streamFuture = getFileIds(key).map { fileIds ⇒
+        StreamConverters.fromInputStream(() ⇒ service.download(fileIds.head))
           .mapMaterializedValue(StorageUtils.wrapIOResult(key, _))
       }
 
@@ -123,16 +125,17 @@ private[gdrive] class GDriveRepository(service: GDriveService)(execCtx: Executio
 
   def delete = {
     Flow[Path]
-      // .log("gdrive-delete")
-      .mapAsync(1) { path ⇒
-        filesCache -= path
-        val future = getFileId(path)
-          .map(fileId ⇒ service.delete(fileId))
-          .map(_ ⇒ StorageIOResult.Success(path, 0))
-        StorageUtils.wrapFuture(path, future)
+      .log("gdrive-delete")
+      .mapAsyncUnordered(4) { path ⇒
+        def isDeleted(fileId: String) = {
+          val result = Try(service.delete(fileId))
+          result.isSuccess
+        }
+        val deletedFuture = getFileIds(path).map(_.count(isDeleted))
+        StorageUtils.wrapCountFuture(path, deletedFuture)
       }
       .fold(Seq.empty[StorageIOResult])(_ :+ _)
-      .map(StorageUtils.foldIOResults)
+      .map(StorageUtils.foldIOResultsIgnoreErrors)
       .recover { case error ⇒ StorageIOResult.Failure(Path.root, StorageUtils.wrapException(Path.root, error)) }
       .orElse(Source.single(StorageIOResult.Success(Path.root, 0)))
       .toMat(Sink.head)(Keep.right)
@@ -146,15 +149,15 @@ private[gdrive] class GDriveRepository(service: GDriveService)(execCtx: Executio
     Future(foldersCache.getOrElseUpdate(path, service.folder(path.nodes).id))
   }
 
-  private[this] def getFileId(path: Path) = {
+  private[this] def getFileIds(path: Path) = {
     getFolderId(path.parent).map { folderId ⇒
-      filesCache.getOrElseUpdate(path, service.files(folderId, path.name).head.id)
+      service.files(folderId, path.name).map(_.id)
     }
   }
 
   private[this] def isFileExists(path: Path) = {
-    getFileId(path)
-      .map(_ ⇒ true)
+    getFileIds(path)
+      .map(_.nonEmpty)
       .recover { case error if SCException.isNotFound(error) ⇒ false }
   }
 }

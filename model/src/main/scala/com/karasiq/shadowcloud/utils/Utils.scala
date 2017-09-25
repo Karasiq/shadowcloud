@@ -9,6 +9,7 @@ import com.typesafe.config.ConfigFactory
 
 import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.model.{Chunk, Path}
+import com.karasiq.shadowcloud.model.crypto.EncryptionParameters
 
 private[shadowcloud] object Utils {
   // -----------------------------------------------------------------------
@@ -64,10 +65,16 @@ private[shadowcloud] object Utils {
   // -----------------------------------------------------------------------
   // Misc
   // -----------------------------------------------------------------------
-  @inline
   def isSameChunk(chunk: Chunk, chunk1: Chunk): Boolean = {
+    def isChunksHasSameEncryption(ch1: Chunk, ch2: Chunk): Boolean = {
+      if (EncryptionParameters.hasKeys(ch1.encryption) && EncryptionParameters.hasKeys(ch2.encryption))
+        ch1.encryption == ch2.encryption
+      else
+        ch1.encryption.method == ch2.encryption.method
+    }
+
     // chunk.withoutData == chunk1.withoutData
-    chunk == chunk1
+    chunk == chunk1 && isChunksHasSameEncryption(chunk, chunk1)
   }
 
   @inline

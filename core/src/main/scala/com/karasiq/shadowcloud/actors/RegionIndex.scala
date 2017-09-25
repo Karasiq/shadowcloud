@@ -140,6 +140,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
     case RecoveryCompleted ⇒
       // Initial sync
+      log.debug("Region index recovery completed")
       synchronization.scheduleNext(/* 10 seconds */)
   }
 

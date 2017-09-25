@@ -56,7 +56,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
           (None, Future.successful(status.chunk))
         } else {
           val chunk = status.chunk.withoutData
-          val storage = storageSelector.forRead(status)
+          val storage = storageSelector.forRead(storages.state.resetFailures(status))
           storage match {
             case Some(storage) ⇒
               log.debug("Reading chunk from {}: {}", storage.id, chunk)
@@ -180,7 +180,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
       chunksMap.foreachValue {
         case chunkStatus @ ChunkStatus(WriteStatus.Pending(affinity), _, availability, _) if availability.writeFailed.nonEmpty ⇒
           val newAffinity = if (affinity.isFailed(chunkStatus)) {
-            storageSelector.forWrite(chunkStatus) // Try refresh affinity
+            storageSelector.forWrite(storages.state.resetFailures(chunkStatus)) // Try refresh affinity
           } else {
             affinity
           }
@@ -391,6 +391,31 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
       def registerDiff(storageId: StorageId, diff: ChunkIndexDiff): Unit = {
         diff.deletedChunks.foreach(unregisterChunk(storageId, _))
         diff.newChunks.foreach(registerChunk(storageId, _))
+      }
+
+      private[ChunksTracker] def resetFailures(status: ChunkStatus): ChunkStatus = {
+        val failedStorages = status.availability.writeFailed ++ status.availability.readFailed
+
+        val readableStorages = status.availability.hasChunk
+        val readableStatus = if (readableStorages.forall(failedStorages.contains))
+          status.copy(availability = status.availability.copy(readFailed = Set.empty))
+        else
+          status
+
+        val writableStorages = storageTracker.storages
+          .filter(_.health.canWrite(status.chunk.checksum.encSize))
+          .map(_.id)
+
+        val writableStatus = if (writableStorages.forall(failedStorages.contains))
+          readableStatus.copy(availability = readableStatus.availability.copy(writeFailed = Set.empty))
+        else
+          readableStatus
+
+        if (status != writableStatus) {
+          chunks.update(writableStatus)
+        } else {
+          status
+        }
       }
 
       private[ChunksTracker] def markAsWritten(status: ChunkStatus, storageIds: String*): ChunkStatus = {

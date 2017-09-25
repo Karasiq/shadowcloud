@@ -43,6 +43,7 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
       val writeSize = chunk.chunk.checksum.encSize
       available(writeSize)
         .filter(canWriteChunk)
+        .sortBy(storage ⇒ chunk.availability.isFailed(storage.id))
         .map(_.id)
     }
 

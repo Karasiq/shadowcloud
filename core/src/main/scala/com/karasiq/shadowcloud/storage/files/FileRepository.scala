@@ -1,5 +1,6 @@
 package com.karasiq.shadowcloud.storage.files
 
+import java.io.FileNotFoundException
 import java.nio.file.{Files, StandardOpenOption, Path ⇒ FSPath}
 
 import scala.collection.JavaConverters._
@@ -59,6 +60,7 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
   override def subKeys(fromPath: Path): Source[Path, Result] = {
     val subDirPath = toRealPath(fromPath)
     FileSystemUtils.walkFileTree(subDirPath, includeDirs = false)
+      .recoverWithRetries(1, { case _: FileNotFoundException ⇒ Source.empty })
       // .log("file-repository-tree")
       .map(fsPath ⇒ toVirtualPath(fsPath).toRelative(fromPath))
       .mapMaterializedValue(_ ⇒ Future.successful(StorageIOResult.Success(toVirtualPath(rootFolder) / fromPath, 0)))

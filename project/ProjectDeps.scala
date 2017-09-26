@@ -91,6 +91,6 @@ object ProjectDeps {
   )
 
   def gdrive: Deps = Seq(
-    "com.github.karasiq" %% "gdrive-api" % "1.0.9"
+    "com.github.karasiq" %% "gdrive-api" % "1.0.10"
   )
 }

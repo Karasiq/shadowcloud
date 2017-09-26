@@ -8,11 +8,12 @@ import scala.util.Try
 
 import akka.NotUsed
 import akka.actor.ActorContext
-import akka.stream.{ActorAttributes, Supervision}
+import akka.dispatch.MessageDispatcher
+import akka.stream.ActorAttributes
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source, StreamConverters}
 import com.google.common.io.CountingInputStream
 
-import com.karasiq.gdrive.files.GDriveService
+import com.karasiq.gdrive.files.{GDrive, GDriveService}
 import com.karasiq.shadowcloud.exceptions.{SCException, StorageException}
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.StorageIOResult
@@ -39,29 +40,35 @@ private[gdrive] class GDriveRepository(service: GDriveService)(execCtx: Executio
   }
 
   override def subKeys(fromPath: Path) = {
-    type EntityMap = Map[service.EntityPath, service.EntityList]
+    type EntityWithPath = (service.EntityPath, GDrive.Entity)
 
-    def traverseFolder(): Future[EntityMap] = {
-      Future(service.traverseFolder(fromPath.nodes))
-        .recover { case error if SCException.isNotFound(error) ⇒ Map.empty }
+    val traverseFlow: Flow[Path, EntityWithPath, NotUsed] = {
+      def iteratorFuture(path: Path) = Future(service.traverseFolder(path.nodes)).recoverWith { case _ ⇒
+        getOrCreateFolderId(path)
+          .map(_ ⇒ service.traverseFolder(path.nodes))
+      }
+
+      Flow[Path]
+        .flatMapConcat(path ⇒ Source.fromFuture(iteratorFuture(path)))
+        .flatMapConcat(iterator ⇒ Source.fromIterator(() ⇒ iterator))
+        .withAttributes(ActorAttributes.dispatcher(this.dispatcherId))
+        .named("gdriveTraverse")
     }
-    
-    Source.single(NotUsed)
-      .map(_ ⇒ traverseFolder())
+
+    Source.single(fromPath)
+      .via(traverseFlow)
       .alsoToMat(
-        Flow[Future[EntityMap]]
-          .mapAsync(1)(f ⇒ StorageUtils.wrapCountFuture(fromPath, f.map(_.size)))
-          .toMat(Sink.head)(Keep.right)
+        Flow[EntityWithPath]
+          .map(_ ⇒ 1)
+          .toMat(Sink.fold(0L)(_ + _))(Keep.right)
+          .mapMaterializedValue(StorageUtils.wrapCountFuture(fromPath, _))
       )(Keep.right)
-      .mapAsync(1)(identity)
-      .mapConcat(_.map { case (pathNodes, entities) ⇒
-        val parent = Path(pathNodes.toVector)
-        entities.map(e ⇒ parent / e.name)
-      })
-      .mapConcat(_.toVector)
+      .log("gdrive-entities")
+      .map { case (pathNodes, file) ⇒
+        val parent = Path(pathNodes).toRelative(fromPath)
+        parent / file.name
+      }
       // .log("gdrive-keys")
-      .map(_.toRelative(fromPath))
-      .withAttributes(ActorAttributes.supervisionStrategy(Supervision.stoppingDecider))
       .named("gdriveKeys")
   }
 
@@ -126,7 +133,7 @@ private[gdrive] class GDriveRepository(service: GDriveService)(execCtx: Executio
   def delete = {
     Flow[Path]
       .log("gdrive-delete")
-      .mapAsyncUnordered(4) { path ⇒
+      .mapAsyncUnordered(2) { path ⇒
         def isDeleted(fileId: String) = {
           val result = Try(service.delete(fileId))
           result.isSuccess
@@ -151,7 +158,9 @@ private[gdrive] class GDriveRepository(service: GDriveService)(execCtx: Executio
 
   private[this] def getFileIds(path: Path) = {
     getFolderId(path.parent).map { folderId ⇒
-      service.files(folderId, path.name).map(_.id)
+      service.files(folderId, path.name)
+        .map(_.id)
+        .toVector
     }
   }
 
@@ -159,5 +168,10 @@ private[gdrive] class GDriveRepository(service: GDriveService)(execCtx: Executio
     getFileIds(path)
       .map(_.nonEmpty)
       .recover { case error if SCException.isNotFound(error) ⇒ false }
+  }
+
+  private[this] def dispatcherId: String = execCtx match {
+    case md: MessageDispatcher ⇒ md.id
+    case _ ⇒ GDriveDispatchers.apiDispatcherId
   }
 }

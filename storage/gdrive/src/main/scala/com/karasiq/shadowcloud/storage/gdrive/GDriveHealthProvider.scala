@@ -16,7 +16,7 @@ private[gdrive] class GDriveHealthProvider(service: GDriveService)(implicit ec: 
   def health = {
     Future {
       val driveQuota = service.quota()
-      val total = driveQuota.totalSize
+      val total = if (driveQuota.totalSize == 0) Long.MaxValue else driveQuota.totalSize
       val used = driveQuota.usedSize
       val free = total - used
       StorageHealth.normalized(free, total, used)

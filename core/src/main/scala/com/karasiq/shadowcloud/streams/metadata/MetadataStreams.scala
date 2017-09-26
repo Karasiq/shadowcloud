@@ -17,6 +17,7 @@ import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.serialization.StreamSerialization
 import com.karasiq.shadowcloud.streams.file.FileIndexer
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
+import com.karasiq.shadowcloud.utils.AkkaStreamUtils
 
 private[shadowcloud] object MetadataStreams {
   def apply(sc: ShadowCloudExtension): MetadataStreams = {
@@ -117,7 +118,7 @@ private[shadowcloud] final class MetadataStreams(sc: ShadowCloudExtension) {
       val fileInput = builder.add(Broadcast[File](2))
 
       val writeMetadataChunks = builder.add(internalStreams.preWriteAll(regionId))
-      val extractMetadataSource = builder.add(Flow[(MDDisposition, FileIndexer.Result)].prefixAndTail(0).map(_._2))
+      val extractMetadataSource = builder.add(Flow[(MDDisposition, FileIndexer.Result)].via(AkkaStreamUtils.extractUpstream))
       val zipSourceAndFile = builder.add(Zip[Source[(MDDisposition, FileIndexer.Result), NotUsed], File])
       val writeMetadata = builder.add(Flow[(Source[(MDDisposition, FileIndexer.Result), NotUsed], File)]
         .flatMapConcat { case (metadataIn, file) ⇒
@@ -128,8 +129,9 @@ private[shadowcloud] final class MetadataStreams(sc: ShadowCloudExtension) {
           }
         }
         .log("metadata-files")
-        .recoverWithRetries(1, { case _ ⇒ Source.empty })
         .fold(Vector.empty[File])(_ :+ _)
+        .orElse(Source.single(Vector.empty))
+        .recover { case _ ⇒ Vector.empty }
       )
       val zipFileAndMetadata = builder.add(Zip[File, Seq[File]])
 

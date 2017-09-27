@@ -1,20 +1,19 @@
 package com.karasiq.shadowcloud.storage.repository
 
-import java.io.IOException
-
 import scala.concurrent.{Future, Promise}
 
 import akka.NotUsed
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.util.ByteString
 
-import com.karasiq.shadowcloud.exceptions.StorageException
-import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.StorageIOResult
+import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.utils.AkkaStreamUtils
 
 object RepositoryStreams {
-  def writeWithRetries[K](repository: Repository[K], key: K, retries: Int = 5): Sink[repository.Data, repository.Result] = {
+  val DefaultRetries = 3
+
+  def writeWithRetries[K](repository: Repository[K], key: K, retries: Int = DefaultRetries): Sink[repository.Data, repository.Result] = {
     Flow[repository.Data]
       .via(AkkaStreamUtils.extractUpstream)
       .flatMapConcat { source ⇒
@@ -27,15 +26,17 @@ object RepositoryStreams {
             .fold(NotUsed)((_, _) ⇒ NotUsed)
             .flatMapConcat(_ ⇒ Source.fromFuture(promise.future))
             .mapMaterializedValue(_ ⇒ NotUsed)
+            .named("read")
         }
 
         openStream().recoverWithRetries(retries, { case _ ⇒ openStream() })
       }
-      .orElse(Source.single(StorageIOResult.Failure(Path.root, StorageException.IOFailure(Path.root, new IOException("No data written")))))
+      .via(StorageUtils.wrapStream(StorageUtils.toStoragePath(key)))
       .toMat(Sink.last)(Keep.right)
+      .named("readWithRetries")
   }
 
-  def readWithRetries[K](repository: Repository[K], key: K, retries: Int = 5): Source[repository.Data, repository.Result] = {
+  def readWithRetries[K](repository: Repository[K], key: K, retries: Int = DefaultRetries): Source[repository.Data, repository.Result] = {
     def openStream() = {
       val promise = Promise[StorageIOResult]()
       repository.read(key)
@@ -50,10 +51,12 @@ object RepositoryStreams {
       .alsoToMat {
         Flow[(Source[ByteString, NotUsed], Future[StorageIOResult])]
           .flatMapConcat { case (_, future) ⇒ Source.fromFuture(future) }
-          .orElse(Source.single(StorageIOResult.Failure(Path.root, StorageException.IOFailure(Path.root, new IOException("No data read")))))
+          .via(StorageUtils.wrapStream(StorageUtils.toStoragePath(key)))
           .alsoToMat(Sink.last)(Keep.right)
           .to(Sink.ignore)
+          .named("write")
       }(Keep.right)
       .flatMapConcat { case (source, _) ⇒ source }
+      .named("writeWithRetries")
   }
 }

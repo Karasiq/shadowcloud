@@ -6,7 +6,7 @@ import scala.concurrent.{Future, Promise}
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-import akka.NotUsed
+import akka.{Done, NotUsed}
 import akka.actor.{Actor, ActorLogging, Kill, Props}
 import akka.pattern.pipe
 import akka.stream._
@@ -23,13 +23,17 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
-import com.karasiq.shadowcloud.utils.{AkkaStreamUtils, Utils}
+import com.karasiq.shadowcloud.utils.{AkkaStreamUtils, ChunkUtils, Utils}
 
 object ChunkIODispatcher {
   case class ChunkPath(regionId: RegionId, chunkId: ChunkId) {
     override def toString: String = {
       val sb = new StringBuilder(regionId.length + 1 + (chunkId.length * 2))
       (sb ++= regionId += '/' ++= HexString.encode(chunkId)).result()
+    }
+
+    def toStoragePath: Path = {
+      Path.root / regionId / HexString.encode(chunkId)
     }
   }
 
@@ -58,66 +62,86 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
   import context.dispatcher
 
   import ChunkIODispatcher._
+
+  // -----------------------------------------------------------------------
+  // Context
+  // -----------------------------------------------------------------------
   implicit val materializer: Materializer = ActorMaterializer()
   private[this] val sc = ShadowCloud()
+  private[this] val config = sc.configs.storageConfig(storageId, storageProps)
   private[this] val chunksWrite = PendingOperations.withRegionChunk
   private[this] val chunksRead = PendingOperations.withRegionChunk
 
+  // -----------------------------------------------------------------------
+  // Queues
+  // -----------------------------------------------------------------------
   private[this] val writeQueue = Source
-    .queue[(ChunkPath, Chunk, Promise[StorageIOResult])](sc.config.queues.storageWrite, OverflowStrategy.dropNew)
-    .flatMapConcat { case (path, chunk, promise) ⇒
+    .queue[(ChunkPath, Chunk, Promise[StorageIOResult])](config.chunkIO.writeQueueSize, OverflowStrategy.dropNew)
+    .flatMapMerge(config.chunkIO.writeParallelism, { case (path, chunk, promise) ⇒
       val repository = subRepository(path.regionId)
       Source.single(chunk.data.encrypted)
-        //.alsoToMat(RepositoryStreams.writeWithRetries(repository, path.chunkId))(Keep.right)
-        .alsoToMat(repository.write(path.chunkId))(Keep.right)
+        .alsoToMat(repository.write(path.chunkId))(Keep.right) //.alsoToMat(RepositoryStreams.writeWithRetries(repository, path.chunkId))(Keep.right)
         .alsoTo(Sink.onComplete(_.failed.foreach(promise.tryFailure)))
         .map(_ ⇒ NotUsed)
         .mapMaterializedValue { f ⇒ promise.completeWith(f); NotUsed }
-        .completionTimeout(sc.config.timeouts.chunkWrite)
-    }
+        .completionTimeout(config.chunkIO.writeTimeout)
+        .recoverWithRetries(1, { case _ ⇒ Source.empty })
+        .named("storageWrite")
+    })
     .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
     .named("chunkWriteQueue")
     .to(Sink.ignore)
     .run()
 
   private[this] val readQueue = Source
-    .queue[(ChunkPath, Chunk, Promise[(Chunk, StorageIOResult)])](sc.config.queues.storageRead, OverflowStrategy.dropNew)
-    .flatMapConcat { case (path, chunk, promise) ⇒
-      val localRepository = subRepository(path.regionId)
-      val readSource = localRepository.read(path.chunkId)// RepositoryStreams.readWithRetries(localRepository, path.chunkId)
-        .completionTimeout(sc.config.timeouts.chunkRead)
+    .queue[(ChunkPath, Chunk, Promise[(Chunk, StorageIOResult)])](config.chunkIO.readQueueSize, OverflowStrategy.dropNew)
+    .flatMapMerge(config.chunkIO.readParallelism, { case (path, chunk, promise) ⇒
+      val repository = subRepository(path.regionId)
+      val readSource = repository.read(path.chunkId) // RepositoryStreams.readWithRetries(repository, path.chunkId)
         .via(ByteStreams.limit(chunk.checksum.encSize))
         .via(ByteStreams.concat)
-        .map(bs ⇒ chunk.copy(data = chunk.data.copy(encrypted = bs)))
-        // .recover { case _ ⇒ chunk }
+        .map(ChunkUtils.chunkWithData(chunk, _))
+        // .orElse(Source.failed(new IllegalArgumentException("No data read")))
+        .named("storageRead")
 
-      GraphDSL.create(readSource) { implicit builder ⇒ readSource ⇒
+      val readGraph = GraphDSL.create(readSource) { implicit builder ⇒ readSource ⇒
         import GraphDSL.Implicits._
-
         val zipResults = builder.add(Zip[Chunk, StorageIOResult]())
-        val completePromise = builder.add(Flow[(Chunk, StorageIOResult)]
-          .alsoTo(Sink.onComplete(_.failed.foreach(promise.tryFailure)))
-          .alsoTo(Sink.foreach[(Chunk, StorageIOResult)](promise.trySuccess))
-          .map(_ ⇒ NotUsed)
-        )
 
         readSource ~> zipResults.in0
         builder.materializedValue.flatMapConcat(Source.fromFuture) ~> zipResults.in1
-        zipResults.out ~> completePromise
-        SourceShape(completePromise.out)
+
+        SourceShape(zipResults.out)
       }
-    }
+
+      Source.fromGraph(readGraph)
+        .completionTimeout(config.chunkIO.readTimeout)
+        .log("storage-read-results")
+        .alsoTo(Sink.onComplete {
+          case Success(_) ⇒
+            promise.tryFailure(StorageUtils.wrapException(path.toStoragePath, new IllegalArgumentException("No data read")))
+
+          case Failure(error) ⇒
+            promise.tryFailure(error)
+        })
+        .alsoTo(Sink.foreach[(Chunk, StorageIOResult)](promise.success))
+        .recoverWithRetries(1, { case _ ⇒ Source.empty })
+        .named("storageReadGraph")
+    })
     .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
     .named("chunkReadQueue")
     .to(Sink.ignore)
     .run()
 
+  // -----------------------------------------------------------------------
+  // Actor logic
+  // -----------------------------------------------------------------------
   def receive: Receive = {
     case WriteChunk(path, chunk) ⇒
-      chunksWrite.addWaiter((path, chunk), sender(), () ⇒ writeChunk(path, chunk))
+      chunksWrite.addWaiter((path, chunk.withoutData), sender(), () ⇒ writeChunk(path, chunk))
 
     case ReadChunk(path, chunk) ⇒
-      chunksRead.addWaiter((path, chunk), sender(), () ⇒ readChunk(path, chunk))
+      chunksRead.addWaiter((path, chunk.withoutData), sender(), () ⇒ readChunk(path, chunk))
 
     case msg: WriteChunk.Status ⇒
       chunksWrite.finish(msg.key, msg)
@@ -133,16 +157,19 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
       listKeys(regionId).pipeTo(sender())
   }
 
+  // -----------------------------------------------------------------------
+  // Lifecycle
+  // -----------------------------------------------------------------------
   override def preStart(): Unit = {
+    def stopOnComplete(f: Future[Done]) = {
+      f.onComplete(result ⇒ log.error("Queue stopped: {}", result))
+      f.map(_ ⇒ Kill).pipeTo(self)
+    }
+
     super.preStart()
 
-    writeQueue.watchCompletion()
-      .map(_ ⇒ Kill)
-      .pipeTo(self)
-
-    readQueue.watchCompletion()
-      .map(_ ⇒ Kill)
-      .pipeTo(self)
+    stopOnComplete(writeQueue.watchCompletion())
+    stopOnComplete(readQueue.watchCompletion())
   }
 
   override def postStop(): Unit = {
@@ -151,8 +178,11 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
     super.postStop()
   }
 
-  private[this] def subRepository(region: String) = {
-    repository.subRepository(region)
+  // -----------------------------------------------------------------------
+  // Utils
+  // -----------------------------------------------------------------------
+  private[this] def subRepository(regionId: RegionId) = {
+    repository.subRepository(regionId)
   }
 
   private def listKeys(regionId: RegionId): Future[GetKeys.Status] = {

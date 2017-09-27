@@ -7,8 +7,6 @@ import com.typesafe.config.Config
 import com.karasiq.common.configs.ConfigImplicits
 
 case class QueuesConfig(rootConfig: Config,
-                        storageWrite: Int,
-                        storageRead: Int,
                         regionRepair: Int,
                         regionDiffs: Int,
                         regionDiffsTime: FiniteDuration,
@@ -19,8 +17,6 @@ object QueuesConfig extends ConfigImplicits with WrappedConfigFactory[QueuesConf
   def apply(config: Config): QueuesConfig = {
     QueuesConfig(
       config,
-      config.getInt("storage-write"),
-      config.getInt("storage-read"),
       config.getInt("region-repair"),
       config.getInt("region-diffs"),
       config.getFiniteDuration("region-diffs-time"),

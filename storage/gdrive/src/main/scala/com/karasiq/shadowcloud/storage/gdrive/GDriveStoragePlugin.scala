@@ -11,7 +11,6 @@ import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage.StoragePlugin
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.utils.StoragePluginBuilder
-import com.karasiq.shadowcloud.utils.Utils
 
 private[gdrive] object GDriveStoragePlugin {
   def apply(implicit sc: ShadowCloudExtension): GDriveStoragePlugin = {
@@ -23,6 +22,8 @@ private[gdrive] class GDriveStoragePlugin(implicit sc: ShadowCloudExtension) ext
   private[this] def defaultConfig = sc.config.rootConfig.getConfigIfExists("storage.gdrive")
 
   def createStorage(storageId: StorageId, props: StorageProps)(implicit context: ActorContext) = {
+    val config = props.rootConfig.getConfigIfExists("gdrive").withFallback(defaultConfig)
+
     val proxyProps = Props(new Actor {
       import context.{dispatcher ⇒ executionContext} // API dispatcher
 
@@ -38,15 +39,16 @@ private[gdrive] class GDriveStoragePlugin(implicit sc: ShadowCloudExtension) ext
         case message ⇒
           implicit val driveContext = {
             val dataStore = SCGDriveStore(storageId, props.credentials.login)
-            val config = props.rootConfig.getConfigIfExists("gdrive").withFallback(defaultConfig)
             GDriveContext(config, dataStore)
           }
 
           val oauth = GDriveOAuth()
           implicit val session = oauth.authorize(props.credentials.login)
 
-          val applicationName = props.rootConfig.withDefault("shadowcloud", _.getString("gdrive.application-name"))
-          val service = GDriveService(applicationName)
+          val service = {
+            val applicationName = config.withDefault("shadowcloud", _.getString("application-name"))
+            GDriveService(applicationName)
+          }
 
           val dispatcher = StoragePluginBuilder(storageId, props)
             .withIndexTree(GDriveRepository(service))
@@ -59,6 +61,6 @@ private[gdrive] class GDriveStoragePlugin(implicit sc: ShadowCloudExtension) ext
       }
     })
 
-    context.actorOf(proxyProps.withDispatcher(GDriveDispatchers.apiDispatcherId), Utils.uniqueActorName("gdrive-proxy"))
+    context.actorOf(proxyProps.withDispatcher(GDriveDispatchers.apiDispatcherId), "gdrive-proxy")
   }
 }

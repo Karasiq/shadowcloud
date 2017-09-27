@@ -181,7 +181,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
   // Synchronization
   // -----------------------------------------------------------------------
   private[this] object synchronization {
-    def scheduleNext(duration: FiniteDuration = config.syncInterval): Unit = {
+    def scheduleNext(duration: FiniteDuration = config.index.syncInterval): Unit = {
       this.finish()
       if (log.isDebugEnabled) log.debug("Scheduling synchronize in {}", duration.toCoarsest)
       context.system.scheduler.scheduleOnce(duration, self, Synchronize)
@@ -429,11 +429,11 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
   // Utils
   // -----------------------------------------------------------------------
   private[this] def isSnapshotRequired(): Boolean = {
-    config.indexSnapshotThreshold > 0 && state.diffsSaved > config.indexSnapshotThreshold
+    config.index.snapshotThreshold > 0 && state.diffsSaved > config.index.snapshotThreshold
   }
 
   private[this] def isCompactRequired(): Boolean = {
-    state.compactRequested || (config.indexCompactThreshold > 0 && state.diffStats.deletes > config.indexCompactThreshold)
+    state.compactRequested || (config.index.compactThreshold > 0 && state.diffStats.deletes > config.index.compactThreshold)
   }
 
   private[this] def loadRepositoryKeys(): Unit = {

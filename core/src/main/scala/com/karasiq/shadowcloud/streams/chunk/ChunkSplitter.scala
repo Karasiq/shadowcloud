@@ -13,7 +13,7 @@ import com.karasiq.shadowcloud.model.{Chunk, Data}
 
 private[shadowcloud] object ChunkSplitter {
   def apply(chunkSize: Int = SizeUnit.MB.intValue): Flow[ByteString, Chunk, NotUsed] = {
-    Flow.fromGraph(new ChunkSplitter(chunkSize))
+    Flow.fromGraph(new ChunkSplitter(chunkSize)).named("chunkSplitter")
   }
 }
 

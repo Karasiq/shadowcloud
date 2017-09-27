@@ -4,7 +4,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
 
 import akka.NotUsed
-import akka.stream.{FlowShape, OverflowStrategy}
+import akka.stream.FlowShape
 import akka.stream.scaladsl.{Flow, GraphDSL, Sink, ZipWith}
 import akka.util.ByteString
 
@@ -34,15 +34,16 @@ final class ChunkProcessingStreams(modules: SCModules, chunks: ChunksConfig,
     ChunkSplitter(chunkSize)
   }
 
-  def generateKey(method: EncryptionMethod = crypto.encryption.chunks,
-                  maxKeyReuse: Int = crypto.encryption.maxKeyReuse): ChunkFlow = {
-    Flow.fromGraph(GraphDSL.create() { implicit builder ⇒
+  def generateKeys(method: EncryptionMethod = crypto.encryption.chunks,
+                   maxKeyReuse: Int = crypto.encryption.maxKeyReuse): ChunkFlow = {
+    val graph = GraphDSL.create() { implicit builder ⇒
       import GraphDSL.Implicits._
       val keys = builder.add(ChunkKeyStream(modules, method, maxKeyReuse))
       val chunkWithKey = builder.add(ZipWith((key: EncryptionParameters, chunk: Chunk) ⇒ chunk.copy(encryption = key)))
       keys ~> chunkWithKey.in0
       FlowShape(chunkWithKey.in1, chunkWithKey.out)
-    })
+    }
+    Flow.fromGraph(graph).named("generateKeys")
   }
 
   def encrypt: ChunkFlow = parallelFlow(parallelism.encryption) { chunk ⇒
@@ -51,13 +52,13 @@ final class ChunkProcessingStreams(modules: SCModules, chunks: ChunksConfig,
         val module = modules.crypto.encryptionModule(chunk.encryption.method)
         chunk.copy(data = chunk.data.copy(encrypted = module.encrypt(plain, chunk.encryption)))
 
-      case Data(_, encrypted) if encrypted.nonEmpty ⇒
+      case Data(_, encrypted) if encrypted.nonEmpty || chunk.checksum.encSize == 0 ⇒
         chunk
 
       case _ ⇒
         throw SCExceptions.ChunkDataIsEmpty(chunk)
     }
-  }
+  } named "encrypt"
 
   def createHashes(plainMethod: HashingMethod = crypto.hashing.chunks,
                    encMethod: HashingMethod = crypto.hashing.chunksEncrypted): ChunkFlow = {
@@ -72,7 +73,7 @@ final class ChunkProcessingStreams(modules: SCModules, chunks: ChunksConfig,
       val encHash = if (chunk.data.encrypted.nonEmpty) encHasher.createHash(chunk.data.encrypted) else ByteString.empty
 
       chunk.copy(checksum = chunk.checksum.copy(plainMethod, encMethod, size, hash, encSize, encHash))
-    }
+    } named "createHashes"
   }
 
   def decrypt: ChunkFlow = parallelFlow(parallelism.encryption) { chunk ⇒
@@ -82,13 +83,13 @@ final class ChunkProcessingStreams(modules: SCModules, chunks: ChunksConfig,
         val decryptedData = decryptor.decrypt(encrypted, chunk.encryption)
         chunk.copy(data = chunk.data.copy(plain = decryptedData))
 
-      case Data(plain, _) if plain.nonEmpty ⇒
+      case Data(plain, _) if plain.nonEmpty || chunk.checksum.size == 0 ⇒
         chunk
 
       case _ ⇒
         throw SCExceptions.ChunkDataIsEmpty(chunk)
     }
-  }
+  } named "decrypt"
 
   def verify: ChunkFlow = parallelFlow(parallelism.hashing) { chunk ⇒
     def verifyHash(expected: ByteString, create: ⇒ ByteString): Unit = {
@@ -110,13 +111,13 @@ final class ChunkProcessingStreams(modules: SCModules, chunks: ChunksConfig,
     verifyHash(chunk.checksum.encHash, hasher.createHash(chunk.data.encrypted))
 
     chunk
-  }
+  } named "verify"
 
   def beforeWrite(encryption: EncryptionMethod = crypto.encryption.chunks,
                   hashing: HashingMethod = crypto.hashing.chunks,
                   encHashing: HashingMethod = crypto.hashing.chunksEncrypted): ChunkFlow = {
-    generateKey(encryption)
-      .buffer(10, OverflowStrategy.backpressure)
+    generateKeys(encryption)
+      // .buffer(10, OverflowStrategy.backpressure)
       .via(encrypt)
       .via(createHashes(hashing, encHashing))
   }

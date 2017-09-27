@@ -29,7 +29,13 @@ final case class Chunk(checksum: Checksum = Checksum.empty,
   }
 
   override def equals(obj: scala.Any): Boolean = obj match {
-    case ch: Chunk ⇒ checksum == ch.checksum
+    case ch: Chunk ⇒
+      def hasSameEncryption(ch1: Chunk, ch2: Chunk) =
+        if (EncryptionParameters.hasKeys(ch1.encryption) && EncryptionParameters.hasKeys(ch2.encryption)) ch1.encryption == ch2.encryption
+        else ch1.encryption.method == ch2.encryption.method
+
+      checksum == ch.checksum && hasSameEncryption(this, ch)
+
     case _ ⇒ false
   }
 

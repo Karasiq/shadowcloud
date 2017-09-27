@@ -40,4 +40,9 @@ private[shadowcloud] object ChunkUtils {
     val withEncrypted = withPlain.copy(data = withPlain.data.copy(encrypted = getEncryptedBytes(modules, withPlain)))
     withEncrypted
   }
+
+  def chunkWithData(chunk: Chunk, data: ByteString): Chunk = {
+    require(data.length == chunk.checksum.encSize, "Invalid size")
+    chunk.copy(data = chunk.data.copy(encrypted = data))
+  }
 }

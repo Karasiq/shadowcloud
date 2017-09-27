@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.config
 
-import scala.concurrent.duration.FiniteDuration
-
 import com.typesafe.config.Config
 
 import com.karasiq.common.configs.ConfigImplicits
@@ -9,9 +7,8 @@ import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.utils.ChunkKeyMapper
 
-case class StorageConfig(rootConfig: Config, syncInterval: FiniteDuration,
-                         indexCompactThreshold: Int, indexSnapshotThreshold: Int,
-                         chunkKey: ChunkKeyMapper) extends WrappedConfig
+case class StorageConfig(rootConfig: Config, chunkKey: ChunkKeyMapper,
+                         index: StorageIndexConfig, chunkIO: StorageChunkIOConfig) extends WrappedConfig
 
 object StorageConfig extends WrappedConfigFactory[StorageConfig] with ConfigImplicits {
   private[this] def getConfigForId(storageId: StorageId, rootConfig: Config): Config = {
@@ -33,10 +30,9 @@ object StorageConfig extends WrappedConfigFactory[StorageConfig] with ConfigImpl
   def apply(config: Config): StorageConfig = {
     StorageConfig(
       config,
-      config.getFiniteDuration("sync-interval"),
-      config.getInt("index-compact-threshold"),
-      config.getInt("index-snapshot-threshold"),
-      ChunkKeyMapper.forName(config.getString("chunk-key"), config.getConfigIfExists("chunk-key-config"))
+      ChunkKeyMapper.forName(config.getString("chunk-key"), config.getConfigIfExists("chunk-key-config")),
+      StorageIndexConfig(config.getConfig("index")),
+      StorageChunkIOConfig(config.getConfig("chunk-io"))
     )
   }
 }

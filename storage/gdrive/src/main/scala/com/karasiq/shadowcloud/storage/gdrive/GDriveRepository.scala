@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.storage.gdrive
 
 import java.io.InputStream
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Promise}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
@@ -68,7 +68,7 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
 
   def read(key: Path) = {
     val idsSource = Source.single(key)
-      .map(entityCache.getFileIds(_))
+      .mapAsync(1)(entityCache.getFileIds(_))
       .log("gdrive-file-ids")
       .withAttributes(defaultAttributes)
 
@@ -87,12 +87,17 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
   }
 
   def write(key: Path) = {
-    def blockingUpload(path: Path, inputStream: InputStream) = {
-      val folderId = entityCache.getOrCreateFolderId(path.parent)
-      if (entityCache.isFileExists(path)) throw StorageException.AlreadyExists(path)
+    def getFolderId(path: Path) = for {
+      folderId ← entityCache.getOrCreateFolderId(path.parent)
+      fileExists ← entityCache.isFileExists(path)
+    } yield {
+      if (fileExists) throw StorageException.AlreadyExists(path)
+      folderId
+    }
 
+    def blockingUpload(folderId: String, name: String, inputStream: InputStream) = {
       val countingInputStream = new CountingInputStream(inputStream)
-      service.upload(folderId, path.name, countingInputStream)
+      service.upload(folderId, name, countingInputStream)
       countingInputStream.getCount
     }
 
@@ -101,9 +106,10 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
       .viaMat(AkkaStreamUtils.flatMapConcatMat { dataStream ⇒
         val promise = Promise[InputStream]
         val writeStream = Source.fromFuture(promise.future)
-          .initialTimeout(5 seconds)
-          .map { inputStream ⇒
-            val result = Try(blockingUpload(key, inputStream))
+          .zip(Source.fromFuture(getFolderId(key)))
+          .initialTimeout(10 seconds)
+          .map { case (inputStream, folderId) ⇒
+            val result = Try(blockingUpload(folderId, key.name, inputStream))
             result.failed.foreach(_ ⇒ inputStream.close())
             result.get
           }
@@ -129,8 +135,8 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
       .log("gdrive-delete")
       .mapAsyncUnordered(2) { path ⇒
         def isDeleted(fileId: String) = Try(service.delete(fileId)).isSuccess
-        val deletedCount = Try(entityCache.getFileIds(path).count(isDeleted))
-        StorageUtils.wrapCountFuture(path, Future.fromTry(deletedCount))
+        val deletedCount = entityCache.getFileIds(path).map(_.count(isDeleted))
+        StorageUtils.wrapCountFuture(path, deletedCount)
       }
       .via(StorageUtils.foldStream())
       .toMat(Sink.head)(Keep.right)

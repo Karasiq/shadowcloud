@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.storage.gdrive
 
 import scala.collection.concurrent.TrieMap
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 import com.karasiq.gdrive.files.{GDrive, GDriveService}
 import com.karasiq.shadowcloud.model.Path
@@ -18,34 +18,33 @@ private[gdrive] final class GDriveEntityCache(service: GDriveService)(implicit e
   type FileId = String
   type FileIds = Vector[FileId]
 
-  private[this] val folderIdCache = TrieMap.empty[Path, FileId]
-  private[this] val filesCache = TrieMap.empty[Path, FileList].withDefaultValue(Vector.empty)
+  private[this] val folderIdCache = TrieMap.empty[Path, Future[FileId]]
+  private[this] val filesCache = TrieMap.empty[Path, Future[FileList]]
 
-  def getOrCreateFolderId(path: Path): FileId = {
-    folderIdCache.getOrElseUpdate(path, service.createFolder(path.nodes).id)
+  def getOrCreateFolderId(path: Path): Future[FileId] = {
+    folderIdCache.getOrElseUpdate(path, Future(service.createFolder(path.nodes).id))
   }
 
-  def getFolderId(path: Path): FileId = {
-    folderIdCache.getOrElseUpdate(path, service.folder(path.nodes).id)
+  def getFolderId(path: Path): Future[FileId] = {
+    folderIdCache.getOrElseUpdate(path, Future(service.folder(path.nodes).id))
   }
 
-  def getFileIds(path: Path, cached: Boolean = true): FileIds = {
-    val cachedFiles = filesCache(path)
-    def getActualFiles() = service.files(getFolderId(path.parent), path.name).toVector
+  def getFileIds(path: Path, cached: Boolean = true): Future[FileIds] = {
+    def getActualFiles() = getFolderId(path.parent).map(service.files(_, path.name).toVector)
 
-    if (cached && cachedFiles.nonEmpty) {
-      cachedFiles.map(_.id)
-    } else {
-      val files = getActualFiles()
-      if (files.isEmpty) filesCache -= path else filesCache += path → files
-      files.map(_.id)
+    val cachedFiles = filesCache.getOrElseUpdate(path, getActualFiles())
+    cachedFiles.flatMap { cachedFiles ⇒
+      if (cached && cachedFiles.nonEmpty) {
+        Future.successful(cachedFiles.map(_.id))
+      } else {
+        val future = getActualFiles()
+        filesCache += path → future
+        future.map(_.map(_.id))
+      }
     }
   }
 
-  def isFileExists(path: Path): Boolean = {
-    def isExists = getFileIds(path).nonEmpty
-    def isReallyExists = getFileIds(path, cached = false).nonEmpty
-
-    if (isExists) true else isReallyExists
+  def isFileExists(path: Path): Future[Boolean] = {
+    getFileIds(path, cached = false).map(_.nonEmpty)
   }
 }

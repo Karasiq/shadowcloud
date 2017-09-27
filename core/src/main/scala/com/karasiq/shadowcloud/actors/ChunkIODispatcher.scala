@@ -26,7 +26,8 @@ import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.utils.{AkkaStreamUtils, ChunkUtils, Utils}
 
 object ChunkIODispatcher {
-  case class ChunkPath(regionId: RegionId, chunkId: ChunkId) {
+  @SerialVersionUID(0L)
+  final case class ChunkPath(regionId: RegionId, chunkId: ChunkId) {
     override def toString: String = {
       val sb = new StringBuilder(regionId.length + 1 + (chunkId.length * 2))
       (sb ++= regionId += '/' ++= HexString.encode(chunkId)).result()
@@ -39,16 +40,16 @@ object ChunkIODispatcher {
 
   // Messages
   sealed trait Message
-  case class WriteChunk(path: ChunkPath, chunk: Chunk) extends Message
+  final case class WriteChunk(path: ChunkPath, chunk: Chunk) extends Message
   object WriteChunk extends MessageStatus[(ChunkPath, Chunk), Chunk]
 
-  case class ReadChunk(path: ChunkPath, chunk: Chunk) extends Message
+  final case class ReadChunk(path: ChunkPath, chunk: Chunk) extends Message
   object ReadChunk extends MessageStatus[(ChunkPath, Chunk), Chunk]
 
-  case class DeleteChunks(chunks: Set[ChunkPath]) extends Message
+  final case class DeleteChunks(chunks: Set[ChunkPath]) extends Message
   object DeleteChunks extends MessageStatus[Set[ChunkPath], (Set[ChunkPath], StorageIOResult)]
 
-  case class GetKeys(regionId: RegionId) extends Message
+  final case class GetKeys(regionId: RegionId) extends Message
   object GetKeys extends MessageStatus[RegionId, Set[ChunkId]]
 
   // Props

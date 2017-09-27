@@ -2,6 +2,7 @@ package com.karasiq.shadowcloud.utils
 
 import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.util.{Failure, Success}
 
 import akka.NotUsed
 import akka.stream.{FlowShape, Graph, SourceShape}
@@ -17,23 +18,28 @@ object AkkaStreamUtils {
   }
 
   def extractUpstream[T]: Flow[T, Source[T, NotUsed], NotUsed] = {
-    Flow[T].prefixAndTail(0).map(_._2)
+    Flow[T].prefixAndTail(0).map(_._2).named("extractUpstream")
+  }
+
+  def dropUpstream[T, T1, M](newStream: Source[T1, M]): Flow[T, T1, M] = {
+    Flow.fromSinkAndSourceMat(Sink.cancelled, newStream)(Keep.right).named("dropUpstream")
   }
 
   def extractUpstreamAndMat[I, O, M](stream: Graph[FlowShape[I, O], M]): Flow[I, (Source[O, NotUsed], Future[M]), NotUsed] = {
     val promise = Promise[M]
     Flow.fromGraph(stream)
-      .alsoTo(Sink.onComplete(_.failed.foreach(promise.tryFailure)))
+      .alsoTo(failPromiseOnComplete(promise))
       .mapMaterializedValue { mat ⇒ promise.trySuccess(mat); NotUsed }
       .via(extractUpstream)
       .zip(Source.single(promise.future))
+      .named("extractUpstreamAndMat")
   }
 
   def flatMapConcatMat[E, E1, M](f: E ⇒ Graph[SourceShape[E1], Future[M]]): Flow[E, E1, Future[Seq[M]]] = {
     Flow[E].map { element ⇒
       val promise = Promise[M]
       val stream = Source.fromGraph(f(element))
-        .alsoTo(Sink.onComplete(_.failed.foreach(promise.tryFailure)))
+        .alsoTo(failPromiseOnFailure(promise))
         .mapMaterializedValue { f ⇒ promise.completeWith(f); NotUsed }
       (stream, promise.future)
     }
@@ -43,5 +49,15 @@ object AkkaStreamUtils {
         .toMat(Sink.seq)(Keep.right)
     )(Keep.right)
     .flatMapConcat(_._1)
+    .named("flatMapConcatMat")
+  }
+
+  def failPromiseOnFailure[T, PT](promise: Promise[PT]) = {
+    Sink.onComplete[T](_.failed.foreach(promise.tryFailure))
+  }
+
+  def failPromiseOnComplete[T, PT](promise: Promise[PT]) = Sink.onComplete[T] {
+    case Success(_) ⇒ promise.tryFailure(new Exception("Stream completed"))
+    case Failure(error) ⇒ promise.tryFailure(error)
   }
 }

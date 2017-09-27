@@ -9,7 +9,7 @@ import scala.util.{Failure, Success}
 
 import akka.{Done, NotUsed}
 import akka.stream.{IOResult ⇒ AkkaIOResult}
-import akka.stream.scaladsl.{Flow, Source}
+import akka.stream.scaladsl.Flow
 import akka.util.ByteString
 
 import com.karasiq.common.encoding.HexString
@@ -73,12 +73,12 @@ object StorageUtils {
   def wrapStream(path: Path = Path.root): Flow[StorageIOResult, StorageIOResult, NotUsed] = {
     Flow[StorageIOResult]
       .recover { case error ⇒ StorageIOResult.Failure(path, StorageUtils.wrapException(path, error)) }
-      .orElse(Source.single(StorageIOResult.Failure(path, StorageUtils.wrapException(path, new IllegalArgumentException("No data passed")))))
+      // .orElse(Source.single(StorageIOResult.Failure(path, StorageUtils.wrapException(path, new IllegalArgumentException("No data passed")))))
   }
 
   def foldStream(path: Path = Path.root): Flow[StorageIOResult, StorageIOResult, NotUsed] = {
     Flow[StorageIOResult]
-      .fold(Seq.empty[StorageIOResult])(_ :+ _)
+      .fold(Seq[StorageIOResult](StorageIOResult.Success(path, 0)))(_ :+ _)
       .map(foldIOResults)
       .via(wrapStream(path))
   }

@@ -2,14 +2,14 @@ package com.karasiq.shadowcloud.storage.gdrive
 
 import java.io.InputStream
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Try
 
 import akka.NotUsed
-import akka.stream.{ActorAttributes, FlowShape}
-import akka.stream.scaladsl.{Flow, GraphDSL, Keep, Sink, Source, StreamConverters}
+import akka.stream.ActorAttributes
+import akka.stream.scaladsl.{Flow, Keep, Sink, Source, StreamConverters}
 import com.google.common.io.CountingInputStream
 
 import com.karasiq.common.memory.SizeUnit
@@ -87,34 +87,40 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
   }
 
   def write(key: Path) = {
-    def blockingUpload(inputStream: InputStream) = {
+    def blockingUpload(path: Path, inputStream: InputStream) = {
+      val folderId = entityCache.getOrCreateFolderId(path.parent)
+      if (entityCache.isFileExists(path)) throw StorageException.AlreadyExists(path)
+
       val countingInputStream = new CountingInputStream(inputStream)
-
-      val folderId = entityCache.getOrCreateFolderId(key.parent)
-      if (entityCache.isFileExists(key)) throw StorageException.AlreadyExists(key)
-
-      try {
-        service.upload(folderId, key.name, inputStream)
-        countingInputStream.getCount
-      } finally inputStream.close()
+      service.upload(folderId, path.name, countingInputStream)
+      countingInputStream.getCount
     }
 
-    val writeGraph = GraphDSL.create(StreamConverters.asInputStream(15 seconds)) { implicit builder ⇒ writeInputStream ⇒
-      import GraphDSL.Implicits._
-
-      val processInputStream = builder.add(
-        Flow[InputStream]
-          .map(blockingUpload)
+    val blockingSink = Flow[Data]
+      .via(AkkaStreamUtils.extractUpstream)
+      .viaMat(AkkaStreamUtils.flatMapConcatMat { dataStream ⇒
+        val promise = Promise[InputStream]
+        val writeStream = Source.fromFuture(promise.future)
+          .initialTimeout(5 seconds)
+          .map { inputStream ⇒
+            val result = Try(blockingUpload(key, inputStream))
+            result.failed.foreach(_ ⇒ inputStream.close())
+            result.get
+          }
           .via(StorageUtils.wrapCountStream(key))
+          .alsoToMat(Sink.head)(Keep.right)
           .withAttributes(fileStreamAttributes)
-      )
+        
+        dataStream
+          .alsoToMat(StreamConverters.asInputStream(15 seconds))(Keep.right)
+          .mapMaterializedValue(promise.success)
+          .alsoTo(AkkaStreamUtils.failPromiseOnFailure(promise))
+          .viaMat(AkkaStreamUtils.dropUpstream(writeStream))(Keep.right)
+      })(Keep.right)
+      .to(Sink.ignore)
+      .mapMaterializedValue(fs ⇒ StorageUtils.wrapFuture(key, fs.map(StorageUtils.foldIOResults)))
 
-      builder.materializedValue ~> processInputStream
-      FlowShape(writeInputStream.in, processInputStream.out)
-    }
-
-    Flow.fromGraph(writeGraph)
-      .toMat(Sink.head)(Keep.right)
+    blockingSink
       .named("gdriveWrite")
   }
 

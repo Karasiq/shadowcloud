@@ -116,16 +116,10 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
       }
 
       Source.fromGraph(readGraph)
-        .completionTimeout(config.chunkIO.readTimeout)
-        .log("storage-read-results")
-        .alsoTo(Sink.onComplete {
-          case Success(_) ⇒
-            promise.tryFailure(StorageUtils.wrapException(path.toStoragePath, new IllegalArgumentException("No data read")))
-
-          case Failure(error) ⇒
-            promise.tryFailure(error)
-        })
+        // .log("storage-read-results")
         .alsoTo(Sink.foreach[(Chunk, StorageIOResult)](promise.success))
+        .alsoTo(AkkaStreamUtils.failPromiseOnFailure(promise))
+        .completionTimeout(config.chunkIO.readTimeout)
         .recoverWithRetries(1, { case _ ⇒ Source.empty })
         .named("storageReadGraph")
     })

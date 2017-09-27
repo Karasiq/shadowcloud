@@ -130,7 +130,6 @@ private[shadowcloud] final class MetadataStreams(sc: ShadowCloudExtension) {
         }
         .log("metadata-files")
         .fold(Vector.empty[File])(_ :+ _)
-        .orElse(Source.single(Vector.empty))
         .recover { case _ ⇒ Vector.empty }
       )
       val zipFileAndMetadata = builder.add(Zip[File, Seq[File]])

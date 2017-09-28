@@ -46,6 +46,7 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
 
       Flow[Path]
         .flatMapConcat(path ⇒ Source.fromIterator(() ⇒ iteratorTry(path).get))
+        .idleTimeout(15 seconds)
         .withAttributes(defaultAttributes)
         .named("gdriveTraverse")
     }
@@ -69,6 +70,7 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
   def read(key: Path) = {
     val idsSource = Source.single(key)
       .mapAsync(1)(entityCache.getFileIds(_))
+      .initialTimeout(15 seconds)
       .log("gdrive-file-ids")
       .withAttributes(defaultAttributes)
 
@@ -110,6 +112,7 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
           .initialTimeout(10 seconds)
           .map { case (inputStream, folderId) ⇒
             val result = Try(blockingUpload(folderId, key.name, inputStream))
+            entityCache.resetFileCache(key)
             result.failed.foreach(_ ⇒ inputStream.close())
             result.get
           }
@@ -135,9 +138,11 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
       .log("gdrive-delete")
       .mapAsyncUnordered(2) { path ⇒
         def isDeleted(fileId: String) = Try(service.delete(fileId)).isSuccess
-        val deletedCount = entityCache.getFileIds(path).map(_.count(isDeleted))
+        val deletedCount = entityCache.getFileIds(path, cached = false).map(_.count(isDeleted))
+        entityCache.resetFileCache(path)
         StorageUtils.wrapCountFuture(path, deletedCount)
       }
+      .idleTimeout(15 seconds)
       .via(StorageUtils.foldStream())
       .toMat(Sink.head)(Keep.right)
       .withAttributes(defaultAttributes)

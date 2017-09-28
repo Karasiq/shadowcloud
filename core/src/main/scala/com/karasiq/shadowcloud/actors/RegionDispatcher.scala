@@ -124,8 +124,8 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
     .filter(_.nonEmpty)
     .log("region-grouped-diff")
     .map(WriteIndexDiff)
-    .to(Sink.actorRef(self, Kill))
     .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+    .to(Sink.actorRef(self, Kill))
     .named("regionPendingQueue")
     .run()
 

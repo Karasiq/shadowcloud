@@ -22,20 +22,24 @@ private[gdrive] final class GDriveEntityCache(service: GDriveService)(implicit e
   private[this] val filesCache = CacheMap[Path, FileList]
 
   def getOrCreateFolderId(path: Path): Future[FileId] = {
-    folderIdCache.get(path)(Future(service.createFolder(path.nodes).id))
+    folderIdCache(path)(Future(service.createFolder(path.nodes).id))
   }
 
   def getFolderId(path: Path): Future[FileId] = {
-    folderIdCache.get(path)(Future(service.folder(path.nodes).id))
+    folderIdCache(path)(Future(service.folder(path.nodes).id))
   }
 
   def getFileIds(path: Path, cached: Boolean = true): Future[FileIds] = {
     def getActualFiles() = getFolderId(path.parent).map(service.files(_, path.name).toVector)
 
-    filesCache.get(path, cached)(getActualFiles()).map { cachedFiles ⇒
-      if (cachedFiles.isEmpty) filesCache.remove(path)
+    filesCache(path, cached)(getActualFiles()).map { cachedFiles ⇒
+      if (cachedFiles.isEmpty) resetFileCache(path)
       cachedFiles.map(_.id)
     }
+  }
+
+  def resetFileCache(path: Path): Unit = {
+    filesCache -= path
   }
 
   def isFileExists(path: Path): Future[Boolean] = {

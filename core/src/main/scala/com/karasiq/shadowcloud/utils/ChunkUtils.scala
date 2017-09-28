@@ -45,4 +45,13 @@ private[shadowcloud] object ChunkUtils {
     require(data.length == chunk.checksum.encSize, "Invalid size")
     chunk.copy(data = chunk.data.copy(encrypted = data))
   }
+
+  def recoverChunkData(existingChunk: Chunk, newChunk: Chunk): Chunk = {
+    require(existingChunk.checksum == newChunk.checksum, "Not same chunks")
+    if (Utils.isSameChunk(existingChunk, newChunk)) {
+      newChunk
+    } else {
+      existingChunk.copy(data = newChunk.data.copy(encrypted = ByteString.empty))
+    }
+  }
 }

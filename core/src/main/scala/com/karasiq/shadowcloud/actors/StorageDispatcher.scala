@@ -4,10 +4,9 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.Success
 
-import akka.NotUsed
 import akka.actor.{Actor, ActorLogging, ActorRef, Kill, NotInfluenceReceiveTimeout, PossiblyHarmful, Props}
 import akka.pattern.pipe
-import akka.stream.{ActorMaterializer, Materializer, OverflowStrategy, QueueOfferResult}
+import akka.stream._
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.Timeout
 
@@ -63,10 +62,13 @@ private final class StorageDispatcher(storageId: StorageId, storageProps: Storag
   // -----------------------------------------------------------------------
   private[this] val pendingIndexQueue = Source.queue[(ChunkPath, Chunk)](sc.config.queues.chunksIndex, OverflowStrategy.dropNew)
     .via(AkkaStreamUtils.groupedOrInstant(sc.config.queues.chunksIndex, sc.config.queues.chunksIndexTime))
+    .filter(_.nonEmpty)
     .mapConcat(_.groupBy(_._1.regionId).map { case (regionId, chunks) ⇒
       StorageIndex.Envelope(regionId, RegionIndex.WriteDiff(IndexDiff.newChunks(chunks.map(_._2):_*)))
     })
-    .to(Sink.actorRef(index, NotUsed))
+    .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+    .to(Sink.actorRef(index, Kill))
+    .named("pendingIndexQueue")
     .run()
 
   // -----------------------------------------------------------------------

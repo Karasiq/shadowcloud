@@ -119,6 +119,7 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
           .via(StorageUtils.wrapCountStream(key))
           .alsoToMat(Sink.head)(Keep.right)
           .withAttributes(fileStreamAttributes)
+          .async
         
         dataStream
           .alsoToMat(StreamConverters.asInputStream(15 seconds))(Keep.right)

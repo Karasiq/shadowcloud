@@ -7,7 +7,7 @@ import scala.language.{implicitConversions, postfixOps}
 import akka.actor.{ActorContext, ActorRef}
 import akka.event.Logging
 import akka.pattern.{ask, pipe}
-import akka.util.{ByteString, Timeout}
+import akka.util.Timeout
 
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.actors.RegionDispatcher._
@@ -19,7 +19,7 @@ import com.karasiq.shadowcloud.model.{Chunk, ChunkId, RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.replication.{ChunkAvailability, ChunkStatusProvider, ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.{ChunkStatus, WriteStatus}
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
-import com.karasiq.shadowcloud.utils.Utils
+import com.karasiq.shadowcloud.utils.{ChunkUtils, Utils}
 
 private[actors] object ChunksTracker {
   def apply(regionId: RegionId, config: RegionConfig, storageTracker: StorageTracker)
@@ -119,11 +119,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
               chunks.update(status.copy(waitingChunk = status.waitingChunk + receiver))
 
             case WriteStatus.Finished ⇒
-              val chunkWithData = if (Utils.isSameChunk(status.chunk, chunk) && chunk.data.encrypted.nonEmpty) {
-                chunk
-              } else {
-                status.chunk.copy(data = chunk.data.copy(encrypted = ByteString.empty))
-              }
+              val chunkWithData = ChunkUtils.recoverChunkData(status.chunk, chunk)
               receiver ! WriteChunk.Success(chunkWithData.withoutData, chunkWithData)
               log.debug("Chunk restored from index, write skipped: {}", chunkWithData)
               status.copy(chunk = chunkWithData)
@@ -203,7 +199,6 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
       status.writeStatus match {
         case WriteStatus.Pending(affinity) ⇒
           if (affinity.isWrittenEnough(status)) {
-            require(status.chunk.data.nonEmpty)
             log.debug("Resolved pending chunk: {}", status.chunk)
             status.waitingChunk.foreach(_ ! WriteChunk.Success(status.chunk, status.chunk))
             val resultStatus = if (affinity.isFinished(status)) {

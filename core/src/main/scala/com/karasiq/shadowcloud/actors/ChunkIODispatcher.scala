@@ -86,7 +86,7 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
         .map(_ ⇒ NotUsed)
         .mapMaterializedValue { f ⇒ promise.completeWith(f); NotUsed }
         .completionTimeout(config.chunkIO.writeTimeout)
-        .recoverWithRetries(1, { case _ ⇒ Source.empty })
+        .recover { case _ ⇒ NotUsed }
         .named("storageWrite")
     })
     .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
@@ -120,7 +120,7 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
         .alsoTo(Sink.foreach[(Chunk, StorageIOResult)](promise.success))
         .alsoTo(AkkaStreamUtils.failPromiseOnFailure(promise))
         .completionTimeout(config.chunkIO.readTimeout)
-        .recoverWithRetries(1, { case _ ⇒ Source.empty })
+        .recover { case _ ⇒ NotUsed }
         .named("storageReadGraph")
     })
     .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))

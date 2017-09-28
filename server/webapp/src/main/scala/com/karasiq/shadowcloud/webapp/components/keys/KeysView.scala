@@ -77,7 +77,7 @@ class KeysView()(implicit context: AppContext, kc: KeysContext) extends Bootstra
 
       val propsPlaceholder =
         """|# Example custom configuration
-           |encryption.algorithm = X25519+XSalsa20/Poly1305
+           |encryption.algorithm = "X25519+XSalsa20/Poly1305"
            |signing {
            |  algorithm = Ed25519
            |  hashing.algorithm = Blake2b

@@ -119,10 +119,9 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
           .via(StorageUtils.wrapCountStream(key))
           .alsoToMat(Sink.head)(Keep.right)
           .withAttributes(fileStreamAttributes)
-          .async
         
         dataStream
-          .alsoToMat(StreamConverters.asInputStream(15 seconds))(Keep.right)
+          .alsoToMat(StreamConverters.asInputStream())(Keep.right)
           .mapMaterializedValue(promise.success)
           .alsoTo(AkkaStreamUtils.failPromiseOnFailure(promise))
           .viaMat(AkkaStreamUtils.dropUpstream(writeStream))(Keep.right)

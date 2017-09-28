@@ -39,13 +39,13 @@ object RegionGC {
 
   // Messages
   sealed trait Message
-  case class CollectGarbage(strategy: GCStrategy = GCStrategy.Default) extends Message with NotInfluenceReceiveTimeout
+  final case class CollectGarbage(strategy: GCStrategy = GCStrategy.Default) extends Message with NotInfluenceReceiveTimeout
   object CollectGarbage extends MessageStatus[RegionId, GCReport]
-  case class Defer(time: FiniteDuration) extends Message with NotInfluenceReceiveTimeout
+  final case class Defer(time: FiniteDuration) extends Message with NotInfluenceReceiveTimeout
 
   private sealed trait InternalMessage extends Message with PossiblyHarmful
-  private case class StartGCNow(strategy: GCStrategy = GCStrategy.Default) extends InternalMessage
-  private case class DeleteGarbage(regionState: RegionGCState, storageStates: Seq[(RegionStorage, StorageGCState)]) extends InternalMessage
+  private final case class StartGCNow(strategy: GCStrategy = GCStrategy.Default) extends InternalMessage
+  private final case class DeleteGarbage(regionState: RegionGCState, storageStates: Seq[(RegionStorage, StorageGCState)]) extends InternalMessage
 
   // Props
   private[actors] def props(regionId: RegionId, config: GCConfig): Props = {
@@ -75,16 +75,11 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
         log.debug("Starting garbage collection")
         self.tell(StartGCNow(gcStrategy), sender())
       } else if (config.runOnLowSpace.nonEmpty && gcDeadline.isOverdue()) {
-        val freeSpaceFuture = sc.ops.region.getStorages(regionId).map { storages ⇒
-          storages
-            .map(_.health.freeSpace)
-            .sum
-        }
-
-        freeSpaceFuture.onComplete {
-          case Success(freeSpace) ⇒
-            log.debug("Estimate free space on region {}: {}", regionId, MemorySize(freeSpace))
-            if (config.runOnLowSpace.exists(_ > freeSpace)) {
+        val healthFuture = sc.ops.region.getHealth(regionId)
+        healthFuture.onComplete {
+          case Success(health) ⇒
+            log.debug("Estimate free space on region {}: {}", regionId, MemorySize(health.freeSpace))
+            if (health.fullyOnline && config.runOnLowSpace.exists(_ > health.freeSpace)) {
               log.debug("Free space lower than {}, starting GC", MemorySize(config.runOnLowSpace.get))
               self ! StartGCNow(gcStrategy)
             }

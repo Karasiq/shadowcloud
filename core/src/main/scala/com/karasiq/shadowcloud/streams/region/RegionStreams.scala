@@ -10,7 +10,7 @@ import akka.stream.scaladsl.{Flow, Source}
 import com.karasiq.shadowcloud.config.{ParallelismConfig, TimeoutsConfig}
 import com.karasiq.shadowcloud.exceptions.SCException
 import com.karasiq.shadowcloud.index.files.FileVersions
-import com.karasiq.shadowcloud.model.{Chunk, File, Path}
+import com.karasiq.shadowcloud.model.{Chunk, File, Path, RegionId}
 import com.karasiq.shadowcloud.ops.region.RegionOps
 import com.karasiq.shadowcloud.streams.file.FileIndexer
 
@@ -28,15 +28,15 @@ final class RegionStreams(regionSupervisor: ActorRef, parallelism: ParallelismCo
 
   private[this] val regionOps = RegionOps(regionSupervisor, timeouts)
 
-  val writeChunks = Flow[(String, Chunk)]
+  val writeChunks = Flow[(RegionId, Chunk)]
     .mapAsync(parallelism.write) { case (regionId, chunk) ⇒ regionOps.writeChunk(regionId, chunk) }
     .named("writeChunks")
 
-  val readChunks = Flow[(String, Chunk)]
+  val readChunks = Flow[(RegionId, Chunk)]
     .mapAsync(parallelism.read) { case (regionId, chunk) ⇒ regionOps.readChunk(regionId, chunk) }
     .named("readChunks")
 
-  val findFiles = Flow[(String, Path)]
+  val findFiles = Flow[(RegionId, Path)]
     .mapAsync(parallelism.query) { case (regionId, path) ⇒
       regionOps.getFiles(regionId, path)
         .map((path, _))
@@ -48,13 +48,13 @@ final class RegionStreams(regionSupervisor: ActorRef, parallelism: ParallelismCo
     .map(e ⇒ FileVersions.mostRecent(e._2))
     .named("findFile")
 
-  val getFolder = Flow[(String, Path)]
+  val getFolder = Flow[(RegionId, Path)]
     .mapAsync(parallelism.query) { case (regionId, path) ⇒
       regionOps.getFolder(regionId, path)
     }
     .named("getFolder")
 
-  val createFile: Flow[(String, Path, FileIndexer.Result), File, NotUsed] = {
+  val createFile: Flow[(RegionId, Path, FileIndexer.Result), File, NotUsed] = {
     Flow[(String, Path, FileIndexer.Result)]
       .flatMapConcat { case (regionId, path, result) ⇒
         val future = regionOps.createFile(regionId, File.create(path, result.checksum, result.chunks))

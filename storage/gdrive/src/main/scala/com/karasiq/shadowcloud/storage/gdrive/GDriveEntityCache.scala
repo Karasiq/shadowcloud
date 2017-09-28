@@ -1,10 +1,10 @@
 package com.karasiq.shadowcloud.storage.gdrive
 
-import scala.collection.concurrent.TrieMap
 import scala.concurrent.{ExecutionContext, Future}
 
 import com.karasiq.gdrive.files.{GDrive, GDriveService}
 import com.karasiq.shadowcloud.model.Path
+import com.karasiq.shadowcloud.utils.CacheMap
 
 private[gdrive] object GDriveEntityCache {
   def apply(service: GDriveService)(implicit ec: ExecutionContext): GDriveEntityCache = {
@@ -18,29 +18,23 @@ private[gdrive] final class GDriveEntityCache(service: GDriveService)(implicit e
   type FileId = String
   type FileIds = Vector[FileId]
 
-  private[this] val folderIdCache = TrieMap.empty[Path, Future[FileId]]
-  private[this] val filesCache = TrieMap.empty[Path, Future[FileList]]
+  private[this] val folderIdCache = CacheMap[Path, FileId]
+  private[this] val filesCache = CacheMap[Path, FileList]
 
   def getOrCreateFolderId(path: Path): Future[FileId] = {
-    folderIdCache.getOrElseUpdate(path, Future(service.createFolder(path.nodes).id))
+    folderIdCache.get(path)(Future(service.createFolder(path.nodes).id))
   }
 
   def getFolderId(path: Path): Future[FileId] = {
-    folderIdCache.getOrElseUpdate(path, Future(service.folder(path.nodes).id))
+    folderIdCache.get(path)(Future(service.folder(path.nodes).id))
   }
 
   def getFileIds(path: Path, cached: Boolean = true): Future[FileIds] = {
     def getActualFiles() = getFolderId(path.parent).map(service.files(_, path.name).toVector)
 
-    val cachedFiles = filesCache.getOrElseUpdate(path, getActualFiles())
-    cachedFiles.flatMap { cachedFiles ⇒
-      if (cached && cachedFiles.nonEmpty) {
-        Future.successful(cachedFiles.map(_.id))
-      } else {
-        val future = getActualFiles()
-        filesCache += path → future
-        future.map(_.map(_.id))
-      }
+    filesCache.get(path, cached)(getActualFiles()).map { cachedFiles ⇒
+      if (cachedFiles.isEmpty) filesCache.remove(path)
+      cachedFiles.map(_.id)
     }
   }
 

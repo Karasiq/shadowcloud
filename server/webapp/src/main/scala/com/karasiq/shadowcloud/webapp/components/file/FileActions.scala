@@ -7,11 +7,13 @@ import scalaTags.all._
 
 import akka.Done
 import rx.{Rx, Var}
+import rx.async._
 
 import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
+import com.karasiq.shadowcloud.webapp.utils.ExportUtils
 
 object FileActions {
   def apply(file: File, useId: Boolean = false)(implicit context: AppContext, folderContext: FolderContext): FileActions = {
@@ -27,6 +29,7 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
       renderDownloadLink(),
       renderRename(),
       renderDelete(),
+      renderInspect(),
       if (TextFileView.canBeViewed(file)) renderEditor() else (),
       if (MediaFileView.canBeViewed(file)) renderPlayer() else ()
     )
@@ -117,6 +120,20 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
       Rx(if (deleted()) textDecoration.`line-through` else textDecoration.none).auto,
       renderAction(context.locale.deleteFile, AppIcons.delete, onclick := Callback.onClick(_ ⇒ if (!deleted.now) deleteFile()))
     )
+  }
+
+  private[this] def renderInspect(): TagT = {
+    def showInspectDialog(): Unit = {
+      val fileFuture = context.api.getFile(folderContext.regionId, file.path, file.id, dropChunks = false, folderContext.scope.now) /* if (useId) {
+        context.api.getFile(folderContext.regionId, file.path, file.id, dropChunks = false, folderContext.scope.now)
+      } else {
+        context.api.getFiles(folderContext.regionId, file.path, dropChunks = false, folderContext.scope.now).map(FileVersions.mostRecent)
+      } */
+      val jsonRx = fileFuture.map(ExportUtils.encodeFile).toRx("")
+      Modal(context.locale.inspectFile, pre(jsonRx), AppComponents.modalClose(), dialogStyle = ModalDialogSize.large).show()
+    }
+
+    renderAction(context.locale.inspectFile, AppIcons.inspect, onclick := Callback.onClick(_ ⇒ showInspectDialog()))
   }
 
   private[this] def renderAction(title: ModifierT, icon: IconModifier, linkMd: ModifierT*): TagT = {

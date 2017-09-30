@@ -28,6 +28,7 @@ object AppIcons {
   val upload: Icon = "upload"
   val viewText: Icon = "file-text-o"
   val editText: Icon = "edit"
+  val inspect: Icon = "user-secret"
 
   val revisions: Icon = "clone"
   val availability: Icon = "balance-scale"

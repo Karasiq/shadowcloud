@@ -5,7 +5,7 @@ import akka.util.ByteString
 import com.trueaccord.scalapb.{GeneratedEnum, GeneratedEnumCompanion, GeneratedMessage, GeneratedMessageCompanion}
 import play.api.libs.json._
 
-import com.karasiq.common.encoding.Base64
+import com.karasiq.common.encoding.{Base64, HexString}
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
@@ -19,8 +19,8 @@ import com.karasiq.shadowcloud.model.utils.RegionStateReport.{RegionStatus, Stor
 //noinspection ConvertExpressionToSAM
 trait SCJsonEncoders {
   implicit val byteStringFormat = Format[ByteString](
-    Reads(value ⇒ JsSuccess(Base64.decode(value.as[String]))),
-    Writes(value ⇒ JsString(Base64.encode(value)))
+    Reads(value ⇒ JsSuccess(HexString.decode(value.as[String]))),
+    Writes(value ⇒ JsString(HexString.encode(value)))
   )
 
   implicit val akkaDoneFormat = Format[Done](

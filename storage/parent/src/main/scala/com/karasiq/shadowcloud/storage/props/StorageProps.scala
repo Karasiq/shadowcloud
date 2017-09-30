@@ -8,6 +8,7 @@ import scala.language.postfixOps
 import com.typesafe.config.Config
 
 import com.karasiq.common.configs.ConfigImplicits
+import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.config.{ConfigProps, WrappedConfig, WrappedConfigFactory}
 import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.model.Path
@@ -20,6 +21,10 @@ final case class StorageProps(rootConfig: Config, storageType: String, address: 
                               provider: String = "") extends WrappedConfig {
 
   require(storageType.nonEmpty, "Storage type should not be empty")
+
+  override def toString = {
+    "StorageProps" + (storageType, address, credentials, quota, provider).toString()
+  }
 }
 
 object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplicits {
@@ -83,6 +88,10 @@ object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplic
     require(useSpacePercent >= 0 && useSpacePercent <= 100, "Space percent should be between 0 and 100")
 
     def isEmpty: Boolean = limitSpace.isEmpty
+
+    override def toString: String = {
+      "Quota(" + useSpacePercent + "%" + limitSpace.fold("")(bs ⇒ " of " + MemorySize(bs)) + ")"
+    }
   }
 
   object Quota extends WrappedConfigFactory[Quota] {

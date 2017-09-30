@@ -3,6 +3,7 @@ package com.karasiq.shadowcloud.webapp.utils
 import play.api.libs.json.Json
 
 import com.karasiq.shadowcloud.api.json.SCJsonEncoders
+import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.model.keys.KeySet
 
 object ExportUtils {
@@ -15,5 +16,9 @@ object ExportUtils {
 
   def decodeKey(key: String): KeySet = {
     Json.parse(key).as[KeySet]
+  }
+
+  def encodeFile(file: File): String = {
+    Json.prettyPrint(Json.toJson(file))
   }
 }

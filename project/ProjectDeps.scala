@@ -93,4 +93,8 @@ object ProjectDeps {
   def gdrive: Deps = Seq(
     "com.github.karasiq" %% "gdrive-api" % "1.0.12"
   )
+
+  def mailrucloud: Deps = Seq(
+    "com.github.karasiq" %% "mailrucloud-api" % "1.0.0-SNAPSHOT"
+  )
 }

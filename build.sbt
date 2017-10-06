@@ -141,6 +141,9 @@ lazy val storageParent = Project("storage-parent", file("storage") / "parent")
 lazy val googleDriveStorage = storagePlugin("gdrive")
   .settings(libraryDependencies ++= ProjectDeps.gdrive)
 
+lazy val mailruCloudStorage = storagePlugin("mailrucloud")
+  .settings(libraryDependencies ++= ProjectDeps.mailrucloud)
+
 // Metadata plugins
 def metadataPlugin(id: String): Project = {
   val prefixedId = s"metadata-$id"

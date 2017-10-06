@@ -89,7 +89,7 @@ lazy val coreAssembly = (project in file("core/assembly"))
     core % "compile->compile;test->test", persistence,
     bouncyCastleCrypto, libsodiumCrypto,
     tikaMetadata, imageioMetadata,
-    googleDriveStorage
+    googleDriveStorage, mailruCloudStorage
   )
   .aggregate(
     core, persistence,

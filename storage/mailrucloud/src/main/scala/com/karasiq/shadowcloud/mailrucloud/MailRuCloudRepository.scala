@@ -3,15 +3,14 @@ package com.karasiq.shadowcloud.mailrucloud
 import scala.language.implicitConversions
 
 import akka.NotUsed
-import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
+import akka.http.scaladsl.model.HttpEntity
 import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.util.ByteString
 
 import com.karasiq.mailrucloud.api.{MailCloudClient, MailCloudTypes}
-import com.karasiq.mailrucloud.api.MailCloudTypes.{CsrfToken, Nodes, Session}
+import com.karasiq.mailrucloud.api.MailCloudTypes.{ApiException, CsrfToken, Nodes, Session}
 import com.karasiq.shadowcloud.model.Path
-import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
@@ -52,8 +51,14 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
     Flow[ByteString]
       .via(ByteStreams.concat)
       .flatMapConcat { bytes ⇒
-        val future = client.upload(key, HttpEntity.Default(ContentTypes.`application/octet-stream`, bytes.length, Source.single(bytes)))
-        Source.fromFuture(future).map(_ ⇒ StorageIOResult.Success(key, bytes.length))
+        client.createFolder(key.parent)
+
+        Source.fromFuture(client.createFolder(key.parent))
+          .recover { case _ ⇒ NotUsed }
+          .mapAsync(1)(_ ⇒ client.upload(key, HttpEntity(bytes)))
+          .log("mailrucloud-upload")
+          .map(_ ⇒ bytes.length)
+          .via(StorageUtils.wrapCountStream(key))
       }
       .via(StorageUtils.foldStream(key))
       .toMat(Sink.head)(Keep.right)
@@ -82,6 +87,7 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
         Source(files.map(_.path: Path).toList)
           .concat(Source(folders.toList).map(_.path: Path).via(traverseFlow))
       }
+      .recoverWithRetries(1, { case ae: ApiException if ae.errorName.contains("not_exists") ⇒ Source.empty })
       .named("mailrucloudTraverse")
 
     Source.single(fromPath)

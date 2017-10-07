@@ -59,7 +59,6 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
           .map { file ⇒ require(Path.fromString(file.path) == key, s"Invalid path: $file"); file.size }
           .via(StorageUtils.wrapCountStream(key))
       }
-      .via(StorageUtils.foldStream(key))
       .toMat(Sink.head)(Keep.right)
       .named("mailrucloudWrite")
   }

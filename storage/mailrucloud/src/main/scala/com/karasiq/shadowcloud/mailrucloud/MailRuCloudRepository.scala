@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.mailrucloud
 import scala.language.implicitConversions
 
 import akka.NotUsed
-import akka.http.scaladsl.model.HttpEntity
+import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
 import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.util.ByteString
@@ -51,11 +51,8 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
     Flow[ByteString]
       .via(ByteStreams.concat)
       .flatMapConcat { bytes ⇒
-        client.createFolder(key.parent)
-
-        Source.fromFuture(client.createFolder(key.parent))
-          .recover { case _ ⇒ NotUsed }
-          .mapAsync(1)(_ ⇒ client.upload(key, HttpEntity(bytes)))
+        getOrCreateFolder(key.parent)
+          .mapAsync(1)(_ ⇒ client.upload(key, HttpEntity(ContentTypes.`application/octet-stream`, bytes)))
           .log("mailrucloud-upload")
           .map(_ ⇒ bytes.length)
           .via(StorageUtils.wrapCountStream(key))
@@ -99,5 +96,13 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
         .toMat(Sink.head)(Keep.right)
       )(Keep.right)
       .named("mailrucloudKeys")
+  }
+
+  private[this] def getOrCreateFolder(path: Path): Source[Path, NotUsed] = {
+    Source.fromFuture(client.folder(path))
+      .map(_.path: MailCloudTypes.EntityPath)
+      .recoverWithRetries(1, { case _ ⇒ Source.fromFuture(client.createFolder(path)) })
+      .map(ep ⇒ ep: Path)
+      .named("getOrCreateFolder")
   }
 }

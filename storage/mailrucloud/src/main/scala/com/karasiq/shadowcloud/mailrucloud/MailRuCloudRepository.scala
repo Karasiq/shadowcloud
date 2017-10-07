@@ -21,6 +21,7 @@ object MailRuCloudRepository {
   }
 
   private implicit def implicitPathToMCPath(path: Path): MailCloudTypes.EntityPath = {
+    require(Path.isConventional(path), "Non conventional path")
     MailCloudTypes.EntityPath(path.nodes)
   }
 
@@ -53,8 +54,9 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
       .flatMapConcat { bytes ⇒
         getOrCreateFolder(key.parent)
           .mapAsync(1)(_ ⇒ client.upload(key, HttpEntity(ContentTypes.`application/octet-stream`, bytes)))
-          .log("mailrucloud-upload")
-          .map(_ ⇒ bytes.length)
+          .mapAsync(2)(client.file)
+          .log("mailrucloud-files")
+          .map { file ⇒ require(Path.fromString(file.path) == key, s"Invalid path: $file"); file.size }
           .via(StorageUtils.wrapCountStream(key))
       }
       .via(StorageUtils.foldStream(key))
@@ -104,5 +106,5 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
       .recoverWithRetries(1, { case _ ⇒ Source.fromFuture(client.createFolder(path)) })
       .map(ep ⇒ ep: Path)
       .named("getOrCreateFolder")
-  }
+  } 
 }

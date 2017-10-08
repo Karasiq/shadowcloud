@@ -34,7 +34,7 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
 
   def read(key: Path): Source[Data, Result] = {
     val path = toRealPath(key)
-    FileIO.fromPath(path).mapMaterializedValue(StorageUtils.wrapIOResult(path.toString, _))
+    FileIO.fromPath(path).mapMaterializedValue(StorageUtils.wrapAkkaIOFuture(path.toString, _))
   }
 
   def write(key: Path): Sink[Data, Result] = {
@@ -42,7 +42,7 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
     val parentDir = path.getParent
     if (!Files.isDirectory(parentDir)) Files.createDirectories(parentDir)
     FileIO.toPath(path, Set(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))
-      .mapMaterializedValue(StorageUtils.wrapIOResult(path.toString, _))
+      .mapMaterializedValue(StorageUtils.wrapAkkaIOFuture(path.toString, _))
   }
 
   def delete: Sink[Path, Result] = {

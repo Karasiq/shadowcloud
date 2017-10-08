@@ -79,7 +79,7 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
         if (fileIds.isEmpty) throw StorageException.NotFound(key)
         StreamConverters
           .fromInputStream(() ⇒ service.download(fileIds.head), SizeUnit.MB.intValue)
-          .mapMaterializedValue(StorageUtils.wrapIOResult(key, _))
+          .mapMaterializedValue(StorageUtils.wrapAkkaIOFuture(key, _))
       })(Keep.right)
       .mapMaterializedValue(fs ⇒ StorageUtils.wrapFuture(key, fs.map(StorageUtils.foldIOResults)))
 

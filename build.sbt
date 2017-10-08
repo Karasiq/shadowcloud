@@ -89,7 +89,7 @@ lazy val coreAssembly = (project in file("core/assembly"))
     core % "compile->compile;test->test", persistence,
     bouncyCastleCrypto, libsodiumCrypto,
     tikaMetadata, imageioMetadata,
-    googleDriveStorage, mailruCloudStorage
+    googleDriveStorage, mailruCloudStorage, webdavStorage
   )
   .aggregate(
     core, persistence,
@@ -143,6 +143,9 @@ lazy val googleDriveStorage = storagePlugin("gdrive")
 
 lazy val mailruCloudStorage = storagePlugin("mailrucloud")
   .settings(libraryDependencies ++= ProjectDeps.mailrucloud)
+
+lazy val webdavStorage = storagePlugin("webdav")
+  .settings(libraryDependencies ++= ProjectDeps.sardine)
 
 // Metadata plugins
 def metadataPlugin(id: String): Project = {

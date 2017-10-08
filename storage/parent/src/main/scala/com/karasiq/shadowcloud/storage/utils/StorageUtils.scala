@@ -56,14 +56,16 @@ object StorageUtils {
       StorageException.IOFailure(path, error)
   }
 
-  def wrapIOResult(path: Path, future: Future[AkkaIOResult])(implicit ec: ExecutionContext): Future[StorageIOResult] = {
-    wrapFuture(path, future.map {
-      case AkkaIOResult(count, Success(Done)) ⇒
-        StorageIOResult.Success(path, count)
+  def wrapAkkaIOResult(path: Path, result: AkkaIOResult) = result match {
+    case AkkaIOResult(count, Success(Done)) ⇒
+      StorageIOResult.Success(path, count)
 
-      case AkkaIOResult(_, Failure(error)) ⇒
-        StorageIOResult.Failure(path, StorageUtils.wrapException(path, error))
-    })
+    case AkkaIOResult(_, Failure(error)) ⇒
+      StorageIOResult.Failure(path, StorageUtils.wrapException(path, error))
+  }
+
+  def wrapAkkaIOFuture(path: Path, future: Future[AkkaIOResult])(implicit ec: ExecutionContext): Future[StorageIOResult] = {
+    wrapFuture(path, future.map(wrapAkkaIOResult(path, _)))
   }
 
   def wrapFuture(path: Path, future: Future[_ <: StorageIOResult])(implicit ec: ExecutionContext): Future[StorageIOResult] = {
@@ -91,6 +93,18 @@ object StorageUtils {
     Flow[N]
       .map(count ⇒ StorageIOResult.Success(path, num.toLong(count)))
       .via(wrapStream(path))
+  }
+
+  def countPassedBytes(path: Path = Path.root): Flow[ByteString, StorageIOResult, NotUsed] = {
+    Flow[ByteString]
+      .fold(0L)((c, bs) ⇒ c + bs.length)
+      .via(wrapCountStream(path))
+  }
+
+  def countPassedElements[T](path: Path = Path.root): Flow[T, StorageIOResult, NotUsed] = {
+    Flow[T]
+      .fold(0L)((c, _) ⇒ c + 1)
+      .via(wrapCountStream(path))
   }
 
   def unwrapFuture(future: Future[_ <: StorageIOResult])(implicit ec: ExecutionContext): Future[StorageIOResult] = {

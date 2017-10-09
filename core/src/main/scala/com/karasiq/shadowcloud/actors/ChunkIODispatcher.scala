@@ -265,6 +265,7 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
           .withAttributes(Attributes.logLevels(onElement = Logging.WarningLevel) and ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
       })(Keep.right)
       .mapMaterializedValue(_.map(StorageUtils.foldIOResultsIgnoreErrors))
+      .idleTimeout(sc.config.timeouts.chunksDelete)
       .toMat(Sink.fold(Set.empty[ChunkPath])(_ + _))(Keep.both)
       .named("deleteChunks")
       .run()

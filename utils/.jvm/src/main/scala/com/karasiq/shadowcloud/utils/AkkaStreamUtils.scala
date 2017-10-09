@@ -1,12 +1,15 @@
 package com.karasiq.shadowcloud.utils
 
+import java.io.InputStream
+
 import scala.concurrent.{Future, Promise}
 import scala.concurrent.duration.{Duration, FiniteDuration}
 import scala.util.{Failure, Success}
 
 import akka.NotUsed
 import akka.stream.{FlowShape, Graph, SourceShape}
-import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
+import akka.stream.scaladsl.{Flow, Keep, Sink, Source, StreamConverters}
+import akka.util.ByteString
 
 object AkkaStreamUtils {
   def groupedOrInstant[T, M](queueSize: Int, queueTime: FiniteDuration): Flow[T, Seq[T], NotUsed] = {
@@ -59,5 +62,19 @@ object AkkaStreamUtils {
   def failPromiseOnComplete[T, PT](promise: Promise[PT]) = Sink.onComplete[T] {
     case Success(_) ⇒ promise.tryFailure(new Exception("Stream completed"))
     case Failure(error) ⇒ promise.tryFailure(error)
+  }
+
+  def writeInputStream[T, M](f: InputStream ⇒ Graph[SourceShape[T], M]): Flow[ByteString, T, Future[Seq[M]]] = {
+    val promise = Promise[InputStream]
+    Flow[ByteString]
+      .alsoTo(StreamConverters.asInputStream().mapMaterializedValue(promise.success))
+      .alsoTo(failPromiseOnFailure(promise))
+      .via(dropUpstream(Source.fromFuture(promise.future)))
+      .async
+      .viaMat(flatMapConcatMat { inputStream ⇒
+        val graph = f(inputStream)
+        Source.fromGraph(graph).mapMaterializedValue(Future.successful)
+      })(Keep.right)
+      .named("writeInputStream")
   }
 }

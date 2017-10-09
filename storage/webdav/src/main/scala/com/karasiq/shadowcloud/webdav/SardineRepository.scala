@@ -97,7 +97,6 @@ class SardineRepository(props: StorageProps)(implicit dispatcher: MessageDispatc
           StorageIOResult.Success(path, size) :: Nil
         }
       }
-      .log("webdav-delete")
       .via(StorageUtils.foldStream())
       .toMat(Sink.head)(Keep.right)
       .withAttributes(ActorAttributes.supervisionStrategy(Supervision.restartingDecider) and ActorAttributes.dispatcher(dispatcher.id))

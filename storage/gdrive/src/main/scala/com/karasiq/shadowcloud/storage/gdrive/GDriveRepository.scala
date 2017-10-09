@@ -71,7 +71,7 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
     val idsSource = Source.single(key)
       .mapAsync(1)(entityCache.getFileIds(_))
       .initialTimeout(15 seconds)
-      .log("gdrive-file-ids")
+      // .log("gdrive-file-ids")
       .withAttributes(defaultAttributes)
 
     val blockingSource = idsSource
@@ -135,7 +135,6 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
 
   def delete = {
     Flow[Path]
-      .log("gdrive-delete")
       .mapAsyncUnordered(2) { path ⇒
         def isDeleted(fileId: String) = Try(service.delete(fileId)).isSuccess
         val deletedCount = entityCache.getFileIds(path, cached = false).map(_.count(isDeleted))

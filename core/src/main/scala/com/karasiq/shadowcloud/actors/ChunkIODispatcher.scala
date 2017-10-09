@@ -8,6 +8,7 @@ import scala.util.{Failure, Success}
 
 import akka.{Done, NotUsed}
 import akka.actor.{Actor, ActorLogging, Kill, Props}
+import akka.event.Logging
 import akka.pattern.pipe
 import akka.stream._
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, Sink, Source, Zip}
@@ -259,8 +260,9 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
           .toMat(repository.delete)(Keep.right)
 
         Source(chunks)
+          .log("chunks-delete")
           .alsoToMat(deleteSink)(Keep.right)
-          .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+          .withAttributes(Attributes.logLevels(onElement = Logging.WarningLevel) and ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
       })(Keep.right)
       .mapMaterializedValue(_.map(StorageUtils.foldIOResultsIgnoreErrors))
       .toMat(Sink.fold(Set.empty[ChunkPath])(_ + _))(Keep.both)

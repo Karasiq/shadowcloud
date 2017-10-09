@@ -12,7 +12,7 @@ import com.karasiq.highlightjs.HighlightJS
 import com.karasiq.markedjs.{Marked, MarkedOptions, MarkedRenderer}
 import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.utils.Utils
-import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
+import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons, TextEditor}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
 import com.karasiq.shadowcloud.webapp.utils.HtmlUtils
@@ -96,23 +96,20 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
 
   private[this] def renderEditor(content: String): TagT = {
     val uploading = Var(false)
-    val newContent = Var(content)
-
-    Form(
-      FormInput.textArea(context.locale.edit, rows := 20, newContent.reactiveInput, AppComponents.tabOverride),
-      Form.submit(context.locale.submit)("disabled".classIf(uploading), ButtonStyle.success, onclick := Callback.onClick { _ ⇒
-        if (!uploading.now) {
-          uploading() = true
-          val (_, future) = context.api.uploadFile(folderContext.regionId, fileRx.now.path, newContent.now)
-          future.onComplete(_ ⇒ uploading() = false)
-          future.foreach { newFile ⇒
-            editorOpened() = false
-            fileRx() = newFile
-            folderContext.update(newFile.path.parent)
-          }
+    val editor = TextEditor { text ⇒
+      if (!uploading.now) {
+        uploading() = true
+        val (_, future) = context.api.uploadFile(folderContext.regionId, fileRx.now.path, text)
+        future.onComplete(_ ⇒ uploading() = false)
+        future.foreach { newFile ⇒
+          editorOpened() = false
+          fileRx() = newFile
+          folderContext.update(newFile.path.parent)
         }
-      })
-    )
+      }
+    }
+    editor.value() = content
+    editor.renderTag()
   }
 
   private[this] def renderPlain(content: String): TagT = {

@@ -4,10 +4,11 @@ import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
 import org.scalajs.dom
+import org.threeten.bp.LocalDateTime
 import rx.{Rx, Var}
 
 import com.karasiq.shadowcloud.model.Path
-import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
+import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons, TextEditor}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
 
@@ -32,8 +33,24 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext) 
       input.form.reset()
     })
 
+    val editor = new TextEditor {
+      def onSubmit(): Unit = {
+        val path = folderContext.selected.now / s"Note-${LocalDateTime.now}.txt"
+        val (_, future) = appContext.api.uploadFile(folderContext.regionId, path, value.now)
+        future.onComplete(_.foreach { _ ⇒
+          value() = ""
+          folderContext.update(path.parent)
+        })
+      }
+    }
+
+    val navigation = Navigation.pills(
+      NavigationTab(appContext.locale.uploadFiles, "upload-files", NoIcon, Form(uploadInput)),
+      NavigationTab(appContext.locale.pasteText, "paste-text", NoIcon, editor)
+    )
+
     div(
-      GridSystem.mkRow(Form(uploadInput)),
+      GridSystem.mkRow(navigation),
       GridSystem.mkRow(uploadProgressBars)
     )
   }

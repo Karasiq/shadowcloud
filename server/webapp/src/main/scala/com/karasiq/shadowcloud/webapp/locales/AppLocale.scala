@@ -43,6 +43,7 @@ trait AppLocale {
   def playFile: String
   def viewTextFile: String
   def inspectFile: String
+  def pasteText: String
 
   def fileId: String
   def createdDate: String
@@ -156,6 +157,7 @@ object AppLocale {
     val playFile = "Play"
     val viewTextFile = "View text"
     val inspectFile = "Inspect"
+    val pasteText = "Paste text"
 
     val fileId = "File ID"
     val createdDate = "Created"

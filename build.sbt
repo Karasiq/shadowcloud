@@ -194,11 +194,11 @@ lazy val server = project
       Bundle(
         "index",
         WebDeps.indexHtml, WebDeps.bootstrap, WebDeps.videoJS, WebDeps.markedJS,
-        scalaJsApplication(webapp, fastOpt = true, launcher = false).value
+        scalaJsApplication(webapp, fastOpt = false, launcher = false).value
       )
     },
     scalaJsBundlerCompile in Compile <<= (scalaJsBundlerCompile in Compile)
-      .dependsOn(fastOptJS in Compile in webapp)
+      .dependsOn(fullOptJS in Compile in webapp)
   )
   .dependsOn(coreAssembly % "compile->compile;test->test", javafx, autowireApiJVM)
   .enablePlugins(ScalaJSBundlerPlugin, JavaAppPackaging)

@@ -21,6 +21,15 @@ class SCFrontend()(implicit val appContext: AppContext) extends BootstrapCompone
 
   val regionSwitcher = RegionSwitcher()
 
+  val folderContextRx = regionSwitcher.regionSelector.selectedRegion.fold(None: Option[FolderContext]) { case (oldCtxOpt, newIdOpt) ⇒
+    oldCtxOpt.foreach { oldContext ⇒
+      oldContext.scope.kill()
+      oldContext.selected.kill()
+      oldContext.updates.kill()
+    }
+    newIdOpt.map(FolderContext(_))
+  }
+
   def render(md: ModifierT*) = {
     renderNavigationBar().render(md:_*)
   }
@@ -41,15 +50,6 @@ class SCFrontend()(implicit val appContext: AppContext) extends BootstrapCompone
   }
 
   def renderFoldersPanel(): Tag = {
-    val folderContextRx = regionSwitcher.regionSelector.selectedRegion.fold(None: Option[FolderContext]) { case (oldCtxOpt, newIdOpt) ⇒
-      oldCtxOpt.foreach { oldContext ⇒
-        oldContext.scope.kill()
-        oldContext.selected.kill()
-        oldContext.updates.kill()
-      }
-      newIdOpt.map(FolderContext(_))
-    }
-
     val foldersPanelRx = folderContextRx.map[Frag] {
       case Some(folderContext) ⇒
         regionSwitcher.scopeSelector.selectedScope.foreach(folderContext.scope.update)

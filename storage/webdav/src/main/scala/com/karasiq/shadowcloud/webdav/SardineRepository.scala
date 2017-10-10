@@ -150,7 +150,9 @@ class SardineRepository(props: StorageProps)(implicit dispatcher: MessageDispatc
         }
 
         def createDirectoryRec(path: Path): Unit = {
-          if (exists(path.parent)) {
+          if (path.isRoot) {
+            // Ignore
+          } else if (exists(path.parent)) {
             createDirectory(path)
           } else {
             createDirectoryRec(path.parent)

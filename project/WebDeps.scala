@@ -11,6 +11,7 @@ object WebDeps {
         head(
           base(href := "/"),
           meta(name := "viewport", content := "width=device-width, initial-scale=1.0"),
+          link(rel := "icon", href := "favicon.png"),
           scalatags.Text.tags2.title("shadowcloud")
         ),
         body(

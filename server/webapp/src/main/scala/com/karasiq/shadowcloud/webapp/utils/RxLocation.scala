@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.webapp.utils
 import scala.scalajs.js.{UndefOr, URIUtils}
 
 import org.scalajs.dom
-import org.scalajs.dom.window
+import org.scalajs.dom.{window, Event}
 import rx._
 
 object RxLocation {
@@ -19,7 +19,7 @@ final class RxLocation(implicit ctx: Ctx.Owner) {
     window.location.hash = hash.now.fold("")("#" + _)
   }
 
-  dom.window.addEventListener("hashchange", { e ⇒
+  dom.window.addEventListener("hashchange", { (_: Event) ⇒
     hash() = readLocationHash(window.location.hash)
   })
 

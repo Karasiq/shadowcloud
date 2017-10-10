@@ -55,6 +55,10 @@ object ScalaJSDeps {
     libraryDependencies ++= Seq("com.typesafe.play" %%% "play-json" % "2.6.0" )
   }
 
+  def boopickle: Deps = {
+    libraryDependencies ++= Seq("io.suzaku" %%% "boopickle" % "1.2.6")
+  }
+
   def protobuf: Deps = {
     libraryDependencies ++= Seq(
       "com.trueaccord.scalapb" %%% "scalapb-runtime" % com.trueaccord.scalapb.compiler.Version.scalapbVersion,
@@ -68,5 +72,9 @@ object ScalaJSDeps {
 
   def commons: Deps = {
     libraryDependencies ++= Seq("com.github.karasiq" %%% "commons-configs" % "1.0.8")
+  }
+
+  def scalaTest: Deps = {
+    libraryDependencies ++= Seq("org.scalatest" %%% "scalatest" % "3.0.3" % "test")
   }
 }

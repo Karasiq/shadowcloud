@@ -173,8 +173,8 @@ lazy val imageioMetadata = metadataPlugin("imageio")
 // -----------------------------------------------------------------------
 lazy val autowireApi = (crossProject.crossType(CrossType.Pure) in (file("server") / "autowire-api"))
   .settings(commonSettings)
-  .jvmSettings(libraryDependencies ++= ProjectDeps.autowire ++ ProjectDeps.playJson)
-  .jsSettings(ScalaJSDeps.autowire, ScalaJSDeps.playJson, ScalaJSDeps.browserDom)
+  .jvmSettings(libraryDependencies ++= ProjectDeps.autowire ++ ProjectDeps.playJson ++ ProjectDeps.boopickle ++ ProjectDeps.scalaTest.map(_ % "test"))
+  .jsSettings(ScalaJSDeps.autowire, ScalaJSDeps.playJson, ScalaJSDeps.boopickle, ScalaJSDeps.browserDom, ScalaJSDeps.scalaTest)
   .dependsOn(model)
 
 lazy val autowireApiJVM = autowireApi.jvm
@@ -198,16 +198,7 @@ lazy val server = project
       )
     },
     scalaJsBundlerCompile in Compile <<= (scalaJsBundlerCompile in Compile)
-      .dependsOn(fastOptJS in Compile in webapp),
-    scalaJsBundlerCompilers := {
-      import com.karasiq.scalajsbundler.compilers.{AssetCompilers, ConcatCompiler}
-      import com.karasiq.scalajsbundler.dsl._
-      val concatJs = AssetCompilers {
-        case Mimes.javascript ⇒
-          ConcatCompiler
-      }
-      concatJs <<= AssetCompilers.default
-    }
+      .dependsOn(fastOptJS in Compile in webapp)
   )
   .dependsOn(coreAssembly % "compile->compile;test->test", javafx, autowireApiJVM)
   .enablePlugins(ScalaJSBundlerPlugin, JavaAppPackaging)

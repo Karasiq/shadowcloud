@@ -1,5 +1,5 @@
 package com.karasiq.shadowcloud.api.jvm
 
-import com.karasiq.shadowcloud.api.json.SCJsonApiServer
+import com.karasiq.shadowcloud.api.boopickle.SCBooPickleApiServer
 
-object SCDefaultApiServer extends SCJsonApiServer
+object SCDefaultApiServer extends SCBooPickleApiServer

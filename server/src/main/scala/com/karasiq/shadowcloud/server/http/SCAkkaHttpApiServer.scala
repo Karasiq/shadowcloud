@@ -10,7 +10,6 @@ import akka.http.scaladsl.model.headers.{ByteRange, Range}
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.unmarshalling.Unmarshaller
 import autowire.Core.Request
-import play.api.libs.json.Json
 
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.api.{SCApiUtils, ShadowCloudApi}
@@ -106,7 +105,7 @@ private[server] trait SCAkkaHttpApiServer { self: Directives ⇒
 
     def executeApiRequest(request: RequestT): Route = {
       onSuccess(apiRouter(request)) { result ⇒
-        complete(Json.stringify(apiServer.write(result)))
+        complete(HttpEntity(SCApiInternals.apiContentType, result))
       }
     }
   }

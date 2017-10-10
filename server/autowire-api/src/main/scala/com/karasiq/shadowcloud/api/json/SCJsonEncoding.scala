@@ -8,8 +8,8 @@ import com.karasiq.shadowcloud.model.{File, Path}
 import com.karasiq.shadowcloud.model.utils.IndexScope
 
 trait SCJsonEncoding extends SCApiEncoding {
-  type ImplicitsT = SCJsonEncoders
-  object implicits extends SCJsonEncoders
+  type ImplicitsT = SCJsonEncoders.type
+  val implicits = SCJsonEncoders
 
   import implicits._
 
@@ -58,3 +58,5 @@ trait SCJsonEncoding extends SCApiEncoding {
     Json.fromJson[T](Json.parse(value.toArray)).get
   }
 }
+
+object SCJsonEncoding extends SCJsonEncoding

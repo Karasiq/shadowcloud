@@ -5,7 +5,7 @@ import scala.concurrent.ExecutionContext
 import autowire._
 
 import com.karasiq.shadowcloud.api.{SCApiMeta, ShadowCloudApi}
-import com.karasiq.shadowcloud.api.js.SCAjaxApiClient
+import com.karasiq.shadowcloud.api.js.SCAjaxBooPickleApiClient
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.metadata.Metadata.Tag
 import com.karasiq.shadowcloud.model._
@@ -18,7 +18,7 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
-  private[api] val clientFactory = SCAjaxApiClient
+  private[api] val clientFactory = SCAjaxBooPickleApiClient
 
   type EncodingT = clientFactory.EncodingT
   val encoding = clientFactory.encoding

@@ -57,6 +57,10 @@ object ProjectDeps {
     "com.typesafe.play" %% "play-json" % "2.6.0"
   )
 
+  def boopickle: Deps = Seq(
+    "io.suzaku" %% "boopickle" % "1.2.6"
+  )
+
   def bouncyCastle: Deps = Seq(
     "org.bouncycastle" % "bcprov-jdk15on" % "1.57"
   )

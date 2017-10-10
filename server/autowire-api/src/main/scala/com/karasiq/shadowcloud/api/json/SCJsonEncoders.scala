@@ -161,3 +161,5 @@ trait SCJsonEncoders {
     )
   }
 }
+
+object SCJsonEncoders extends SCJsonEncoders

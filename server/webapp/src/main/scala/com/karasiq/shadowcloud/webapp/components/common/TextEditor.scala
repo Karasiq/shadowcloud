@@ -8,22 +8,23 @@ import rx.Var
 import com.karasiq.shadowcloud.webapp.context.AppContext
 
 object TextEditor {
-  def apply(_onSubmit: String ⇒ Unit)(implicit context: AppContext): TextEditor = {
+  def apply(_onSubmit: TextEditor ⇒ Unit)(implicit context: AppContext): TextEditor = {
     new TextEditor {
-      def onSubmit(): Unit = _onSubmit(value.now)
+      def onSubmit(): Unit = _onSubmit(this)
     }
   }
 }
 
 abstract class TextEditor(implicit context: AppContext) extends BootstrapHtmlComponent {
   val value = Var("")
+  val submitting = Var(false)
 
   def onSubmit(): Unit
 
   def renderTag(md: ModifierT*): TagT = {
     Form(
       FormInput.textArea(context.locale.edit, rows := 20, value.reactiveInput, AppComponents.tabOverride),
-      Form.submit(context.locale.submit)(ButtonStyle.success, onclick := Callback.onClick(_ ⇒ onSubmit()))
+      Form.submit(context.locale.submit)(ButtonStyle.success, "disabled".classIf(submitting), onclick := Callback.onClick(_ ⇒ if (!submitting.now) onSubmit()))
     )
   }
 }

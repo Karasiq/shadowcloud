@@ -95,17 +95,14 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
   }
 
   private[this] def renderEditor(content: String): TagT = {
-    val uploading = Var(false)
-    val editor = TextEditor { text ⇒
-      if (!uploading.now) {
-        uploading() = true
-        val (_, future) = context.api.uploadFile(folderContext.regionId, fileRx.now.path, text)
-        future.onComplete(_ ⇒ uploading() = false)
-        future.foreach { newFile ⇒
-          editorOpened() = false
-          fileRx() = newFile
-          folderContext.update(newFile.path.parent)
-        }
+    val editor = TextEditor { editor ⇒
+      editor.submitting() = true
+      val (_, future) = context.api.uploadFile(folderContext.regionId, fileRx.now.path, editor.value.now)
+      future.onComplete(_ ⇒ editor.submitting() = false)
+      future.foreach { newFile ⇒
+        editorOpened() = false
+        fileRx() = newFile
+        folderContext.update(newFile.path.parent)
       }
     }
     editor.value() = content

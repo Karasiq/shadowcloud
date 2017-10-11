@@ -31,7 +31,7 @@ private[javafx] class PasswordDialog(passwordId: String) extends Dialog[String] 
 
   title = "Password dialog"
   headerText = s"Enter $passwordId password"
-  graphic = new ImageView(JFXUtils.getResourcePath("key-icon_32.png"))
+  graphic = new ImageView(JFXUtils.getResourcePath("sc-javafx/key-icon_32.png"))
 
   dialogPane().buttonTypes += PasswordDialog.OKButton
   val okButton = dialogPane().lookupButton(PasswordDialog.OKButton)

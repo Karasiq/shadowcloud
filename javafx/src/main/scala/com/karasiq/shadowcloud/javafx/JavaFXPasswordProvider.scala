@@ -13,8 +13,9 @@ private[javafx] final class JavaFXPasswordProvider(actorSystem: ActorSystem) ext
   private[this] val context = JavaFXContext(actorSystem)
 
   private[this] def showPasswordDialog(passwordId: String): Option[String] = {
-    val dialog = new PasswordDialog(passwordId)
-    dialog.initOwner(context.app.stage)
+    val dialog = new PasswordDialog(passwordId) {
+      initOwner(context.app.stage)
+    }
     dialog.showAndWait().filter(_.nonEmpty)
   }
 

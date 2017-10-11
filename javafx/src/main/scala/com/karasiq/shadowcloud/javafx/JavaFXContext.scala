@@ -7,6 +7,7 @@ import scala.util.control.NonFatal
 import scalafx.application.{JFXApp, Platform}
 import scalafx.application.JFXApp.PrimaryStage
 import scalafx.scene.Scene
+import scalafx.scene.image.Image
 import scalafx.stage.StageStyle
 
 import akka.actor.{ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
@@ -27,10 +28,13 @@ final class JavaFXContextExtension(system: ExtendedActorSystem) extends Extensio
   object app extends JFXApp {
     stage = new PrimaryStage {
       initStyle(StageStyle.Transparent)
+      icons.add(new Image(JFXUtils.getResourcePath("sc-javafx/sc-icon.png")))
       scene = new Scene {
         onShowing = { _ ⇒
-          Platform.runLater(stage.hide())
-          initPromise.success(true)
+          Platform.runLater {
+            stage.hide()
+            initPromise.success(true)
+          }
         }
       }
     }

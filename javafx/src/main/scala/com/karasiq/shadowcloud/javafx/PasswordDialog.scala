@@ -1,6 +1,5 @@
 package com.karasiq.shadowcloud.javafx
 
-import scalafx.application.Platform
 import scalafx.geometry.Insets
 import scalafx.scene.control.{ButtonType, Dialog, PasswordField}
 import scalafx.scene.control.ButtonBar.ButtonData
@@ -14,7 +13,7 @@ private[javafx] object PasswordDialog {
 
 private[javafx] class PasswordDialog(passwordId: String) extends Dialog[String] {
   def showAndWait(): Option[String] = {
-    Platform.runLater(passwordField.requestFocus())
+    passwordField.requestFocus()
     showAndWait((s: String) ⇒ s).asInstanceOf[Option[String]]
   }
 

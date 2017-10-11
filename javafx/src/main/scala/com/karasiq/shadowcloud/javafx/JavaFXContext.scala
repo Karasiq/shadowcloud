@@ -38,10 +38,10 @@ final class JavaFXContextExtension(system: ExtendedActorSystem) extends Extensio
 
   //noinspection ConvertExpressionToSAM
   private[this] def startJavaFxApp(): Unit = {
-    Platform.implicitExit = false
     val thread = new Thread(new Runnable {
       def run(): Unit = {
         try {
+          Platform.implicitExit = false
           app.main(Array.empty)
         } catch { case NonFatal(ex) ⇒
           initPromise.tryFailure(ex)

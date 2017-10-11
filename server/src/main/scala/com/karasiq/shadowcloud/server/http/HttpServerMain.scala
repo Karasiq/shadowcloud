@@ -20,7 +20,7 @@ object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshall
     serverAppConfig
   }
 
-  private[this] val actorSystem: ActorSystem = ActorSystem("shadowcloud-server", config)
+  val actorSystem = ActorSystem("shadowcloud", config)
   protected val sc = ShadowCloud(actorSystem)
 
   // -----------------------------------------------------------------------
@@ -43,5 +43,6 @@ object HttpServerMain extends HttpApp with App with PredefinedToResponseMarshall
   // -----------------------------------------------------------------------
   // Start server
   // -----------------------------------------------------------------------
+  sc.actors.regionSupervisor // Start actor
   startServer(SCHttpSettings.host, SCHttpSettings.port, ServerSettings(actorSystem), actorSystem)
 }

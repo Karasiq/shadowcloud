@@ -198,10 +198,11 @@ lazy val server = project
       )
     },
     scalaJsBundlerCompile in Compile <<= (scalaJsBundlerCompile in Compile)
-      .dependsOn(fullOptJS in Compile in webapp)
+      .dependsOn(fullOptJS in Compile in webapp),
+    javaOptions in Universal += "-Xmx2G"
   )
   .dependsOn(coreAssembly % "compile->compile;test->test", javafx, autowireApiJVM)
-  .enablePlugins(ScalaJSBundlerPlugin, JavaAppPackaging)
+  .enablePlugins(ScalaJSBundlerPlugin, JavaAppPackaging, ClasspathJarPlugin)
 
 lazy val webapp = (project in file("server") / "webapp")
   .settings(commonSettings)

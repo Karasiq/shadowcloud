@@ -10,6 +10,17 @@ val commonSettings = Seq(
   licenses := Seq("Apache License, Version 2.0" → url("http://opensource.org/licenses/Apache-2.0"))
 )
 
+val packageSettings = Seq(
+  javaOptions in Universal += "-Xmx2G",
+  maintainer := "Karasiq",
+  packageSummary := "shadowcloud application",
+  packageDescription := "shadowcloud - alternative cloud storage client.",
+  jdkAppIcon := Some(file("setup/icon.ico")),
+  jdkPackagerType := "installer",
+  jdkPackagerJVMArgs := Seq("-Xmx2G"),
+  jdkPackagerProperties := Map("app.name" -> name.value, "app.version" -> version.value)
+)
+
 // -----------------------------------------------------------------------
 // Shared
 // -----------------------------------------------------------------------
@@ -182,7 +193,7 @@ lazy val autowireApiJVM = autowireApi.jvm
 lazy val autowireApiJS = autowireApi.js
 
 lazy val server = project
-  .settings(commonSettings)
+  .settings(commonSettings, packageSettings)
   .settings(
     name := "shadowcloud-server",
     libraryDependencies ++=
@@ -198,11 +209,10 @@ lazy val server = project
       )
     },
     scalaJsBundlerCompile in Compile <<= (scalaJsBundlerCompile in Compile)
-      .dependsOn(fullOptJS in Compile in webapp),
-    javaOptions in Universal += "-Xmx2G"
+      .dependsOn(fullOptJS in Compile in webapp)
   )
   .dependsOn(coreAssembly % "compile->compile;test->test", javafx, autowireApiJVM)
-  .enablePlugins(ScalaJSBundlerPlugin, JavaAppPackaging, ClasspathJarPlugin)
+  .enablePlugins(ScalaJSBundlerPlugin, JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin)
 
 lazy val webapp = (project in file("server") / "webapp")
   .settings(commonSettings)

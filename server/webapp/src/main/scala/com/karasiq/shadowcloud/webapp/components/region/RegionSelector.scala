@@ -23,12 +23,20 @@ object RegionSelector {
 }
 
 class RegionSelector(implicit context: AppContext, regionContext: RegionContext) extends BootstrapHtmlComponent {
-  val selectedRegion = Var(None: Option[RegionId])
+  val selectedRegion = Var(RegionSelector.getRegionIds(regionContext.regions.now).headOption)
   private[this] val selectField = renderSelectField()
 
-  regionContext.regions.foreach { state ⇒
-    if (selectedRegion.now.isEmpty || state.regions.get(selectedRegion.now.get).forall(_.suspended))
-      selectedRegion() = RegionSelector.getRegionIds(state).headOption
+  selectedRegion.triggerLater {
+    if (selectedRegion.now.isEmpty) reset()
+  }
+
+  regionContext.regions.triggerLater {
+    if (selectedRegion.now.isEmpty) reset()
+  }
+
+  def reset(): Unit = {
+    val state = regionContext.regions.now
+    selectedRegion() = RegionSelector.getRegionIds(state).headOption
   }
 
   def renderTag(md: ModifierT*): TagT = {

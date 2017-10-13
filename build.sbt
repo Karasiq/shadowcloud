@@ -11,7 +11,7 @@ val commonSettings = Seq(
 )
 
 val packageSettings = Seq(
-  javaOptions in Universal += "-Xmx2G",
+  // javaOptions in Universal += "-Xmx2G",
   maintainer := "Karasiq",
   packageSummary := "shadowcloud application",
   packageDescription := "shadowcloud - alternative cloud storage client.",
@@ -193,7 +193,7 @@ lazy val autowireApiJVM = autowireApi.jvm
 lazy val autowireApiJS = autowireApi.js
 
 lazy val server = project
-  .settings(commonSettings, packageSettings)
+  .settings(commonSettings)
   .settings(
     name := "shadowcloud-server",
     libraryDependencies ++=
@@ -211,8 +211,8 @@ lazy val server = project
     scalaJsBundlerCompile in Compile <<= (scalaJsBundlerCompile in Compile)
       .dependsOn(fullOptJS in Compile in webapp)
   )
-  .dependsOn(coreAssembly % "compile->compile;test->test", javafx, autowireApiJVM)
-  .enablePlugins(ScalaJSBundlerPlugin, JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin)
+  .dependsOn(coreAssembly % "compile->compile;test->test", autowireApiJVM)
+  .enablePlugins(ScalaJSBundlerPlugin)
 
 lazy val webapp = (project in file("server") / "webapp")
   .settings(commonSettings)
@@ -238,6 +238,14 @@ lazy val javafx = (project in file("javafx"))
     libraryDependencies ++= ProjectDeps.scalafx
   )
   .dependsOn(core)
+
+lazy val desktopApp = (project in file("desktop-app"))
+  .settings(commonSettings, packageSettings)
+  .settings(
+    name := "shadowcloud-desktop"
+  )
+  .dependsOn(server, javafx)
+  .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin)
 
 lazy val shell = (project in file("."))
   .settings(commonSettings)

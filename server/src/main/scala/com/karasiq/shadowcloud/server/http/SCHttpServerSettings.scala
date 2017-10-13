@@ -9,7 +9,7 @@ trait SCHttpServerSettings {
   // -----------------------------------------------------------------------
   // Config
   // -----------------------------------------------------------------------
-  protected object SCHttpSettings extends ConfigImplicits {
+  object httpServerSettings extends ConfigImplicits {
     val config = sc.config.rootConfig.getConfig("http-server")
     val host = config.withDefault("127.0.0.1", _.getString("host"))
     val port = config.withDefault(1911, _.getInt("port"))

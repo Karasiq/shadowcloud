@@ -15,14 +15,14 @@ import org.scalatest.{FlatSpec, Matchers}
 import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.{ShadowCloud, ShadowCloudExtension}
 import com.karasiq.shadowcloud.api.{SCApiEncoding, SCApiUtils}
-import com.karasiq.shadowcloud.server.http.SCAkkaHttpServer
+import com.karasiq.shadowcloud.server.http.SCAkkaHttpRoutes
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.test.utils.TestUtils
 
 class SCHttpServerTest extends FlatSpec with Matchers with ScalatestRouteTest {
   val sc = ShadowCloud(system)
 
-  object TestServer extends SCAkkaHttpServer with Directives {
+  object TestServer extends SCAkkaHttpRoutes with Directives {
     protected val sc: ShadowCloudExtension = SCHttpServerTest.this.sc
   }
 
@@ -35,7 +35,7 @@ class SCHttpServerTest extends FlatSpec with Matchers with ScalatestRouteTest {
   val testRegionId = "testRegion"
   val testStorageId = "testStorage"
 
-  val route = Route.seal(TestServer.scRoute)
+  val route = Route.seal(TestServer.scRoutes)
   val (testFileContent, testFile) = TestUtils.indexedBytes
   val encodedPath = SCApiEncoding.toUrlSafe(apiEncoding.encodePath(testFile.path))
 

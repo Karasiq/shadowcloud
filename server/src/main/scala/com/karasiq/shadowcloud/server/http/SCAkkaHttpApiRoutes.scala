@@ -17,7 +17,7 @@ import com.karasiq.shadowcloud.api.jvm.SCDefaultApiServer
 import com.karasiq.shadowcloud.server.http.api.ShadowCloudApiImpl
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 
-private[server] trait SCAkkaHttpApiServer { self: Directives ⇒
+private[server] trait SCAkkaHttpApiRoutes { self: Directives ⇒
   protected val sc: ShadowCloudExtension
 
   private[http] object SCApiInternals {

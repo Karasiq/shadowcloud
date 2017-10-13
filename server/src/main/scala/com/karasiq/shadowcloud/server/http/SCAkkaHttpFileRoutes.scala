@@ -21,7 +21,7 @@ import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges.RangeList
 import com.karasiq.shadowcloud.utils.Utils
 
-trait SCAkkaHttpFileServer { self: SCAkkaHttpApiServer with SCHttpServerSettings with Directives ⇒
+trait SCAkkaHttpFileRoutes { self: SCAkkaHttpApiRoutes with SCHttpServerSettings with Directives ⇒
   // -----------------------------------------------------------------------
   // Route
   // -----------------------------------------------------------------------
@@ -120,7 +120,7 @@ trait SCAkkaHttpFileServer { self: SCAkkaHttpApiServer with SCHttpServerSettings
       (SCApiDirectives.extractChunkRanges(chunkStreamSize) & extractLog) { (ranges, log) ⇒
         val fullRangesSize = ranges.size
         ranges match {
-          case ranges if !SCHttpSettings.useMultipartByteRanges || ranges.isOverlapping ⇒
+          case ranges if !httpServerSettings.useMultipartByteRanges || ranges.isOverlapping ⇒
             log.info("Byte ranges of size {} requested: {}", MemorySize(fullRangesSize), ranges)
             val stream = sc.streams.file.readChunkStreamRanged(regionId, chunks, ranges)
             respondWithHeader(`Content-Range`(toContentRange(ranges.toRange))) {

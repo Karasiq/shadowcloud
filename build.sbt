@@ -242,7 +242,8 @@ lazy val javafx = (project in file("javafx"))
 lazy val desktopApp = (project in file("desktop-app"))
   .settings(commonSettings, packageSettings)
   .settings(
-    name := "shadowcloud-desktop"
+    name := "shadowcloud-desktop",
+    libraryDependencies ++= ProjectDeps.akka.slf4j ++ ProjectDeps.logback
   )
   .dependsOn(server, javafx)
   .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin)

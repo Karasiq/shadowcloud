@@ -29,6 +29,10 @@ object ProjectDeps {
       "com.typesafe.akka" %% "akka-http-testkit" % httpVersion
     )
 
+    def slf4j: Deps = Seq(
+      "com.typesafe.akka" %% "akka-slf4j" % version
+    )
+
     def all: Deps = {
       actors ++ streams ++ http ++ persistence // ++ testKit.map(_ % "test")
     }
@@ -105,5 +109,9 @@ object ProjectDeps {
   // https://github.com/lookfirst/sardine/
   def sardine: Deps = Seq(
     "com.github.lookfirst" % "sardine" % "5.7"
+  )
+
+  def logback: Deps = Seq(
+    "ch.qos.logback" % "logback-classic" % "1.2.3"
   )
 }

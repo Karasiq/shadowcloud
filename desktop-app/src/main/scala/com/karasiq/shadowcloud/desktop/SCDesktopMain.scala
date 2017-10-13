@@ -47,7 +47,6 @@ object SCDesktopMain extends App {
     }
 
     def onExit(): Unit = {
-      println("Terminating...")
       bindFuture
         .flatMap(_.unbind())
         .flatMap(_ ⇒ actorSystem.terminate())

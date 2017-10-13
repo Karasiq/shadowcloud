@@ -3,7 +3,7 @@
 #define MyAppVersion "1.0.0"
 #define MyAppPublisher "Karasiq, Inc."
 #define MyAppURL "http://www.github.com/Karasiq/shadowcloud"
-#define MyAppExeName "bin\shadowcloud-server.bat"
+#define MyAppExeName "bin\shadowcloud-desktop.bat"
 #define ProjectFolder "..\"
 
 [Setup]
@@ -32,7 +32,7 @@ Name: russian; MessagesFile: compiler:Languages\Russian.isl
 Name: desktopicon; Description: {cm:CreateDesktopIcon}; GroupDescription: {cm:AdditionalIcons}; Languages: 
 
 [Files]
-Source: {#ProjectFolder}\server\target\universal\stage\*; DestDir: {app}; Flags: ignoreversion recursesubdirs
+Source: {#ProjectFolder}\desktop-app\target\universal\stage\*; DestDir: {app}; Flags: ignoreversion recursesubdirs
 Source: {#ProjectFolder}\setup\icon.ico; DestDir: {app}; Flags: ignoreversion
 Source: {#ProjectFolder}\setup\shadowcloud.conf; DestDir: {app}
 

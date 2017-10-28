@@ -94,7 +94,7 @@ object ProjectDeps {
     "org.scalafx" %% "scalafx" % "8.0.102-R11"
   )
 
-  def commons: Deps = Seq(
+  def commonsConfigs: Deps = Seq(
     "com.github.karasiq" %% "commons-configs" % "1.0.8"
   )
 
@@ -113,5 +113,13 @@ object ProjectDeps {
 
   def logback: Deps = Seq(
     "ch.qos.logback" % "logback-classic" % "1.2.3"
+  )
+
+  def javacv: Deps = Seq(
+    "org.bytedeco" % "javacv-platform" % "1.3.3"
+  )
+
+  def apacheCommonsIO: Deps = Seq(
+    "commons-io" % "commons-io" % "2.6"
   )
 }

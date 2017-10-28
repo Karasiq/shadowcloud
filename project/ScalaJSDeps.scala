@@ -70,7 +70,7 @@ object ScalaJSDeps {
     libraryDependencies ++= Seq("io.github.cquiroz" %%% "scala-java-time" % "2.0.0-M12")
   }
 
-  def commons: Deps = {
+  def commonsConfigs: Deps = {
     libraryDependencies ++= Seq("com.github.karasiq" %%% "commons-configs" % "1.0.8")
   }
 

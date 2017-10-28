@@ -12,6 +12,7 @@ val commonSettings = Seq(
 
 val packageSettings = Seq(
   // javaOptions in Universal += "-Xmx2G",
+  version in Windows := version.value.replace("-SNAPSHOT", ""),
   maintainer := "Karasiq",
   packageSummary := "shadowcloud application",
   packageDescription := "shadowcloud - alternative cloud storage client.",
@@ -35,8 +36,8 @@ lazy val model = crossProject
       (baseDirectory in Compile).value.getParentFile / "src" / "main" / "protobuf"
     )
   )
-  .jvmSettings(libraryDependencies ++= ProjectDeps.akka.actors ++ ProjectDeps.protobuf ++ ProjectDeps.commons)
-  .jsSettings(ScalaJSDeps.akka.actors, ScalaJSDeps.protobuf, ScalaJSDeps.commons)
+  .jvmSettings(libraryDependencies ++= ProjectDeps.akka.actors ++ ProjectDeps.protobuf ++ ProjectDeps.commonsConfigs)
+  .jsSettings(ScalaJSDeps.akka.actors, ScalaJSDeps.protobuf, ScalaJSDeps.commonsConfigs)
 
 lazy val modelJVM = model.jvm
 
@@ -99,13 +100,13 @@ lazy val coreAssembly = (project in file("core/assembly"))
   .dependsOn(
     core % "compile->compile;test->test", persistence,
     bouncyCastleCrypto, libsodiumCrypto,
-    tikaMetadata, imageioMetadata,
+    tikaMetadata, imageioMetadata, javacvMetadata,
     googleDriveStorage, mailruCloudStorage, webdavStorage
   )
   .aggregate(
     core, persistence,
     bouncyCastleCrypto, libsodiumCrypto,
-    tikaMetadata, imageioMetadata
+    tikaMetadata, imageioMetadata, javacvMetadata
   )
 
 // -----------------------------------------------------------------------
@@ -177,6 +178,10 @@ lazy val tikaMetadata = metadataPlugin("tika")
   .settings(libraryDependencies ++= ProjectDeps.tika)
 
 lazy val imageioMetadata = metadataPlugin("imageio")
+  .dependsOn(utilsJVM)
+
+lazy val javacvMetadata = metadataPlugin("javacv")
+  .settings(libraryDependencies ++= ProjectDeps.javacv)
   .dependsOn(utilsJVM)
 
 // -----------------------------------------------------------------------

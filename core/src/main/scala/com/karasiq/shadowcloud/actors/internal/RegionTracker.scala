@@ -4,13 +4,14 @@ import scala.collection.mutable
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
-import akka.actor.ActorContext
+import akka.actor.{ActorContext, OneForOneStrategy, Props, SupervisorStrategy}
 import akka.pattern.BackoffSupervisor
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.{RegionContainer, RegionDispatcher, StorageContainer, StorageIndex}
 import com.karasiq.shadowcloud.actors.utils.{ActorState ⇒ State}
 import com.karasiq.shadowcloud.config.RegionConfig
+import com.karasiq.shadowcloud.exceptions.SCException
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.model.utils.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
@@ -129,8 +130,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     storages.get(storageId) match {
       case Some(StorageStatus(`storageId`, props, State.Suspended, regions)) ⇒
         val dispatcherProps = StorageContainer.props(instantiator, storageId)
-        val supervisorProps = BackoffSupervisor.props(dispatcherProps, "container", 100 millis, 1 minute, 0.2)
-        val dispatcher = context.actorOf(supervisorProps, Utils.uniqueActorName(s"$storageId-sv"))
+        val dispatcher = context.actorOf(supervisorProps(dispatcherProps), Utils.uniqueActorName(s"$storageId-sv"))
         dispatcher ! StorageContainer.SetProps(props)
         storages += storageId → StorageStatus(storageId, props, State.Active(dispatcher), regions)
         // registerStorageRegions(storageId)
@@ -144,8 +144,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     regions.get(regionId) match {
       case Some(RegionStatus(`regionId`, config, State.Suspended, storages)) ⇒
         val dispatcherProps = RegionContainer.props(regionId)
-        val supervisorProps = BackoffSupervisor.props(dispatcherProps, "container", 100 millis, 1 minute, 0.2)
-        val dispatcher = context.actorOf(supervisorProps, Utils.uniqueActorName(s"$regionId-sv"))
+        val dispatcher = context.actorOf(supervisorProps(dispatcherProps), Utils.uniqueActorName(s"$regionId-sv"))
         dispatcher ! RegionContainer.SetConfig(config)
         regions += regionId → RegionStatus(regionId, config, State.Active(dispatcher), storages)
         // registerRegionStorages(regionId)
@@ -153,6 +152,19 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
       case _ ⇒
         // Pass
     }
+  }
+
+  private[this] def supervisorProps(props: Props): Props = {
+    BackoffSupervisor.propsWithSupervisorStrategy(props, "supervised-dispatcher", 100 millis, 1 minute, 0.2, OneForOneStrategy(5, 15 seconds) {
+      case _: IllegalArgumentException | _: SCException.NotFound | _: SCException.AlreadyExists ⇒
+        SupervisorStrategy.Resume
+
+      case _: SCException.IOError ⇒
+        SupervisorStrategy.Restart
+
+      case _ ⇒
+        SupervisorStrategy.Stop
+    })
   }
 
   // -----------------------------------------------------------------------

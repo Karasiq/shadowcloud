@@ -56,7 +56,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
           (None, Future.successful(status.chunk))
         } else {
           val chunk = status.chunk.withoutData
-          val storage = storageSelector.forRead(storages.state.resetFailures(status))
+          val storage = storageSelector.forRead(status)
           storage match {
             case Some(storage) ⇒
               log.debug("Reading chunk from {}: {}", storage.id, chunk)
@@ -485,6 +485,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
               log.warning("Cancelling chunk read: {}", chunk)
               waiting.foreach(_ ! ReadChunk.Failure(chunk, RegionException.ChunkReadFailed(chunk, error)))
               readingChunks -= chunk
+              chunks.getChunkStatus(chunk).foreach(storages.state.resetFailures)
             }
 
             if (waiting.isEmpty) {

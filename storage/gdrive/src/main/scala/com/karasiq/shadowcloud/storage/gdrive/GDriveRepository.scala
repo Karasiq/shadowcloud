@@ -97,9 +97,10 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
       folderId
     }
 
-    def blockingUpload(folderId: String, name: String, inputStream: InputStream) = {
+    def blockingUpload(folderId: String, name: String, inputStream: InputStream): Long = {
       val countingInputStream = new CountingInputStream(inputStream)
-      service.upload(folderId, name, countingInputStream)
+      val entity = service.upload(folderId, name, countingInputStream)
+      require(entity.parents.contains(folderId))
       countingInputStream.getCount
     }
 

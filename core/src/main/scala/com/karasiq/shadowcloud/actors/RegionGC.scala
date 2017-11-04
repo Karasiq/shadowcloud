@@ -6,7 +6,7 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 import akka.Done
-import akka.actor.{Actor, ActorLogging, ActorRef, NotInfluenceReceiveTimeout, PossiblyHarmful, Props, ReceiveTimeout, Status}
+import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, NotInfluenceReceiveTimeout, PossiblyHarmful, Props, ReceiveTimeout, Status}
 import akka.pattern.{ask, pipe}
 import akka.util.{ByteString, Timeout}
 
@@ -65,6 +65,7 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
   private[this] val sc = ShadowCloud()
   private[this] val gcSchedule = context.system.scheduler.schedule(5 minutes, 5 minutes, self, CollectGarbage())(dispatcher, self)
   private[this] var gcDeadline = Deadline.now
+  private[this] var timeoutSchedule: Option[Cancellable] = None
 
   // -----------------------------------------------------------------------
   // Receive
@@ -93,6 +94,8 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
 
     case StartGCNow(gcStrategy) ⇒
       context.setReceiveTimeout(10 minutes)
+      timeoutSchedule.foreach(_.cancel())
+      timeoutSchedule = Some(context.system.scheduler.scheduleOnce(10 minute, self, ReceiveTimeout))
       context.become(receiveCollecting(Set(sender()), gcStrategy))
 
       sc.ops.region.synchronize(regionId).foreach { reports ⇒
@@ -121,7 +124,8 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
         .foreach(_ ! status)
     }
 
-    context.setReceiveTimeout(Duration.Undefined)
+    timeoutSchedule.foreach(_.cancel())
+    timeoutSchedule = None
     context.become(receiveIdle)
     self ! Defer(30 minutes)
   }

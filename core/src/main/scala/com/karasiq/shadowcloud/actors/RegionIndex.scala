@@ -271,6 +271,10 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
         case KeysLoaded(keys) ⇒
           becomeOrDefault(receivePreWrite(loadedKeys ++ keys))
 
+        case Status.Failure(error) ⇒
+          log.error(error, "Keys load error")
+          synchronization.scheduleNext()
+
         case StreamCompleted ⇒
           deferAsync(NotUsed)(_ ⇒ startWrite(loadedKeys))
       }

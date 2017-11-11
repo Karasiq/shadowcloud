@@ -110,7 +110,7 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
   }
 
   private[this] def renderPlain(content: String): TagT = {
-    pre(content)
+    Bootstrap.well(content, whiteSpace.`pre-wrap`, wordWrap.`break-word`)
   }
 
   private[this] def renderCode(content: String): TagT = {

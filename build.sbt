@@ -12,14 +12,14 @@ val commonSettings = Seq(
 
 val packageSettings = Seq(
   // javaOptions in Universal += "-Xmx2G",
-  version in Windows := version.value.replace("-SNAPSHOT", ""),
+  version in Universal := version.value.replace("-SNAPSHOT", ""),
   maintainer := "Karasiq",
   packageSummary := "shadowcloud application",
   packageDescription := "shadowcloud - alternative cloud storage client.",
   jdkAppIcon := Some(file("setup/icon.ico")),
   jdkPackagerType := "installer",
   jdkPackagerJVMArgs := Seq("-Xmx2G"),
-  jdkPackagerProperties := Map("app.name" -> name.value, "app.version" -> version.value)
+  jdkPackagerProperties := Map("app.name" -> "shadowcloud", "app.version" -> version.value.replace("-SNAPSHOT", ""))
 )
 
 // -----------------------------------------------------------------------

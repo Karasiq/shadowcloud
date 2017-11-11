@@ -162,7 +162,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
               )
               val affinity = newAffinity.getOrElse(storageSelector.forWrite(status1))
               val status2 = status1.copy(WriteStatus.Pending(affinity))
-              log.debug("Repairing chunk: {}", status2)
+              log.info("Repairing chunk: {}", status2)
               startWriteChunk(status2)
             }
         }

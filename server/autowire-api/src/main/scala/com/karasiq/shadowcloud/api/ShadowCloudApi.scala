@@ -66,4 +66,5 @@ trait ShadowCloudApi {
   def createFile(regionId: RegionId, file: File): Future[Done]
   def deleteFiles(regionId: RegionId, path: Path): Future[Set[File]]
   def deleteFile(regionId: RegionId, file: File): Future[File]
+  def repairFile(regionId: RegionId, file: File, storages: Seq[StorageId], scope: IndexScope = IndexScope.default): Future[Done]
 }

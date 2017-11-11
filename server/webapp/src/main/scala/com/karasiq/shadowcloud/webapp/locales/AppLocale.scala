@@ -40,6 +40,7 @@ trait AppLocale {
   def uploadFiles: String
   def downloadFile: String
   def deleteFile: String
+  def repairFile: String
   def playFile: String
   def viewTextFile: String
   def inspectFile: String
@@ -154,6 +155,7 @@ object AppLocale {
     val uploadFiles = "Upload"
     val downloadFile = "Download"
     val deleteFile = "Delete"
+    val repairFile = "Repair"
     val playFile = "Play"
     val viewTextFile = "View text"
     val inspectFile = "Inspect"

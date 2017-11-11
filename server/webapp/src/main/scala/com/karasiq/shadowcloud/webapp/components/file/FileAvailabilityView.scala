@@ -4,31 +4,32 @@ import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
 import rx._
-import rx.async._
 
-import com.karasiq.shadowcloud.model.File
+import com.karasiq.shadowcloud.model.{File, StorageId}
 import com.karasiq.shadowcloud.model.utils.FileAvailability
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import AppContext.JsExecutionContext
+import com.karasiq.shadowcloud.webapp.utils.RxWithUpdate
 
 object FileAvailabilityView {
   def apply(file: File)(implicit context: AppContext, folderContext: FolderContext): FileAvailabilityView = {
     new FileAvailabilityView(file)
   }
 
-  private def getAvailabilityRx(file: File)(implicit context: AppContext, folderContext: FolderContext): Rx[FileAvailability] = {
-    val future = context.api.getFileAvailability(folderContext.regionId, file, folderContext.scope.now)
-    future.toRx(FileAvailability.empty(file))
+  private def getAvailabilityRx(file: File)(implicit context: AppContext, folderContext: FolderContext) = {
+    RxWithUpdate(FileAvailability.empty(file))(_ ⇒ context.api.getFileAvailability(folderContext.regionId, file, folderContext.scope.now))
   }
 }
 
 class FileAvailabilityView(file: File)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
+  lazy val availabilityRx = FileAvailabilityView.getAvailabilityRx(file)
+
   def renderTag(md: ModifierT*): TagT = {
-    AppComponents.dropdown(context.locale.show) {
-      val availabilityRx = FileAvailabilityView.getAvailabilityRx(file)
-      div(Rx(renderContent(availabilityRx(), md:_*)))
-    }
+    div(
+      div(renderRepairLink()),
+      AppComponents.dropdown(context.locale.show)(div(Rx(renderContent(availabilityRx.toRx(), md:_*))))
+    )
   }
 
   def renderContent(fileAvailability: FileAvailability, md: ModifierT*): TagT = {
@@ -57,6 +58,34 @@ class FileAvailabilityView(file: File)(implicit context: AppContext, folderConte
       for ((storageId, percentage) ← sortedPercentages)
         yield div(icon(percentage), Bootstrap.nbsp, storageId, f" ($percentage%.2f%%)", textStyle(percentage))
     )(md:_*)
+  }
+
+  def renderRepairLink(): TagT = {
+    val repairing = Var(false)
+    def showDialog(): Unit = {
+      def doRepair(storages: Seq[StorageId]) = {
+        if (!repairing.now) {
+          repairing() = true
+          val future = context.api.repairFile(folderContext.regionId, file, storages, folderContext.scope.now)
+          future.onComplete { _ ⇒
+            repairing() = false
+            availabilityRx.update()
+          }
+        }
+      }
+
+      context.api.getRegion(folderContext.regionId).foreach { status ⇒
+        val storagesSelector = FormInput.simpleMultipleSelect(context.locale.storages, status.storages.toSeq:_*)
+        Modal(context.locale.repairFile)
+          .withBody(Form(storagesSelector))
+          .withButtons(
+            AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ doRepair(storagesSelector.selected.now))),
+            AppComponents.modalClose()
+          )
+          .show()
+      }
+    }
+    AppComponents.iconLink(context.locale.repairFile, AppIcons.repair, Bootstrap.textStyle.muted.className.classIf(repairing), onclick := Callback.onClick(_ ⇒ if (!repairing.now) showDialog()))
   }
 }
 

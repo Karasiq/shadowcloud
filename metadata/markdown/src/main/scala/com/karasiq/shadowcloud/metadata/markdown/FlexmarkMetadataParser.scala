@@ -4,6 +4,7 @@ import java.util
 
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
+import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
 import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
 import com.vladsch.flexmark.ext.tables.TablesExtension
@@ -26,7 +27,7 @@ private[markdown] class FlexmarkMetadataParser extends MetadataParser {
 
   private[this] val options = {
     val options = new MutableDataSet
-    options.set(Parser.EXTENSIONS, util.Arrays.asList(TablesExtension.create(), StrikethroughExtension.create(), TaskListExtension.create(), WikiLinkExtension.create()))
+    options.set(Parser.EXTENSIONS, util.Arrays.asList(TablesExtension.create(), StrikethroughExtension.create(), TaskListExtension.create(), WikiLinkExtension.create(), AutolinkExtension.create()))
     options.set(HtmlRenderer.SOFT_BREAK, "<br />\n")
     options
   }

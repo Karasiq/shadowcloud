@@ -19,6 +19,8 @@ import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.keys.{KeyId, KeySet}
 import com.karasiq.shadowcloud.model.utils.{IndexScope, RegionStateReport}
 import com.karasiq.shadowcloud.storage.props.StorageProps
+import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
+import com.karasiq.shadowcloud.streams.region.RegionRepairStream
 
 private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends ShadowCloudApi {
   import sc.implicits.{executionContext, materializer}
@@ -248,6 +250,14 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
       actualFile ← getFullFile(regionId, file, IndexScope.default)
       _ ← sc.ops.region.deleteFiles(regionId, actualFile)
     } yield actualFile
+  }
+
+
+  def repairFile(regionId: RegionId, file: File, storages: Seq[StorageId], scope: IndexScope) = {
+    for {
+      actualFile ← getFullFile(regionId, file, scope) if actualFile.chunks.nonEmpty
+      _ ← sc.ops.background.repair(regionId, RegionRepairStream.Strategy.SetAffinity(ChunkWriteAffinity(storages)), actualFile.chunks)
+    } yield Done
   }
 
   // -----------------------------------------------------------------------

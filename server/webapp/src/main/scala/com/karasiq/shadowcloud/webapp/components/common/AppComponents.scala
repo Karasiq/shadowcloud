@@ -22,7 +22,7 @@ object AppComponents {
   )
 
   def dropdownLink(title: String, opened: Var[Boolean]): ConcreteHtmlTag[dom.html.Anchor] = {
-    iconLink(title, Rx(if (opened()) "▼" else "►"), onclick := Callback.onClick(_ ⇒ opened() = !opened.now))
+    iconLink(title, Rx(Icon.faFw(if (opened()) "caret-down" else "caret-right")), onclick := Callback.onClick(_ ⇒ opened() = !opened.now))
   }
 
   def dropdown(title: String)(content: ⇒ Modifier): ConcreteHtmlTag[dom.html.Div] = {

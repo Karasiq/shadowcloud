@@ -199,7 +199,7 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
   // -----------------------------------------------------------------------
   // Supervisor strategy
   // -----------------------------------------------------------------------
-  override def supervisorStrategy: SupervisorStrategy = OneForOneStrategy() {
+  override val supervisorStrategy = OneForOneStrategy(10, 1 minute) {
     case error: IllegalArgumentException ⇒
       log.error(error, "Unexpected error")
       SupervisorStrategy.Resume

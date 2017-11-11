@@ -100,13 +100,13 @@ lazy val coreAssembly = (project in file("core/assembly"))
   .dependsOn(
     core % "compile->compile;test->test", persistence,
     bouncyCastleCrypto, libsodiumCrypto,
-    tikaMetadata, imageioMetadata, javacvMetadata,
+    tikaMetadata, imageioMetadata, markdownMetadata, javacvMetadata,
     googleDriveStorage, mailruCloudStorage, webdavStorage
   )
   .aggregate(
     core, persistence,
     bouncyCastleCrypto, libsodiumCrypto,
-    tikaMetadata, imageioMetadata, javacvMetadata
+    tikaMetadata, imageioMetadata, markdownMetadata, javacvMetadata
   )
 
 // -----------------------------------------------------------------------
@@ -183,6 +183,9 @@ lazy val imageioMetadata = metadataPlugin("imageio")
 lazy val javacvMetadata = metadataPlugin("javacv")
   .settings(libraryDependencies ++= ProjectDeps.javacv)
   .dependsOn(utilsJVM)
+
+lazy val markdownMetadata = metadataPlugin("markdown")
+  .settings(libraryDependencies ++= ProjectDeps.flexmark)
 
 // -----------------------------------------------------------------------
 // HTTP

@@ -35,7 +35,7 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext) 
 
     val editor = TextEditor { editor ⇒
       editor.submitting() = true
-      val path = folderContext.selected.now / s"Note-${LocalDateTime.now}.txt"
+      val path = folderContext.selected.now / s"Note-${LocalDateTime.now}.md"
       val (_, future) = appContext.api.uploadFile(folderContext.regionId, path, editor.value.now)
       future.onComplete { result ⇒
         editor.submitting() = false

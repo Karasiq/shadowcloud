@@ -122,4 +122,9 @@ object ProjectDeps {
   def apacheCommonsIO: Deps = Seq(
     "commons-io" % "commons-io" % "2.6"
   )
+
+  // https://github.com/vsch/flexmark-java
+  def flexmark: Deps = Seq(
+    "com.vladsch.flexmark" % "flexmark-all" % "0.28.4"
+  )
 }

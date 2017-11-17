@@ -64,7 +64,7 @@ object RegionRepairStream {
                   request.result.tryFailure(error)
 
                 case _ ⇒
-                // Ignore
+                  // Ignore
               })
               .alsoTo(Sink.foreach(request.result.success))
           }

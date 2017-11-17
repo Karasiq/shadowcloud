@@ -13,9 +13,8 @@ object SardineHealthProvider {
 }
 
 class SardineHealthProvider(props: StorageProps)(implicit ec: ExecutionContext) extends StorageHealthProvider {
-  private[this] val sardine = SardineRepository.createSardine(props)
-
   def health = Future {
+    val sardine = SardineRepository.createSardine(props)
     val quota = sardine.getQuota(props.address.uri.getOrElse(throw new IllegalArgumentException("No WebDav URL")).toString)
     StorageHealth.normalized(quota.getQuotaAvailableBytes, quota.getQuotaAvailableBytes + quota.getQuotaUsedBytes, quota.getQuotaUsedBytes)
   }

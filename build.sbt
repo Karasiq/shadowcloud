@@ -20,7 +20,8 @@ val packageSettings = Seq(
   jdkAppIcon := Some(file("setup/icon.ico")),
   jdkPackagerType := "installer",
   jdkPackagerJVMArgs := Seq("-Xmx2G"),
-  jdkPackagerProperties := Map("app.name" -> "shadowcloud", "app.version" -> version.value.replace("-SNAPSHOT", ""))
+  jdkPackagerProperties := Map("app.name" -> "shadowcloud", "app.version" -> version.value.replace("-SNAPSHOT", "")),
+  mappings in Universal += file("setup/shadowcloud_example.conf") → "shadowcloud_example.conf"
 )
 
 // -----------------------------------------------------------------------

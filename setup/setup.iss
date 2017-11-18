@@ -34,7 +34,7 @@ Name: desktopicon; Description: {cm:CreateDesktopIcon}; GroupDescription: {cm:Ad
 [Files]
 Source: {#ProjectFolder}\desktop-app\target\universal\stage\*; DestDir: {app}; Flags: ignoreversion recursesubdirs
 Source: {#ProjectFolder}\setup\icon.ico; DestDir: {app}; Flags: ignoreversion
-Source: {#ProjectFolder}\setup\shadowcloud.conf; DestDir: {app}
+Source: {#ProjectFolder}\setup\shadowcloud_example.conf; DestDir: {app}
 
 [Icons]
 Name: {group}\{#MyAppName}; Filename: {app}\{#MyAppExeName}; IconFilename: {app}\favicon.ico; WorkingDir: {app}

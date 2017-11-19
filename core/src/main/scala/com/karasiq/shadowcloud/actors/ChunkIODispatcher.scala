@@ -181,7 +181,7 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
     repository.subRepository(regionId)
   }
 
-  private def listKeys(regionId: RegionId): Future[GetKeys.Status] = {
+  private[this] def listKeys(regionId: RegionId): Future[GetKeys.Status] = {
     val future = subRepository(regionId).keys
       .runFold(Set.empty[ChunkId])(_ + _)
     GetKeys.wrapFuture(storageId, future)

@@ -201,7 +201,8 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
         case Status.Failure(error) ⇒
           log.error(error, "Diffs load failed")
-          throw error
+          // throw error
+          synchronization.scheduleNext()
 
         case StreamCompleted ⇒
           deferAsync(NotUsed)(_ ⇒ startRead(loadedKeys))
@@ -220,7 +221,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
                 case StorageIOResult.Failure(path, error) ⇒
                   log.error(error, "Diff #{} read failed from {}", sequenceNr, path)
-                  throw error
+                  // throw error
               }
             } else {
               log.warning("Diff region or sequenceNr not match: {}", indexIOResult)
@@ -228,7 +229,8 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
             
           case Status.Failure(error) ⇒
             log.error(error, "Diff read failed")
-            throw error
+            // throw error
+            synchronization.scheduleNext()
 
           case StreamCompleted ⇒
             log.debug("Synchronization read completed")

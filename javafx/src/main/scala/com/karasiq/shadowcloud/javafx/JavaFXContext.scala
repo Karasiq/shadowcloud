@@ -24,6 +24,7 @@ object JavaFXContext extends ExtensionId[JavaFXContextExtension] with ExtensionI
 
 final class JavaFXContextExtension(system: ExtendedActorSystem) extends Extension {
   private[this] val initPromise = Promise[Boolean]
+  val initFuture = initPromise.future
 
   object app extends JFXApp {
     stage = new PrimaryStage {
@@ -59,7 +60,7 @@ final class JavaFXContextExtension(system: ExtendedActorSystem) extends Extensio
     }
 
     thread.start()
-    Await.result(initPromise.future, 1 minute)
+    Await.result(initFuture, 1 minute)
   }
 
   startJavaFxApp()

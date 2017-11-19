@@ -11,6 +11,7 @@ import com.typesafe.config.ConfigFactory
 
 import com.karasiq.common.configs.ConfigUtils
 import com.karasiq.shadowcloud.ShadowCloud
+import com.karasiq.shadowcloud.javafx.JavaFXContext
 import com.karasiq.shadowcloud.server.http.SCAkkaHttpServer
 
 object SCDesktopMain extends App {
@@ -53,4 +54,13 @@ object SCDesktopMain extends App {
         .onComplete(_ ⇒ System.exit(0))
     }
   }.addToTray()
+
+  JavaFXContext(actorSystem)
+    .initFuture
+    .flatMap(_ ⇒ bindFuture.failed)
+    .flatMap { error ⇒
+      actorSystem.log.error(error, "Bind error")
+      actorSystem.terminate()
+    }
+    .foreach(_ ⇒ System.exit(-1))
 }

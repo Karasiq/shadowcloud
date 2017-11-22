@@ -2,8 +2,9 @@ package com.karasiq.shadowcloud.dropbox
 
 import scala.concurrent.ExecutionContext
 
-import akka.stream.scaladsl.{Flow, Keep, Sink}
+import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.util.ByteString
+import com.dropbox.core.v2.files.ListFolderErrorException
 
 import com.karasiq.dropbox.client.DropboxClient
 import com.karasiq.shadowcloud.model.Path
@@ -24,6 +25,8 @@ class DropboxRepository(dropboxClient: DropboxClient)(implicit ec: ExecutionCont
     dropboxClient.list(fromPath.toString, recursive = true)
       .map(metadata ⇒ Path.fromString(metadata.getPathDisplay))
       .alsoToMat(StorageUtils.countPassedElements(fromPath).toMat(Sink.head)(Keep.right))(Keep.right)
+      .recoverWithRetries(1, { case e: ListFolderErrorException if e.errorValue.getPathValue.isNotFound ⇒ Source.empty })
+      .map(_.toRelative(fromPath))
   }
 
   def read(path: Path) = {

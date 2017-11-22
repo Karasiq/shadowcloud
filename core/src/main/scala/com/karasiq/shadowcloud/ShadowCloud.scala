@@ -4,6 +4,7 @@ import java.util.UUID
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
+import scala.reflect.ClassTag
 
 import akka.Done
 import akka.actor.{ActorContext, ActorRef, ActorSystem, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
@@ -135,8 +136,8 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
       provider.storeSession(storageId, key, serialization.toBytes(data))
     }
 
-    def get[T <: AnyRef](storageId: StorageId, key: String): Future[T] = {
-      provider.loadSession(storageId, key).map(serialization.fromBytes)
+    def get[T <: AnyRef : ClassTag](storageId: StorageId, key: String): Future[T] = {
+      provider.loadSession(storageId, key).map(serialization.fromBytes[T])
     }
   }
 

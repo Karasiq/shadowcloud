@@ -121,14 +121,14 @@ trait SCAkkaHttpFileRoutes { self: SCAkkaHttpApiRoutes with SCHttpServerSettings
         val fullRangesSize = ranges.size
         ranges match {
           case ranges if !httpServerSettings.useMultipartByteRanges || ranges.isOverlapping ⇒
-            log.info("Byte ranges of size {} requested: {}", MemorySize(fullRangesSize), ranges)
+            log.debug("Byte ranges of size {} requested: {}", MemorySize(fullRangesSize), ranges)
             val stream = sc.streams.file.readChunkStreamRanged(regionId, chunks, ranges)
             respondWithHeader(`Content-Range`(toContentRange(ranges.toRange))) {
               complete(StatusCodes.PartialContent, createEntity(stream, fullRangesSize))
             }
 
           case ranges ⇒
-            log.info("Multipart byte ranges of size {} requested: {}", MemorySize(fullRangesSize), ranges)
+            log.debug("Multipart byte ranges of size {} requested: {}", MemorySize(fullRangesSize), ranges)
             val partsStream = Source.fromIterator(() ⇒ ranges.ranges.iterator).map { range ⇒
               val dataStream = sc.streams.file.readChunkStreamRanged(regionId, chunks, RangeList(range))
               Multipart.ByteRanges.BodyPart(toContentRange(range), createEntity(dataStream, range.size))

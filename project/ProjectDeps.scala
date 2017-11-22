@@ -107,7 +107,7 @@ object ProjectDeps {
   )
 
   def dropbox: Deps = Seq(
-    "com.github.karasiq" %% "dropbox-api" % "1.0.0-SNAPSHOT"
+    "com.github.karasiq" %% "dropbox-api" % "1.0.1"
   )
 
   // https://github.com/lookfirst/sardine/

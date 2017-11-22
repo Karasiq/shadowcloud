@@ -106,6 +106,10 @@ object ProjectDeps {
     "com.github.karasiq" %% "mailrucloud-api" % "1.0.1"
   )
 
+  def dropbox: Deps = Seq(
+    "com.github.karasiq" %% "dropbox-api" % "1.0.0-SNAPSHOT"
+  )
+
   // https://github.com/lookfirst/sardine/
   def sardine: Deps = Seq(
     "com.github.lookfirst" % "sardine" % "5.7"

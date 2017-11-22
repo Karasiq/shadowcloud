@@ -103,12 +103,13 @@ lazy val coreAssembly = (project in file("core/assembly"))
     core % "compile->compile;test->test", persistence,
     bouncyCastleCrypto, libsodiumCrypto,
     tikaMetadata, imageioMetadata, markdownMetadata, javacvMetadata,
-    googleDriveStorage, mailruCloudStorage, webdavStorage
+    googleDriveStorage, mailruCloudStorage, dropboxStorage, webdavStorage
   )
   .aggregate(
     core, persistence,
     bouncyCastleCrypto, libsodiumCrypto,
-    tikaMetadata, imageioMetadata, markdownMetadata, javacvMetadata
+    tikaMetadata, imageioMetadata, markdownMetadata, javacvMetadata,
+    googleDriveStorage, mailruCloudStorage, dropboxStorage, webdavStorage
   )
 
 // -----------------------------------------------------------------------
@@ -154,6 +155,9 @@ lazy val storageParent = Project("storage-parent", file("storage") / "parent")
 
 lazy val googleDriveStorage = storagePlugin("gdrive")
   .settings(libraryDependencies ++= ProjectDeps.gdrive)
+
+lazy val dropboxStorage = storagePlugin("dropbox")
+  .settings(libraryDependencies ++= ProjectDeps.dropbox)
 
 lazy val mailruCloudStorage = storagePlugin("mailrucloud")
   .settings(libraryDependencies ++= ProjectDeps.mailrucloud)

@@ -6,6 +6,7 @@ import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.common.memory.SizeUnit
 import com.karasiq.shadowcloud.actors.context.RegionContext
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
+import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.{ChunkStatus, WriteStatus}
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
@@ -18,6 +19,7 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
     val dataRF = region.config.dataReplicationFactor
     val randomize = selectorConfig.withDefault(false, _.getBoolean("randomize"))
     val indexWriteMinSize = selectorConfig.withDefault[Long](SizeUnit.MB * 10, _.getBytes("index-write-min-size"))
+    val priority = selectorConfig.withDefault(Nil, _.getStrings("priority"))
   }
 
   def available(toWrite: Long = 0): Seq[RegionStorage] = {
@@ -62,7 +64,14 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
     if (settings.randomize) Random.shuffle(storages) else storages
   }
 
-  protected def selectStoragesToWrite(storages: Seq[String]): Seq[String] = {
-    Utils.takeOrAll(tryRandomize(storages.distinct), settings.dataRF)
+  protected def sortStorages(storages: Seq[StorageId]): Seq[StorageId] = {
+    if (settings.priority.isEmpty) storages else storages.sortBy { storageId ⇒
+      val index = settings.priority.indexOf(storageId)
+      if (index == -1) Int.MaxValue else index
+    }
+  }
+
+  protected def selectStoragesToWrite(storages: Seq[StorageId]): Seq[StorageId] = {
+    Utils.takeOrAll(tryRandomize(sortStorages(storages.distinct)), settings.dataRF)
   }
 }

@@ -75,5 +75,10 @@ object Path {
     path.nodes.forall(node ⇒ node.nonEmpty && forbiddenChars.findFirstIn(node).isEmpty)
   }
 
+  def equalsIgnoreCase(path1: Path, path2: Path): Boolean = {
+    def toLowerCase(path: Path) = path.copy(path.nodes.map(_.toLowerCase))
+    toLowerCase(path1) == toLowerCase(path2)
+  }
+
   implicit val ordering: Ordering[Path] = Ordering.by(path ⇒ (path.nodes.length, path.toString))
 }

@@ -8,6 +8,7 @@ import com.dropbox.core.v2.files.ListFolderErrorException
 
 import com.karasiq.dropbox.client.DropboxClient
 import com.karasiq.shadowcloud.model.Path
+import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 
@@ -38,8 +39,14 @@ class DropboxRepository(dropboxClient: DropboxClient)(implicit ec: ExecutionCont
   def write(path: Path) = {
     require(Path.isConventional(path), s"Non-conventional: $path")
     Flow[ByteString]
-      .alsoToMat(StorageUtils.countPassedBytes(path).toMat(Sink.head)(Keep.right))(Keep.right)
-      .to(dropboxClient.upload(path.toString).mapMaterializedValue(_.foreach(fm ⇒ require(fm.getName == path.name, "Renamed"))))
+      .toMat(dropboxClient.upload(path.toString))(Keep.right)
+      .mapMaterializedValue { future ⇒
+        val resultFuture = future.map { fm ⇒
+          require(Path.equalsIgnoreCase(fm.getPathDisplay, path), "File renamed")
+          StorageIOResult.Success(path, fm.getSize)
+        }
+        StorageUtils.wrapFuture(path, resultFuture)
+      }
   }
 
   def delete = {

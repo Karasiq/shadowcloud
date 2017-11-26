@@ -4,10 +4,10 @@ import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
 import org.scalajs.dom
-import org.threeten.bp.LocalDateTime
 import rx.{Rx, Var}
 
 import com.karasiq.shadowcloud.model.Path
+import com.karasiq.shadowcloud.utils.Utils
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons, TextEditor}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
@@ -15,6 +15,10 @@ import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
 object UploadForm {
   def apply()(implicit appContext: AppContext, folderContext: FolderContext): UploadForm = {
     new UploadForm
+  }
+
+  private def newNoteName(text: String): String = {
+    Utils.takeWords(text, 50).replaceAll("\\s+", " ").trim + ".md"
   }
 }
 
@@ -35,7 +39,7 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext) 
 
     val editor = TextEditor { editor ⇒
       editor.submitting() = true
-      val path = folderContext.selected.now / s"Note-${LocalDateTime.now}.md"
+      val path = folderContext.selected.now / UploadForm.newNoteName(editor.value.now)
       val (_, future) = appContext.api.uploadFile(folderContext.regionId, path, editor.value.now)
       future.onComplete { result ⇒
         editor.submitting() = false

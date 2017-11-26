@@ -81,7 +81,7 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext) 
   }
 
   private[this] def processQueue() = {
-    val toUploadN = 5 - uploading.now.length
+    val toUploadN = 3 - uploading.now.length
     val (toUpload, rest) = uploadQueue.now
       .filterNot(uploading.now.contains)
       .splitAt(toUploadN)

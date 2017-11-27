@@ -32,7 +32,10 @@ object SardineRepository {
   }
 
   private[webdav] def createSardine(props: StorageProps) = {
-    SardineFactory.begin(props.credentials.login, props.credentials.password)
+    val sardine = SardineFactory.begin(props.credentials.login, props.credentials.password)
+    sardine.enablePreemptiveAuthentication(props.address.uri.get.getHost)
+    sardine.disableCompression()
+    sardine
   }
 }
 

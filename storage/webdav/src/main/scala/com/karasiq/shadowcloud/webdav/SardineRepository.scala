@@ -1,6 +1,8 @@
 package com.karasiq.shadowcloud.webdav
 
-import java.net.URLEncoder
+import java.{net, util}
+import java.io.IOException
+import java.net._
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
@@ -13,6 +15,7 @@ import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source, StreamConverters}
 import com.github.sardine.{DavResource, Sardine, SardineFactory}
 
+import com.karasiq.common.configs.ConfigImplicits._
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.props.StorageProps
@@ -32,10 +35,29 @@ object SardineRepository {
   }
 
   private[webdav] def createSardine(props: StorageProps) = {
-    val sardine = SardineFactory.begin(props.credentials.login, props.credentials.password)
+    val sardine = SardineFactory.begin(props.credentials.login, props.credentials.password, createProxySelector(props.rootConfig))
     sardine.enablePreemptiveAuthentication(props.address.uri.get.getHost)
     sardine.disableCompression()
     sardine
+  }
+
+  private def createProxySelector(config: Config) = {
+    new ProxySelector {
+      private[this] val proxies = {
+        val proxies = config.withDefault(Nil, _.getStrings("proxies")).map { ps ⇒
+          val uri = new URI(if (ps.contains("://")) ps else "http://" + ps)
+          val proxyType = uri.getScheme match {
+            case "socks" | "socks4" | "socks5" ⇒ net.Proxy.Type.SOCKS
+            case _ ⇒ net.Proxy.Type.HTTP
+          }
+          new net.Proxy(proxyType, InetSocketAddress.createUnresolved(uri.getHost, uri.getPort))
+        }
+        if (proxies.isEmpty) List(new net.Proxy(net.Proxy.Type.DIRECT, null)).asJava else proxies.asJava
+      }
+
+      def select(uri: URI): util.List[Proxy] = proxies
+      def connectFailed(uri: URI, sa: SocketAddress, ioe: IOException): Unit = ()
+    }
   }
 }
 

@@ -13,8 +13,8 @@ import org.apache.tika.parser.{ParseContext, Parser}
 
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.metadata.Metadata
+import com.karasiq.shadowcloud.metadata.config.MetadataParserConfig
 import com.karasiq.shadowcloud.metadata.utils.BlockingMetadataParser
-import com.karasiq.shadowcloud.utils.Utils
 
 /**
   * Abstract metadata parser
@@ -24,15 +24,13 @@ private[tika] trait TikaMetadataParser extends BlockingMetadataParser {
   val config: Config
 
   protected object stdParserSettings extends ConfigImplicits {
-    val enabled = config.getBoolean("enabled")
-    val extensions = config.getStringSet("extensions")
-    val mimes = {
-      val configMimes = config.getStringSet("mimes")
-      if (config.getBoolean("handle-all-mimes")) {
+    val parserConfig = {
+      val pc = MetadataParserConfig(config)
+      if (config.withDefault(false, _.getBoolean("handle-all-mimes"))) {
         val internalList = parser.getSupportedTypes(new ParseContext).asScala.map(_.toString)
-        internalList ++ configMimes
+        pc.copy(mimes = internalList.toSet ++ pc.mimes)
       } else {
-        configMimes
+        pc
       }
     }
   }
@@ -40,7 +38,7 @@ private[tika] trait TikaMetadataParser extends BlockingMetadataParser {
   protected def parseStream(metadata: TikaMetadata, inputStream: InputStream): Seq[Metadata]
 
   def canParse(name: String, mime: String): Boolean = {
-    stdParserSettings.enabled && (stdParserSettings.mimes.contains(mime) || stdParserSettings.extensions.contains(Utils.getFileExtensionLowerCase(name)))
+    stdParserSettings.parserConfig.canParse(name, mime)
   }
 
   protected def parseMetadata(name: String, mime: String, inputStream: InputStream): Source[Metadata, NotUsed] = {

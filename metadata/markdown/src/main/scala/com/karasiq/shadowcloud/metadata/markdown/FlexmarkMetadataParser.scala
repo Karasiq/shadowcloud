@@ -4,6 +4,7 @@ import java.util
 
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
+import com.typesafe.config.Config
 import com.vladsch.flexmark.ext.autolink.AutolinkExtension
 import com.vladsch.flexmark.ext.gfm.strikethrough.StrikethroughExtension
 import com.vladsch.flexmark.ext.gfm.tasklist.TaskListExtension
@@ -11,19 +12,21 @@ import com.vladsch.flexmark.ext.tables.TablesExtension
 import com.vladsch.flexmark.ext.wikilink.WikiLinkExtension
 
 import com.karasiq.shadowcloud.metadata.{Metadata, MetadataParser}
+import com.karasiq.shadowcloud.metadata.config.MetadataParserConfig
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
-import com.karasiq.shadowcloud.utils.Utils
 
 private[markdown] object FlexmarkMetadataParser {
-  def apply(): FlexmarkMetadataParser = {
-    new FlexmarkMetadataParser()
+  def apply(config: Config): FlexmarkMetadataParser = {
+    new FlexmarkMetadataParser(config)
   }
 }
 
-private[markdown] class FlexmarkMetadataParser extends MetadataParser {
+private[markdown] class FlexmarkMetadataParser(config: Config) extends MetadataParser {
   import com.vladsch.flexmark.html.HtmlRenderer
   import com.vladsch.flexmark.parser.Parser
   import com.vladsch.flexmark.util.options.MutableDataSet
+
+  private[this] val parserConfig = MetadataParserConfig(config)
 
   private[this] val options = {
     val options = new MutableDataSet
@@ -36,7 +39,7 @@ private[markdown] class FlexmarkMetadataParser extends MetadataParser {
   private[this] val renderer = HtmlRenderer.builder(options).build
 
   def canParse(name: String, mime: String) = {
-    Utils.getFileExtensionLowerCase(name) == "md"
+    parserConfig.canParse(name, mime)
   }
 
   def parseMetadata(name: String, mime: String) = {

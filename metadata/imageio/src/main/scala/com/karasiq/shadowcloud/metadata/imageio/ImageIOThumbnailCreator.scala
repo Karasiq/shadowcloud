@@ -13,9 +13,10 @@ import com.typesafe.config.Config
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.metadata.{Metadata, MetadataParser}
 import Metadata.Tag.Disposition
+import com.karasiq.shadowcloud.metadata.config.MetadataParserConfig
 import com.karasiq.shadowcloud.metadata.imageio.utils.ImageIOResizer
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
-import com.karasiq.shadowcloud.utils.{ByteStringOutputStream, Utils}
+import com.karasiq.shadowcloud.utils.ByteStringOutputStream
 
 private[imageio] object ImageIOThumbnailCreator {
   val PluginId = "imageio"
@@ -30,10 +31,8 @@ private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataP
   import ImageIOThumbnailCreator.{ParserId, PluginId}
 
   protected object thumbnailSettings extends ConfigImplicits {
-    val enabled = config.getBoolean("enabled")
+    val parserConfig = MetadataParserConfig(config)
     val sizeLimit = config.getBytesInt("size-limit")
-    val extensions = config.getStringSet("extensions")
-    val mimes = config.getStringSet("mimes")
 
     val size = config.getInt("size")
     val format = config.getString("format")
@@ -41,8 +40,7 @@ private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataP
   }
 
   def canParse(name: String, mime: String): Boolean = {
-    thumbnailSettings.enabled &&
-      (thumbnailSettings.mimes.contains(mime) || thumbnailSettings.extensions.contains(Utils.getFileExtensionLowerCase(name)))
+    thumbnailSettings.parserConfig.canParse(name, mime)
   }
 
   def parseMetadata(name: String, mime: String): Flow[ByteString, Metadata, NotUsed] = {

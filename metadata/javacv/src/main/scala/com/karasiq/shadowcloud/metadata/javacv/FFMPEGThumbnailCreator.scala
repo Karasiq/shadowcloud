@@ -8,8 +8,8 @@ import com.typesafe.config.Config
 import org.bytedeco.javacv.{FFmpegFrameGrabber, OpenCVFrameConverter}
 
 import com.karasiq.shadowcloud.metadata.Metadata
+import com.karasiq.shadowcloud.metadata.config.MetadataParserConfig
 import com.karasiq.shadowcloud.metadata.utils.BlockingMetadataParser
-import com.karasiq.shadowcloud.utils.Utils
 
 private[javacv] object FFMPEGThumbnailCreator {
   def apply(config: Config): FFMPEGThumbnailCreator = {
@@ -19,16 +19,13 @@ private[javacv] object FFMPEGThumbnailCreator {
 
 private[javacv] class FFMPEGThumbnailCreator(config: Config) extends BlockingMetadataParser {
   protected object settings {
-    import com.karasiq.common.configs.ConfigImplicits._
-    val enabled = config.getBoolean("enabled")
-    val extensions = config.getStringSet("extensions")
+    val parserConfig = MetadataParserConfig(config)
     val thumbnailSize = config.getInt("thumbnail-size")
     val thumbnailQuality = config.getInt("thumbnail-quality")
   }
 
   def canParse(name: String, mime: String) = {
-    def extension = Utils.getFileExtensionLowerCase(name)
-    settings.enabled && settings.extensions.contains(extension)
+    settings.parserConfig.canParse(name, mime)
   }
 
   protected def parseMetadata(name: String, mime: String, inputStream: InputStream) = {

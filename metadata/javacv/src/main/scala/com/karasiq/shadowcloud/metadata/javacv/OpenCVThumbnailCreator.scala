@@ -8,8 +8,8 @@ import org.bytedeco.javacpp.opencv_imgcodecs._
 import org.bytedeco.javacpp.opencv_imgproc._
 
 import com.karasiq.shadowcloud.metadata.{Metadata, MetadataParser}
+import com.karasiq.shadowcloud.metadata.config.MetadataParserConfig
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
-import com.karasiq.shadowcloud.utils.Utils
 
 private[javacv] object OpenCVThumbnailCreator {
   def apply(config: Config): OpenCVThumbnailCreator = {
@@ -40,17 +40,14 @@ private[javacv] object OpenCVThumbnailCreator {
 
 private[javacv] class OpenCVThumbnailCreator(config: Config) extends MetadataParser {
   protected object settings {
-    import com.karasiq.common.configs.ConfigImplicits._
-    val enabled = config.getBoolean("enabled")
-    val extensions = config.getStringSet("extensions")
+    val parserConfig = MetadataParserConfig(config)
     val sizeLimit = config.getBytes("size-limit")
     val thumbnailSize = config.getInt("thumbnail-size")
     val thumbnailQuality = config.getInt("thumbnail-quality")
   }
 
   def canParse(name: String, mime: String) = {
-    def extension = Utils.getFileExtensionLowerCase(name)
-    settings.enabled && settings.extensions.contains(extension)
+    settings.parserConfig.canParse(name, mime)
   }
 
   def parseMetadata(name: String, mime: String) = {

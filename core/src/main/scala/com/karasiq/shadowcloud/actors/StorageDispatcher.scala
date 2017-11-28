@@ -8,7 +8,6 @@ import akka.actor.{Actor, ActorLogging, ActorRef, Kill, NotInfluenceReceiveTimeo
 import akka.pattern.pipe
 import akka.stream._
 import akka.stream.scaladsl.{Sink, Source}
-import akka.util.Timeout
 
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.events.StorageEvents
@@ -47,10 +46,10 @@ private final class StorageDispatcher(storageId: StorageId, storageProps: Storag
   // -----------------------------------------------------------------------
   import context.dispatcher
 
-  private[this] implicit val timeout: Timeout = Timeout(10 seconds)
   private[this] implicit val materializer: Materializer = ActorMaterializer()
-  private[this] val schedule = context.system.scheduler.schedule(Duration.Zero, 30 seconds, self, CheckHealth)
   private[this] val sc = ShadowCloud()
+  private[this] val config = sc.configs.storageConfig(storageId, storageProps)
+  private[this] val healthCheckSchedule = context.system.scheduler.schedule(1 second, config.healthCheckInterval, self, CheckHealth)
 
   // -----------------------------------------------------------------------
   // State
@@ -156,7 +155,7 @@ private final class StorageDispatcher(storageId: StorageId, storageProps: Storag
 
   override def postStop(): Unit = {
     sc.eventStreams.storage.unsubscribe(self)
-    schedule.cancel()
+    healthCheckSchedule.cancel()
     pendingIndexQueue.complete()
     super.postStop()
   }

@@ -27,7 +27,7 @@ object StorageConfig extends WrappedConfigFactory[StorageConfig] with ConfigImpl
   }
 
   def forProps(storageId: StorageId, props: StorageProps, rootConfig: Config): StorageConfig = {
-    val config = props.rootConfig.getConfigOrRef("custom-config")
+    val config = props.rootConfig.getConfigOrRef("config")
       .withFallback(getConfigForId(storageId, rootConfig))
     apply(config)
   }

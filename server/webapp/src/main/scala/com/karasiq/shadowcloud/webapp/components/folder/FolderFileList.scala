@@ -23,18 +23,19 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
 
   def renderTag(md: ModifierT*): TagT = {
     val heading = Rx {
+      import OrderingSelector.orderingLink
       if (flat) {
         Seq[Modifier](
-          context.locale.name,
-          context.locale.size,
-          context.locale.modifiedDate
+          orderingLink(0)(context.locale.name),
+          orderingLink(1)(context.locale.size),
+          orderingLink(2)(context.locale.modifiedDate)
         )
       } else {
         Seq[Modifier](
           context.locale.fileId,
-          context.locale.name,
-          context.locale.size,
-          context.locale.modifiedDate
+          orderingLink(0)(context.locale.name),
+          orderingLink(1)(context.locale.size),
+          orderingLink(2)(context.locale.modifiedDate)
         )
       }
     }
@@ -47,7 +48,9 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
         } else {
           allFiles.toVector
         }
-        files.sortBy(f ⇒ (f.path.name, f.revision))(Ordering.Tuple2(Ordering[String], Ordering[Long].reverse))
+
+        val sortFunction = OrderingSelector.sortFunctionRx()
+        sortFunction(files)
       }
 
       sortedFiles.map { file ⇒
@@ -89,5 +92,53 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
 
     val table = PagedTable(heading, rows)
     table.renderTag(md:_*)
+  }
+
+  private[this] object FileOrdering {
+    type FileOrdering[T] = (File ⇒ T, Ordering[T])
+    type SortFunction = Seq[File] ⇒ Seq[File]
+
+    val name: FileOrdering[String] = ((_: File).path.name, Ordering[String])
+    val size: FileOrdering[Long] = ((_: File).checksum.size, Ordering[Long])
+    val date: FileOrdering[Long] = ((_: File).timestamp.lastModified, Ordering[Long])
+
+    implicit def toSortFunction[T](order: FileOrdering[T])(files: Seq[File]): Seq[File] = {
+      files.sortBy(f ⇒ (order._1(f), f.revision))(Ordering.Tuple2(order._2, Ordering[Long].reverse))
+    }
+  }
+
+  private[this] object OrderingSelector {
+    import FileOrdering._
+    val orderings = Seq[SortFunction](
+      name,
+      size,
+      date
+    )
+
+    val currentOrderingIndex = Var(0)
+    val reverseOrdering = Var(false)
+
+    val sortFunctionRx = Rx[SortFunction] {
+      val sortFunction = orderings(currentOrderingIndex())
+      if (reverseOrdering()) sortFunction.andThen(_.reverse) else sortFunction
+    }
+
+    def setOrdering(index: Int) = {
+      if (currentOrderingIndex.now == index) {
+        reverseOrdering() = !reverseOrdering.now
+      } else {
+        reverseOrdering() = false
+        currentOrderingIndex() = index
+      }
+    }
+
+    def orderingLink(i: Int) = {
+      val icon = Rx[Frag] {
+        if (currentOrderingIndex() == i) span(Icon.faFw(if (reverseOrdering()) "caret-down" else "caret-up"), Bootstrap.nbsp)
+        else Bootstrap.noContent
+      }
+
+      span(cursor.pointer, icon, onclick := Callback.onClick(_ ⇒ setOrdering(i)))
+    }
   }
 }

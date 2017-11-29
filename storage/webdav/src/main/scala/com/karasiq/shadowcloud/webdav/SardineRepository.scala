@@ -52,7 +52,7 @@ object SardineRepository {
           }
           new net.Proxy(proxyType, InetSocketAddress.createUnresolved(uri.getHost, uri.getPort))
         }
-        if (proxies.isEmpty) List(new net.Proxy(net.Proxy.Type.DIRECT, null)).asJava else proxies.asJava
+        if (proxies.isEmpty) List(net.Proxy.NO_PROXY).asJava else proxies.asJava
       }
 
       def select(uri: URI): util.List[Proxy] = proxies

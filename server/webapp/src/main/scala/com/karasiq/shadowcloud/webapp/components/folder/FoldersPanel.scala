@@ -22,8 +22,8 @@ class FoldersPanel(implicit appContext: AppContext, folderContext: FolderContext
     val folderView = FolderFileList(selectedFolderRx.map(_.files))
 
     GridSystem.row(
-      GridSystem.col.responsive(12, 3, 3, 3).asDiv(folderTree),
-      GridSystem.col.responsive(12, 9, 5, 5).asDiv(folderView),
+      GridSystem.col.responsive(12, 3, 3, 2).asDiv(folderTree),
+      GridSystem.col.responsive(12, 9, 5, 6).asDiv(folderView),
       GridSystem.col.responsive(12, 12, 4, 4).asDiv(folderView.selectedFile.map[Frag] {
         case Some(file) ⇒ FileView(file)
         case None ⇒ ()

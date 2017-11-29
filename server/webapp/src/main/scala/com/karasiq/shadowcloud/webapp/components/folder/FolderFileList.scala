@@ -134,7 +134,7 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
 
     def orderingLink(i: Int) = {
       val icon = Rx[Frag] {
-        if (currentOrderingIndex() == i) span(Icon.faFw(if (reverseOrdering()) "caret-down" else "caret-up"), Bootstrap.nbsp)
+        if (currentOrderingIndex() == i) Icon.faFw(if (reverseOrdering()) "caret-down" else "caret-up")
         else Bootstrap.noContent
       }
 

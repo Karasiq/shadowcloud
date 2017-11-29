@@ -101,14 +101,17 @@ private[shadowcloud] object Utils {
       .getOrElse(str.take(maxLength))
   }
 
+  @inline
   def toSafeIdentifier(str: String): String = {
     str.replaceAll("[^A-Za-z0-9-_]", "_")
   }
 
+  @inline
   def uniqueActorName(name: String): String = {
     toSafeIdentifier(name) + "-" + java.lang.Long.toHexString(System.nanoTime())
   }
 
+  @inline
   def percents(value: Double, total: Double): Double = {
     if (total == 0) 100 else value * 100 / total
   }

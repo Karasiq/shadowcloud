@@ -47,7 +47,7 @@ private[shadowcloud] object ChunkUtils {
   }
 
   def recoverChunkData(existingChunk: Chunk, newChunk: Chunk): Chunk = {
-    require(existingChunk.checksum == newChunk.checksum, "Not same chunks")
+    // require(existingChunk.checksum == newChunk.checksum, "Not same chunks")
     if (Utils.isSameChunk(existingChunk, newChunk)) {
       newChunk
     } else {

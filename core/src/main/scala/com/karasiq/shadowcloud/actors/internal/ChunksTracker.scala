@@ -109,7 +109,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
     }
 
     def writeChunk(chunk: Chunk, receiver: ActorRef)(implicit storageSelector: StorageSelector): ChunkStatus = {
-      require(chunk.nonEmpty, "Chunk data is empty")
+      if (chunk.isEmpty) throw SCExceptions.ChunkDataIsEmpty(chunk)
       chunks.getChunkStatus(chunk) match {
         case Some(status) ⇒
           status.writeStatus match {

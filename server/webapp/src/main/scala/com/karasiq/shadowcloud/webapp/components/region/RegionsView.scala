@@ -7,6 +7,7 @@ import rx.{Rx, Var}
 
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.model.RegionId
+import com.karasiq.shadowcloud.utils.Utils
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
 import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
@@ -49,7 +50,7 @@ class RegionsView(implicit context: AppContext, regionContext: RegionContext) ex
         .withTitle(context.locale.createRegion)
         .withBody(Form(FormInput.text(context.locale.regionId, newRegionNameRx.reactiveInput)))
         .withButtons(
-          AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ doCreate(newRegionNameRx.now))),
+          AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ doCreate(Utils.toSafeIdentifier(newRegionNameRx.now)))),
           AppComponents.modalClose()
         )
         .show()

@@ -98,7 +98,7 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
     type FileOrdering[T] = (File ⇒ T, Ordering[T])
     type SortFunction = Seq[File] ⇒ Seq[File]
 
-    val name: FileOrdering[String] = ((_: File).path.name, Ordering[String])
+    val name: FileOrdering[String] = ((_: File).path.name.toLowerCase, Ordering[String])
     val size: FileOrdering[Long] = ((_: File).checksum.size, Ordering[Long])
     val date: FileOrdering[Long] = ((_: File).timestamp.lastModified, Ordering[Long])
 

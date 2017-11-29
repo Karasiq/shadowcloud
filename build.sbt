@@ -17,10 +17,18 @@ val packageSettings = Seq(
   maintainer := "Karasiq",
   packageSummary := "shadowcloud application",
   packageDescription := "shadowcloud - alternative cloud storage client.",
-  jdkAppIcon := Some(file("setup/icon.ico")),
+  jdkAppIcon := {
+    lazy val iconExt = sys.props("os.name").toLowerCase match {
+      case os if os.contains("mac") ⇒ "icns"
+      case os if os.contains("win") ⇒ "ico"
+      case _ ⇒ "png"
+    }
+    Some(file(s"setup/icon.$iconExt"))
+  },
   jdkPackagerType := "installer",
   jdkPackagerJVMArgs := Seq("-Xmx2G"),
   jdkPackagerProperties := Map("app.name" -> "shadowcloud", "app.version" -> version.value.replace("-SNAPSHOT", "")),
+  // antPackagerTasks in JDKPackager := Some(file("/usr/lib/jvm/java-8-oracle/lib/ant-javafx.jar")),
   mappings in Universal += file("setup/shadowcloud_example.conf") → "shadowcloud_example.conf"
 )
 
@@ -102,7 +110,7 @@ lazy val coreAssembly = (project in file("core/assembly"))
   .dependsOn(
     core % "compile->compile;test->test", persistence,
     bouncyCastleCrypto, libsodiumCrypto,
-    tikaMetadata, imageioMetadata, markdownMetadata, javacvMetadata,
+    tikaMetadata, imageioMetadata, markdownMetadata, // javacvMetadata,
     googleDriveStorage, mailruCloudStorage, dropboxStorage, webdavStorage
   )
   .aggregate(

@@ -37,7 +37,7 @@ Source: {#ProjectFolder}\setup\icon.ico; DestDir: {app}; Flags: ignoreversion
 Source: {#ProjectFolder}\setup\shadowcloud_example.conf; DestDir: {app}
 
 [Icons]
-Name: {group}\{#MyAppName}; Filename: {app}\{#MyAppExeName}; IconFilename: {app}\favicon.ico; WorkingDir: {app}
+Name: {group}\{#MyAppName}; Filename: {app}\{#MyAppExeName}; IconFilename: {app}\icon.ico; WorkingDir: {app}
 Name: {commondesktop}\{#MyAppName}; Filename: {app}\{#MyAppExeName}; Tasks: desktopicon; IconFilename: {app}\icon.ico; WorkingDir: {app}
 
 [Run]

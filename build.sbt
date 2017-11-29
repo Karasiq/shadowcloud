@@ -110,9 +110,10 @@ lazy val coreAssembly = (project in file("core/assembly"))
   .dependsOn(
     core % "compile->compile;test->test", persistence,
     bouncyCastleCrypto, libsodiumCrypto,
-    tikaMetadata, imageioMetadata, markdownMetadata, // javacvMetadata,
+    tikaMetadata, imageioMetadata, markdownMetadata,
     googleDriveStorage, mailruCloudStorage, dropboxStorage, webdavStorage
   )
+  .dependsOn(Seq[ClasspathDep[ProjectReference]](javacvMetadata).filter(_ ⇒ sys.props.contains("enable-javacv")):_*)
   .aggregate(
     core, persistence,
     bouncyCastleCrypto, libsodiumCrypto,

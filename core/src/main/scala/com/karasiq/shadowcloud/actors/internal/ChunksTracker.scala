@@ -109,7 +109,6 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
     }
 
     def writeChunk(chunk: Chunk, receiver: ActorRef)(implicit storageSelector: StorageSelector): ChunkStatus = {
-      if (chunk.isEmpty) throw SCExceptions.ChunkDataIsEmpty(chunk)
       chunks.getChunkStatus(chunk) match {
         case Some(status) ⇒
           status.writeStatus match {
@@ -119,7 +118,11 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
               chunks.update(status.copy(waitingChunk = status.waitingChunk + receiver))
 
             case WriteStatus.Finished ⇒
-              val chunkWithData = ChunkUtils.recoverChunkData(status.chunk, chunk)
+              val chunkWithData =
+                if (status.chunk.data.nonEmpty) status.chunk
+                else status.chunk.copy(data = status.chunk.data.copy(plain = ChunkUtils.getPlainBytes(sc.modules.crypto, chunk)))
+
+              assert(chunkWithData.data.nonEmpty)
               receiver ! WriteChunk.Success(chunkWithData.withoutData, chunkWithData)
               log.debug("Chunk restored from index, write skipped: {}", chunkWithData)
               status.copy(chunk = chunkWithData)
@@ -127,6 +130,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
 
         case None ⇒
           // context.watch(receiver)
+          require(chunk.data.nonEmpty, "Chunk data is empty")
           val status = ChunkStatus(WriteStatus.Pending(ChunkWriteAffinity.empty), chunk, waitingChunk = Set(receiver))
           val affinity = storageSelector.forWrite(status)
           val statusWithAffinity = status.copy(WriteStatus.Pending(affinity))

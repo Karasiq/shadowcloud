@@ -1,11 +1,12 @@
 package com.karasiq.shadowcloud.streams.metadata
 
 import akka.NotUsed
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
+import akka.stream._
 import akka.stream.scaladsl.{Flow, Source}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
 
+import com.karasiq.shadowcloud.actors.SCDispatchers
 import com.karasiq.shadowcloud.metadata.MimeDetector
 
 object MimeDetectorStream {
@@ -14,6 +15,8 @@ object MimeDetectorStream {
     Flow.fromGraph(new MimeDetectorStream(detector, fileName, probeSize))
       .recoverWithRetries(1, { case _ ⇒ defaultMimeSource })
       .orElse(defaultMimeSource)
+      .withAttributes(ActorAttributes.dispatcher(SCDispatchers.metadata))
+      .named("mimeDetect")
   }
 }
 

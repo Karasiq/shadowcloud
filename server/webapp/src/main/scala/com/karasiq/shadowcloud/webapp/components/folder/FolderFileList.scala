@@ -22,6 +22,7 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
   val selectedFile = Var(None: Option[File])
 
   def renderTag(md: ModifierT*): TagT = {
+    val filterRx = Var("")
     val heading = Rx {
       import OrderingSelector.orderingLink
       if (flat) {
@@ -41,16 +42,22 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
     }
 
     val rows = Rx {
+      val allFiles = filesRx()
+
+      val filteredFiles = {
+        val filter = filterRx()
+        if (filter.isEmpty) allFiles else allFiles.filter(_.path.name.toLowerCase.contains(filter.toLowerCase))
+      }
+
       val sortedFiles = {
-        val allFiles = filesRx()
-        val files = if (flat) {
-          FileVersions.toFlatDirectory(allFiles)
+        val fileSeq = if (flat) {
+          FileVersions.toFlatDirectory(filteredFiles)
         } else {
-          allFiles.toVector
+          filteredFiles.toVector
         }
 
         val sortFunction = OrderingSelector.sortFunctionRx()
-        sortFunction(files)
+        sortFunction(fileSeq)
       }
 
       sortedFiles.map { file ⇒
@@ -91,7 +98,10 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
     }
 
     val table = PagedTable(heading, rows)
-    table.renderTag(md:_*)
+    div(
+      GridSystem.mkRow(Form(FormInput.text("", filterRx.reactiveInput))),
+      GridSystem.mkRow(table.renderTag(md:_*))
+    )
   }
 
   private[this] object FileOrdering {

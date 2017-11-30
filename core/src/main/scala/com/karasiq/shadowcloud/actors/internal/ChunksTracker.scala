@@ -519,7 +519,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
       }
 
       def onWriteFailure(chunk: Chunk, storageId: StorageId, error: Throwable): Unit = {
-        log.error(error, "Chunk write failed from {}: {}", storageId, chunk)
+        log.error(error, "Chunk write failed to {}: {}", storageId, chunk)
         state.unregisterChunk(storageId, chunk)
         chunks.getChunkStatus(chunk).foreach(state.markAsWriteFailed(_, storageId))
       }

@@ -4,7 +4,6 @@ import java.awt.Desktop
 import java.net.URI
 import java.nio.file.{Files, Paths}
 
-import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import com.typesafe.config.ConfigFactory
@@ -12,6 +11,7 @@ import com.typesafe.config.ConfigFactory
 import com.karasiq.common.configs.ConfigUtils
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.javafx.JavaFXContext
+import com.karasiq.shadowcloud.persistence.h2.H2DB
 import com.karasiq.shadowcloud.server.http.SCAkkaHttpServer
 
 object SCDesktopMain extends App {
@@ -37,7 +37,8 @@ object SCDesktopMain extends App {
   val httpServer = SCAkkaHttpServer(sc)
 
   import sc.implicits.{executionContext, materializer}
-  sc.actors.regionSupervisor ! NotUsed // Init actor
+  H2DB(actorSystem).context // Init db
+  sc.actors.regionSupervisor // Init actor
   val bindFuture = Http().bindAndHandle(httpServer.scWebAppRoutes, httpServer.httpServerSettings.host, httpServer.httpServerSettings.port)
 
   new SCTrayIcon {

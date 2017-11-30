@@ -104,10 +104,12 @@ private[shadowcloud] final class MetadataStreams(sc: ShadowCloudExtension) {
     // Writes the chunk stream before actual file path is known
     val writeStream = Flow[ByteString]
       .via(sc.streams.file.write(regionId, path))
+      .async
 
     val createMetadataStream = Flow[ByteString]
       .buffer(5, OverflowStrategy.backpressure) // Buffer byte chunks
       .via(create(path.name, metadataSizeLimit))
+      .async
       // .buffer(10, OverflowStrategy.backpressure) // Buffer metadatas
 
     val graph = GraphDSL.create(writeStream, createMetadataStream)(Keep.none) { implicit builder ⇒ (writeFile, createMetadata) ⇒
@@ -133,8 +135,8 @@ private[shadowcloud] final class MetadataStreams(sc: ShadowCloudExtension) {
       )
       val zipFileAndMetadata = builder.add(Zip[File, Seq[File]])
 
-      bytesInput ~> writeFile ~> fileInput
       bytesInput ~> createMetadata ~> writeMetadataChunks ~> extractMetadataSource ~> zipSourceAndFile.in0
+      bytesInput ~> writeFile ~> fileInput
 
       fileInput ~> zipSourceAndFile.in1
       fileInput ~> zipFileAndMetadata.in0

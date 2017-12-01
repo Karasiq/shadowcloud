@@ -95,7 +95,6 @@ class SardineRepository(props: StorageProps, sardine: Sardine)(implicit dispatch
             result.onComplete(_.failed.foreach(_ ⇒ inputStream.close()))
             Source.fromFuture(StorageUtils.wrapFuture(key, result))
           }
-          .alsoTo(Sink.onComplete(_ ⇒ sardine.shutdown()))
           .toMat(Sink.head)(Keep.right)
         (stream, sink)
       }

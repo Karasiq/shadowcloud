@@ -24,17 +24,17 @@ import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.utils.AkkaStreamUtils
 
 object SardineRepository {
-  def apply(props: StorageProps)(implicit dispatcher: MessageDispatcher): SardineRepository = {
-    new SardineRepository(props)
+  def apply(props: StorageProps, sardine: Sardine)(implicit dispatcher: MessageDispatcher): SardineRepository = {
+    new SardineRepository(props, sardine)
   }
 
-  private[webdav] def getResourceURL(baseUrl: String, path: Path): String = {
+   def getResourceURL(baseUrl: String, path: Path): String = {
     val urlWithSlash = if (baseUrl.endsWith("/")) baseUrl else baseUrl + "/"
     val encodedPath = path.nodes.map(URLEncoder.encode(_, "UTF-8"))
     urlWithSlash + encodedPath.mkString("/")
   }
 
-  private[webdav] def createSardine(props: StorageProps) = {
+  def createSardine(props: StorageProps) = {
     val sardine = SardineFactory.begin(props.credentials.login, props.credentials.password, createProxySelector(props.rootConfig))
     sardine.enablePreemptiveAuthentication(props.address.uri.get.getHost)
     sardine.disableCompression()
@@ -61,7 +61,7 @@ object SardineRepository {
   }
 }
 
-class SardineRepository(props: StorageProps)(implicit dispatcher: MessageDispatcher) extends PathTreeRepository {
+class SardineRepository(props: StorageProps, sardine: Sardine)(implicit dispatcher: MessageDispatcher) extends PathTreeRepository {
   private[this] val rootUrl = props.address.uri.map(_.toString).getOrElse(throw new IllegalArgumentException("No WebDav URL"))
   private[this] val baseUrl = SardineRepository.getResourceURL(rootUrl, props.address.path)
   private[this] val cachedDirectories = TrieMap.empty[Path, DavResource]
@@ -70,14 +70,10 @@ class SardineRepository(props: StorageProps)(implicit dispatcher: MessageDispatc
 
   def read(key: Path) = {
     Source.single(key)
-      .statefulMapConcat { () ⇒
-        val sardine = SardineRepository.createSardine(props)
-        path ⇒ {
-          val resourceUrl = SardineRepository.getResourceURL(baseUrl, path)
-          StreamConverters.fromInputStream(() ⇒ sardine.get(resourceUrl)) :: Nil
-        }
-      }
-      .viaMat(AkkaStreamUtils.flatMapConcatMat(identity))(Keep.right)
+      .viaMat(AkkaStreamUtils.flatMapConcatMat { path ⇒
+        val resourceUrl = SardineRepository.getResourceURL(baseUrl, path)
+        StreamConverters.fromInputStream(() ⇒ sardine.get(resourceUrl))
+      })(Keep.right)
       .mapMaterializedValue(_.map(rs ⇒ StorageUtils.foldIOResults(rs.map(StorageUtils.wrapAkkaIOResult(key, _)): _*)))
       .alsoToMat(StorageUtils.countPassedBytes(key).toMat(Sink.head)(Keep.right))(Keep.right)
       .withAttributes(ActorAttributes.dispatcher(dispatcher.id))
@@ -87,11 +83,9 @@ class SardineRepository(props: StorageProps)(implicit dispatcher: MessageDispatc
   def write(key: Path) = {
     Flow[Data]
       .via(AkkaStreamUtils.extractUpstream)
-      .statefulMapConcat { () ⇒
-        val sardine = SardineRepository.createSardine(props)
-        stream ⇒ {
-          val resourceUrl = SardineRepository.getResourceURL(baseUrl, key)
-          val sink = AkkaStreamUtils.writeInputStream { inputStream ⇒
+      .map { stream ⇒
+        val resourceUrl = SardineRepository.getResourceURL(baseUrl, key)
+        val sink = AkkaStreamUtils.writeInputStream { inputStream ⇒
             val result = Future {
               makeDirectories(sardine, key.parent)
               sardine.put(resourceUrl, inputStream)
@@ -100,9 +94,10 @@ class SardineRepository(props: StorageProps)(implicit dispatcher: MessageDispatc
             }
             result.onComplete(_.failed.foreach(_ ⇒ inputStream.close()))
             Source.fromFuture(StorageUtils.wrapFuture(key, result))
-          }.toMat(Sink.head)(Keep.right)
-          (stream, sink) :: Nil
-        }
+          }
+          .alsoTo(Sink.onComplete(_ ⇒ sardine.shutdown()))
+          .toMat(Sink.head)(Keep.right)
+        (stream, sink)
       }
       .viaMat(AkkaStreamUtils.flatMapConcatMat { case (source, sink) ⇒ source.alsoToMat(sink)(Keep.right) })(Keep.right)
       .mapMaterializedValue(_.map(StorageUtils.foldIOResults))
@@ -113,41 +108,48 @@ class SardineRepository(props: StorageProps)(implicit dispatcher: MessageDispatc
 
   def delete = {
     Flow[Path]
-      .statefulMapConcat { () ⇒
-        val sardine = SardineRepository.createSardine(props)
-        path ⇒ {
-          val resourceUrl = SardineRepository.getResourceURL(baseUrl, path)
-          val size = sardine.list(resourceUrl, 0).asScala.head.getContentLength
-          sardine.delete(resourceUrl)
-          StorageIOResult.Success(path, size) :: Nil
-        }
+      .map { path ⇒
+        val resourceUrl = SardineRepository.getResourceURL(baseUrl, path)
+        val size = sardine.list(resourceUrl, 0).asScala.head.getContentLength
+        sardine.delete(resourceUrl)
+        StorageIOResult.Success(path, size)
       }
       .via(StorageUtils.foldStream())
       .toMat(Sink.head)(Keep.right)
-      .withAttributes(ActorAttributes.supervisionStrategy(Supervision.restartingDecider) and ActorAttributes.dispatcher(dispatcher.id))
+      .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider) and ActorAttributes.dispatcher(dispatcher.id))
       .named("webdavDelete")
   }
 
   override def subKeys(fromPath: Path) = {
-    Source.single(fromPath)
-      .statefulMapConcat { () ⇒
-        val sardine = SardineRepository.createSardine(props)
-        def traverseDirectory(path: Path): Source[Path, NotUsed] = {
+    def listDirectory: Flow[Path, Vector[DavResource], NotUsed] = {
+      Flow[Path]
+        .map { path ⇒
           val resourceUrl = SardineRepository.getResourceURL(baseUrl, path)
           val resources = if (sardine.exists(resourceUrl)) {
             sardine.list(resourceUrl, 1).asScala.toVector
           } else {
             Vector.empty
           }
-          val (folders, files) = resources.partition(_.isDirectory)
-          Source(files.map(_.getPath: Path))
-            .concat(Source(folders.map(_.getPath: Path).filterNot(_ == path)).flatMapConcat(traverseDirectory))
-            .named("webdavTraverse")
+          resources
         }
+        .withAttributes(ActorAttributes.dispatcher(dispatcher.id))
+        .named("webdavList")
+    }
 
-        path ⇒ traverseDirectory(path) :: Nil
-      }
-      .flatMapConcat(identity)
+    def traverseDirectory: Flow[Path, Path, NotUsed] = {
+      Flow[Path]
+        .flatMapConcat { path ⇒
+          Source.single(path).via(listDirectory).flatMapConcat { resources ⇒
+            val (folders, files) = resources.partition(_.isDirectory)
+            Source(files.map(_.getPath: Path))
+              .concat(Source(folders.map(_.getPath: Path).filterNot(_ == path)).via(traverseDirectory))
+          }
+        }
+        .named("webdavTraverse")
+    }
+
+    Source.single(fromPath)
+      .via(traverseDirectory)
       .map(_.toRelative(fromPath))
       .alsoToMat(StorageUtils.countPassedElements(fromPath).toMat(Sink.head)(Keep.right))(Keep.right)
       .withAttributes(ActorAttributes.dispatcher(dispatcher.id))

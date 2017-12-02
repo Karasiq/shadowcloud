@@ -7,7 +7,7 @@ import scala.util.{Failure, Success}
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Kill, PossiblyHarmful, Props, Status, Terminated}
 import akka.pattern.{ask, pipe}
-import akka.stream.{ActorAttributes, OverflowStrategy, QueueOfferResult, Supervision}
+import akka.stream._
 import akka.stream.scaladsl.{Sink, Source}
 
 import com.karasiq.common.memory.SizeUnit
@@ -98,8 +98,9 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
   // Context
   // -----------------------------------------------------------------------
   private[this] implicit val sc = ShadowCloud()
+  private[this] implicit val materializer = ActorMaterializer()
   import context.dispatcher
-  import sc.implicits.{defaultTimeout, materializer}
+  import sc.implicits.defaultTimeout
 
   val storageTracker = StorageTracker()
   val chunksTracker = ChunksTracker(regionId, regionConfig, storageTracker)

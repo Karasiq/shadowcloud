@@ -6,6 +6,7 @@ import scala.language.postfixOps
 import akka.NotUsed
 import akka.actor.{Actor, ActorLogging, DeadLetterSuppression, PossiblyHarmful, Props, Status}
 import akka.persistence._
+import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 
 import com.karasiq.shadowcloud.ShadowCloud
@@ -63,11 +64,10 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
   // -----------------------------------------------------------------------
   require(storageId.nonEmpty && regionId.nonEmpty, "Invalid storage identifier")
 
+  import context.dispatcher
+  private[this] implicit val materializer = ActorMaterializer()
   private[this] val sc = ShadowCloud()
   private[this] val config = sc.configs.storageConfig(storageId, storageProps)
-
-  import context.dispatcher
-  import sc.implicits.materializer
 
   import RegionIndex._
 

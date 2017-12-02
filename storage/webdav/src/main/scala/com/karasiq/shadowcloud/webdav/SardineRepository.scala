@@ -137,11 +137,12 @@ class SardineRepository(props: StorageProps, sardine: Sardine)(implicit dispatch
 
     def traverseDirectory: Flow[Path, Path, NotUsed] = {
       Flow[Path]
+        .log("webdav-traverse")
         .flatMapConcat { path ⇒
           Source.single(path).via(listDirectory).flatMapConcat { resources ⇒
             val (folders, files) = resources.partition(_.isDirectory)
             Source(files.map(_.getPath: Path))
-              .concat(Source(folders.map(_.getPath: Path).filterNot(_ == path)).via(traverseDirectory))
+              .concat(Source(folders.map(_.getPath: Path).filterNot(Path.equalsIgnoreCase(path, _))).via(traverseDirectory))
           }
         }
         .named("webdavTraverse")

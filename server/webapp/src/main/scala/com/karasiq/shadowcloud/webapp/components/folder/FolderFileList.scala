@@ -20,9 +20,11 @@ object FolderFileList {
 
 class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
   val selectedFile = Var(None: Option[File])
-
+  val filterRx = Var("")
+  
   def renderTag(md: ModifierT*): TagT = {
-    val filterRx = Var("")
+    val showFilter = filesRx.map(fs ⇒ fs.nonEmpty && !fs.forall(_.path.name == fs.head.path.name))
+
     val heading = Rx {
       import OrderingSelector.orderingLink
       if (flat) {
@@ -99,7 +101,7 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
 
     val table = PagedTable(heading, rows)
     div(
-      GridSystem.mkRow(Form(FormInput.text("", filterRx.reactiveInput))),
+      GridSystem.mkRow(Form(FormInput.text("", filterRx.reactiveInput)), showFilter.reactiveShow),
       GridSystem.mkRow(table.renderTag(md:_*))
     )
   }

@@ -26,6 +26,7 @@ object PathTreeRepository {
     new RepositoryKeyMapper[Path, Path](repository, _.toRelative(path), path / _) with PathTreeRepository {
       override def subKeys(fromPath: Path): Source[Path, Result] = repository.subKeys(path / fromPath)
       override def keys: Source[Path, Result] = repository.subKeys(path)
+      override def toString: String = s"Traverse($repository [$path])"
     }
   }
 
@@ -42,6 +43,10 @@ object PathTreeRepository {
           .filter(_.nodes.length == 1)
           .map(_.name)
       }
+
+      override def toString: String = {
+        s"Categorized($repository [$path])"
+      }
     }
   }
 
@@ -50,6 +55,10 @@ object PathTreeRepository {
       override def keys: Source[String, Result] = repository.subKeys(path)
         .filter(_.nodes.length == 1)
         .map(_.name)
+
+      override def toString: String = {
+        s"KeyValue($repository [$path])"
+      }
     }
   }
 

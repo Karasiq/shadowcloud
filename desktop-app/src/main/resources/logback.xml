@@ -23,13 +23,16 @@
 
     <logger level="WARN" name="org.apache.http"/>
     <logger level="WARN" name="akka.http"/>
+    <logger level="WARN" name="akka.io"/>
+    <logger level="WARN" name="com.typesafe.sslconfig"/>
 
-    <logger level="INFO">
+    <!--logger level="INFO">
         <appender-ref ref="STDOUT" />
         <appender-ref ref="FILE" />
-    </logger>
+    </logger-->
 
     <root level="DEBUG">
         <appender-ref ref="STDOUT" />
+        <appender-ref ref="FILE" />
     </root>
 </configuration>

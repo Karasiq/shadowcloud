@@ -16,6 +16,7 @@ import com.karasiq.shadowcloud.model.utils.SyncReport
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}
+import com.karasiq.shadowcloud.utils.Utils
 
 object StorageIndex {
   // Messages
@@ -88,9 +89,10 @@ private[actors] final class StorageIndex(storageId: StorageId, storageProps: Sto
   // State
   // -----------------------------------------------------------------------
   private[this] def startRegionDispatcher(regionId: RegionId): Unit = {
-    if (subIndexes.contains(regionId)) return
-    val newDispatcher = context.actorOf(RegionIndex.props(storageId, regionId, storageProps, repository.subRepository(regionId)))
-    subIndexes += (regionId, newDispatcher)
+    if (!subIndexes.contains(regionId)) {
+      val newDispatcher = context.actorOf(RegionIndex.props(storageId, regionId, storageProps, repository.subRepository(regionId)), Utils.uniqueActorName(regionId))
+      subIndexes += (regionId, newDispatcher)
+    }
   }
 
   private[this] def stopRegionDispatcher(regionId: RegionId): Unit = {

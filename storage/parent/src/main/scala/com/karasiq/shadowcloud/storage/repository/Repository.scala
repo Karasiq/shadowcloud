@@ -10,7 +10,7 @@ import akka.util.ByteString
 import com.karasiq.common.encoding.{ByteStringEncoding, HexString}
 import com.karasiq.shadowcloud.model.{ChunkId, SequenceNr}
 import com.karasiq.shadowcloud.storage.StorageIOResult
-import com.karasiq.shadowcloud.storage.repository.wrappers.{RepositoryKeyMapper, RepositoryWrapper, SubRepositoriesWrapper}
+import com.karasiq.shadowcloud.storage.repository.wrappers.{CategorizedRepositoryKeyMapper, RepositoryKeyMapper, RepositoryWrapper, SubRepositoriesWrapper}
 
 trait Repository[Key] {
   final type Data = ByteString
@@ -30,14 +30,12 @@ object Repository {
 
   def mapCategoryKeys[OldKey, NewKey, ItemKey](repository: CategorizedRepository[OldKey, ItemKey], toNew: OldKey ⇒ NewKey,
                                          toOld: NewKey ⇒ OldKey): CategorizedRepository[NewKey, ItemKey] = {
-    new RepositoryKeyMapper[(OldKey, ItemKey), (NewKey, ItemKey)](repository, key ⇒ key.copy(_1 = toNew(key._1)),
-      key ⇒ key.copy(_1 = toOld(key._1))) with CategorizedRepository[NewKey, ItemKey]
+    new CategorizedRepositoryKeyMapper[OldKey, ItemKey, NewKey, ItemKey](repository, toNew, identity, toOld, identity)
   }
 
   def mapItemKeys[CatKey, OldKey, NewKey](repository: CategorizedRepository[CatKey, OldKey], toNew: OldKey ⇒ NewKey,
                                           toOld: NewKey ⇒ OldKey): CategorizedRepository[CatKey, NewKey] = {
-    new RepositoryKeyMapper[(CatKey, OldKey), (CatKey, NewKey)](repository, key ⇒ key.copy(_2 = toNew(key._2)),
-      key ⇒ key.copy(_2 = toOld(key._2))) with CategorizedRepository[CatKey, NewKey]
+    new CategorizedRepositoryKeyMapper[CatKey, OldKey, CatKey, NewKey](repository, identity, toNew, identity, toOld)
   }
 
   def forChunks[CatKey](repository: CategorizedRepository[CatKey, String],
@@ -49,12 +47,20 @@ object Repository {
     mapItemKeys[CatKey, String, Long](repository, _.toLong, _.toString)
   }
 
-  def toSeq[Key](repository: Repository[Key]): SeqRepository[Key] = {
-    new RepositoryWrapper(repository) with SeqRepository[Key]
+  def toSeq[Key](repository: Repository[Key]): SeqRepository[Key] = repository match {
+    case repository: SeqRepository[Key @unchecked] ⇒
+      repository
+
+    case _ ⇒
+      new RepositoryWrapper(repository) with SeqRepository[Key]
   }
 
-  def toCategorized[CatKey, Key](repository: Repository[(CatKey, Key)]): CategorizedRepository[CatKey, Key] = {
-    new RepositoryWrapper(repository) with CategorizedRepository[CatKey, Key]
+  def toCategorized[CatKey, Key](repository: Repository[(CatKey, Key)]): CategorizedRepository[CatKey, Key] = repository match {
+    case repository: CategorizedRepository[CatKey @unchecked, Key @unchecked] ⇒
+      repository
+
+    case _ ⇒
+      new RepositoryWrapper(repository) with CategorizedRepository[CatKey, Key]
   }
 
   def fromSubRepositories[CatKey, Key](pathString: String, subRepositories: () ⇒ Source[(CatKey, Repository[Key]), NotUsed])

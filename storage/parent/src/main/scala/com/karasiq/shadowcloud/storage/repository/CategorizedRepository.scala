@@ -14,10 +14,9 @@ trait CategorizedRepository[CatKey, ItemKey] extends Repository[(CatKey, ItemKey
   }
 
   def subRepository(seq: CatKey): Repository[ItemKey] = {
-    val outerInstance = this
-    new RepositoryKeyMapper[(CatKey, ItemKey), ItemKey](outerInstance, _._2, (seq, _)) {
-      override def keys: Source[ItemKey, Result] = outerInstance.subKeys(seq)
-      override def toString: String = s"SubRepository($seq in $outerInstance)"
+    new RepositoryKeyMapper[(CatKey, ItemKey), ItemKey](this, _._2, (seq, _)) {
+      override def keys: Source[ItemKey, Result] = CategorizedRepository.this.subKeys(seq)
+      override def toString: String = s"SubRepository($seq in ${CategorizedRepository.this})"
     }
   }
 }

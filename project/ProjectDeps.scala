@@ -4,8 +4,8 @@ object ProjectDeps {
   type Deps = Seq[ModuleID]
 
   object akka {
-    val version = "2.5.2"
-    val httpVersion = "10.0.9"
+    val version = "2.5.6"
+    val httpVersion = "10.0.11"
 
     def actors: Deps = Seq(
       "com.typesafe.akka" %% "akka-actor" % version
@@ -66,7 +66,7 @@ object ProjectDeps {
   )
 
   def bouncyCastle: Deps = Seq(
-    "org.bouncycastle" % "bcprov-jdk15on" % "1.57"
+    "org.bouncycastle" % "bcprov-jdk15on" % "1.58"
   )
 
   def libSodiumJni: Deps = Seq(

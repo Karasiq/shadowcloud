@@ -43,7 +43,7 @@ class IndexRepositoryStreamsTest extends SCExtensionSpec with FlatSpecLike {
     val testRepository = RepositoryKeys.toLong(repository)
 
     // Write diff
-    val streams = IndexRepositoryStreams(CoreTestUtils.storageConfig("testStorage"), system)
+    val streams = IndexRepositoryStreams("testRegion", CoreTestUtils.storageConfig("testStorage"), system)
     val (write, writeResult) = TestSource.probe[(Long, IndexData)]
       .via(streams.write(testRepository))
       .toMat(TestSink.probe)(Keep.both)

@@ -6,22 +6,24 @@ import scalaTags.all._
 import akka.util.ByteString
 import org.scalajs.dom.MouseEvent
 import org.scalajs.dom.html.TextArea
-import rx.Var
+import rx.{Rx, Var}
 
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.model.keys.KeySet
+import com.karasiq.shadowcloud.model.keys.KeyProps.RegionSet
 import com.karasiq.shadowcloud.webapp.components.common.AppComponents
+import com.karasiq.shadowcloud.webapp.components.region.RegionContext
 import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
 import com.karasiq.shadowcloud.webapp.utils.ExportUtils
 
 object KeysView {
-  def apply()(implicit context: AppContext, kc: KeysContext): KeysView = {
+  def apply()(implicit context: AppContext, kc: KeysContext, rc: RegionContext): KeysView = {
     new KeysView()
   }
 }
 
-class KeysView()(implicit context: AppContext, kc: KeysContext) extends BootstrapHtmlComponent {
+class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContext) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
     val heading = Seq[ModifierT](
       context.locale.keyId,
@@ -30,17 +32,18 @@ class KeysView()(implicit context: AppContext, kc: KeysContext) extends Bootstra
     )
 
     val rows = kc.keys.map { keyChain ⇒
-      val encSet = keyChain.encKeys.toSet
-      val decSet = keyChain.decKeys.toSet
-      val activeKeys = (encSet ++ decSet).toVector.sortBy(_.id)
-      val activeRows = activeKeys.map { key ⇒
+      val (activeKeys, disabledKeys) = keyChain.keys.partition(kp ⇒ kp.forEncryption || kp.forDecryption)
+
+      val activeRows = activeKeys.map { kp ⇒
+        val key = kp.key
         TableRow(Seq(key.id.toString, key.encryption.method.algorithm, key.signing.method.algorithm), TableRowStyle.active,
-          onclick := Callback.onClick(_ ⇒ showKeyDialog(key, encSet.contains(key), decSet.contains(key))))
+          onclick := Callback.onClick(_ ⇒ showKeyDialog(key, kp.regionSet, kp.forEncryption, kp.forDecryption)))
       }
 
-      val nonActiveRows = keyChain.disabledKeys.map { key ⇒
+      val nonActiveRows = disabledKeys.map { kp ⇒
+        val key = kp.key
         TableRow(Seq(key.id.toString, key.encryption.method.algorithm, key.signing.method.algorithm), textDecoration.`line-through`,
-          onclick := Callback.onClick(_ ⇒ showKeyDialog(key, forEncryption = false, forDecryption = false)))
+          onclick := Callback.onClick(_ ⇒ showKeyDialog(key, kp.regionSet, kp.forEncryption, kp.forDecryption)))
       }
 
       activeRows ++ nonActiveRows
@@ -122,22 +125,24 @@ class KeysView()(implicit context: AppContext, kc: KeysContext) extends Bootstra
     ButtonGroup(ButtonGroupSize.default, generateButton, importButton)
   }
 
-  private[this] def showKeyDialog(key: KeySet, forEncryption: Boolean, forDecryption: Boolean): Unit = {
-    def updatePermissions(forEncryption: Boolean, forDecryption: Boolean): Unit = {
-      context.api.modifyKey(key.id, forEncryption, forDecryption)
-        .foreach(_ ⇒ kc.updateAll())
+  private[this] def showKeyDialog(key: KeySet, regionSet: RegionSet, forEncryption: Boolean, forDecryption: Boolean): Unit = {
+    def updatePermissions(regionSet: RegionSet, forEncryption: Boolean, forDecryption: Boolean): Unit = {
+      context.api.modifyKey(key.id, regionSet, forEncryption, forDecryption).foreach(_ ⇒ kc.updateAll())
     }
 
     def renderPermissions() = {
       val forEncryptionRx = Var(forEncryption)
       val forDecryptionRx = Var(forDecryption)
+      val regionSelector = FormInput.multipleSelect(context.locale.regions, rc.regions.map(_.regions.keys.toVector.map(id ⇒ FormSelectOption(id, id))))
+      regionSelector.selected() = regionSet.toVector
 
-      forEncryptionRx.triggerLater(updatePermissions(forEncryptionRx.now, forDecryptionRx.now))
-      forDecryptionRx.triggerLater(updatePermissions(forEncryptionRx.now, forDecryptionRx.now))
-
+      Rx((forEncryptionRx(), forDecryptionRx(), regionSelector.selected()))
+        .triggerLater(updatePermissions(regionSelector.selected.now.toSet, forEncryptionRx.now, forDecryptionRx.now))
+      
       Form(
         FormInput.checkbox(context.locale.keyForEncryption, forEncryptionRx.reactiveInput),
-        FormInput.checkbox(context.locale.keyForDecryption, forDecryptionRx.reactiveInput)
+        FormInput.checkbox(context.locale.keyForDecryption, forDecryptionRx.reactiveInput),
+        regionSelector
       )
     }
 

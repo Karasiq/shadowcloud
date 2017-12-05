@@ -37,3 +37,7 @@ CREATE TABLE sc_sessions (
   data VARBINARY NOT NULL,
   PRIMARY KEY (storage_id, key)
 );
+
+--changeset shadowcloud:5
+ALTER TABLE sc_keys
+    ADD region_set ARRAY NOT NULL DEFAULT ();

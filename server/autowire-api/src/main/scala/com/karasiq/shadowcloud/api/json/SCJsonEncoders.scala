@@ -11,7 +11,7 @@ import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.crypto._
-import com.karasiq.shadowcloud.model.keys.{KeyChain, KeySet}
+import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyProps, KeySet}
 import com.karasiq.shadowcloud.model.utils._
 import com.karasiq.shadowcloud.model.utils.GCReport.{RegionGCState, StorageGCState}
 import com.karasiq.shadowcloud.model.utils.RegionStateReport.{RegionStatus, StorageStatus}
@@ -78,6 +78,7 @@ trait SCJsonEncoders {
   implicit val regionHealthFormat = Json.format[RegionHealth]
 
   implicit val keySetFormat = Json.format[KeySet]
+  implicit val keyPropsFormat = Json.format[KeyProps]
   implicit val keyChainFormat = Json.format[KeyChain]
 
   implicit object IndexScopeFormat extends Format[IndexScope] {

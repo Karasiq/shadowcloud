@@ -41,9 +41,9 @@ trait ShadowCloudApi {
   // Keys
   // -----------------------------------------------------------------------
   def getKeys(): Future[KeyChain]
-  def modifyKey(keyId: KeyId, forEncryption: Boolean, forDecryption: Boolean): Future[Done]
-  def generateKey(forEncryption: Boolean = true, forDecryption: Boolean = true, props: SerializedProps = SerializedProps.empty): Future[KeySet]
-  def addKey(key: KeySet, forEncryption: Boolean = true, forDecryption: Boolean = true): Future[KeySet]
+  def modifyKey(keyId: KeyId, regionSet: Set[RegionId] = Set.empty, forEncryption: Boolean, forDecryption: Boolean): Future[Done]
+  def generateKey(regionSet: Set[RegionId] = Set.empty, forEncryption: Boolean = true, forDecryption: Boolean = true, props: SerializedProps = SerializedProps.empty): Future[KeySet]
+  def addKey(key: KeySet, regionSet: Set[RegionId] = Set.empty, forEncryption: Boolean = true, forDecryption: Boolean = true): Future[KeySet]
 
   // -----------------------------------------------------------------------
   // Folders

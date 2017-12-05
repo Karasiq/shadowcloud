@@ -160,7 +160,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
   }
 
   it should "read index" in {
-    val streams = IndexRepositoryStreams(CoreTestUtils.storageConfig("testStorage"), system)
+    val streams = IndexRepositoryStreams("testRegion", CoreTestUtils.storageConfig("testStorage"), system)
     val regionRepo = indexRepository.subRepository("testRegion")
 
     // Write #2

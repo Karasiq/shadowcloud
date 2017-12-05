@@ -127,16 +127,16 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
     apiClient.getKeys().call()
   }
 
-  def modifyKey(keyId: KeyId, forEncryption: Boolean, forDecryption: Boolean) = {
-    apiClient.modifyKey(keyId, forEncryption, forDecryption).call()
+  def modifyKey(keyId: KeyId, regionSet: Set[RegionId], forEncryption: Boolean, forDecryption: Boolean) = {
+    apiClient.modifyKey(keyId, regionSet, forEncryption, forDecryption).call()
   }
 
-  def generateKey(forEncryption: Boolean, forDecryption: Boolean, props: SerializedProps) = {
-    apiClient.generateKey(forEncryption, forDecryption, props).call()
+  def generateKey(regionSet: Set[RegionId], forEncryption: Boolean, forDecryption: Boolean, props: SerializedProps) = {
+    apiClient.generateKey(regionSet, forEncryption, forDecryption, props).call()
   }
   
-  def addKey(key: KeySet, forEncryption: Boolean, forDecryption: Boolean) = {
-    apiClient.addKey(key, forEncryption, forDecryption).call()
+  def addKey(key: KeySet, regionSet: Set[RegionId], forEncryption: Boolean, forDecryption: Boolean) = {
+    apiClient.addKey(key, regionSet, forEncryption, forDecryption).call()
   }
 
   // -----------------------------------------------------------------------

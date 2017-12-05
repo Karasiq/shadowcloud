@@ -6,22 +6,23 @@ import scala.concurrent.Future
 import akka.Done
 
 import com.karasiq.shadowcloud.ShadowCloudExtension
-import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyId, KeySet}
+import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyId, KeyProps, KeySet}
+import com.karasiq.shadowcloud.model.keys.KeyProps.RegionSet
 import com.karasiq.shadowcloud.providers.KeyProvider
 
 private[crypto] final class TestKeyProvider(sc: ShadowCloudExtension) extends KeyProvider {
-  private[this] case class KeySetContainer(keySet: KeySet, forEncryption: Boolean, forDecryption: Boolean)
+  private[this] case class KeySetContainer(keySet: KeySet, regionSet: RegionSet, forEncryption: Boolean, forDecryption: Boolean)
   private[this] val keys = TrieMap.empty[KeyId, KeySetContainer]
 
-  def addKeySet(key: KeySet, forEncryption: Boolean, forDecryption: Boolean): Future[KeySet] = {
-    val result = keys.putIfAbsent(key.id, KeySetContainer(key, forEncryption, forDecryption))
+  def addKeySet(key: KeySet, regionSet: RegionSet, forEncryption: Boolean, forDecryption: Boolean): Future[KeySet] = {
+    val result = keys.putIfAbsent(key.id, KeySetContainer(key, regionSet, forEncryption, forDecryption))
     if (result.isEmpty) Future.successful(key) else Future.failed(new IllegalArgumentException("Key already exists"))
   }
 
-  def modifyKeySet(keyId: KeyId, forEncryption: Boolean, forDecryption: Boolean) = {
+  def modifyKeySet(keyId: KeyId, regionSet: RegionSet, forEncryption: Boolean, forDecryption: Boolean) = {
     keys.get(keyId) match {
       case Some(key) ⇒
-        keys += keyId → key.copy(key.keySet, forEncryption, forDecryption)
+        keys += keyId → key.copy(key.keySet, regionSet, forEncryption, forDecryption)
         Future.successful(Done)
 
       case None ⇒
@@ -33,11 +34,8 @@ private[crypto] final class TestKeyProvider(sc: ShadowCloudExtension) extends Ke
     if (keys.isEmpty) {
       addKeySet(sc.keys.generateKeySet())
     }
-    val vector = keys.values.toVector
 
-    Future.successful(KeyChain(
-      vector.filter(_.forEncryption).map(_.keySet),
-      vector.filter(_.forDecryption).map(_.keySet)
-    ))
+    val keysSeq = keys.values.toVector.map(ksp ⇒ KeyProps(ksp.keySet, ksp.regionSet, ksp.forEncryption, ksp.forDecryption))
+    Future.successful(KeyChain(keysSeq))
   }
 }

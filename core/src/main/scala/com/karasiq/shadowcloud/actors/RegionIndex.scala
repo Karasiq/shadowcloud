@@ -75,7 +75,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
     val indexId = RegionIndexId(storageId, regionId)
 
     val index = IndexMerger.sequential()
-    val streams = IndexRepositoryStreams(config)
+    val streams = IndexRepositoryStreams(regionId, config)
 
     var compactRequested = false
     var diffsSaved = 0

@@ -157,18 +157,18 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
     sc.keys.provider.getKeyChain().map(_.withoutKeys)
   }
 
-  def modifyKey(keyId: KeyId, forEncryption: Boolean, forDecryption: Boolean) = {
-    sc.keys.provider.modifyKeySet(keyId, forEncryption, forDecryption)
+  def modifyKey(keyId: KeyId, regionSet: Set[RegionId], forEncryption: Boolean, forDecryption: Boolean) = {
+    sc.keys.provider.modifyKeySet(keyId, regionSet, forEncryption, forDecryption)
   }
 
-  def generateKey(forEncryption: Boolean, forDecryption: Boolean, props: SerializedProps) = {
+  def generateKey(regionSet: Set[RegionId], forEncryption: Boolean, forDecryption: Boolean, props: SerializedProps) = {
     val (encMethod, signMethod) = sc.keys.getGenerationProps(props)
     Future(sc.keys.generateKeySet(encMethod, signMethod))(sc.executionContexts.cryptography)
-      .flatMap(sc.keys.provider.addKeySet(_, forEncryption, forDecryption))
+      .flatMap(sc.keys.provider.addKeySet(_, regionSet, forEncryption, forDecryption))
   }
 
-  def addKey(key: KeySet, forEncryption: Boolean, forDecryption: Boolean) = {
-    sc.keys.provider.addKeySet(key, forEncryption, forDecryption)
+  def addKey(key: KeySet, regionSet: Set[RegionId], forEncryption: Boolean, forDecryption: Boolean) = {
+    sc.keys.provider.addKeySet(key, regionSet, forEncryption, forDecryption)
   }
 
   // -----------------------------------------------------------------------

@@ -11,8 +11,10 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.config.StorageConfig
 import com.karasiq.shadowcloud.index.IndexData
+import com.karasiq.shadowcloud.model.RegionId
 import com.karasiq.shadowcloud.storage.internal.DefaultIndexRepositoryStreams
 import com.karasiq.shadowcloud.storage.repository.Repository
+import com.karasiq.shadowcloud.streams.index.IndexProcessingStreams
 
 private[shadowcloud] trait IndexRepositoryStreams {
   def write[Key](repository: Repository[Key]): Flow[(Key, IndexData), IndexIOResult[Key], NotUsed]
@@ -26,13 +28,14 @@ private[shadowcloud] object IndexRepositoryStreams {
     new DefaultIndexRepositoryStreams(breadth, writeFlow, readFlow)
   }
 
-  def apply(storageConfig: StorageConfig, actorSystem: ActorSystem): IndexRepositoryStreams = {
+  def apply(regionId: RegionId, storageConfig: StorageConfig, actorSystem: ActorSystem): IndexRepositoryStreams = {
     import actorSystem.dispatcher
-    val sc = ShadowCloud(actorSystem)
-    create(3, sc.streams.index.preWrite(storageConfig), sc.streams.index.postRead)
+    implicit val sc = ShadowCloud(actorSystem)
+    val index = IndexProcessingStreams(regionId)
+    create(3, index.preWrite(storageConfig), index.postRead)
   }
 
-  def apply(storageConfig: StorageConfig)(implicit ac: ActorContext): IndexRepositoryStreams = {
-    apply(storageConfig, ac.system)
+  def apply(regionId: RegionId, storageConfig: StorageConfig)(implicit ac: ActorContext): IndexRepositoryStreams = {
+    apply(regionId, storageConfig, ac.system)
   }
 }

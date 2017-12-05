@@ -16,6 +16,7 @@ import com.karasiq.shadowcloud.config.{CryptoConfig, StorageConfig}
 import com.karasiq.shadowcloud.crypto.index.IndexEncryption
 import com.karasiq.shadowcloud.exceptions.CryptoException
 import com.karasiq.shadowcloud.index.IndexData
+import com.karasiq.shadowcloud.model.RegionId
 import com.karasiq.shadowcloud.model.keys.KeyChain
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 import com.karasiq.shadowcloud.serialization.StreamSerialization
@@ -24,12 +25,12 @@ import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.utils.AkkaStreamUtils
 
 object IndexProcessingStreams {
-  def apply(sc: ShadowCloudExtension): IndexProcessingStreams = {
-    new IndexProcessingStreams(sc)
+  def apply(regionId: RegionId)(implicit sc: ShadowCloudExtension): IndexProcessingStreams = {
+    new IndexProcessingStreams(regionId)
   }
 }
 
-final class IndexProcessingStreams(sc: ShadowCloudExtension) {
+final class IndexProcessingStreams(regionId: RegionId)(implicit sc: ShadowCloudExtension) {
   // -----------------------------------------------------------------------
   // Flows
   // -----------------------------------------------------------------------
@@ -56,6 +57,7 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
   private[this] object internalStreams {
     private[this] val keyChainSource = Source.single(NotUsed)
       .flatMapConcat(_ ⇒ Source.fromFuture(sc.keys.provider.getKeyChain()))
+      .map(_.forRegion(regionId))
       .named("keyChainSource")
 
     val serialize = Flow[IndexData].map { data ⇒
@@ -119,12 +121,12 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
     val shape = FlowShape(inlet, outlet)
 
     def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
-      private[this] val log = Logging(sc.implicits.actorSystem, "IndexEncryptStage")
+      private[this] val log = Logging(sc.implicits.actorSystem, s"IndexEncryptStage($regionId)")
       private[this] val encryption = IndexEncryption(cryptoModules, sc.serialization)
 
       private[this] def encryptData(data: ByteString): Unit = {
         require(keyChain.encKeys.nonEmpty, "No keys available")
-        log.debug("Encrypting index frame with keys: {}", keyChain.encKeys)
+        log.info("Encrypting index frame with keys: {}", keyChain.encKeys)
         val result = encryption.encrypt(data, config.encryption.index, keyChain)
         push(outlet, result)
       }
@@ -154,7 +156,7 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
     val shape = FlowShape(inlet, outlet)
 
     def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
-      private[this] val log = Logging(sc.implicits.actorSystem, "IndexDecryptStage")
+      private[this] val log = Logging(sc.implicits.actorSystem, s"IndexDecryptStage($regionId)")
       private[this] val encryption = IndexEncryption(cryptoModules, sc.serialization)
 
       private[this] def pullInlet(): Unit = {
@@ -167,7 +169,7 @@ final class IndexProcessingStreams(sc: ShadowCloudExtension) {
 
       private[this] def tryDecrypt(data: EncryptedIndexData): Unit = {
         try {
-          log.debug("Decrypting index frame {} with keys: {}", data.id, keyChain.decKeys)
+          log.info("Decrypting index frame {} with keys: {}", data.id, keyChain.decKeys)
           val result = encryption.decrypt(data, keyChain)
           push(outlet, result)
         } catch { case NonFatal(exc) ⇒

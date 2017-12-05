@@ -10,7 +10,7 @@ import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.crypto._
-import com.karasiq.shadowcloud.model.keys.{KeyChain, KeySet}
+import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyProps, KeySet}
 import com.karasiq.shadowcloud.model.utils._
 import com.karasiq.shadowcloud.model.utils.GCReport.{RegionGCState, StorageGCState}
 import com.karasiq.shadowcloud.model.utils.RegionStateReport.{RegionStatus, StorageStatus}
@@ -81,6 +81,7 @@ trait SCBooPickleEncoders extends Base with BasicImplicitPicklers with Transform
   implicit val regionHealthFormat = generatePickler[RegionHealth]
   implicit val indexScopeFormat = generatePickler[IndexScope]
   implicit val keySetFormat = generatePickler[KeySet]
+  implicit val keyPropsFormat = generatePickler[KeyProps]
   implicit val keyChainFormat = generatePickler[KeyChain]
 
   implicit def generatedMessagePickler[T <: GeneratedMessage with com.trueaccord.scalapb.Message[T] : GeneratedMessageCompanion]: Pickler[T] = new Pickler[T] {

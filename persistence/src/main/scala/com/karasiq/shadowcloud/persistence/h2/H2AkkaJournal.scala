@@ -27,7 +27,8 @@ final class H2AkkaJournal extends AsyncWriteJournal {
   // Schema
   // -----------------------------------------------------------------------
   private[this] object schema extends SCQuillEncoders {
-    case class DBMessage(persistenceId: String, sequenceNr: Long, ordering: Long, tags: Set[String], message: ByteString)
+    @SerialVersionUID(0L)
+    final case class DBMessage(persistenceId: String, sequenceNr: Long, ordering: Long, tags: Set[String], message: ByteString)
 
     implicit val tagsEncoder: Encoder[Set[String]] = encoder(java.sql.Types.ARRAY, (index, value, row) ⇒
       row.setObject(index, value.toArray, java.sql.Types.ARRAY))

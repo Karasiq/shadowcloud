@@ -29,7 +29,6 @@ import com.karasiq.shadowcloud.serialization.{SerializationModule, Serialization
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams.chunk.ChunkProcessingStreams
 import com.karasiq.shadowcloud.streams.file.FileStreams
-import com.karasiq.shadowcloud.streams.index.IndexProcessingStreams
 import com.karasiq.shadowcloud.streams.metadata.MetadataStreams
 import com.karasiq.shadowcloud.streams.region.RegionStreams
 import com.karasiq.shadowcloud.utils.{ProviderInstantiator, SCProviderInstantiator}
@@ -169,7 +168,6 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // -----------------------------------------------------------------------
   object streams {
     val chunk = ChunkProcessingStreams(modules, config.chunks, config.crypto, config.parallelism)(executionContexts.cryptography)
-    val index = IndexProcessingStreams(ShadowCloudExtension.this)
     val region = RegionStreams(actors.regionSupervisor, config.parallelism, config.timeouts)
     val file = FileStreams(region, chunk)
     val metadata = MetadataStreams(ShadowCloudExtension.this)

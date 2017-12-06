@@ -3,6 +3,8 @@ package com.karasiq.shadowcloud.webapp.context
 import scala.language.implicitConversions
 import scalacss.internal.mutable.StyleSheet
 
+import org.scalajs.dom
+
 import com.karasiq.bootstrap.Bootstrap
 import com.karasiq.shadowcloud.api.{SCApiMeta, ShadowCloudApi}
 import com.karasiq.shadowcloud.webapp.api.{AjaxApi, FileApi}
@@ -50,8 +52,8 @@ trait AppContext {
 }
 
 class DefaultAppContext extends AppContext {
-  val api = AjaxApi
-  val locale: AppLocale = AppLocale.default
-  val timeFormat: TimeFormat = TimeFormat.forLocale(locale.languageCode)
-  val styles = Seq(FolderTreeStyles)
+  lazy val api = AjaxApi
+  lazy val locale: AppLocale = AppLocale.forCode(Option(dom.window.navigator.language).getOrElse("en"))
+  lazy val timeFormat: TimeFormat = TimeFormat.forLocale("en" /* locale.languageCode*/)
+  lazy val styles = Seq(FolderTreeStyles)
 }

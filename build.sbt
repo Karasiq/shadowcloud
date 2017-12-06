@@ -232,7 +232,11 @@ lazy val server = project
       )
     },
     scalaJsBundlerCompile in Compile <<= (scalaJsBundlerCompile in Compile)
-      .dependsOn(fullOptJS in Compile in webapp)
+      .dependsOn(fullOptJS in Compile in webapp) /*,
+    scalaJsBundlerCompilers in Compile := AssetCompilers {
+      case "text/javascript" ⇒
+        ConcatCompiler
+    }.<<=(AssetCompilers.default) */
   )
   .dependsOn(coreAssembly % "compile->compile;test->test", autowireApiJVM)
   .enablePlugins(ScalaJSBundlerPlugin)

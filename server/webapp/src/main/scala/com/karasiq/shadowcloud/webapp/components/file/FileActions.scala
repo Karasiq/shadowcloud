@@ -103,6 +103,8 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
   }
 
   private[this] def renderDelete(): TagT = {
+    var deletedFiles = Set.empty[File]
+
     def deleteFile(): Unit = {
       val result = if (useId) {
         context.api.deleteFile(folderContext.regionId, file).map(Set(_))
@@ -110,15 +112,26 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
         context.api.deleteFiles(folderContext.regionId, file.path)
       }
 
+      result.foreach { files ⇒
+        if (files.nonEmpty) {
+          deletedFiles = files
+          deleted() = true
+          folderContext.update(file.path.parent)
+        }
+      }
+    }
+
+    def undeleteFile(): Unit = {
+      val result = Future.sequence(deletedFiles.toVector.map(context.api.createFile(folderContext.regionId, _)))
       result.foreach { _ ⇒
-        deleted() = true 
+        deleted() = false
         folderContext.update(file.path.parent)
       }
     }
 
     div(
       Rx(if (deleted()) textDecoration.`line-through` else textDecoration.none).auto,
-      renderAction(context.locale.deleteFile, AppIcons.delete, onclick := Callback.onClick(_ ⇒ if (!deleted.now) deleteFile()))
+      renderAction(context.locale.deleteFile, AppIcons.delete, onclick := Callback.onClick(_ ⇒ if (!deleted.now) deleteFile() else undeleteFile()))
     )
   }
 

@@ -104,10 +104,12 @@ final class IndexProcessingStreams(regionId: RegionId)(implicit sc: ShadowCloudE
     }
 
     val writeEncrypted = Flow[EncryptedIndexData]
-      .via(StreamSerialization.serializeFramed[EncryptedIndexData](sc.serialization, sc.config.serialization.frameLimit))
+      .map(ed ⇒ ByteString(ed.toByteArray))
+      .via(StreamSerialization.frame(sc.config.serialization.frameLimit))
 
     val readEncrypted = Flow[ByteString]
-      .via(StreamSerialization.deserializeFramed[EncryptedIndexData](sc.serialization, sc.config.serialization.frameLimit))
+      .via(StreamSerialization.deframe(sc.config.serialization.frameLimit))
+      .map(bs ⇒ EncryptedIndexData.parseFrom(bs.toArray))
   }
 
   // -----------------------------------------------------------------------

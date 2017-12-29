@@ -6,6 +6,8 @@ import akka.http.scaladsl.marshalling.PredefinedToResponseMarshallers
 import akka.http.scaladsl.server._
 
 import com.karasiq.shadowcloud.ShadowCloudExtension
+import com.karasiq.shadowcloud.server.http.static.SCAkkaHttpStaticRoutes
+import com.karasiq.shadowcloud.server.http.webzinc.SCAkkaHttpWebZincRoutes
 
 object SCAkkaHttpServer {
   def apply(sc: ShadowCloudExtension): SCAkkaHttpServer = {
@@ -13,23 +15,13 @@ object SCAkkaHttpServer {
   }
 }
 
-class SCAkkaHttpServer(protected val sc: ShadowCloudExtension)
-  extends Directives with PredefinedToResponseMarshallers with SCAkkaHttpRoutes {
+class SCAkkaHttpServer(protected val sc: ShadowCloudExtension) extends Directives with PredefinedToResponseMarshallers
+    with SCAkkaHttpRoutes with SCAkkaHttpStaticRoutes with SCAkkaHttpWebZincRoutes {
 
   // -----------------------------------------------------------------------
   // Route
   // -----------------------------------------------------------------------
-  val scWebAppRoutes: Route = {
-    scRoutes ~ staticFilesRoute
-  }
-
-  private[this] def staticFilesRoute: Route = {
-    encodeResponse {
-      pathEndOrSingleSlash {
-        getFromResource("webapp/index.html")
-      } ~ {
-        getFromResourceDirectory("webapp")
-      }
-    }
+  lazy val scWebAppRoutes: Route = {
+    scRoutes ~ scWebZincRoute ~ scStaticRoute
   }
 }

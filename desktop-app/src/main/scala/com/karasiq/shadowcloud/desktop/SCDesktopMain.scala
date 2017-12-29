@@ -11,9 +11,7 @@ import com.typesafe.config.ConfigFactory
 import com.karasiq.common.configs.ConfigUtils
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.javafx.JavaFXContext
-import com.karasiq.shadowcloud.persistence.h2.H2DB
 import com.karasiq.shadowcloud.server.http.SCAkkaHttpServer
-import com.karasiq.shadowcloud.server.http.webzinc.SCAkkaHttpWebZincRoutes
 
 object SCDesktopMain extends App {
   // -----------------------------------------------------------------------
@@ -36,16 +34,14 @@ object SCDesktopMain extends App {
   implicit val actorSystem = ActorSystem("shadowcloud", config)
   val sc = ShadowCloud(actorSystem)
 
-  val httpServer = new SCAkkaHttpServer(sc) with SCAkkaHttpWebZincRoutes {
-    val route = scWebZincRoute ~ scWebAppRoutes
-  }
+  val httpServer = SCAkkaHttpServer(sc)
 
   import sc.implicits.{executionContext, materializer}
   H2DB(actorSystem).context // Init db
   sc.actors.regionSupervisor // Init actor
 
   // Start server
-  val bindFuture = Http().bindAndHandle(httpServer.route, httpServer.httpServerSettings.host, httpServer.httpServerSettings.port)
+  val bindFuture = Http().bindAndHandle(httpServer.scWebAppRoutes, httpServer.httpServerSettings.host, httpServer.httpServerSettings.port)
 
   new SCTrayIcon {
     def onOpen(): Unit = {

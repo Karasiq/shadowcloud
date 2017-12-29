@@ -5,7 +5,7 @@ val commonSettings = Seq(
   version := "1.0.0-SNAPSHOT",
   isSnapshot := version.value.endsWith("SNAPSHOT"),
   scalaVersion := "2.12.4",
-  // crossScalaVersions := Seq("2.11.8", "2.12.3"),
+  // crossScalaVersions := Seq("2.11.11", "2.12.4"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
   licenses := Seq("Apache License, Version 2.0" → url("http://opensource.org/licenses/Apache-2.0"))
 )
@@ -216,13 +216,25 @@ lazy val autowireApiJVM = autowireApi.jvm
 lazy val autowireApiJS = autowireApi.js
 
 lazy val server = project
-  .settings(commonSettings)
+  .settings(commonSettings, name := "shadowcloud-server")
+  .dependsOn(`server-api-routes` % "compile->compile;test->test", `server-static-routes`, `server-webzinc-routes`)
+  .aggregate(`server-api-routes`, `server-static-routes`, `server-webzinc-routes`)
+
+lazy val `server-api-routes` = (project in file("server") / "api-routes")
   .settings(
-    name := "shadowcloud-server",
+    commonSettings,
+    name := "shadowcloud-server-api",
     libraryDependencies ++=
       ProjectDeps.akka.streams ++
       ProjectDeps.akka.http ++
-      ProjectDeps.akka.testKit.map(_ % "test"),
+      ProjectDeps.akka.testKit.map(_ % "test")
+  )
+  .dependsOn(core % "compile->compile;test->test", autowireApiJVM)
+
+lazy val `server-static-routes` = (project in file("server") / "static-routes")
+  .settings(
+    commonSettings,
+    name := "shadowcloud-server-static",
     scalaJsBundlerAssets in Compile += {
       import com.karasiq.scalajsbundler.dsl._
       Bundle(
@@ -238,12 +250,12 @@ lazy val server = project
         ConcatCompiler
     }.<<=(AssetCompilers.default) */
   )
-  .dependsOn(coreAssembly % "compile->compile;test->test", autowireApiJVM)
+  .dependsOn(`server-api-routes`)
   .enablePlugins(ScalaJSBundlerPlugin)
 
-lazy val `server-webzinc` = (project in file("server") / "webzinc")
+lazy val `server-webzinc-routes` = (project in file("server") / "webzinc-routes")
   .settings(commonSettings, name := "shadowcloud-server-webzinc", libraryDependencies ++= ProjectDeps.webzinc)
-  .dependsOn(server)
+  .dependsOn(`server-api-routes`)
 
 lazy val webapp = (project in file("server") / "webapp")
   .settings(commonSettings)
@@ -276,7 +288,7 @@ lazy val desktopApp = (project in file("desktop-app"))
     name := "shadowcloud-desktop",
     libraryDependencies ++= ProjectDeps.akka.slf4j ++ ProjectDeps.logback
   )
-  .dependsOn(server, `server-webzinc`, javafx)
+  .dependsOn(coreAssembly, server, javafx)
   .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin)
 
 lazy val shell = (project in file("."))

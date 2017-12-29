@@ -1,12 +1,14 @@
 package com.karasiq.shadowcloud.webapp.components.folder
 
+import scala.concurrent.Future
+
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
 import org.scalajs.dom
 import rx.{Rx, Var}
 
-import com.karasiq.shadowcloud.model.Path
+import com.karasiq.shadowcloud.model.{File, Path, RegionId}
 import com.karasiq.shadowcloud.utils.Utils
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons, TextEditor}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
@@ -19,6 +21,14 @@ object UploadForm {
 
   private def newNoteName(text: String): String = {
     Utils.takeWords(text, 50).replaceAll("\\s+", " ").trim + ".md"
+  }
+
+  private def uploadNoteOrPage(regionId: RegionId, path: Path, text: String)(implicit appContext: AppContext): Future[File] = {
+    if (text.matches("https?://[^\\s]+")) {
+      appContext.api.saveWebPage(regionId, path, text)
+    } else {
+      appContext.api.uploadFile(regionId, path / newNoteName(text), text)._2
+    }
   }
 }
 
@@ -39,8 +49,7 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext) 
 
     val editor = TextEditor { editor ⇒
       editor.submitting() = true
-      val path = folderContext.selected.now / UploadForm.newNoteName(editor.value.now)
-      val (_, future) = appContext.api.uploadFile(folderContext.regionId, path, editor.value.now)
+      val future = UploadForm.uploadNoteOrPage(folderContext.regionId, folderContext.selected.now, editor.value.now)
       future.onComplete { result ⇒
         editor.submitting() = false
         result.foreach { file ⇒

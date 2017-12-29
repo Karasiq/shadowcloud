@@ -21,7 +21,7 @@ trait SCAjaxApiClient[Reader[_], Writer[_]] extends SCApiClient[ByteString, Read
     val headers = Map(
       "SC-Accept" → payloadContentType,
       "Content-Type" → payloadContentType,
-      "X-Requested-With" → SCApiUtils.requestedWith
+      "X-Requested-With" → SCApiUtils.RequestedWith
     )
 
     Ajax.post(url, payload.toByteBuffer, /* 15000 */ 0, headers, responseType = "arraybuffer")

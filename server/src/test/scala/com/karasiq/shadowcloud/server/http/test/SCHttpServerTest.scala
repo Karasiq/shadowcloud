@@ -41,7 +41,7 @@ class SCHttpServerTest extends FlatSpec with Matchers with ScalatestRouteTest {
 
   "Test server" should "upload file" in {
     val request = Post(s"/upload/$testRegionId/$encodedPath", HttpEntity(testFileContent))
-      .copy(headers = List(RawHeader("X-Requested-With", SCApiUtils.requestedWith)))
+      .copy(headers = List(RawHeader("X-Requested-With", SCApiUtils.RequestedWith)))
 
     request ~> route ~> check {
       val file = apiEncoding.decodeFile(entityAs[ByteString](implicitly[FromEntityUnmarshaller[ByteString]], implicitly[ClassTag[ByteString]], 30 seconds))

@@ -16,18 +16,25 @@ trait FileApi { self: SCApiMeta ⇒
 
   def uploadFile(regionId: RegionId, path: Path, data: Ajax.InputData): (Rx[Int], Future[File]) = {
     val (progress, future) = UploadUtils.uploadWithProgress(uploadFileUrl(regionId, path), data,
-      headers = Map("X-Requested-With" → SCApiUtils.requestedWith), responseType = "arraybuffer")
+      headers = SCApiUtils.PostHeaders, responseType = BytesResponseType)
 
     (progress, future.map(encoding.decodeFile))
   }
 
+  def saveWebPage(regionId: RegionId, path: Path, url: String): Future[File] = {
+    val apiUrl = URLPath(Path.root / "save_page" / regionId / SCApiEncoding.toUrlSafe(encoding.encodePath(path)), Map("url" → url)).toString
+    Ajax.post(apiUrl, headers = SCApiUtils.PostHeaders, responseType = BytesResponseType)
+      .responseBytes
+      .map(encoding.decodeFile)
+  }
+
   def downloadMostRecentFile(regionId: RegionId, path: Path, scope: IndexScope = IndexScope.default): Future[ByteString] = {
-    Ajax.get(mostRecentFileUrl(regionId, path, scope), responseType = "arraybuffer")
+    Ajax.get(mostRecentFileUrl(regionId, path, scope), responseType = BytesResponseType)
       .responseBytes
   }
 
   def downloadFile(regionId: RegionId, path: Path, id: FileId, scope: IndexScope = IndexScope.default): Future[ByteString] = {
-    Ajax.get(fileUrl(regionId, path, id, scope), responseType = "arraybuffer")
+    Ajax.get(fileUrl(regionId, path, id, scope), responseType = BytesResponseType)
       .responseBytes
   }
 

@@ -241,6 +241,10 @@ lazy val server = project
   .dependsOn(coreAssembly % "compile->compile;test->test", autowireApiJVM)
   .enablePlugins(ScalaJSBundlerPlugin)
 
+lazy val `server-webzinc` = (project in file("server") / "webzinc")
+  .settings(commonSettings, name := "shadowcloud-server-webzinc", libraryDependencies ++= ProjectDeps.webzinc)
+  .dependsOn(server)
+
 lazy val webapp = (project in file("server") / "webapp")
   .settings(commonSettings)
   .settings(
@@ -272,7 +276,7 @@ lazy val desktopApp = (project in file("desktop-app"))
     name := "shadowcloud-desktop",
     libraryDependencies ++= ProjectDeps.akka.slf4j ++ ProjectDeps.logback
   )
-  .dependsOn(server, javafx)
+  .dependsOn(server, `server-webzinc`, javafx)
   .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin)
 
 lazy val shell = (project in file("."))

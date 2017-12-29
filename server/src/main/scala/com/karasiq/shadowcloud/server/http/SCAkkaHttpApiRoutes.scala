@@ -73,7 +73,7 @@ private[server] trait SCAkkaHttpApiRoutes { self: Directives ⇒
     }
 
     val validateRequestedWith = {
-      validateHeader("X-Requested-With", _ == SCApiUtils.requestedWith)
+      validateHeader("X-Requested-With", _ == SCApiUtils.RequestedWith)
     }
 
     val extractApiRequest: Directive1[RequestT] = {

@@ -131,4 +131,8 @@ object ProjectDeps {
   def flexmark: Deps = Seq(
     "com.vladsch.flexmark" % "flexmark-all" % "0.28.4"
   )
+
+  def webzinc: Deps = Seq(
+    "com.github.karasiq" %% "webzinc" % "1.0.1"
+  )
 }

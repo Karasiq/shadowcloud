@@ -11,6 +11,7 @@ import com.typesafe.config.ConfigFactory
 import com.karasiq.common.configs.ConfigUtils
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.javafx.JavaFXContext
+import com.karasiq.shadowcloud.persistence.h2.H2DB
 import com.karasiq.shadowcloud.server.http.SCAkkaHttpServer
 
 object SCDesktopMain extends App {

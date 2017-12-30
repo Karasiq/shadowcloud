@@ -67,7 +67,7 @@ abstract class FilteredOrderedTable[T] extends BootstrapHtmlComponent {
   }
 
   def renderTag(md: ModifierT*): TagT = {
-    val showFilter = Rx(items().lengthCompare(1) <= 0)
+    val hideFilter = Rx(items().lengthCompare(1) <= 0)
 
     val heading = Rx {
       val columns = this.columns()
@@ -86,7 +86,7 @@ abstract class FilteredOrderedTable[T] extends BootstrapHtmlComponent {
       val items = this.items()
 
       val filter = this.filter()
-      val filteredItems = if (!showFilter() || filter.isEmpty) items else items.filter(item ⇒ filterItem(item, filter))
+      val filteredItems = if (hideFilter() || filter.isEmpty) items else items.filter(item ⇒ filterItem(item, filter))
 
       val selectedCol = this.sortByColumn()
       val ordering = if (reverseOrdering()) selectedCol.ord.reverse else selectedCol.ord
@@ -96,7 +96,7 @@ abstract class FilteredOrderedTable[T] extends BootstrapHtmlComponent {
     }
 
     div(
-      GridSystem.mkRow(Form(FormInput.text("", filter.reactiveInput)), showFilter.reactiveHide),
+      GridSystem.mkRow(Form(FormInput.text("", filter.reactiveInput)), hideFilter.reactiveHide),
       GridSystem.mkRow(PagedTable(heading, content).renderTag(md:_*))
     )
   }

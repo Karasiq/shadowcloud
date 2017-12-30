@@ -8,7 +8,7 @@ import rx.{Rx, Var}
 
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.index.files.FileVersions
-import com.karasiq.shadowcloud.model.{File, FileId}
+import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.webapp.components.common.FilteredOrderedTable
 import com.karasiq.shadowcloud.webapp.components.common.FilteredOrderedTable.Column
 import com.karasiq.shadowcloud.webapp.components.file.FileDownloadLink
@@ -35,16 +35,16 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
 
     val table = if (flat) {
       baseTable.withColumns(
-        Column[File, String](context.locale.name, _.path.name, file ⇒ FileDownloadLink(file)(file.path.name)),
-        Column[File, Long](context.locale.size, _.checksum.size, file ⇒ MemorySize.toString(file.checksum.size)),
-        Column[File, Long](context.locale.modifiedDate, _.timestamp.lastModified, file ⇒ context.timeFormat.timestamp(file.timestamp.lastModified))
+        Column(context.locale.name, _.path.name, file ⇒ FileDownloadLink(file)(file.path.name)),
+        Column(context.locale.size, _.checksum.size, file ⇒ MemorySize.toString(file.checksum.size)),
+        Column(context.locale.modifiedDate, _.timestamp.lastModified, file ⇒ context.timeFormat.timestamp(file.timestamp.lastModified))
       )
     } else {
       baseTable.withColumns(
-        Column[File, FileId](context.locale.fileId, _.id, file ⇒ FileDownloadLink(file, useId = true)(file.id.toString)),
-        Column[File, String](context.locale.name, _.path.name, _.path.name),
-        Column[File, Long](context.locale.size, _.checksum.size, file ⇒ MemorySize.toString(file.checksum.size)),
-        Column[File, Long](context.locale.modifiedDate, _.timestamp.lastModified, file ⇒ context.timeFormat.timestamp(file.timestamp.lastModified))
+        Column(context.locale.fileId, _.id, file ⇒ FileDownloadLink(file, useId = true)(file.id.toString)),
+        Column(context.locale.name, _.path.name, _.path.name),
+        Column(context.locale.size, _.checksum.size, file ⇒ MemorySize.toString(file.checksum.size)),
+        Column(context.locale.modifiedDate, _.timestamp.lastModified, file ⇒ context.timeFormat.timestamp(file.timestamp.lastModified))
       )
     }
 

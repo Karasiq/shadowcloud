@@ -11,14 +11,15 @@ import com.karasiq.shadowcloud.webapp.components.common.FilteredOrderedTable.Col
 object FilteredOrderedTable {
   final case class Column[T, V](name: Modifier, extract: T ⇒ V, render: T ⇒ Modifier)(implicit val ord: Ordering[V])
   type GenColumn[T] = Column[T, Any]
+  type GenColumns[T] = Seq[GenColumn[T]]
 
-  final case class Builder[T](items: Rx[Seq[T]], columns: Seq[GenColumn[T]] = Nil,
+  final case class Builder[T](items: Rx[Seq[T]], columns: GenColumns[T] = Nil,
                               rowModifiers: T ⇒ Modifier = (_: T) ⇒ Bootstrap.noModifier,
                               filterItem: (T, String) ⇒ Boolean = (i: T, f: String) ⇒ i.toString.contains(f)) extends BootstrapHtmlComponent {
 
     def withItems(items: Rx[Seq[T]]) = copy(items)
     def withItems(items: T*) = copy(Var(items))
-    def withColumns(columns: Column[T, _]*) = copy(columns = columns.asInstanceOf[Seq[GenColumn[T]]])
+    def withColumns(columns: Column[T, _]*) = copy(columns = columns.asInstanceOf[GenColumns[T]])
     def withRowModifiers(rowModifiers: T ⇒ Modifier) = copy(rowModifiers = rowModifiers)
     def withFilter(filterItem: (T, String) ⇒ Boolean) = copy(filterItem = filterItem)
 

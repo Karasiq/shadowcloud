@@ -31,7 +31,7 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
 
     val baseTable = FilteredOrderedTable(files)
       .withRowModifiers(fileRowModifiers)
-      .withFilter((file, str) ⇒ file.path.name.contains(str))
+      .withFilter((file, str) ⇒ file.path.name.toLowerCase.contains(str.toLowerCase))
 
     val table = if (flat) {
       baseTable.withColumns(

@@ -9,8 +9,8 @@ import rx.{Rx, Var}
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.model.{File, FileId}
-import com.karasiq.shadowcloud.webapp.components.common.OrderedTable
-import com.karasiq.shadowcloud.webapp.components.common.OrderedTable.Column
+import com.karasiq.shadowcloud.webapp.components.common.FilteredOrderedTable
+import com.karasiq.shadowcloud.webapp.components.common.FilteredOrderedTable.Column
 import com.karasiq.shadowcloud.webapp.components.file.FileDownloadLink
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 
@@ -29,19 +29,23 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
       if (flat) FileVersions.toFlatDirectory(fileSet) else fileSet.toVector
     }
 
+    val baseTable = FilteredOrderedTable(files)
+      .withRowModifiers(fileRowModifiers)
+      .withFilter((file, str) ⇒ file.path.name.contains(str))
+
     val table = if (flat) {
-      OrderedTable(files)(
+      baseTable.withColumns(
         Column[File, String](context.locale.name, _.path.name, file ⇒ FileDownloadLink(file)(file.path.name)),
         Column[File, Long](context.locale.size, _.checksum.size, file ⇒ MemorySize.toString(file.checksum.size)),
         Column[File, Long](context.locale.modifiedDate, _.timestamp.lastModified, file ⇒ context.timeFormat.timestamp(file.timestamp.lastModified))
-      )(f ⇒ fileRowModifiers(f), (f, s) ⇒ f.path.name.contains(s))
+      )
     } else {
-      OrderedTable(files)(
+      baseTable.withColumns(
         Column[File, FileId](context.locale.fileId, _.id, file ⇒ FileDownloadLink(file, useId = true)(file.id.toString)),
         Column[File, String](context.locale.name, _.path.name, _.path.name),
         Column[File, Long](context.locale.size, _.checksum.size, file ⇒ MemorySize.toString(file.checksum.size)),
         Column[File, Long](context.locale.modifiedDate, _.timestamp.lastModified, file ⇒ context.timeFormat.timestamp(file.timestamp.lastModified))
-      )(f ⇒ fileRowModifiers(f), (f, s) ⇒ f.path.name.contains(s))
+      )
     }
 
     table.renderTag(md:_*)

@@ -45,7 +45,7 @@ private[folder] class FolderActions(regionId: RegionId, path: Path)
 
       Modal()
         .withTitle(context.locale.rename)
-        .withBody(Form(FormInput.text(context.locale.name, folderNameRx.reactiveInputRead)))
+        .withBody(Form(FormInput.text(context.locale.name, folderNameRx.reactiveInput)))
         .withButtons(
           Modal.button(context.locale.submit, Modal.dismiss, isFolderNameValid.reactiveShow, onclick := Callback.onClick { _ ⇒
             for {

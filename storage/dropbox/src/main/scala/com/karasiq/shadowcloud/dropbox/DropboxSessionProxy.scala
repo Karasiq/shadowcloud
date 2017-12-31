@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.dropbox
 
 import akka.Done
-import akka.actor.{ActorSystem, Props}
+import akka.actor.Props
 import akka.stream.ActorMaterializer
 
 import com.karasiq.common.configs.ConfigImplicits._
@@ -27,25 +27,25 @@ object DropboxSessionProxy {
     }
 
     SessionProxyActor.props(implicit context ⇒ new SessionAuthenticator[UserToken] {
-      import context.dispatcher
       implicit val materializer = ActorMaterializer()
-      implicit val actorSystem = ActorSystem()
-      val sc = ShadowCloud(context.system)
-      val config = sc.configs.storageConfig(storageId, props)
+      import context.{dispatcher, system}
+
+      val sc = ShadowCloud()
+      val dropboxConfig = sc.configs.storageConfig(storageId, props).rootConfig.getConfigIfExists("dropbox")
 
       implicit val requestConfig = {
-        val rootConfig = config.rootConfig.getConfigIfExists("dropbox.requests")
-        val appName = rootConfig.withDefault("shadowcloud/1.0.0", _.getString("app-name"))
-        val maxRetries = rootConfig.withDefault(5, _.getInt("max-retries"))
+        val config = dropboxConfig.getConfigIfExists("requests")
+        val appName = config.withDefault("shadowcloud/1.0.0", _.getString("app-name"))
+        val maxRetries = config.withDefault(5, _.getInt("max-retries"))
         Dropbox.RequestConfig(appName, maxRetries)
       }
 
-      val appKeys = Dropbox.AppKeys(config.rootConfig.getConfigIfExists("dropbox.app-keys"))
+      val appKeys = Dropbox.AppKeys(dropboxConfig.getConfigIfExists("app-keys"))
 
       def getSession() = {
         val cachedToken = for {
           _token ← sc.sessions.get[UserToken](storageId, "oauth")
-          _ ← { implicit val token = _token; DropboxClient().spaceUsage() }
+          _ ← { implicit val token = _token; DropboxClient(SCDropbox.DispatcherId).spaceUsage() }
         } yield _token
 
         cachedToken.recoverWith { case _ ⇒
@@ -59,7 +59,7 @@ object DropboxSessionProxy {
 
       def createDispatcher(_token: UserToken) = {
         implicit val token = _token
-        val client = DropboxClient()
+        val client = DropboxClient(SCDropbox.DispatcherId)
         StoragePluginBuilder(storageId, props)
           .withIndexTree(DropboxRepository(client))
           .withChunksTree(DropboxRepository(client))

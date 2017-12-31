@@ -56,7 +56,7 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
           .mapAsync(1)(_ ⇒ client.upload(key, HttpEntity(ContentTypes.`application/octet-stream`, bytes)))
           .mapAsync(2)(client.file)
           .log("mailrucloud-files")
-          .map { file ⇒ require(Path.fromString(file.path) == key, s"Invalid path: $file"); file.size }
+          .map { file ⇒ require(Path.fromString(file.home) == key, s"Invalid path: $file"); file.size }
           .via(StorageUtils.wrapCountStream(key))
       }
       .toMat(Sink.head)(Keep.right)
@@ -82,8 +82,8 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
       .mapAsync(1)(client.folder(_))
       .flatMapConcat { folder ⇒
         val (files, folders) = folder.list.partition(_.`type` == "file")
-        Source(files.map(_.path: Path).toList)
-          .concat(Source(folders.toList).map(_.path: Path).via(traverseFlow))
+        Source(files.map(_.home: Path).toList)
+          .concat(Source(folders.toList).map(_.home: Path).via(traverseFlow))
       }
       .recoverWithRetries(1, { case ae: ApiException if ae.errorName.contains("not_exists") ⇒ Source.empty })
       .named("mailrucloudTraverse")
@@ -101,7 +101,7 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
 
   private[this] def getOrCreateFolder(path: Path): Source[Path, NotUsed] = {
     Source.fromFuture(client.folder(path))
-      .map(_.path: MailCloudTypes.EntityPath)
+      .map(_.home: MailCloudTypes.EntityPath)
       .recoverWithRetries(1, { case _ ⇒ Source.fromFuture(client.createFolder(path)) })
       .map(ep ⇒ ep: Path)
       .named("getOrCreateFolder")

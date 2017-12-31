@@ -40,7 +40,7 @@ private[folder] class FolderActions(regionId: RegionId, path: Path)
     }
 
     def showRenameFolderModal(): Unit = {
-      val folderNameRx = Var("")
+      val folderNameRx = Var(path.name)
       val isFolderNameValid = folderNameRx.map(_.nonEmpty)
 
       Modal()

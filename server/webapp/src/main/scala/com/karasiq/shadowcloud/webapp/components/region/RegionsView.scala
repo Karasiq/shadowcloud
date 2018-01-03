@@ -57,7 +57,7 @@ class RegionsView(implicit context: AppContext, regionContext: RegionContext) ex
     }
 
     Button(ButtonStyle.primary, ButtonSize.small, block = true)(
-      AppIcons.create, Bootstrap.nbsp, context.locale.createRegion,
+      AppIcons.create, context.locale.createRegion,
       onclick := Callback.onClick(_ ⇒ showCreateDialog())
     )
   }

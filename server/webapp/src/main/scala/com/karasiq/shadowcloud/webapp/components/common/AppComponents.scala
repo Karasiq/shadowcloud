@@ -16,7 +16,6 @@ object AppComponents {
   def iconLink(title: Modifier, icon: Modifier, md: Modifier*): ConcreteHtmlTag[dom.html.Anchor] = a(
     href := "javascript:void(0)",
     icon,
-    Bootstrap.nbsp,
     title,
     md
   )

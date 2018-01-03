@@ -68,10 +68,7 @@ class SCFrontend()(implicit val appContext: AppContext) extends BootstrapCompone
     }
 
     div(
-      GridSystem.mkRow(
-        regionSwitcher,
-        uploadFormRx
-      ),
+      GridSystem.mkRow(ButtonGroup(ButtonGroupSize.small, regionSwitcher, uploadFormRx)),
       GridSystem.mkRow(foldersPanelRx)
     )
   }

@@ -36,8 +36,7 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
   }
 
   private[this] def renderDownloadLink(): TagT = {
-    FileDownloadLink(file, useId)(AppIcons.download, Bootstrap.nbsp,
-      context.locale.downloadFile, attr("download") := file.path.name)
+    FileDownloadLink(file, useId)(AppIcons.download, context.locale.downloadFile, attr("download") := file.path.name)
   }
 
   private[this] def renderEditor(): TagT = {

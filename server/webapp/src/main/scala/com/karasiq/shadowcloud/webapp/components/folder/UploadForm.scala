@@ -75,7 +75,7 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext) 
   }
 
   def renderButton(md: ModifierT*): TagT = {
-    Button(ButtonStyle.info)(AppIcons.upload, Bootstrap.nbsp, appContext.locale.uploadFiles, md, onclick := Callback.onClick { _ ⇒
+    Button(ButtonStyle.info)(AppIcons.upload, appContext.locale.uploadFiles, md, onclick := Callback.onClick { _ ⇒
       renderModal().show()
     })
   }

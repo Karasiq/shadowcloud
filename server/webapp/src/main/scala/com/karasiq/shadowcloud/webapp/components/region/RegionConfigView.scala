@@ -69,7 +69,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
       Rx {
         val buttonStyle = if (gcAnalysed()) ButtonStyle.danger else ButtonStyle.warning
         Button(buttonStyle, ButtonSize.extraSmall)(
-          AppIcons.delete, Bootstrap.nbsp, context.locale.collectGarbage, "disabled".classIf(gcStarted),
+          AppIcons.delete, context.locale.collectGarbage, "disabled".classIf(gcStarted),
           onclick := Callback.onClick(_ ⇒ if (!gcStarted.now) doGC(delete = gcAnalysed.now))
         )
       },
@@ -98,7 +98,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
     }
 
     div(
-      Button(ButtonStyle.danger, ButtonSize.extraSmall)(AppIcons.compress, Bootstrap.nbsp, context.locale.compactIndex, "disabled".classIf(compactStarted),
+      Button(ButtonStyle.danger, ButtonSize.extraSmall)(AppIcons.compress, context.locale.compactIndex, "disabled".classIf(compactStarted),
         onclick := Callback.onClick(_ ⇒ if (!compactStarted.now) doCompact())),
       div(compactReportRx.map(reports ⇒ renderReports(reports)))
     )
@@ -121,12 +121,11 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
     }
 
     val suspendButton = if (regionStatus.suspended)
-      Button(ButtonStyle.success, ButtonSize.extraSmall)(AppIcons.resume, Bootstrap.nbsp, context.locale.resume, onclick := Callback.onClick(_ ⇒ doResume()))
+      Button(ButtonStyle.success, ButtonSize.extraSmall)(AppIcons.resume, context.locale.resume, onclick := Callback.onClick(_ ⇒ doResume()))
     else
-      Button(ButtonStyle.warning, ButtonSize.extraSmall)(AppIcons.suspend, Bootstrap.nbsp, context.locale.suspend, onclick := Callback.onClick(_ ⇒ doSuspend()))
+      Button(ButtonStyle.warning, ButtonSize.extraSmall)(AppIcons.suspend, context.locale.suspend, onclick := Callback.onClick(_ ⇒ doSuspend()))
 
-    val deleteButton = Button(ButtonStyle.danger, ButtonSize.extraSmall)(AppIcons.delete, Bootstrap.nbsp,
-      context.locale.delete, onclick := Callback.onClick(_ ⇒ doDelete()))
+    val deleteButton = Button(ButtonStyle.danger, ButtonSize.extraSmall)(AppIcons.delete, context.locale.delete, onclick := Callback.onClick(_ ⇒ doDelete()))
 
     ButtonGroup(ButtonGroupSize.extraSmall, suspendButton, deleteButton)
   }
@@ -176,8 +175,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
           .show()
       }
 
-      Button(ButtonStyle.primary, ButtonSize.extraSmall)(AppIcons.register, Bootstrap.nbsp,
-        context.locale.registerStorage, onclick := Callback.onClick(_ ⇒ showAddDialog()))
+      Button(ButtonStyle.primary, ButtonSize.extraSmall)(AppIcons.register, context.locale.registerStorage, onclick := Callback.onClick(_ ⇒ showAddDialog()))
     }
 
     def renderStorage(storageId: StorageId) = {

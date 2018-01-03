@@ -81,7 +81,7 @@ class StoragesView(implicit context: AppContext, regionContext: RegionContext) e
     }
 
     Button(ButtonStyle.primary, ButtonSize.small, block = true)(
-      AppIcons.create, Bootstrap.nbsp, context.locale.createStorage,
+      AppIcons.create, context.locale.createStorage,
       onclick := Callback.onClick(_ ⇒ showCreateDialog())
     )
   }

@@ -12,6 +12,7 @@ object FolderTreeStyles extends StyleSheet.Inline {
   )
 
   val folderActions = style(
+    marginLeft(2 px),
     cursor.pointer,
     opacity(0.3),
     &.hover(

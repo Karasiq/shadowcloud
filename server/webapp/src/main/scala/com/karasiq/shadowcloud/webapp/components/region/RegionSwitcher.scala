@@ -17,7 +17,7 @@ class RegionSwitcher(implicit context: AppContext, regionContext: RegionContext)
   val scopeSelector = IndexScopeSelector()
 
   def renderTag(md: ModifierT*): TagT = {
-    Button(ButtonStyle.warning)(AppIcons.region, Bootstrap.nbsp, context.locale.region,
+    Button(ButtonStyle.warning)(AppIcons.region, context.locale.region,
       onclick := Callback.onClick(_ ⇒ this.show()), md)
   }
 

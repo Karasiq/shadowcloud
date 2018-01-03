@@ -191,15 +191,13 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
       }
 
       val actions: Frag = if (isSelected) {
-        small(Bootstrap.nbsp, FolderActions(regionId, path), FolderTreeStyles.folderActions,
-          folderContext.scope.map(_ == IndexScope.Current).reactiveShow)
+        small(FolderActions(regionId, path), FolderTreeStyles.folderActions, folderContext.scope.map(_ == IndexScope.Current).reactiveShow)
       } else {
         Bootstrap.noContent
       }
 
       span(
-        a(href := "#", icon, styles, onclick := Callback.onClick(_ ⇒ opened() = !opened.now)),
-        Bootstrap.nbsp,
+        a(href := "#", icon, styles, marginRight := 2.px, onclick := Callback.onClick(_ ⇒ opened() = !opened.now)),
         a(href := "#", FolderTree.toPathString(path), styles, dragAndDropHandlers, onclick := Callback.onClick(_ ⇒ folderContext.selected() = path)),
         actions
       )

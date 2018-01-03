@@ -56,7 +56,7 @@ class FileAvailabilityView(file: File)(implicit context: AppContext, folderConte
     div(
       div(b(context.locale.total, ": ", f"${fileAvailability.totalPercentage}%.2f%%")),
       for ((storageId, percentage) ← sortedPercentages)
-        yield div(icon(percentage), Bootstrap.nbsp, storageId, f" ($percentage%.2f%%)", textStyle(percentage))
+        yield div(icon(percentage), storageId, f" ($percentage%.2f%%)", textStyle(percentage))
     )(md:_*)
   }
 

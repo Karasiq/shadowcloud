@@ -72,10 +72,10 @@ private[actors] final class RegionGC(regionId: RegionId, config: GCConfig) exten
   // -----------------------------------------------------------------------
   def receiveIdle: Receive = {
     case CollectGarbage(gcStrategy) ⇒
-      if (sender() != self || (config.runOnLowSpace.isEmpty && gcDeadline.isOverdue())) {
+      if (sender() != self || (config.autoDelete && config.runOnLowSpace.isEmpty && gcDeadline.isOverdue())) {
         log.debug("Starting garbage collection")
         self.tell(StartGCNow(gcStrategy), sender())
-      } else if (config.runOnLowSpace.nonEmpty && gcDeadline.isOverdue()) {
+      } else if (config.autoDelete && config.runOnLowSpace.nonEmpty && gcDeadline.isOverdue()) {
         val healthFuture = sc.ops.region.getHealth(regionId)
         healthFuture.onComplete {
           case Success(health) ⇒

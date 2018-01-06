@@ -23,8 +23,8 @@ abstract class TextEditor(implicit context: AppContext) extends BootstrapHtmlCom
 
   def renderTag(md: ModifierT*): TagT = {
     Form(
-      FormInput.textArea(context.locale.edit, rows := 20, value.reactiveInput, AppComponents.tabOverride),
-      Form.submit(context.locale.submit)(ButtonStyle.success, "disabled".classIf(submitting), onclick := Callback.onClick(_ ⇒ if (!submitting.now) onSubmit()))
+      FormInput.textArea((), rows := 20, value.reactiveInput, AppComponents.tabOverride),
+      Form.submit(context.locale.submit, ButtonStyle.success, "disabled".classIf(submitting), onclick := Callback.onClick(_ ⇒ if (!submitting.now) onSubmit()))
     )
   }
 }

@@ -55,8 +55,8 @@ private[javacv] class OpenCVThumbnailCreator(config: Config) extends MetadataPar
       .via(ByteStreams.limit(settings.sizeLimit))
       .via(ByteStreams.concat)
       .map { bytes ⇒
-        require(bytes.nonEmpty)
-        val image = new IplImage(imdecode(new Mat(bytes:_*), CV_LOAD_IMAGE_UNCHANGED))
+        require(bytes.nonEmpty, "Image is empty")
+        val image = new IplImage(imdecode(new Mat(bytes:_*), CV_LOAD_IMAGE_UNCHANGED)) // cvDecodeImage(new CvMat(new Mat(bytes:_*)), CV_LOAD_IMAGE_UNCHANGED)
         try {
           val thumb = OpenCVThumbnailCreator.resizeIplImage(image, settings.thumbnailSize, settings.thumbnailSize)
           try {

@@ -272,6 +272,13 @@ lazy val webapp = (project in file("server") / "webapp")
   .enablePlugins(ScalaJSPlugin)
 
 // -----------------------------------------------------------------------
+// shadowcloud-drive
+// -----------------------------------------------------------------------
+lazy val `drive-core` = (project in file("drive") / "core")
+  .settings(commonSettings, name := "shadowcloud-drive-core")
+  .dependsOn(core % "compile->compile;test->test")
+
+// -----------------------------------------------------------------------
 // Misc
 // -----------------------------------------------------------------------
 lazy val javafx = (project in file("javafx"))

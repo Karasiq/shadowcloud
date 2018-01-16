@@ -155,7 +155,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
               .via(sc.streams.chunk.beforeWrite())
               .map((regionId, _))
               .via(sc.streams.region.writeChunks)
-              .map(IOOperation.ChunkRewritten(chunkRange, oldChunk, _))
+              .map(chunk ⇒ IOOperation.ChunkRewritten(chunkRange, oldChunk.withoutData, chunk.withoutData))
           }
 
           Source.fromFutureSource(sourceFuture)
@@ -171,44 +171,11 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
             .via(sc.streams.chunk.beforeWrite())
             .map((regionId, _))
             .via(sc.streams.region.writeChunks)
-            .map(IOOperation.ChunkAppended(range, _))
+            .map(chunk ⇒ IOOperation.ChunkAppended(range, chunk.withoutData))
         })
     }
 
     rewrites.concat(appends)
-  }
-
-  def pendingAppends(pendingWrites: Seq[WriteData], chunksEnd: Long): Iterator[(ChunkRanges.Range, Chunk)] = {
-    val appends = pendingWrites.filter(_.range.end > chunksEnd)
-    val newSize = appends.lastOption.fold(chunksEnd)(_.range.end)
-
-    def appendsIterator(offset: Long, restSize: Long): Iterator[(ChunkRanges.Range, Chunk)] = {
-      def padding(restSize: Long) = {
-        val size = math.min(currentChunks.headOption.fold(sc.config.chunks.chunkSize.toLong)(_.checksum.size), restSize)
-        ByteString(new Array[Byte](size.toInt))
-      }
-
-      if (restSize <= 0) {
-        Iterator.empty
-      } else {
-        val bytes = padding(restSize)
-        val range = ChunkRanges.Range(offset, offset + bytes.length)
-        val patches = appends.filter(a ⇒ range.contains(a.range))
-        val patchedBytes = patchChunk(range, bytes, patches)
-        val chunk = Chunk(data = Data(patchedBytes))
-        Iterator.single((range, chunk)) ++ appendsIterator(offset + bytes.length, restSize - bytes.length)
-      }
-    }
-
-    appendsIterator(chunksEnd, newSize - chunksEnd)
-  }
-
-  def patchChunk(range: ChunkRanges.Range, data: ByteString, patches: Seq[WriteData]) = {
-    patches.foldLeft(data) { case (data, write) ⇒
-      val relRange = write.range.relativeTo(range)
-      val patchData = relRange.slice(write.data)
-      ChunkRanges.Range.patch(data, relRange, patchData)
-    }
   }
 
   def cutFile(newSize: Long): Unit = {
@@ -280,6 +247,14 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       cutFile(newSize)
       sender() ! CutFile.Success(file, newSize)
 
+    case Flush ⇒
+      Flush.wrapFuture(file, flush()).pipeTo(sender())
+
+    case PersistRevision ⇒
+      val future = updateRevision()
+      future.map(RevisionUpdated).pipeTo(self)
+      PersistRevision.wrapFuture(file, future).pipeTo(sender())
+
     case FlushFinished(FlushResult(writes, ops)) ⇒
       log.debug("Flush finished: writes = {}, new chunks = {}", writes, ops)
       val writeSet = writes.toSet
@@ -288,14 +263,6 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       val chunkReplacements = ops.collect { case IOOperation.ChunkRewritten(_, oldChunk, chunk) ⇒ (oldChunk, chunk) }.toMap
       val chunkAppends = ops.collect { case IOOperation.ChunkAppended(_, chunk) ⇒ chunk }
       currentChunks = currentChunks.map(chunk ⇒ chunkReplacements.getOrElse(chunk, chunk)) ++ chunkAppends
-
-    case Flush ⇒
-      Flush.wrapFuture(file, flush()).pipeTo(sender())
-
-    case PersistRevision ⇒
-      val future = updateRevision()
-      future.map(RevisionUpdated).pipeTo(self)
-      PersistRevision.wrapFuture(file, future).pipeTo(sender())
 
     case RevisionUpdated(newFile) ⇒
       log.info("File revision updated: {}", newFile)
@@ -308,6 +275,42 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
         log.debug("Stopping file IO scheduler")
         context.stop(self)
       }
+  }
+
+  // -----------------------------------------------------------------------
+  // Utils
+  // -----------------------------------------------------------------------
+  def pendingAppends(pendingWrites: Seq[WriteData], chunksEnd: Long): Iterator[(ChunkRanges.Range, Chunk)] = {
+    val appends = pendingWrites.filter(_.range.end > chunksEnd)
+    val newSize = appends.lastOption.fold(chunksEnd)(_.range.end)
+
+    def appendsIterator(offset: Long, restSize: Long): Iterator[(ChunkRanges.Range, Chunk)] = {
+      def padding(restSize: Long) = {
+        val size = math.min(currentChunks.headOption.fold(sc.config.chunks.chunkSize.toLong)(_.checksum.size), restSize)
+        ByteString(new Array[Byte](size.toInt))
+      }
+
+      if (restSize <= 0) {
+        Iterator.empty
+      } else {
+        val bytes = padding(restSize)
+        val range = ChunkRanges.Range(offset, offset + bytes.length)
+        val patches = appends.filter(a ⇒ range.contains(a.range))
+        val patchedBytes = patchChunk(range, bytes, patches)
+        val chunk = Chunk(data = Data(patchedBytes))
+        Iterator.single((range, chunk)) ++ appendsIterator(offset + bytes.length, restSize - bytes.length)
+      }
+    }
+
+    appendsIterator(chunksEnd, newSize - chunksEnd)
+  }
+
+  def patchChunk(range: ChunkRanges.Range, data: ByteString, patches: Seq[WriteData]) = {
+    patches.foldLeft(data) { case (data, write) ⇒
+      val relRange = write.range.relativeTo(range)
+      val patchData = relRange.slice(write.data)
+      ChunkRanges.Range.patch(data, relRange, patchData)
+    }
   }
 
   // -----------------------------------------------------------------------

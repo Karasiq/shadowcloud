@@ -275,8 +275,12 @@ lazy val webapp = (project in file("server") / "webapp")
 // shadowcloud-drive
 // -----------------------------------------------------------------------
 lazy val `drive-core` = (project in file("drive") / "core")
-  .settings(commonSettings, name := "shadowcloud-drive-core")
-  .dependsOn(core % "compile->compile;test->test")
+  .settings(commonSettings)
+  .settings(
+    name := "shadowcloud-drive-core",
+    libraryDependencies ++= ProjectDeps.scalaTest.map(_ % "test")
+  )
+  .dependsOn(core % "compile->compile;test->test", coreAssembly % "test->test")
 
 // -----------------------------------------------------------------------
 // Misc

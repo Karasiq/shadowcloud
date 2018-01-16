@@ -40,8 +40,14 @@ object ChunkRanges {
   }
 
   object Range {
+    implicit def fromScalaRange(range: scala.Range): Range = {
+      Range(range.start, if (range.isInclusive) range.end + 1 else range.end)
+    }
+    
     def patch(data: ByteString, range: Range, patchData: ByteString): ByteString = {
       val normalizedRange = range.fitToSize(data.length)
+      require(normalizedRange.size <= patchData.length, "Invalid patch size")
+      // data.take(normalizedRange.start.toInt) ++ patchData.take(normalizedRange.size.toInt) ++ data.slice(normalizedRange.end.toInt, data.length)
       data.patch(normalizedRange.start.toInt, patchData, normalizedRange.size.toInt)
     }
   }

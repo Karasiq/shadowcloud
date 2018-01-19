@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.streams.chunk
 
 import scala.annotation.tailrec
-import scala.language.implicitConversions
+import scala.language.{higherKinds, implicitConversions}
 
 import akka.util.ByteString
 
@@ -40,10 +40,12 @@ object ChunkRanges {
   }
 
   object Range {
+    implicit val ordering = Ordering.by((r: Range) ⇒ (r.start, r.end))
+    
     implicit def fromScalaRange(range: scala.Range): Range = {
       Range(range.start, if (range.isInclusive) range.end + 1 else range.end)
     }
-    
+
     def patch(data: ByteString, range: Range, patchData: ByteString): ByteString = {
       val normalizedRange = range.fitToSize(data.length)
       require(normalizedRange.size <= patchData.length, "Invalid patch size")

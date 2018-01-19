@@ -280,7 +280,7 @@ lazy val `drive-core` = (project in file("drive") / "core")
     name := "shadowcloud-drive-core",
     libraryDependencies ++= ProjectDeps.scalaTest.map(_ % "test")
   )
-  .dependsOn(core % "compile->compile;test->test", coreAssembly % "test->test")
+  .dependsOn(core % "compile->compile;test->test", coreAssembly % "test->test", utilsJVM)
 
 // -----------------------------------------------------------------------
 // Misc

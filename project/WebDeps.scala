@@ -19,6 +19,12 @@ object WebDeps {
         )
       )
     }
+
+    def style: String ="""
+        |.glyphicon {
+        |  margin-right: 3px;
+        |};
+      """.stripMargin
   }
 
   def bootstrap: Seq[PageContent] = {
@@ -91,6 +97,6 @@ object WebDeps {
   }
 
   def indexHtml: Seq[PageContent] = {
-    Html from Assets.index
+    Seq(Html from Assets.index, Style from Assets.style)
   }
 }

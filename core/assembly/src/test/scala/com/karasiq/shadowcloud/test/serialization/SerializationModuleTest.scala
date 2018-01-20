@@ -15,10 +15,10 @@ import com.karasiq.shadowcloud.serialization.protobuf.index.SerializedIndexData
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, SCExtensionSpec, TestUtils}
 
 class SerializationModuleTest extends SCExtensionSpec with FlatSpecLike {
-  testModule("Akka", SerializationModules.forActorSystem(system))
+  testModule("akka", SerializationModules.forActorSystem(system))
 
   private[this] def testModule(name: String, module: SerializationModule): Unit = {
-    name should "serialize config" in {
+    s"${name.capitalize} serializer" should "serialize config" in {
       val config = CoreTestUtils.config.rootConfig
       val bytes = module.toBytes(config)
       module.fromBytes[Config](bytes) shouldBe config
@@ -63,7 +63,7 @@ class SerializationModuleTest extends SCExtensionSpec with FlatSpecLike {
       println(bytes.toHexString)
     }
 
-    ignore should "read test diff" in {
+    it should "read test diff" in {
       val diff = TestUtils.testDiff
       val bytes = Source.fromResource(s"test-diff-$name.txt").mkString.trim()
       module.fromBytes[IndexDiff](ByteString.fromHexString(bytes)) shouldBe diff

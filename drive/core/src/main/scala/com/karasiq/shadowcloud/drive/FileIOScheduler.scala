@@ -47,7 +47,9 @@ object FileIOScheduler {
   // Internal Messages
   // -----------------------------------------------------------------------
   private sealed trait InternalMessage extends Message
-  private final case class FlushFinished(flushResult: FlushResult) extends InternalMessage
+  private final case class DropChunks(size: Long) extends InternalMessage
+  private object DropChunks extends MessageStatus[File, Long]
+
   private final case class RevisionUpdated(newFile: File) extends InternalMessage
 
   // -----------------------------------------------------------------------
@@ -94,12 +96,8 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   // Read
   // -----------------------------------------------------------------------
   def readStream(range: ChunkRanges.Range): Source[ByteString, NotUsed] = {
-    val patches = pendingWrites.filter(wr ⇒ range.contains(wr.range)).map { wr ⇒
-      val start = math.min(math.max(wr.range.start, range.start), range.end)
-      val end = math.min(wr.range.end, range.end)
-      val patchRange = ChunkRanges.Range(start, end)
-      (patchRange, patchRange.relativeTo(wr.range).slice(wr.data))
-    }
+    val currentWrites = this.pendingWrites
+    val patches = currentWrites.filter(wr ⇒ range.contains(wr.range))
 
     def chunksStream = {
       sc.streams.file.readChunkStreamRanged(regionId, currentChunks.values.toVector, range)
@@ -107,12 +105,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
           var position = range.start
           bytes ⇒ {
             val range = ChunkRanges.Range(position, position + bytes.length)
-            val patched = patches.filter(wr ⇒ range.contains(wr._1)).foldLeft(bytes) { case (bytes, (patchRange, patchBytes)) ⇒
-              val fixRange = patchRange.relativeTo(range).fitToSize(bytes.length)
-              val fixBytes = fixRange.slice(patchBytes)
-              ChunkRanges.Range.patch(bytes, fixRange, fixBytes)
-            }
-
+            val patched = patchChunk(range, bytes, patches.filter(wr ⇒ range.contains(wr.range)))
             position += bytes.length
             Vector(patched)
           }
@@ -122,13 +115,13 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
 
     def appendsStream = {
       val chunksEnd = currentChunks.lastOption.fold(0L)(_._1.end)
-      if (pendingWrites.forall(_.range.end <= chunksEnd)) {
+      if (currentWrites.forall(_.range.end <= chunksEnd)) {
         Source.empty[ByteString]
       } else {
-        val fileEnd = math.max(chunksEnd, math.min(range.end, pendingWrites.map(_.range.end).max))
+        val fileEnd = math.max(chunksEnd, math.min(range.end, currentWrites.map(_.range.end).max))
         val appendsRange = ChunkRanges.Range(chunksEnd, fileEnd)
         Source
-          .fromIterator(() ⇒ pendingAppends(pendingWrites, chunksEnd))
+          .fromIterator(() ⇒ pendingAppends(currentWrites, chunksEnd))
           .map { case (range, chunk) ⇒
             val selectedRange = range.relativeTo(appendsRange)
             selectedRange.slice(chunk.data.plain)
@@ -184,16 +177,43 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     rewrites.concat(appends)
   }
 
-  def cutFile(newSize: Long): Unit = {
+  def cutFile(newSize: Long): Future[Long] = {
     val lastChunk = currentChunks.find(rc ⇒ rc._1.start < newSize && rc._1.end > newSize)
-    lastChunk.foreach { case (range, chunk) ⇒
-      val newRange = range.fitToSize(newSize)
-      val newData = chunk.data.plain.dropRight((newSize - range.end).toInt)
-      pendingWrites :+= WriteData(newRange.start, newData)
+    val writesStream = lastChunk match {
+      case Some((range, chunk)) ⇒
+        Source.single((regionId, chunk))
+          .via(sc.streams.region.readChunks)
+          .via(sc.streams.chunk.afterRead)
+          .map { chunk ⇒
+            val newRange = range.fitToSize(newSize)
+            val newData = chunk.data.plain.take(newRange.size.toInt)
+            WriteData(newRange.start, newData)
+          }
+
+      case None ⇒
+        Source.empty
     }
 
-    for (range ← currentChunks.keys if range.start >= newSize)
+    writesStream
+      .mapAsyncUnordered(1)(write ⇒ (self ? write).mapTo[WriteData.Success])
+      .fold(NotUsed)((_, _) ⇒ NotUsed)
+      .mapAsyncUnordered(1)(_ ⇒ DropChunks.unwrapFuture(self ? DropChunks(newSize)))
+      .named("scDriveCutFile")
+      .runWith(Sink.head)
+  }
+
+  def dropChunks(newSize: Long): Unit = {
+    for (range ← currentChunks.keys if range.end > newSize)
       currentChunks -= range
+
+    pendingWrites = pendingWrites.collect {
+      case data if data.range.end <= newSize ⇒
+        data
+
+      case data if data.range.start < newSize ⇒
+        val dropBytes = newSize - data.range.end
+        data.copy(data.offset, data.data.dropRight(dropBytes.toInt))
+    }
   }
 
   def flush(): Future[FlushResult] = {
@@ -230,11 +250,10 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   // -----------------------------------------------------------------------
   def receive: Receive = {
     case ReadData(range) ⇒
-      val currentSender = sender()
-      readStream(range)
+      val future = readStream(range)
         .via(ByteStreams.concat)
-        .alsoTo(Sink.onComplete(_.failed.foreach(error ⇒ currentSender ! ReadData.Failure(range, error))))
-        .runWith(Sink.foreach(data ⇒ currentSender ! ReadData.Success(range, data)))
+        .runWith(Sink.head)
+      ReadData.wrapFuture(range, future).pipeTo(sender())
 
     case wr: WriteData ⇒
       pendingWrites :+= wr
@@ -250,8 +269,11 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
 
     case CutFile(newSize) ⇒
       log.info("Cutting file to {}", MemorySize(newSize))
-      cutFile(newSize)
-      sender() ! CutFile.Success(file, newSize)
+      CutFile.wrapFuture(file, cutFile(newSize)).pipeTo(sender())
+
+    case DropChunks(newSize) ⇒
+      dropChunks(newSize)
+      sender() ! DropChunks.Success(file, newSize)
 
     case Flush ⇒
       pendingFlush.addWaiter(NotUsed, sender(), () ⇒ Flush.wrapFuture(file, flush()).pipeTo(self))
@@ -306,11 +328,11 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
         Iterator.empty
       } else {
         val bytes = padding(restSize)
-        val range = ChunkRanges.Range(offset, offset + bytes.length)
-        val patches = appends.filter(a ⇒ range.contains(a.range))
-        val patchedBytes = patchChunk(range, bytes, patches)
+        val chunkRange = ChunkRanges.Range(offset, offset + bytes.length)
+        val patches = appends.filter(a ⇒ chunkRange.contains(a.range))
+        val patchedBytes = patchChunk(chunkRange, bytes, patches)
         val chunk = Chunk(data = Data(patchedBytes))
-        Iterator.single((range, chunk)) ++ appendsIterator(offset + bytes.length, restSize - bytes.length)
+        Iterator.single((chunkRange, chunk)) ++ appendsIterator(offset + bytes.length, restSize - bytes.length)
       }
     }
 
@@ -320,8 +342,8 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   def patchChunk(dataRange: ChunkRanges.Range, data: ByteString, patches: Seq[WriteData]) = {
     patches.foldLeft(data) { case (data, write) ⇒
       val relRange = write.range.relativeTo(dataRange)
-      val offset = math.max(dataRange.start, write.range.start) - write.range.start
-      ChunkRanges.Range.patch(data, relRange, write.data.drop(offset.toInt))
+      val offset = dataRange.relativeTo(write.range)
+      ChunkRanges.Range.patch(data, relRange, offset.slice(write.data))
     }
   }
 

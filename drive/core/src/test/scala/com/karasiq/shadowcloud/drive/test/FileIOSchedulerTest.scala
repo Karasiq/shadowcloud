@@ -56,6 +56,50 @@ class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
     testRead(testData ++ testData)
   }
 
+  it should "replace and append" in {
+    val write = WriteData(10L, zeroes ++ testData)
+    scheduler ! write
+    scheduler.underlyingActor.pendingWrites shouldBe Seq(write)
+    testRead(testData ++ zeroes ++ testData)
+
+    val flushResult = (scheduler ? Flush).mapTo[Flush.Success].futureValue.result
+    flushResult.writes shouldBe Seq(write)
+    flushResult.ops match {
+      case IOOperation.ChunkRewritten(ChunkRanges.Range(0, 20), oldChunk, chunk) +:
+        IOOperation.ChunkAppended(ChunkRanges.Range(20, 30), newChunk) +: Nil ⇒
+
+        oldChunk.checksum.size shouldBe 20
+        chunk.checksum.size shouldBe 20
+        newChunk.checksum.size shouldBe 10
+    }
+
+    testChunks { case chunk +: newChunk +: Nil ⇒
+      chunk.checksum.size shouldBe 20
+      newChunk.checksum.size shouldBe 10 
+    }
+
+    testRead(testData ++ zeroes ++ testData)
+  }
+
+  it should "cut file" in {
+    (scheduler ? CutFile(25)).futureValue  
+    testChunks { case chunk +: Nil ⇒ chunk.checksum.size shouldBe 20 }
+    testRead(testData ++ zeroes ++ testData.take(5))
+
+    val flushResult = (scheduler ? Flush).mapTo[Flush.Success].futureValue.result
+    flushResult.writes shouldBe Seq(WriteData(20, testData.take(5)))
+    flushResult.ops match {
+      case IOOperation.ChunkAppended(ChunkRanges.Range(20, 25), newChunk) +: Nil ⇒
+        newChunk.checksum.size shouldBe 5
+    }
+
+    testChunks { case chunk +: newChunk +: Nil ⇒
+      chunk.checksum.size shouldBe 20
+      newChunk.checksum.size shouldBe 5
+    }
+    testRead(testData ++ zeroes ++ testData.take(5))
+  }
+
   def testRead(data: ByteString) = {
     val testSink = scheduler.underlyingActor.readStream(0 to 100)
       .via(ByteStreams.concat)
@@ -67,7 +111,7 @@ class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
   }
 
   def testChunks(f: Seq[Chunk] ⇒ Unit) = {
-    f(scheduler.underlyingActor.currentChunks.values.toSeq)
+    f(scheduler.underlyingActor.currentChunks.values.toList)
   }
 
   override protected def beforeAll(): Unit = {

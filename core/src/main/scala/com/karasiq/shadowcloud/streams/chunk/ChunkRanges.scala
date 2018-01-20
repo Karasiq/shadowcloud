@@ -33,8 +33,9 @@ object ChunkRanges {
       if (start == 0 && end == data.length) {
         data
       } else {
-        val start = math.max(0L, this.start)
-        data.drop(start.toInt).take((end - start).toInt)
+        val start = math.max(this.start, 0L)
+        val end = math.min(this.end, data.length)
+        data.slice(start.toInt, end.toInt) // data.drop(start.toInt).take((end - start).toInt)
       }
     }
   }

@@ -1,5 +1,7 @@
 package com.karasiq.shadowcloud.storage.replication
 
+import scala.util.Try
+
 import com.karasiq.shadowcloud.actors.context.RegionContext
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
@@ -7,7 +9,8 @@ import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionS
 
 object StorageSelector {
   def fromClass(ssClass: Class[_ <: StorageSelector])(implicit regionContext: RegionContext): StorageSelector = {
-    ssClass.getConstructor(classOf[RegionContext]).newInstance(regionContext)
+    Try(ssClass.getConstructor(classOf[RegionContext]).newInstance(regionContext))
+      .getOrElse(ssClass.newInstance())
   }
 }
 

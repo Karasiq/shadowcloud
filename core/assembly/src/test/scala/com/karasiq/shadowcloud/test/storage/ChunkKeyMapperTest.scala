@@ -44,17 +44,21 @@ class ChunkKeyMapperTest extends FlatSpec with Matchers {
   }
 
   it should "create multi-iteration HMAC" in {
-    val mapper = new HashNonceHMACKeyMapper(ConfigProps.toConfig(ConfigProps("algorithm" → "HmacSHA1", "iterations" → 100)))
+    val config = ConfigProps.toConfig(ConfigProps(
+      "class" → "com.karasiq.shadowcloud.storage.utils.mappers.HashNonceHMACKeyMapper",
+      "algorithm" → "HmacSHA1",
+      "iterations" → 100
+    ))
+
+    val mapper = ChunkKeyMapper.forConfig(config)
     mapper(testChunk.copy(encryption = TestUtils.testSymmetricParameters)) shouldBe
       HexString.decode("2fef032f823de02237979eff53ec9cbd33508b4f")
   }
 
   "Composite key mapper" should "create composite key" in {
     val mapper = new CompositeKeyMapper(ConfigProps.toConfig(ConfigProps(
-      "mappers" → Seq(
-        Map("name" → "com.karasiq.shadowcloud.storage.utils.mappers.HashNonceHMACKeyMapper", "algorithm" → "HmacSHA1").asJava,
-        Map("name" → "hash").asJava
-      ).asJava
+      "mappers" → Seq("hmac-mapper", "hash").asJava,
+      "hmac-mapper" → Map("class" → "com.karasiq.shadowcloud.storage.utils.mappers.HashNonceHMACKeyMapper", "algorithm" → "HmacSHA1").asJava
     )))
     mapper(testChunk.copy(encryption = TestUtils.testSymmetricParameters)) shouldBe
       HexString.decode("d335659cc935ba592443781cfeda75c8181574d4f660847d03634f41c45f7be337b02973a083721a")
@@ -63,10 +67,8 @@ class ChunkKeyMapperTest extends FlatSpec with Matchers {
   it should "create composite XOR key" in {
     val mapper = new CompositeKeyMapper(ConfigProps.toConfig(ConfigProps(
       "strategy" → "xor",
-      "mappers" → Seq(
-        Map("name" → "com.karasiq.shadowcloud.storage.utils.mappers.HashNonceHMACKeyMapper", "algorithm" → "HmacSHA1").asJava,
-        Map("name" → "hash").asJava
-      ).asJava
+      "mappers" → Seq("hmac-mapper", "hash").asJava,
+      "hmac-mapper" → Map("class" → "com.karasiq.shadowcloud.storage.utils.mappers.HashNonceHMACKeyMapper", "algorithm" → "HmacSHA1").asJava
     )))
     mapper(testChunk.copy(encryption = TestUtils.testSymmetricParameters)) shouldBe
       HexString.decode("2555e1e1ca56f518e01c03ffc96a5cbbb89606ce")

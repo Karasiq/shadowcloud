@@ -40,13 +40,12 @@ private[shadowcloud] class CompositeKeyMapper(config: Config) extends ChunkKeyMa
   import CompositeKeyMapper._
 
   private[this] object settings extends ConfigImplicits {
-    import scala.collection.JavaConverters._
     val strategy = Strategy.forName(config.withDefault("concat", _.getString("strategy")))
-    val mappers = config.getConfigList("mappers").asScala
+    val mappers = config.getStrings("mappers")
   }
 
   require(settings.mappers.nonEmpty, "No mappers specified")
-  private[this] val mapperInstances = settings.mappers.map(ChunkKeyMapper.forConfig)
+  private[this] val mapperInstances = settings.mappers.map(name ⇒ ChunkKeyMapper.forName(name, config))
 
   def apply(chunk: Chunk): ChunkId = {
     mapperInstances.map(_(chunk)).reduce(settings.strategy(_, _))

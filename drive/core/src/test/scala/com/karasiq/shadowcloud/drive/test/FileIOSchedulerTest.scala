@@ -17,15 +17,21 @@ import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.test.utils.SCExtensionSpec
 
 class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
+  // -----------------------------------------------------------------------
+  // Context
+  // -----------------------------------------------------------------------
   val config = SCDriveConfig(sc.config.rootConfig.getConfig("drive"))
   val scheduler = TestActorRef[FileIOScheduler](FileIOScheduler.props(config, "testRegion", File("/123.txt")))
-  val zeroes = ByteString(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-  val testData = ByteString("1234567890")
+  val zeroes = ByteString(0, 0, 0, 0, 0, 0, 0, 0, 0, 0).ensuring(_.length == 10)
+  val testData = ByteString("1234567890").ensuring(_.length == 10)
 
+  // -----------------------------------------------------------------------
+  // Tests
+  // -----------------------------------------------------------------------
   "File IO scheduler" should "append data" in {
     scheduler ! WriteData(10L, testData)
-    scheduler.underlyingActor.currentChunks shouldBe empty
-    scheduler.underlyingActor.pendingWrites shouldBe Seq(WriteData(10L, testData))
+    testChunks(_ shouldBe empty)
+    testWrites(_ shouldBe Seq(WriteData(10L, testData)))
     testRead(zeroes ++ testData)
 
     val flushResult = (scheduler ? Flush).mapTo[Flush.Success].futureValue.result
@@ -41,7 +47,7 @@ class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
 
   it should "replace data" in {
     scheduler ! WriteData(0L, testData)
-    scheduler.underlyingActor.pendingWrites shouldBe Seq(WriteData(0L, testData))
+    testWrites(_ shouldBe Seq(WriteData(0L, testData)))
     testRead(testData ++ testData)
 
     val flushResult = (scheduler ? Flush).mapTo[Flush.Success].futureValue.result
@@ -59,7 +65,7 @@ class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
   it should "replace and append" in {
     val write = WriteData(10L, zeroes ++ testData)
     scheduler ! write
-    scheduler.underlyingActor.pendingWrites shouldBe Seq(write)
+    testWrites(_ shouldBe Seq(write))
     testRead(testData ++ zeroes ++ testData)
 
     val flushResult = (scheduler ? Flush).mapTo[Flush.Success].futureValue.result
@@ -100,8 +106,11 @@ class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
     testRead(testData ++ zeroes ++ testData.take(5))
   }
 
+  // -----------------------------------------------------------------------
+  // Utils
+  // -----------------------------------------------------------------------
   def testRead(data: ByteString) = {
-    val testSink = scheduler.underlyingActor.readStream(0 to 100)
+    val testSink = scheduler.underlyingActor.dataIO.readStream(0 to 100)
       .via(ByteStreams.concat)
       .runWith(TestSink.probe)
 
@@ -111,9 +120,16 @@ class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
   }
 
   def testChunks(f: Seq[Chunk] ⇒ Unit) = {
-    f(scheduler.underlyingActor.currentChunks.values.toList)
+    f(scheduler.underlyingActor.dataState.currentChunks.values.toList)
   }
 
+  def testWrites(f: Seq[WriteData] ⇒ Unit) = {
+    f(scheduler.underlyingActor.dataState.pendingWrites)
+  }
+
+  // -----------------------------------------------------------------------
+  // Misc
+  // -----------------------------------------------------------------------
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     sc.actors.regionSupervisor ! CreateRegion("testRegion", sc.configs.regionConfig("testRegion"))

@@ -110,10 +110,13 @@ lazy val coreAssembly = (project in file("core/assembly"))
   .dependsOn(
     core % "compile->compile;test->test", persistence,
     bouncyCastleCrypto, libsodiumCrypto,
-    tikaMetadata, imageioMetadata, markdownMetadata,
+    imageioMetadata, markdownMetadata,
     googleDriveStorage, mailruCloudStorage, dropboxStorage, webdavStorage
   )
-  .dependsOn(Seq[ClasspathDep[ProjectReference]](javacvMetadata).filter(_ ⇒ sys.props.contains("enable-javacv")):_*)
+  .dependsOn(
+    Seq[ClasspathDep[ProjectReference]](javacvMetadata).filter(_ ⇒ sys.props.getOrElse("enable-javacv", "0") == "1") ++
+    Seq[ClasspathDep[ProjectReference]](tikaMetadata).filter(_ ⇒ sys.props.getOrElse("enable-tika", "1") == "1"):_*
+  )
   .aggregate(
     core, persistence,
     bouncyCastleCrypto, libsodiumCrypto,

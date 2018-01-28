@@ -1,16 +1,17 @@
 package com.karasiq.shadowcloud.webapp.components.folder
 
-import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import org.scalajs.dom.DragEvent
 import rx.{Rx, Var}
+
+import com.karasiq.bootstrap.Bootstrap.default._
+import scalaTags.all._
 
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.webapp.components.file.FileDownloadLink
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
+import com.karasiq.shadowcloud.webapp.controllers.FileController
 
 object FolderFileList {
   def apply(files: Rx[Set[File]], flat: Boolean = true)(implicit context: AppContext, folderContext: FolderContext): FolderFileList = {
@@ -20,6 +21,20 @@ object FolderFileList {
 
 class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
   val selectedFile = Var(None: Option[File])
+
+  implicit val controller = FileController(
+    file ⇒ folderContext.update(file.path.parent),
+    file ⇒ folderContext.update(file.path.parent),
+    (oldFile, newFile) ⇒ {
+      folderContext.update(oldFile.path.parent)
+      folderContext.update(newFile.path.parent)
+      if (selectedFile.now.contains(oldFile)) selectedFile() = Some(newFile)
+    },
+    (file, newName) ⇒ {
+      folderContext.update(file.path.parent)
+      if (selectedFile.now.contains(file)) selectedFile() = Some(file.copy(file.path.withName(newName)))
+    }
+  )
   
   def renderTag(md: ModifierT*): TagT = {
     val files = Rx {

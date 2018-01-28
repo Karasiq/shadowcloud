@@ -101,12 +101,7 @@ lazy val persistence = project
   .dependsOn(core)
 
 lazy val coreAssembly = (project in file("core/assembly"))
-  .settings(commonSettings)
-  .settings(
-    name := "shadowcloud-core-assembly",
-    parallelExecution in Test := false,
-    fork in Test := true
-  )
+  .settings(commonSettings, name := "shadowcloud-core-assembly")
   .dependsOn(
     core % "compile->compile;test->test", persistence,
     bouncyCastleCrypto, libsodiumCrypto,

@@ -8,14 +8,20 @@ import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.webapp.components.common.AppIcons
 import com.karasiq.shadowcloud.webapp.components.metadata.MetadataListView
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
+import com.karasiq.shadowcloud.webapp.controllers.FileController
 
 object FileView {
-  def apply(file: File, useId: Boolean = false)(implicit context: AppContext, folderContext: FolderContext): FileView = {
+  def apply(file: File, useId: Boolean = false)(implicit context: AppContext,
+                                                folderContext: FolderContext,
+                                                fileController: FileController): FileView = {
     new FileView(file, useId)
   }
 }
 
-class FileView(file: File, useId: Boolean)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
+class FileView(file: File, useId: Boolean)(implicit context: AppContext,
+                                           folderContext: FolderContext,
+                                           fileController: FileController) extends BootstrapHtmlComponent {
+  
   def renderTag(md: ModifierT*): TagT = {
     def renderInfo(name: String, str: String): Frag = {
       span(name + ": " + str, br)

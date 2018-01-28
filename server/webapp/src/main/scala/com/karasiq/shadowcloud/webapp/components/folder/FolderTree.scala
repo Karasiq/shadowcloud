@@ -2,23 +2,22 @@ package com.karasiq.shadowcloud.webapp.components.folder
 
 import scala.language.postfixOps
 
+import org.scalajs.dom.DragEvent
+import org.scalajs.dom.raw.DragEffect
 import rx._
 
 import com.karasiq.shadowcloud.webapp.context.AppContext.BootstrapContext._
 import scalaTags.all._
 
-import org.scalajs.dom.DragEvent
-import org.scalajs.dom.raw.DragEffect
-
-import com.karasiq.shadowcloud.model.{File, Folder, Path}
+import com.karasiq.shadowcloud.model.{File, Path}
 import com.karasiq.shadowcloud.model.utils.IndexScope
 import com.karasiq.shadowcloud.webapp.components.common.AppIcons
-import com.karasiq.shadowcloud.webapp.components.folder.FolderTree.FolderController
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
 import com.karasiq.shadowcloud.webapp.context.AppContext.Implicits._
+import com.karasiq.shadowcloud.webapp.controllers.FolderController
 import com.karasiq.shadowcloud.webapp.styles.FolderTreeStyles
-import com.karasiq.shadowcloud.webapp.utils.{HasUpdate, RxUtils}
+import com.karasiq.shadowcloud.webapp.utils.RxUtils
 
 object FolderTree {
   def apply(path: Path)(implicit context: AppContext, folderContext: FolderContext): FolderTree = {
@@ -36,21 +35,6 @@ object FolderTree {
       context.locale.emptyPath
     } else {
       path.name
-    }
-  }
-
-  private[folder] trait FolderController extends HasUpdate {
-    def addFolder(folder: Folder): Unit
-    def deleteFolder(folder: Folder): Unit
-  }
-
-  private[folder] object FolderController {
-    def apply(onUpdate: () ⇒ Unit, onAddFolder: Folder ⇒ Unit, onDeleteFolder: Folder ⇒ Unit): FolderController = {
-      new FolderController {
-        def addFolder(folder: Folder): Unit = onAddFolder(folder)
-        def deleteFolder(folder: Folder): Unit = onDeleteFolder(folder)
-        def update(): Unit = onUpdate()
-      }
     }
   }
 }
@@ -86,8 +70,8 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
   // -----------------------------------------------------------------------
   // Logic
   // -----------------------------------------------------------------------
-  private[this] implicit val controller = FolderController(
-    () ⇒ folderContext.update(path),
+  implicit val controller = FolderController(
+    path ⇒ folderContext.update(path),
     folder ⇒ {
       if (folder.path.parent == path) opened() = true
       folderContext.update(folder.path.parent)
@@ -116,20 +100,20 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
   // -----------------------------------------------------------------------
   private[this] def copyFiles(filePath: Path, readScope: IndexScope): Unit = {
     context.api.copyFiles(regionId, filePath, filePath.withParent(path), readScope).foreach { _ ⇒
-      folderContext.update(path)
+      controller.update(path)
     }
   }
 
   private[this] def copyFile(file: File, readScope: IndexScope): Unit = {
     val newFileSet = context.api.copyFile(regionId, file, file.path.withParent(path), readScope)
-    newFileSet.foreach(_ ⇒ folderContext.update(path))
+    newFileSet.foreach(_ ⇒ controller.update(path))
   }
 
   private[this] def copyFolder(folderPath: Path, readScope: IndexScope): Unit = {
     val newPath = folderPath.withParent(path)
     context.api.copyFolder(regionId, folderPath, newPath, readScope).foreach { _ ⇒
-      folderContext.update(path)
-      folderContext.update(newPath)
+      controller.update(newPath.parent)
+      controller.update(newPath)
     }
   }
 

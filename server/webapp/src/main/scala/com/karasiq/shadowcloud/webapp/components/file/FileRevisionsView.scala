@@ -1,9 +1,9 @@
 package com.karasiq.shadowcloud.webapp.components.file
 
+import rx.async._
+
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
-
-import rx.async._
 
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.webapp.components.common.AppComponents
@@ -27,7 +27,7 @@ class FileRevisionsView(path: Path)(implicit context: AppContext, folderContext:
     fileList.selectedFile.triggerLater(fileList.selectedFile.now.foreach { file ⇒
       Modal()
         .withTitle(context.locale.file)
-        .withBody(FileView(file, useId = true))
+        .withBody(FileView(file, useId = true)(context, folderContext, fileList.controller))
         .withButtons(AppComponents.modalClose())
         .withDialogStyle(ModalDialogSize.large)
         .show(events = Map("hidden.bs.modal" → { () ⇒

@@ -2,10 +2,10 @@ package com.karasiq.shadowcloud.webapp.components.file
 
 import scala.scalajs.js.UndefOr
 
+import rx.{Rx, Var}
+
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
-
-import rx.{Rx, Var}
 
 import com.karasiq.common.memory.SizeUnit
 import com.karasiq.highlightjs.HighlightJS
@@ -15,6 +15,7 @@ import com.karasiq.shadowcloud.utils.Utils
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons, TextEditor}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
+import com.karasiq.shadowcloud.webapp.controllers.FileController
 import com.karasiq.shadowcloud.webapp.utils.HtmlUtils
 
 object TextFileView {
@@ -31,7 +32,7 @@ object TextFileView {
     "html", "htm", "xhtml", "md"
   )
 
-  def apply(file: File)(implicit context: AppContext, folderContext: FolderContext): TextFileView = {
+  def apply(file: File)(implicit context: AppContext, folderContext: FolderContext, fileController: FileController): TextFileView = {
     new TextFileView(file)
   }
 
@@ -56,11 +57,13 @@ object TextFileView {
   }
 }
 
-class TextFileView(_file: File)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
+class TextFileView(_file: File)(implicit context: AppContext, folderContext: FolderContext,
+                                fileController: FileController) extends BootstrapHtmlComponent {
+
   val editorOpened = Var(false)
   val fileRx = Var(_file)
   val contentRx = Var("")
-  fileRx.trigger(updateFileContent())
+  fileRx.trigger(fetchFileContent())
 
   def renderTag(md: ModifierT*): TagT = {
     val field = Rx {
@@ -88,7 +91,7 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
     )
   }
 
-  private[this] def updateFileContent(): Unit = {
+  private[this] def fetchFileContent(): Unit = {
     context.api.downloadFile(folderContext.regionId, fileRx.now.path, fileRx.now.id, folderContext.scope.now)
       .map(_.utf8String)
       .foreach(contentRx.update)
@@ -97,12 +100,13 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
   private[this] def renderEditor(content: String): TagT = {
     val editor = TextEditor { editor ⇒
       editor.submitting() = true
-      val (_, future) = context.api.uploadFile(folderContext.regionId, fileRx.now.path, editor.value.now)
+      val oldFile = fileRx.now
+      val (_, future) = context.api.uploadFile(folderContext.regionId, oldFile.path, editor.value.now)
       future.onComplete(_ ⇒ editor.submitting() = false)
       future.foreach { newFile ⇒
         editorOpened() = false
         fileRx() = newFile
-        folderContext.update(newFile.path.parent)
+        fileController.updateFile(oldFile, newFile)
       }
     }
     editor.value() = content

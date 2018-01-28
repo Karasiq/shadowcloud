@@ -5,7 +5,7 @@ import scala.language.postfixOps
 
 import akka.stream.scaladsl.{Keep, Sink}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
-import org.scalatest.FlatSpecLike
+import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 
 import com.karasiq.common.encoding.HexString
@@ -20,7 +20,7 @@ object MetadataStreamsTest {
   def testJpegStream() = ResourceUtils.toStream("14935431092820.jpg")
 }
 
-class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike {
+class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike with SequentialNestedSuiteExecution {
   "Mime detector" should "detect mime type" in {
     val testOut = MetadataStreamsTest.testJpegStream()
       .via(MimeDetectorStream(sc.modules.metadata, "14935431092820.jpg", 10000))

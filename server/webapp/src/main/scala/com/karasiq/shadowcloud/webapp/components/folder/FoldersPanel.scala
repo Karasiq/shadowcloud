@@ -25,7 +25,7 @@ class FoldersPanel(implicit appContext: AppContext, folderContext: FolderContext
       GridSystem.col.responsive(12, 3, 3, 2).asDiv(folderTree),
       GridSystem.col.responsive(12, 9, 5, 6).asDiv(folderView),
       GridSystem.col.responsive(12, 12, 4, 4).asDiv(folderView.selectedFile.map[Frag] {
-        case Some(file) ⇒ FileView(file)
+        case Some(file) ⇒ FileView(file)(appContext, folderContext, folderView.controller)
         case None ⇒ ()
       }),
       md

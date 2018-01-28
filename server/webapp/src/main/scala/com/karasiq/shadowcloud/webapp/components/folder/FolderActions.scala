@@ -1,15 +1,15 @@
 package com.karasiq.shadowcloud.webapp.components.folder
 
+import rx.Var
+
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
-import rx.Var
-
 import com.karasiq.shadowcloud.model.{Path, RegionId}
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
-import com.karasiq.shadowcloud.webapp.components.folder.FolderTree.FolderController
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import AppContext.JsExecutionContext
+import com.karasiq.shadowcloud.webapp.controllers.FolderController
 
 private[folder] object FolderActions {
   def apply(regionId: RegionId, path: Path)

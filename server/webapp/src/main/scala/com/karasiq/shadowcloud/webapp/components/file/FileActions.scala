@@ -2,26 +2,32 @@ package com.karasiq.shadowcloud.webapp.components.file
 
 import scala.concurrent.Future
 
-import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import akka.Done
 import rx.{Rx, Var}
 import rx.async._
+
+import com.karasiq.bootstrap.Bootstrap.default._
+import scalaTags.all._
 
 import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
+import com.karasiq.shadowcloud.webapp.controllers.FileController
 import com.karasiq.shadowcloud.webapp.utils.ExportUtils
 
 object FileActions {
-  def apply(file: File, useId: Boolean = false)(implicit context: AppContext, folderContext: FolderContext): FileActions = {
+  def apply(file: File, useId: Boolean = false)(implicit context: AppContext,
+                                                folderContext: FolderContext,
+                                                fileController: FileController): FileActions = {
     new FileActions(file, useId)
   }
 }
 
-final class FileActions(file: File, useId: Boolean)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
+final class FileActions(file: File, useId: Boolean)(implicit context: AppContext,
+                                                    folderContext: FolderContext,
+                                                    fileController: FileController) extends BootstrapHtmlComponent {
+
   private[this] val deleted = Var(false)
 
   def renderTag(md: ModifierT*): TagT = {
@@ -78,7 +84,7 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
 
     def doRename(newName: String): Unit = {
       rename(newName).foreach { _ ⇒
-        folderContext.update(file.path.parent)
+        fileController.renameFile(file, newName)
         this.deleted() = true
       }
     }
@@ -115,16 +121,17 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
         if (files.nonEmpty) {
           deletedFiles = files
           deleted() = true
-          folderContext.update(file.path.parent)
+          files.foreach(fileController.deleteFile)
         }
       }
     }
 
     def undeleteFile(): Unit = {
-      val result = Future.sequence(deletedFiles.toVector.map(context.api.createFile(folderContext.regionId, _)))
+      val createdFiles = deletedFiles.toVector
+      val result = Future.sequence(createdFiles.map(context.api.createFile(folderContext.regionId, _)))
       result.foreach { _ ⇒
         deleted() = false
-        folderContext.update(file.path.parent)
+        createdFiles.foreach(fileController.addFile)
       }
     }
 

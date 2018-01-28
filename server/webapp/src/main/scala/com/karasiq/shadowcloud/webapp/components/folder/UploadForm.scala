@@ -2,20 +2,21 @@ package com.karasiq.shadowcloud.webapp.components.folder
 
 import scala.concurrent.Future
 
-import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import org.scalajs.dom
 import rx.{Rx, Var}
+
+import com.karasiq.bootstrap.Bootstrap.default._
+import scalaTags.all._
 
 import com.karasiq.shadowcloud.model.{File, Path, RegionId}
 import com.karasiq.shadowcloud.utils.Utils
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons, TextEditor}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
+import com.karasiq.shadowcloud.webapp.controllers.FileController
 
 object UploadForm {
-  def apply()(implicit appContext: AppContext, folderContext: FolderContext): UploadForm = {
+  def apply()(implicit appContext: AppContext, folderContext: FolderContext, fileController: FileController): UploadForm = {
     new UploadForm
   }
 
@@ -32,7 +33,7 @@ object UploadForm {
   }
 }
 
-class UploadForm(implicit appContext: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
+class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, fileController: FileController) extends BootstrapHtmlComponent {
   import folderContext.{regionId, selected ⇒ selectedFolderPathRx}
   private[this] val uploadProgressBars = div().render
   private[this] val uploadQueue = Var(List.empty[dom.File])
@@ -54,7 +55,7 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext) 
         editor.submitting() = false
         result.foreach { file ⇒
           editor.value() = ""
-          folderContext.update(file.path.parent)
+          fileController.addFile(file)
         }
       }
     }
@@ -107,7 +108,7 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext) 
         progressRx.kill()
       }
 
-      fileFuture.foreach(_ ⇒ folderContext.update(parent))
+      fileFuture.foreach(fileController.addFile)
     }
 
     uploading() = uploading.now ++ toUpload

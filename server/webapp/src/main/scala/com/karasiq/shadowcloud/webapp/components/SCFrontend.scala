@@ -8,6 +8,7 @@ import com.karasiq.shadowcloud.webapp.components.folder.{FoldersPanel, UploadFor
 import com.karasiq.shadowcloud.webapp.components.keys.KeysContext
 import com.karasiq.shadowcloud.webapp.components.region.{RegionContext, RegionsStoragesPanel, RegionSwitcher}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
+import com.karasiq.shadowcloud.webapp.controllers.FileController
 
 object SCFrontend {
   def apply()(implicit appContext: AppContext): SCFrontend = {
@@ -61,7 +62,18 @@ class SCFrontend()(implicit val appContext: AppContext) extends BootstrapCompone
 
     val uploadFormRx = folderContextRx.map[Frag] {
       case Some(folderContext) ⇒
-        UploadForm()(appContext, folderContext).renderButton()
+        val controller = FileController(
+          file ⇒ folderContext.update(file.path.parent),
+          file ⇒ folderContext.update(file.path.parent),
+          (oldFile, newFile) ⇒ {
+            folderContext.update(oldFile.path.parent)
+            folderContext.update(newFile.path.parent)
+          },
+          (file, _) ⇒ {
+            folderContext.update(file.path.parent)
+          }
+        )
+        UploadForm()(appContext, folderContext, controller).renderButton()
 
       case None ⇒
         Bootstrap.noContent

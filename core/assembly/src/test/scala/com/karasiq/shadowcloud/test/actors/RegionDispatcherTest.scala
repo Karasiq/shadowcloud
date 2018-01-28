@@ -11,7 +11,7 @@ import akka.pattern.ask
 import akka.stream.scaladsl.{Keep, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
-import org.scalatest.FlatSpecLike
+import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
 
 import com.karasiq.common.encoding.{Base64, HexString}
 import com.karasiq.shadowcloud.actors._
@@ -33,7 +33,7 @@ import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, SCExtensionSpec, TestUtils}
 
 // Uses local filesystem
-class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike {
+class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike with SequentialNestedSuiteExecution {
   val chunk = TestUtils.testChunk
   val folder = CoreTestUtils.randomFolder()
   val folderDiff = FolderIndexDiff.createFolders(folder)

@@ -84,6 +84,11 @@ private[shadowcloud] object IndexMerger {
       this.restore(filteredState)
   }
 
+  def compact[T: IndexKeyOrdering](index: IndexMerger[T], scope: IndexScope = IndexScope.default): IndexDiff = {
+    val view = scopedView(index, scope)
+    view.mergedDiff.merge(view.pending).creates
+  }
+
   @SerialVersionUID(0L)
   final case class RegionKey(timestamp: Long = 0L, storageId: StorageId = "", sequenceNr: SequenceNr = 0L) {
     override def toString: String = {

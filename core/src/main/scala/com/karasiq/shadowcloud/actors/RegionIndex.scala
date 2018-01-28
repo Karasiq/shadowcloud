@@ -361,9 +361,11 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
         def compactIndex(indexState: IndexMerger.State[SequenceNr]): Source[CompactSuccess, NotUsed] = {
           val index = IndexMerger.restore(indexState)
           log.debug("Compacting diffs: {}", index.diffs)
+
           val diffs = index.diffs.toVector
-          val newDiff = index.mergedDiff.merge(index.pending).creates
+          val newDiff = IndexMerger.compact(index)
           val newSequenceNr = index.lastSequenceNr + 1
+
           log.debug("Writing compacted diff #{}: {}", newSequenceNr, newDiff)
           val writeResult = if (newDiff.isEmpty) {
             // Skip write

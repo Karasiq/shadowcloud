@@ -7,8 +7,7 @@ import akka.util.ByteString
 import org.scalajs.dom.XMLHttpRequest
 
 object AjaxUtils {
-  implicit val executionContext: ExecutionContext = scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-
+  implicit val AjaxExecutionContext: ExecutionContext = scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
   val BytesResponseType = "arraybuffer"
 
   implicit class AjaxResultOps(private val future: Future[XMLHttpRequest]) extends AnyVal {
@@ -19,7 +18,7 @@ object AjaxUtils {
     }
 
     def reportFailure: Future[XMLHttpRequest] = {
-      future.onComplete(_.failed.foreach(System.err.println))
+      future.onComplete(_.failed.foreach(System.err.println(_)))
       future
     }
   }

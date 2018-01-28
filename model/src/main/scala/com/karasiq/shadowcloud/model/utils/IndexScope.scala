@@ -10,5 +10,6 @@ object IndexScope {
   final case class UntilSequenceNr(sequenceNr: SequenceNr) extends IndexScope
   final case class UntilTime(timestamp: Long) extends IndexScope
 
-  def default = Current
+  @inline
+  def default: IndexScope = Current
 }

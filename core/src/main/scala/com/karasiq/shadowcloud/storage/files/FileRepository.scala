@@ -21,6 +21,15 @@ private[storage] object FileRepository {
   def apply(folder: FSPath)(implicit ec: ExecutionContext, mat: Materializer): FileRepository = {
     new FileRepository(folder)
   }
+
+  private def toSCPath(path: FSPath): Path = {
+    val nodes = path
+      .iterator().asScala
+      .map(_.getFileName.toString)
+      .toVector
+
+    Path(nodes)
+  }
 }
 
 /**
@@ -34,7 +43,7 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
 
   def read(key: Path): Source[Data, Result] = {
     val path = toRealPath(key)
-    FileIO.fromPath(path).mapMaterializedValue(StorageUtils.wrapAkkaIOFuture(path.toString, _))
+    FileIO.fromPath(path).mapMaterializedValue(StorageUtils.wrapAkkaIOFuture(FileRepository.toSCPath(path), _))
   }
 
   def write(key: Path): Sink[Data, Result] = {
@@ -53,7 +62,7 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
       .alsoTo(Flow[(FSPath, Long)].map(_._1).to(fileDeleteSink))
       .map(_._2)
       .fold(0L)(_ + _)
-      .map(StorageIOResult.Success(rootFolder.toString, _))
+      .map(StorageIOResult.Success(FileRepository.toSCPath(rootFolder), _))
       .toMat(Sink.head)(Keep.right)
   }
 
@@ -63,24 +72,21 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
       .recoverWithRetries(1, { case _: FileNotFoundException ⇒ Source.empty })
       // .log("file-repository-tree")
       .map(fsPath ⇒ toVirtualPath(fsPath).toRelative(fromPath))
-      .mapMaterializedValue(_ ⇒ Future.successful(StorageIOResult.Success(toVirtualPath(rootFolder) / fromPath, 0)))
+      .mapMaterializedValue(_ ⇒ Future.successful(StorageIOResult.Success(FileRepository.toSCPath(rootFolder) / fromPath, 0)))
   }
 
-  private[this] def toRealPath(path: Path): FSPath = {
-    path.nodes.foldLeft(rootFolder) { (path, node) ⇒
-      require(FileSystemUtils.isValidFileName(node), "File name not supported: " + node)
+  private[this] def toRealPath(relPath: Path): FSPath = {
+    relPath.nodes.foldLeft(rootFolder) { (path, node) ⇒
+      require(FileSystemUtils.isValidFileName(node), s"File name not supported: $node")
       path.resolve(node)
     }
   }
 
   private[this] def toVirtualPath(fsPath: FSPath): Path = {
-    val nodes = rootFolder.relativize(fsPath)
-      .iterator().asScala
-      .map(_.getFileName.toString)
-    Path(nodes.toVector)
+    FileRepository.toSCPath(rootFolder.relativize(fsPath))
   }
 
-  private[this] val fileDeleteSink: Sink[FSPath, NotUsed] = Sink.foreach(Files.delete)
+  private[this] val fileDeleteSink: Sink[FSPath, NotUsed] = Sink.foreach(Files.delete(_: FSPath))
     .withAttributes(Attributes.name("fileDelete") and ActorAttributes.IODispatcher)
     .mapMaterializedValue(_ ⇒ NotUsed)
 }

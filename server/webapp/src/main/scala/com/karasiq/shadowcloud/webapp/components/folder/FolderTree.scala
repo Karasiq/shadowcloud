@@ -20,7 +20,8 @@ import com.karasiq.shadowcloud.webapp.styles.FolderTreeStyles
 import com.karasiq.shadowcloud.webapp.utils.RxUtils
 
 object FolderTree {
-  def apply(path: Path)(implicit context: AppContext, folderContext: FolderContext): FolderTree = {
+  def apply(path: Path)(implicit context: AppContext, folderContext: FolderContext,
+                        folderController: FolderController): FolderTree = {
     new FolderTree(path)
   }
 
@@ -39,7 +40,9 @@ object FolderTree {
   }
 }
 
-class FolderTree(val path: Path)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
+class FolderTree(val path: Path)(implicit context: AppContext, folderContext: FolderContext,
+                                 _folderController: FolderController) extends BootstrapHtmlComponent {
+
   import folderContext.regionId
 
   // -----------------------------------------------------------------------
@@ -70,20 +73,13 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
   // -----------------------------------------------------------------------
   // Logic
   // -----------------------------------------------------------------------
-  implicit val controller = FolderController(
-    path ⇒ folderContext.update(path),
-    folder ⇒ {
-      if (folder.path.parent == path) opened() = true
-      folderContext.update(folder.path.parent)
-    },
-    folder ⇒ {
-      folderContext.update(folder.path.parent)
-      if (folder.path.parent == path) {
-        deleted() = true
-        folderRx.kill()
-      }
+  implicit val folderController = FolderController.inherit(
+    onAddFolder = folder ⇒ if (folder.path.parent == path) opened() = true,
+    onDeleteFolder = folder ⇒ if (folder.path.parent == path) {
+      deleted() = true
+      folderRx.kill()
     }
-  )
+  )(_folderController)
 
   def renderTag(md: ModifierT*): TagT = {
     div(
@@ -100,20 +96,20 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
   // -----------------------------------------------------------------------
   private[this] def copyFiles(filePath: Path, readScope: IndexScope): Unit = {
     context.api.copyFiles(regionId, filePath, filePath.withParent(path), readScope).foreach { _ ⇒
-      controller.update(path)
+      folderController.update(path)
     }
   }
 
   private[this] def copyFile(file: File, readScope: IndexScope): Unit = {
     val newFileSet = context.api.copyFile(regionId, file, file.path.withParent(path), readScope)
-    newFileSet.foreach(_ ⇒ controller.update(path))
+    newFileSet.foreach(_ ⇒ folderController.update(path))
   }
 
   private[this] def copyFolder(folderPath: Path, readScope: IndexScope): Unit = {
     val newPath = folderPath.withParent(path)
     context.api.copyFolder(regionId, folderPath, newPath, readScope).foreach { _ ⇒
-      controller.update(newPath.parent)
-      controller.update(newPath)
+      folderController.update(newPath.parent)
+      folderController.update(newPath)
     }
   }
 
@@ -130,8 +126,8 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
         ev.preventDefault()
         if (DragAndDrop.isFile(dataTransfer)) copyFiles(path, readScope) else copyFolder(path, readScope)
 
-      case _ ⇒
-        // Invalid
+      case values ⇒
+        System.err.println(s"Invalid drag-and-drop request: $values")
     }
   }
 
@@ -175,7 +171,8 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
       }
 
       val actions: Frag = if (isSelected) {
-        small(FolderActions(regionId, path), FolderTreeStyles.folderActions, folderContext.scope.map(_ == IndexScope.Current).reactiveShow)
+        val actions = FolderActions(regionId, path)(context, folderContext, folderController)
+        small(actions, FolderTreeStyles.folderActions, folderContext.scope.map(_ == IndexScope.Current).reactiveShow)
       } else {
         Bootstrap.noContent
       }

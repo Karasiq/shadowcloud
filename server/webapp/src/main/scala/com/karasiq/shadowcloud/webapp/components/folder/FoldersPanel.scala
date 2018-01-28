@@ -6,16 +6,24 @@ import scalaTags.all._
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.webapp.components.file.FileView
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
+import com.karasiq.shadowcloud.webapp.controllers.{FileController, FolderController}
 import com.karasiq.shadowcloud.webapp.utils.RxUtils
 
 object FoldersPanel {
-  def apply()(implicit appContext: AppContext, folderContext: FolderContext): FoldersPanel = {
+  def apply()(implicit appContext: AppContext,
+              folderContext: FolderContext,
+              folderController: FolderController,
+              fileController: FileController): FoldersPanel = {
     new FoldersPanel
   }
 }
 
-class FoldersPanel(implicit appContext: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
-  private[this] lazy val selectedFolderRx = RxUtils.getSelectedFolderRx
+class FoldersPanel(implicit appContext: AppContext,
+                   folderContext: FolderContext,
+                   folderController: FolderController,
+                   fileController: FileController) extends BootstrapHtmlComponent {
+
+  lazy val selectedFolderRx = RxUtils.getSelectedFolderRx
 
   def renderTag(md: ModifierT*): TagT = {
     val folderTree = FolderTree(Path.root)
@@ -25,7 +33,7 @@ class FoldersPanel(implicit appContext: AppContext, folderContext: FolderContext
       GridSystem.col.responsive(12, 3, 3, 2).asDiv(folderTree),
       GridSystem.col.responsive(12, 9, 5, 6).asDiv(folderView),
       GridSystem.col.responsive(12, 12, 4, 4).asDiv(folderView.selectedFile.map[Frag] {
-        case Some(file) ⇒ FileView(file)(appContext, folderContext, folderView.controller)
+        case Some(file) ⇒ FileView(file)(appContext, folderContext, folderView.fileController)
         case None ⇒ ()
       }),
       md

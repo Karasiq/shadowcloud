@@ -14,27 +14,22 @@ import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.controllers.FileController
 
 object FolderFileList {
-  def apply(files: Rx[Set[File]], flat: Boolean = true)(implicit context: AppContext, folderContext: FolderContext): FolderFileList = {
+  def apply(files: Rx[Set[File]], flat: Boolean = true)
+           (implicit context: AppContext, folderContext: FolderContext, fileController: FileController): FolderFileList = {
     new FolderFileList(files, flat)
   }
 }
 
-class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
+class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: AppContext,
+                                                            folderContext: FolderContext,
+                                                            _fileController: FileController) extends BootstrapHtmlComponent {
+
   val selectedFile = Var(None: Option[File])
 
-  implicit val controller = FileController(
-    file ⇒ folderContext.update(file.path.parent),
-    file ⇒ folderContext.update(file.path.parent),
-    (oldFile, newFile) ⇒ {
-      folderContext.update(oldFile.path.parent)
-      folderContext.update(newFile.path.parent)
-      if (selectedFile.now.contains(oldFile)) selectedFile() = Some(newFile)
-    },
-    (file, newName) ⇒ {
-      folderContext.update(file.path.parent)
-      if (selectedFile.now.contains(file)) selectedFile() = Some(file.copy(file.path.withName(newName)))
-    }
-  )
+  implicit val fileController = FileController.inherit(
+    onUpdateFile = (oldFile, newFile) ⇒ if (selectedFile.now.contains(oldFile)) selectedFile() = Some(newFile),
+    onRenameFile = (file, newName) ⇒ if (selectedFile.now.contains(file)) selectedFile() = Some(file.copy(file.path.withName(newName)))
+  )(_fileController)
   
   def renderTag(md: ModifierT*): TagT = {
     val files = Rx {

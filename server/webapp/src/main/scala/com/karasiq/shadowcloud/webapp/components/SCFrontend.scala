@@ -8,7 +8,7 @@ import com.karasiq.shadowcloud.webapp.components.folder.{FoldersPanel, UploadFor
 import com.karasiq.shadowcloud.webapp.components.keys.KeysContext
 import com.karasiq.shadowcloud.webapp.components.region.{RegionContext, RegionsStoragesPanel, RegionSwitcher}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
-import com.karasiq.shadowcloud.webapp.controllers.FileController
+import com.karasiq.shadowcloud.webapp.controllers.{FileController, FolderController}
 
 object SCFrontend {
   def apply()(implicit appContext: AppContext): SCFrontend = {
@@ -54,7 +54,9 @@ class SCFrontend()(implicit val appContext: AppContext) extends BootstrapCompone
     val foldersPanelRx = folderContextRx.map[Frag] {
       case Some(folderContext) ⇒
         regionSwitcher.scopeSelector.selectedScope.foreach(folderContext.scope.update)
-        FoldersPanel()(appContext, folderContext)
+        val folderController = FolderController.forFolderContext(folderContext)
+        val fileController = FileController.forFolderController(folderController)
+        FoldersPanel()(appContext, folderContext, folderController, fileController)
 
       case None ⇒
         Bootstrap.noContent
@@ -62,18 +64,8 @@ class SCFrontend()(implicit val appContext: AppContext) extends BootstrapCompone
 
     val uploadFormRx = folderContextRx.map[Frag] {
       case Some(folderContext) ⇒
-        val controller = FileController(
-          file ⇒ folderContext.update(file.path.parent),
-          file ⇒ folderContext.update(file.path.parent),
-          (oldFile, newFile) ⇒ {
-            folderContext.update(oldFile.path.parent)
-            folderContext.update(newFile.path.parent)
-          },
-          (file, _) ⇒ {
-            folderContext.update(file.path.parent)
-          }
-        )
-        UploadForm()(appContext, folderContext, controller).renderButton()
+        val fileController = FileController.forFolderContext(folderContext)
+        UploadForm()(appContext, folderContext, fileController).renderButton()
 
       case None ⇒
         Bootstrap.noContent

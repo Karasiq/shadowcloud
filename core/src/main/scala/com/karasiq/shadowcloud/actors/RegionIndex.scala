@@ -181,11 +181,8 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
   // Synchronization
   // -----------------------------------------------------------------------
   private[this] object synchronization {
-    def scheduleNext(duration: FiniteDuration = config.index.syncInterval): Unit = {
-      this.finish()
-      if (log.isDebugEnabled) log.debug("Scheduling synchronize in {}", duration.toCoarsest)
-      context.system.scheduler.scheduleOnce(duration, self, Synchronize)
-      becomeOrDefault(receiveWait)
+    def start(): Unit = {
+      becomeRead() // Read -> (opt) write -> (opt) compact
     }
 
     def finish(): Unit = {
@@ -194,7 +191,14 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
       state.pendingSyncReport = SyncReport.empty
     }
 
-    def start(): Unit = {
+    def scheduleNext(duration: FiniteDuration = config.index.syncInterval): Unit = {
+      this.finish()
+      if (log.isDebugEnabled) log.debug("Scheduling synchronize in {}", duration.toCoarsest)
+      context.system.scheduler.scheduleOnce(duration, self, Synchronize)
+      becomeOrDefault(receiveWait)
+    }
+
+    private[this] def becomeRead(): Unit = {
       def receivePreRead(loadedKeys: Set[SequenceNr] = Set.empty): Receive = {
         case KeysLoaded(keys) ⇒
           becomeOrDefault(receivePreRead(loadedKeys ++ keys))
@@ -221,12 +225,12 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
                 case StorageIOResult.Failure(path, error) ⇒
                   log.error(error, "Diff #{} read failed from {}", sequenceNr, path)
-                  // throw error
+                // throw error
               }
             } else {
               log.warning("Diff region or sequenceNr not match: {}", indexIOResult)
             }
-            
+
           case Status.Failure(error) ⇒
             log.error(error, "Diff read failed")
             // throw error
@@ -234,7 +238,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
           case StreamCompleted ⇒
             log.debug("Synchronization read completed")
-            deferAsync(NotUsed)(_ ⇒ startWrite())
+            deferAsync(NotUsed)(_ ⇒ becomeWrite())
         }
 
         def becomeRead(keys: Set[SequenceNr]): Unit = {
@@ -242,14 +246,14 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
           val keySeq = keys.diff(existingKeys)
             .toVector
             .sorted
-          
+
           if (keySeq.nonEmpty) log.debug("Reading diffs: {}", keySeq)
           Source(keySeq)
             .via(state.streams.read(repository))
             .map(ReadSuccess)
             .idleTimeout(sc.config.timeouts.indexRead)
             .runWith(Sink.actorRef(self, StreamCompleted))
-          
+
           becomeOrDefault(receiveRead)
         }
 
@@ -268,7 +272,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
       becomeOrDefault(receivePreRead())
     }
 
-    private[this] def startWrite(): Unit = {
+    private[this] def becomeWrite(): Unit = {
       def receivePreWrite(loadedKeys: Set[SequenceNr] = Set.empty): Receive = {
         case KeysLoaded(keys) ⇒
           becomeOrDefault(receivePreWrite(loadedKeys ++ keys))
@@ -299,7 +303,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
           case StreamCompleted ⇒
             log.debug("Synchronization write completed")
-            deferAsync(NotUsed)(_ ⇒ startCompactOrFinish())
+            deferAsync(NotUsed)(_ ⇒ becomeCompactOrSnapshotOrFinish())
         }
 
         def becomeWrite(newSequenceNr: SequenceNr, diff: IndexDiff): Unit = {
@@ -322,7 +326,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
         if (state.index.pending.nonEmpty) {
           becomeWrite(maxKey + 1, state.index.pending)
         } else {
-          startCompactOrFinish()
+          becomeCompactOrSnapshotOrFinish()
         }
       }
 
@@ -330,7 +334,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
       becomeOrDefault(receivePreWrite())
     }
 
-    private[this] def startCompactOrFinish(): Unit = {
+    private[this] def becomeCompact(): Unit = {
       def receiveCompact: Receive = {
         case CompactSuccess(deletedDiffs, newDiff) ⇒
           log.info("Compact success: deleted = {}, new = {}", deletedDiffs, newDiff)
@@ -357,51 +361,51 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
           deferAsync(NotUsed)(_ ⇒ createSnapshot(() ⇒ synchronization.scheduleNext()))
       }
 
-      def becomeCompact(): Unit = {
-        def compactIndex(indexState: IndexMerger.State[SequenceNr]): Source[CompactSuccess, NotUsed] = {
-          val index = IndexMerger.restore(indexState)
-          log.debug("Compacting diffs: {}", index.diffs)
+      def compactIndex(indexState: IndexMerger.State[SequenceNr]): Source[CompactSuccess, NotUsed] = {
+        val index = IndexMerger.restore(indexState)
+        log.debug("Compacting diffs: {}", index.diffs)
 
-          val diffs = index.diffs.toVector
-          val newDiff = IndexMerger.compact(index)
-          val newSequenceNr = index.lastSequenceNr + 1
+        val diffs = index.diffs.toVector
+        val newDiff = IndexMerger.compact(index)
+        val newSequenceNr = index.lastSequenceNr + 1
 
-          log.debug("Writing compacted diff #{}: {}", newSequenceNr, newDiff)
-          val writeResult = if (newDiff.isEmpty) {
-            // Skip write
-            val empty = IndexIOResult(newSequenceNr, IndexData.empty, StorageIOResult.empty)
-            Source.single(empty)
-          } else {
-            Source.single(newSequenceNr → newDiff)
-              .via(toIndexDataWithKey)
-              .via(state.streams.write(repository))
-              .log("compact-write")
-          }
-
-          writeResult.flatMapConcat(wr ⇒ wr.ioResult match {
-            case StorageIOResult.Success(_, _) ⇒
-              Source(diffs)
-                .map(_._1)
-                .via(state.streams.delete(repository))
-                .log("compact-delete")
-                .filter(_.ioResult.isSuccess)
-                .map(_.key)
-                .fold(Set.empty[SequenceNr])(_ + _)
-                .map(CompactSuccess(_, Some(wr).filterNot(_.diff.isEmpty)))
-
-            case StorageIOResult.Failure(_, error) ⇒
-              Source.failed(error)
-          })
+        log.debug("Writing compacted diff #{}: {}", newSequenceNr, newDiff)
+        val writeResult = if (newDiff.isEmpty) {
+          // Skip write
+          val empty = IndexIOResult(newSequenceNr, IndexData.empty, StorageIOResult.empty)
+          Source.single(empty)
+        } else {
+          Source.single(newSequenceNr → newDiff)
+            .via(toIndexDataWithKey)
+            .via(state.streams.write(repository))
+            .log("compact-write")
         }
 
-        Source.single(IndexMerger.createState(state.index))
-          .filter(_.diffs.length > 1)
-          .flatMapConcat(compactIndex)
-          .runWith(Sink.actorRef(self, StreamCompleted))
+        writeResult.flatMapConcat(wr ⇒ wr.ioResult match {
+          case StorageIOResult.Success(_, _) ⇒
+            Source(diffs)
+              .map(_._1)
+              .via(state.streams.delete(repository))
+              .log("compact-delete")
+              .filter(_.ioResult.isSuccess)
+              .map(_.key)
+              .fold(Set.empty[SequenceNr])(_ + _)
+              .map(CompactSuccess(_, Some(wr).filterNot(_.diff.isEmpty)))
 
-        becomeOrDefault(receiveCompact)
+          case StorageIOResult.Failure(_, error) ⇒
+            Source.failed(error)
+        })
       }
 
+      Source.single(IndexMerger.createState(state.index))
+        .filter(_.diffs.length > 1)
+        .flatMapConcat(compactIndex)
+        .runWith(Sink.actorRef(self, StreamCompleted))
+
+      becomeOrDefault(receiveCompact)
+    }
+
+    private[this] def becomeCompactOrSnapshotOrFinish(): Unit = {
       if (isCompactRequired()) {
         becomeCompact()
       } else if (isSnapshotRequired()) {

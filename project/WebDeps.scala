@@ -27,31 +27,54 @@ object WebDeps {
       """.stripMargin
   }
 
+  private object Bootstrap {
+    private[this] val BootstrapV = "3.3.7"
+    private[this] val BootstrapDatePickerV = "1.7.1"
+    private[this] val JQueryV = "3.2.1"
+    private[this] val FontAwesomeV = "4.7.0"
+
+    /* private def themes = Seq(
+      "Cerulean", "Cosmo", "Cyborg", "Darkly", "Flatly", "Journal", "Lumen", "Paper", "Readable",
+      "Sandstone", "Simplex", "Slate", "Spacelab", "Superhero", "United", "Yeti"
+    ) */
+
+    def defaultTheme = sys.props.getOrElse("bootstrap-theme", "cerulean")
+
+    def themeCss(theme: String) =
+      Style from url(s"https://bootswatch.com/3/${theme.toLowerCase}/bootstrap.min.css")
+
+    def scripts: Seq[PageContent] = {
+      Seq(
+        Script from url(s"https://code.jquery.com/jquery-$JQueryV.min.js"),
+        Script from url(s"https://raw.githubusercontent.com/twbs/bootstrap/v$BootstrapV/dist/js/bootstrap.js"),
+        Script from url(s"https://cdn.jsdelivr.net/webjars/org.webjars/bootstrap-datepicker/$BootstrapDatePickerV/js/bootstrap-datepicker.min.js")
+      )
+    }
+
+    def styles: Seq[PageContent] = {
+      Seq(
+        // Bootstrap
+        // Style from url(s"https://raw.githubusercontent.com/twbs/bootstrap/v$bootstrapV/dist/css/bootstrap.css"),
+        themeCss(defaultTheme),
+        Style from url(s"https://cdn.jsdelivr.net/webjars/org.webjars/bootstrap-datepicker/$BootstrapDatePickerV/css/bootstrap-datepicker3.min.css"),
+
+        // Font Awesome
+        Style from url(s"https://raw.githubusercontent.com/FortAwesome/Font-Awesome/v$FontAwesomeV/css/font-awesome.css")
+      )
+    }
+
+    def fonts: Seq[PageContent] = {
+      fontPackage("glyphicons-halflings-regular", s"https://raw.githubusercontent.com/twbs/bootstrap/v$BootstrapV/dist/fonts/glyphicons-halflings-regular") ++
+        fontPackage("fontawesome-webfont", s"https://raw.githubusercontent.com/FortAwesome/Font-Awesome/v$FontAwesomeV/fonts/fontawesome-webfont")
+    }
+
+    def all: Seq[PageContent] = {
+      scripts ++ styles ++ fonts
+    }
+  }
+
   def bootstrap: Seq[PageContent] = {
-    val bootstrapV = "3.3.7"
-    val bootstrapDateV = "1.7.1"
-    val jQueryV = "3.2.1"
-    val fontAwesomeV = "4.7.0"
-
-    val jsDeps = Seq(
-      // jQuery
-      Script from url(s"https://code.jquery.com/jquery-$jQueryV.min.js"),
-
-      // Bootstrap
-      Style from url(s"https://raw.githubusercontent.com/twbs/bootstrap/v$bootstrapV/dist/css/bootstrap.css"),
-      Script from url(s"https://raw.githubusercontent.com/twbs/bootstrap/v$bootstrapV/dist/js/bootstrap.js"),
-      Style from url(s"https://cdn.jsdelivr.net/webjars/org.webjars/bootstrap-datepicker/$bootstrapDateV/css/bootstrap-datepicker3.min.css"),
-      Script from url(s"https://cdn.jsdelivr.net/webjars/org.webjars/bootstrap-datepicker/$bootstrapDateV/js/bootstrap-datepicker.min.js"),
-
-      // Font Awesome
-      Style from url(s"https://raw.githubusercontent.com/FortAwesome/Font-Awesome/v$fontAwesomeV/css/font-awesome.css")
-    )
-
-    val fonts =
-      fontPackage("glyphicons-halflings-regular", s"https://raw.githubusercontent.com/twbs/bootstrap/v$bootstrapV/dist/fonts/glyphicons-halflings-regular") ++
-      fontPackage("fontawesome-webfont", s"https://raw.githubusercontent.com/FortAwesome/Font-Awesome/v$fontAwesomeV/fonts/fontawesome-webfont")
-
-    jsDeps ++ fonts
+    Bootstrap.all
   }
 
   def videoJS: Seq[PageContent] = {

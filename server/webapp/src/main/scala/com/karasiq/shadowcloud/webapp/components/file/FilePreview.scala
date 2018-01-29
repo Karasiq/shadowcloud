@@ -4,11 +4,11 @@ import scala.concurrent.Future
 import scala.language.postfixOps
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
-import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import rx.Rx
 import rx.async._
+
+import com.karasiq.bootstrap.Bootstrap.default._
+import scalaTags.all._
 
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.model.{File, FileId, RegionId}
@@ -41,12 +41,12 @@ object FilePreview {
 }
 
 class FilePreview(regionId: RegionId, file: File)(implicit context: AppContext) extends BootstrapHtmlComponent {
-  val previews = FilePreview.getImagePreview(regionId, file.id).toRx(PreviewVariants())
+  val previewsRx = FilePreview.getImagePreview(regionId, file.id).toRx(PreviewVariants())
 
   def renderTag(md: ModifierT*): TagT = {
-    val image = Rx(previews().image.map(MetadataView.thumbnail))
-    val text = Rx(previews().text.map(MetadataView.text))
-    val files = Rx(previews().files.map(MetadataView.fileList))
+    val image = Rx(previewsRx().image.map(MetadataView.thumbnail))
+    val text = Rx(previewsRx().text.map(MetadataView.text))
+    val files = Rx(previewsRx().files.map(MetadataView.fileList))
 
     div(
       for (preview ← Seq(

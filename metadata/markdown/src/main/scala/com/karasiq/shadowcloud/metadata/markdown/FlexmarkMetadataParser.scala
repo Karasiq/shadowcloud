@@ -26,7 +26,7 @@ private[markdown] class FlexmarkMetadataParser(config: Config) extends MetadataP
   import com.vladsch.flexmark.parser.Parser
   import com.vladsch.flexmark.util.options.MutableDataSet
 
-  private[this] val parserConfig = MetadataParserConfig(config)
+  protected val parserConfig = MetadataParserConfig(config)
 
   private[this] val options = {
     val options = new MutableDataSet

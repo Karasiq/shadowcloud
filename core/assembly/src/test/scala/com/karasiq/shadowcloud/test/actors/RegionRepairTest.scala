@@ -5,7 +5,7 @@ import scala.language.postfixOps
 
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
-import org.scalatest.FlatSpecLike
+import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
 
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.config.ConfigProps
@@ -15,19 +15,17 @@ import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.streams.region.RegionRepairStream
 import com.karasiq.shadowcloud.test.utils.{SCExtensionSpec, TestUtils}
 
-class RegionRepairTest extends SCExtensionSpec with FlatSpecLike {
+class RegionRepairTest extends SCExtensionSpec with FlatSpecLike with SequentialNestedSuiteExecution {
   val testRegionId = "repairTestRegion"
   val testStorage1 = "repairTestS1"
   val testStorage2 = "repairTestS2"
 
   "Region repair stream" should "repair chunks" in {
-    registerRegionAndStorages()
-
     val chunk = TestUtils.testChunk
     sc.ops.region.writeChunk(testRegionId, chunk).futureValue shouldBe chunk
     sc.ops.region.synchronize(testRegionId)
     
-    expectNoMsg(500 millis) // Wait for synchronization
+    expectNoMessage(1 second)
 
     val (repairStream, repairResult) = TestSource.probe[RegionRepairStream.Request]
       .alsoTo(RegionRepairStream(sc.config.parallelism, sc.ops.region))
@@ -50,12 +48,16 @@ class RegionRepairTest extends SCExtensionSpec with FlatSpecLike {
     sc.ops.storage.readChunk(testStorage2, chunkPath, chunk).futureValue shouldBe chunk
   }
 
+  override protected def beforeAll(): Unit = {
+    super.beforeAll()
+    registerRegionAndStorages()
+  }
+
   private[this] def registerRegionAndStorages(): Unit = {
     sc.ops.supervisor.createRegion(testRegionId, sc.configs.regionConfig(testRegionId))
     sc.ops.supervisor.createStorage(testStorage1, StorageProps.inMemory.copy(quota = Quota(ConfigProps.toConfig(ConfigProps("use-space-percent" → 33)))))
     sc.ops.supervisor.createStorage(testStorage2, StorageProps.inMemory)
     sc.ops.supervisor.register(testRegionId, testStorage1)
     sc.ops.supervisor.register(testRegionId, testStorage2)
-    expectNoMsg(100 millis)
   }
 }

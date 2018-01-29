@@ -38,7 +38,7 @@ object WebDeps {
       "Sandstone", "Simplex", "Slate", "Spacelab", "Superhero", "United", "Yeti"
     ) */
 
-    def defaultTheme = sys.props.getOrElse("bootstrap-theme", "cerulean")
+    // def defaultTheme = sys.props.getOrElse("bootstrap-theme", "cerulean")
 
     def themeCss(theme: String) =
       Style from url(s"https://bootswatch.com/3/${theme.toLowerCase}/bootstrap.min.css")
@@ -54,8 +54,7 @@ object WebDeps {
     def styles: Seq[PageContent] = {
       Seq(
         // Bootstrap
-        // Style from url(s"https://raw.githubusercontent.com/twbs/bootstrap/v$bootstrapV/dist/css/bootstrap.css"),
-        themeCss(defaultTheme),
+        sys.props.get("bootstrap-theme").fold(Style from url(s"https://raw.githubusercontent.com/twbs/bootstrap/v$BootstrapV/dist/css/bootstrap.css"))(themeCss),
         Style from url(s"https://cdn.jsdelivr.net/webjars/org.webjars/bootstrap-datepicker/$BootstrapDatePickerV/css/bootstrap-datepicker3.min.css"),
 
         // Font Awesome

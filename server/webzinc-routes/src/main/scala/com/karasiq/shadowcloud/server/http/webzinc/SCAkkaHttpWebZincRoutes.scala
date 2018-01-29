@@ -13,7 +13,8 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.server.http.{SCAkkaHttpApiRoutes, SCAkkaHttpFileRoutes}
-import com.karasiq.webzinc.{WebClient, WebResourceFetcher, WebResourceInliner}
+import com.karasiq.webzinc.WebResourceInliner
+import com.karasiq.webzinc.impl.htmlunit.HtmlUnitWebResourceFetcher
 import com.karasiq.webzinc.utils.WebZincUtils
 
 // WebZinc extension
@@ -35,8 +36,7 @@ trait SCAkkaHttpWebZincRoutes { self: SCAkkaHttpFileRoutes with SCAkkaHttpApiRou
     private[this] implicit val dispatcher = actorSystem.dispatchers.lookup(SCWebZinc.dispatcherId)
     private[this] val akkaHttp = Http(actorSystem)
 
-    private[this] implicit val client = WebClient() // TODO: https://github.com/akka/akka-http/issues/86
-    private[this] val fetcher = WebResourceFetcher()
+    private[this] val fetcher = HtmlUnitWebResourceFetcher() // TODO: https://github.com/akka/akka-http/issues/86
     private[this] val inliner = WebResourceInliner()
 
     def fetchWebPage(url: String): PageFuture = {

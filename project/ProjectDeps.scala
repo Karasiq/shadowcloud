@@ -133,6 +133,6 @@ object ProjectDeps {
   )
 
   def webzinc: Deps = Seq(
-    "com.github.karasiq" %% "webzinc" % "1.0.2"
+    "com.github.karasiq" %% "webzinc" % "1.0.3"
   )
 }

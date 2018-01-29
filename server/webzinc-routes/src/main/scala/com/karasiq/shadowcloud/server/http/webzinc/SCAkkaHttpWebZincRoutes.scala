@@ -13,8 +13,7 @@ import akka.stream.scaladsl.Source
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.server.http.{SCAkkaHttpApiRoutes, SCAkkaHttpFileRoutes}
-import com.karasiq.webzinc.fetcher.WebResourceFetcher
-import com.karasiq.webzinc.inliner.WebResourceInliner
+import com.karasiq.webzinc.{WebClient, WebResourceFetcher, WebResourceInliner}
 
 // WebZinc extension
 trait SCAkkaHttpWebZincRoutes { self: SCAkkaHttpFileRoutes with SCAkkaHttpApiRoutes with Directives ⇒
@@ -31,10 +30,11 @@ trait SCAkkaHttpWebZincRoutes { self: SCAkkaHttpFileRoutes with SCAkkaHttpApiRou
   protected object WebZincContext {
     type PageFuture = Future[(String, Source[ByteString, NotUsed])]
 
-    import sc.implicits.materializer
-    private implicit val dispatcher = sc.implicits.actorSystem.dispatchers.lookup(SCWebZinc.dispatcherId)
+    import sc.implicits.{actorSystem, materializer}
+    private[this] implicit val dispatcher = actorSystem.dispatchers.lookup(SCWebZinc.dispatcherId)
+    private[this] val akkaHttp = Http(actorSystem)
 
-    private[this] val akkaHttp = Http(sc.implicits.actorSystem)
+    private[this] implicit val client = WebClient()
     private[this] val fetcher = WebResourceFetcher()
     private[this] val inliner = WebResourceInliner()
 
@@ -53,7 +53,7 @@ trait SCAkkaHttpWebZincRoutes { self: SCAkkaHttpFileRoutes with SCAkkaHttpApiRou
           .filter(_.nonEmpty)
           .getOrElse(url)
 
-        (fileName, response.entity.withoutSizeLimit().dataBytes.mapMaterializedValue(_ ⇒ NotUsed))
+        (fileName, response.entity/*.withoutSizeLimit()*/.dataBytes.mapMaterializedValue(_ ⇒ NotUsed))
       }
     }
 

@@ -6,25 +6,19 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.NotUsed
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.stream.testkit.scaladsl.TestSink
 import akka.testkit.TestKit
 import akka.util.ByteString
-import com.typesafe.config.ConfigFactory
-import org.scalatest.{BeforeAndAfterAll, FlatSpecLike, Matchers}
-import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.FlatSpecLike
 
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.metadata.imageio.ImageIOThumbnailCreator
 import com.karasiq.shadowcloud.metadata.imageio.utils.ImageIOResizer
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, ActorSpecImplicits}
 
-class ImageIOMetadataProviderTest extends TestKit(ActorSystem("imageio-test"))
-  with FlatSpecLike with Matchers with BeforeAndAfterAll with ScalaFutures {
-
-  implicit val materializer = ActorMaterializer()
-  val thumbnailCreator = ImageIOThumbnailCreator(ConfigFactory.load().getConfig("shadowcloud.metadata.imageio.thumbnails"))
+class ImageIOMetadataProviderTest extends ActorSpec with ActorSpecImplicits with FlatSpecLike {
+  val thumbnailCreator = ImageIOThumbnailCreator(system.settings.config.getConfig("shadowcloud.metadata.imageio.thumbnails"))
 
   "Thumbnail creator" should "create a thumbnail" in {
     testThumbnail("thumb-test/test.jpg", "jpeg", 755, 576, 200, 152)

@@ -59,5 +59,6 @@ class RegionRepairTest extends SCExtensionSpec with FlatSpecLike with Sequential
     sc.ops.supervisor.createStorage(testStorage2, StorageProps.inMemory)
     sc.ops.supervisor.register(testRegionId, testStorage1)
     sc.ops.supervisor.register(testRegionId, testStorage2)
+    expectNoMessage(5 seconds)
   }
 }

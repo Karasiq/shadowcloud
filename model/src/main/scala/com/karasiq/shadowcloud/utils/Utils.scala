@@ -96,9 +96,13 @@ private[shadowcloud] object Utils {
       else Some(str.substring(0, index + 1))
     }
 
-    //cutAt("\n").orElse(cutAt(". "))
-    cutAt(". ").orElse(cutAt(" "))
-      .getOrElse(str.take(maxLength))
+    if (str.length <= maxLength) {
+      str
+    } else {
+      //cutAt("\n").orElse(cutAt(". "))
+      cutAt(". ").orElse(cutAt(" "))
+        .getOrElse(str.take(maxLength))
+    }
   }
 
   @inline

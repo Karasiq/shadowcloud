@@ -15,11 +15,10 @@ object TextView {
 
 class TextView(text: Metadata.Text)(implicit context: AppContext) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
-    val styles = Seq(whiteSpace.`pre-wrap`, wordWrap.`break-word`) ++ md
     if (text.format == HtmlUtils.HtmlMime) {
-      Bootstrap.well(div(HtmlUtils.extractContent(text.data, text.format)), styles)
+      Bootstrap.well(div(HtmlUtils.extractContent(text.data, text.format)), wordWrap.`break-word`, md)
     } else {
-      Bootstrap.well(text.data, styles)
+      Bootstrap.well(text.data, whiteSpace.`pre-wrap`, wordWrap.`break-word`, md)
     }
   }
 }

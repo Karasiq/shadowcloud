@@ -7,7 +7,7 @@ import akka.util.ByteString
 import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.model.Chunk
 
-trait TestImplicits {
+trait ByteStringImplicits {
   implicit class ByteStringOps(private val bs: ByteString) {
     def toHexString: String = {
       HexString.encode(bs)

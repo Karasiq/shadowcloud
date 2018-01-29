@@ -13,7 +13,7 @@ import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.utils.ProviderInstantiator
 
-object CoreTestUtils extends TestImplicits {
+object CoreTestUtils extends ByteStringImplicits {
   import TestUtils.{randomBytes, randomString}
 
   val config = SCConfig(ConfigFactory.load().getConfig("shadowcloud"))

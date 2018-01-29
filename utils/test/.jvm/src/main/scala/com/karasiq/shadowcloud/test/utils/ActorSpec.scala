@@ -9,7 +9,7 @@ import org.scalatest.{BeforeAndAfterAll, Matchers, Suite}
 import org.scalatest.concurrent.ScalaFutures
 
 abstract class ActorSpec extends TestKit(ActorSystem("test")) with ImplicitSender
-  with Suite with Matchers with ScalaFutures with BeforeAndAfterAll with TestImplicits {
+  with Suite with Matchers with ScalaFutures with BeforeAndAfterAll {
 
   override implicit def patienceConfig: PatienceConfig = {
     PatienceConfig(5 seconds, 50 millis)

@@ -14,6 +14,7 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.server.http.{SCAkkaHttpApiRoutes, SCAkkaHttpFileRoutes}
 import com.karasiq.webzinc.{WebClient, WebResourceFetcher, WebResourceInliner}
+import com.karasiq.webzinc.utils.WebZincUtils
 
 // WebZinc extension
 trait SCAkkaHttpWebZincRoutes { self: SCAkkaHttpFileRoutes with SCAkkaHttpApiRoutes with Directives ⇒
@@ -40,9 +41,7 @@ trait SCAkkaHttpWebZincRoutes { self: SCAkkaHttpFileRoutes with SCAkkaHttpApiRou
 
     def fetchWebPage(url: String): PageFuture = {
       val pageFuture = fetcher.getWebPage(url).flatMap((inliner.inline _).tupled)
-      pageFuture.map { page ⇒
-        (s"${page.title} [${Integer.toHexString(url.hashCode)}].html", Source.single(page.data))
-      }
+      pageFuture.map(page ⇒ (WebZincUtils.getFileName(page), Source.single(page.data)))
     }
 
     def fetchHttpFile(url: String): PageFuture = {

@@ -37,7 +37,7 @@ class SCFrontend()(implicit val appContext: AppContext) extends BootstrapCompone
 
   def renderNavigationBar(): NavigationBar = {
     NavigationBar()
-      .withBrand("shadowcloud")
+      .withBrand(img(src := "/favicon.png", maxHeight := 100.pct, display.inline, marginRight := 3.px), "shadowcloud")
       .withContentContainer(GridSystem.containerFluid(_))
       .withStyles(NavigationBarStyle.default, NavigationBarStyle.staticTop)
       .withTabs(

@@ -68,40 +68,37 @@ class SardineRepository(props: StorageProps, sardine: Sardine)(implicit dispatch
 
   def keys = subKeys(Path.root)
 
-  def read(key: Path) = {
-    Source.single(key)
+  def read(path: Path) = {
+    Source.single(path)
       .viaMat(AkkaStreamUtils.flatMapConcatMat { path ⇒
         val resourceUrl = SardineRepository.getResourceURL(baseUrl, path)
         StreamConverters.fromInputStream(() ⇒ sardine.get(resourceUrl))
       })(Keep.right)
-      .mapMaterializedValue(_.map(rs ⇒ StorageUtils.foldIOResults(rs.map(StorageUtils.wrapAkkaIOResult(key, _)): _*)))
-      .alsoToMat(StorageUtils.countPassedBytes(key).toMat(Sink.head)(Keep.right))(Keep.right)
+      .mapMaterializedValue(_.map(rs ⇒ StorageUtils.foldIOResults(rs.map(StorageUtils.wrapAkkaIOResult(path, _)): _*)))
+      .alsoToMat(StorageUtils.countPassedBytes(path).toMat(Sink.head)(Keep.right))(Keep.right)
       .withAttributes(ActorAttributes.dispatcher(dispatcher.id))
       .named("webdavRead")
   }
 
-  def write(key: Path) = {
-    Flow[Data]
-      .via(AkkaStreamUtils.extractUpstream)
-      .map { stream ⇒
-        val resourceUrl = SardineRepository.getResourceURL(baseUrl, key)
-        val sink = AkkaStreamUtils.writeInputStream { inputStream ⇒
-            val result = Future {
-              makeDirectories(sardine, key.parent)
-              sardine.put(resourceUrl, inputStream)
-              val result = sardine.list(resourceUrl, 0).asScala.head
-              StorageIOResult.Success(key, result.getContentLength)
-            }
-            result.onComplete(_.failed.foreach(_ ⇒ inputStream.close()))
-            Source.fromFuture(StorageUtils.wrapFuture(key, result))
-          }
-          .toMat(Sink.head)(Keep.right)
-        (stream, sink)
+  def write(path: Path) = {
+    val resourceUrl = SardineRepository.getResourceURL(baseUrl, path)
+    val sink = AkkaStreamUtils
+      .writeInputStream { inputStream ⇒
+        val result = Future {
+          makeDirectories(sardine, path.parent)
+          sardine.put(resourceUrl, inputStream)
+          val result = sardine.list(resourceUrl, 0).asScala.head
+          StorageIOResult.Success(path, result.getContentLength)
+        }
+        result.failed.foreach(_ ⇒ inputStream.close())
+        Source.fromFuture(StorageUtils.wrapFuture(path, result))
       }
-      .viaMat(AkkaStreamUtils.flatMapConcatMat { case (source, sink) ⇒ source.alsoToMat(sink)(Keep.right) })(Keep.right)
-      .mapMaterializedValue(_.map(StorageUtils.foldIOResults))
-      .to(Sink.ignore)
+      .toMat(Sink.head)(Keep.right)
       .withAttributes(ActorAttributes.dispatcher(dispatcher.id))
+      .named("webdavWriteSink")
+
+    Flow[Data]
+      .toMat(sink)(Keep.right)
       .named("webdavWrite")
   }
 

@@ -65,11 +65,15 @@ object AkkaStreamUtils {
   }
 
   def writeInputStream[T, M](f: InputStream ⇒ Graph[SourceShape[T], M]): Flow[ByteString, T, Future[Seq[M]]] = {
-    val promise = Promise[InputStream]
     Flow[ByteString]
-      .alsoTo(StreamConverters.asInputStream().mapMaterializedValue(promise.success))
-      .alsoTo(failPromiseOnFailure(promise))
-      .via(dropUpstream(Source.fromFuture(promise.future)))
+      .via(extractUpstream)
+      .flatMapConcat { byteStream ⇒
+        val promise = Promise[InputStream]
+        byteStream
+          .alsoTo(StreamConverters.asInputStream().mapMaterializedValue(promise.success))
+          .alsoTo(failPromiseOnFailure(promise))
+          .via(dropUpstream(Source.fromFuture(promise.future)))
+      }
       .async
       .viaMat(flatMapConcatMat { inputStream ⇒
         val graph = f(inputStream)

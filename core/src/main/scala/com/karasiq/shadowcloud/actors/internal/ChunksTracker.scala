@@ -237,7 +237,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
         selectedStorages.map(storage ⇒ (storage, storages.io.writeChunk(storage, status.chunk)))
       }
 
-      require(status.chunk.nonEmpty, "Chunk is empty")
+      if (status.chunk.isEmpty) throw SCExceptions.ChunkDataIsEmpty(status.chunk) // require(status.chunk.nonEmpty, "Chunk is empty")
       val writes = enqueueWrites(status)
       val writtenStorages = writes.map(_._1)
       if (writtenStorages.isEmpty) {

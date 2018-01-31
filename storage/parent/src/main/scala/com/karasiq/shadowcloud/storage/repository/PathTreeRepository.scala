@@ -76,5 +76,6 @@ object PathTreeRepository {
     Flow[Path]
       .filter(_.startsWith(fromPath))
       .map(_.toRelative(fromPath))
+      .named("extractSubPaths")
   }
 }

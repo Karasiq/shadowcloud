@@ -7,6 +7,7 @@ import com.karasiq.shadowcloud.webapp.components.common.AppIcons
 import com.karasiq.shadowcloud.webapp.components.folder.{FoldersPanel, UploadForm}
 import com.karasiq.shadowcloud.webapp.components.keys.KeysContext
 import com.karasiq.shadowcloud.webapp.components.region.{RegionContext, RegionsStoragesPanel, RegionSwitcher}
+import com.karasiq.shadowcloud.webapp.components.themes.ThemeSelector
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.controllers.{FileController, FolderController}
 
@@ -31,13 +32,19 @@ class SCFrontend()(implicit val context: AppContext) extends BootstrapComponent 
     newIdOpt.map(FolderContext(_))
   }
 
+  val themeSelector = ThemeSelector()
+
   def render(md: ModifierT*) = {
-    renderNavigationBar().render(md:_*)
+    Seq(
+      themeSelector,
+      renderNavigationBar().render(md:_*)
+    )
   }
 
   def renderNavigationBar(): NavigationBar = {
     NavigationBar()
-      .withBrand(img(src := "/favicon.png", maxHeight := 100.pct, display.inline, marginRight := 3.px), "shadowcloud")
+      .withBrand(img(src := "/favicon.png", maxHeight := 100.pct, display.inline,
+        marginRight := 3.px), "shadowcloud", onclick := Callback.onClick(_ ⇒ themeSelector.nextTheme()))
       .withContentContainer(GridSystem.containerFluid(_))
       .withStyles(NavigationBarStyle.default, NavigationBarStyle.staticTop)
       .withTabs(

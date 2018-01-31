@@ -54,7 +54,7 @@ object WebDeps {
     def styles: Seq[PageContent] = {
       Seq(
         // Bootstrap
-        sys.props.get("bootstrap-theme").fold(Style from url(s"https://raw.githubusercontent.com/twbs/bootstrap/v$BootstrapV/dist/css/bootstrap.css"))(themeCss),
+        // sys.props.get("bootstrap-theme").fold(Style from url(s"https://raw.githubusercontent.com/twbs/bootstrap/v$BootstrapV/dist/css/bootstrap.css"))(themeCss),
         Style from url(s"https://cdn.jsdelivr.net/webjars/org.webjars/bootstrap-datepicker/$BootstrapDatePickerV/css/bootstrap-datepicker3.min.css"),
 
         // Font Awesome

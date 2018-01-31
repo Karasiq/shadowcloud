@@ -21,7 +21,7 @@ class MarkdownMetadataProviderTest extends ActorSpec with ActorSpecImplicits wit
     text shouldBe "Plain test"
   }
 
-  private[this] def testParser(parser: MetadataParser)(name: String, mime: String, data: String)(f: (String, String) ⇒ Unit): Unit = {
+  private[this] def testParser(parser: MetadataParser)(name: String, mime: String, data: String)(doTest: (String, String) ⇒ Unit): Unit = {
     parser.canParse(name, mime) shouldBe true
 
     val result = Source.single(ByteString(data))
@@ -29,6 +29,6 @@ class MarkdownMetadataProviderTest extends ActorSpec with ActorSpecImplicits wit
       .runWith(Sink.seq)
       .futureValue
 
-    result.collect { case Metadata(_, Metadata.Value.Text(Metadata.Text(format, text))) ⇒ (format, text) }.foreach(f.tupled)
+    result.collect { case Metadata(_, Metadata.Value.Text(Metadata.Text(format, text))) ⇒ (format, text) }.foreach(doTest.tupled)
   }
 }

@@ -16,7 +16,7 @@ object SCFrontend {
   }
 }
 
-class SCFrontend()(implicit val appContext: AppContext) extends BootstrapComponent {
+class SCFrontend()(implicit val context: AppContext) extends BootstrapComponent {
   implicit val regionContext = RegionContext()
   implicit val keysContext = KeysContext()
 
@@ -41,8 +41,8 @@ class SCFrontend()(implicit val appContext: AppContext) extends BootstrapCompone
       .withContentContainer(GridSystem.containerFluid(_))
       .withStyles(NavigationBarStyle.default, NavigationBarStyle.staticTop)
       .withTabs(
-        NavigationTab(appContext.locale.foldersView, "folders", AppIcons.foldersView, renderFoldersPanel()),
-        NavigationTab(appContext.locale.regionsView, "regions", AppIcons.regionsView, renderRegionsPanel())
+        NavigationTab(context.locale.foldersView, "folders", AppIcons.foldersView, renderFoldersPanel()),
+        NavigationTab(context.locale.regionsView, "regions", AppIcons.regionsView, renderRegionsPanel())
       )
   }
 
@@ -56,7 +56,7 @@ class SCFrontend()(implicit val appContext: AppContext) extends BootstrapCompone
         regionSwitcher.scopeSelector.selectedScope.foreach(folderContext.scope.update)
         val folderController = FolderController.forFolderContext(folderContext)
         val fileController = FileController.forFolderController(folderController)
-        FoldersPanel()(appContext, folderContext, folderController, fileController)
+        FoldersPanel()(context, folderContext, folderController, fileController)
 
       case None ⇒
         Bootstrap.noContent
@@ -65,7 +65,7 @@ class SCFrontend()(implicit val appContext: AppContext) extends BootstrapCompone
     val uploadFormRx = folderContextRx.map[Frag] {
       case Some(folderContext) ⇒
         val fileController = FileController.forFolderContext(folderContext)
-        UploadForm()(appContext, folderContext, fileController).renderButton()
+        UploadForm()(context, folderContext, fileController).renderButton()
 
       case None ⇒
         Bootstrap.noContent

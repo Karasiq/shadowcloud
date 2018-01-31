@@ -19,9 +19,7 @@ object DropboxRepository {
 }
 
 class DropboxRepository(dropboxClient: DropboxClient)(implicit ec: ExecutionContext) extends PathTreeRepository {
-  def keys = subKeys(Path.root)
-
-  override def subKeys(fromPath: Path) = {
+  def subKeys(fromPath: Path) = {
     require(Path.isConventional(fromPath), s"Non-conventional: $fromPath")
     dropboxClient.list(fromPath.toString, recursive = true)
       .map(metadata ⇒ Path.fromString(metadata.getPathDisplay))

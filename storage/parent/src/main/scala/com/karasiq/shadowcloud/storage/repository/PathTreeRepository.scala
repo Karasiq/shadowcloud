@@ -1,15 +1,18 @@
 package com.karasiq.shadowcloud.storage.repository
 
-import akka.stream.scaladsl.Source
+import akka.NotUsed
+import akka.stream.scaladsl.{Flow, Source}
 
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.repository.wrappers.{PathStringRepositoryWrapper, RepositoryKeyMapper}
 
 trait PathTreeRepository extends Repository[Path] {
-  def subKeys(fromPath: Path): Source[Path, Result] = { // Should return relative paths
-    keys
-      .filter(_.startsWith(fromPath))
-      .map(_.toRelative(fromPath))
+  def subKeys(fromPath: Path): Source[Path, Result] /* = { // Should return relative paths
+    keys.via(PathTreeRepository.filterKeys(fromPath))
+  } */
+
+  override def keys: Source[Path, Result] = {
+    subKeys(Path.root)
   }
 }
 
@@ -64,5 +67,11 @@ object PathTreeRepository {
 
   def fromKeyValue(repository: KeyValueRepository, delimiter: String = "_"): PathTreeRepository = {
     new PathStringRepositoryWrapper(repository, delimiter)
+  }
+
+  def filterKeys(fromPath: Path): Flow[Path, Path, NotUsed] = {
+    Flow[Path]
+      .filter(_.startsWith(fromPath))
+      .map(_.toRelative(fromPath))
   }
 }

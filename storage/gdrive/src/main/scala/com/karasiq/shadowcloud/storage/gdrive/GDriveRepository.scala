@@ -29,11 +29,7 @@ private[gdrive] object GDriveRepository {
 private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: ExecutionContext) extends PathTreeRepository {
   private[this] val entityCache = GDriveEntityCache(service)
 
-  def keys = {
-    subKeys(Path.root)
-  }
-
-  override def subKeys(fromPath: Path) = {
+  def subKeys(fromPath: Path) = {
     type EntityWithPath = (service.EntityPath, GDrive.Entity)
 
     val traverseFlow: Flow[Path, EntityWithPath, NotUsed] = {

@@ -40,8 +40,6 @@ object MailRuCloudRepository {
 class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, session: Session, token: CsrfToken) extends PathTreeRepository {
   import MailRuCloudRepository._
 
-  def keys = subKeys(Path.root)
-
   def read(key: Path) = {
     client.download(key)
       .alsoToMat(countBytes(key))(Keep.right)
@@ -77,7 +75,7 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
       .named("mailrucloudDelete")
   }
 
-  override def subKeys(fromPath: Path) = {
+  def subKeys(fromPath: Path) = {
     def traverseFlow: Flow[Path, Path, NotUsed] = Flow[Path]
       .mapAsync(1)(client.folder(_))
       .flatMapConcat { folder ⇒

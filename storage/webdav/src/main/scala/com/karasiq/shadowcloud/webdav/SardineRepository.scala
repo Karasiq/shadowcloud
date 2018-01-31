@@ -66,8 +66,6 @@ class SardineRepository(props: StorageProps, sardine: Sardine)(implicit dispatch
   private[this] val baseUrl = SardineRepository.getResourceURL(rootUrl, props.address.path)
   private[this] val cachedDirectories = TrieMap.empty[Path, DavResource]
 
-  def keys = subKeys(Path.root)
-
   def read(path: Path) = {
     Source.single(path)
       .viaMat(AkkaStreamUtils.flatMapConcatMat { path ⇒
@@ -116,7 +114,7 @@ class SardineRepository(props: StorageProps, sardine: Sardine)(implicit dispatch
       .named("webdavDelete")
   }
 
-  override def subKeys(fromPath: Path) = {
+  def subKeys(fromPath: Path) = {
     def listDirectory: Flow[Path, Vector[DavResource], NotUsed] = {
       Flow[Path]
         .map { path ⇒

@@ -37,10 +37,6 @@ private[storage] object FileRepository {
   * @param rootFolder Root directory
   */
 private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: ExecutionContext, mat: Materializer) extends PathTreeRepository {
-  def keys: Source[Path, Result] = {
-    subKeys(Path.root)
-  }
-
   def read(key: Path): Source[Data, Result] = {
     val path = toRealPath(key)
     FileIO.fromPath(path).mapMaterializedValue(StorageUtils.wrapAkkaIOFuture(FileRepository.toSCPath(path), _))
@@ -66,7 +62,7 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
       .toMat(Sink.head)(Keep.right)
   }
 
-  override def subKeys(fromPath: Path): Source[Path, Result] = {
+  def subKeys(fromPath: Path): Source[Path, Result] = {
     val subDirPath = toRealPath(fromPath)
     FileSystemUtils.walkFileTree(subDirPath, includeDirs = false)
       .recoverWithRetries(1, { case _: FileNotFoundException ⇒ Source.empty })

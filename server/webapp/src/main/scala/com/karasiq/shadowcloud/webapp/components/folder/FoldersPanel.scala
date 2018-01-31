@@ -18,22 +18,22 @@ object FoldersPanel {
   }
 }
 
-class FoldersPanel(implicit appContext: AppContext,
+class FoldersPanel(implicit context: AppContext,
                    folderContext: FolderContext,
                    folderController: FolderController,
                    fileController: FileController) extends BootstrapHtmlComponent {
 
-  lazy val selectedFolderRx = RxUtils.getSelectedFolderRx
+  lazy val selectedFolder = RxUtils.getSelectedFolderRx
+
+  lazy val folderTree = FolderTree(Path.root)
+  lazy val folderFiles = FolderFileList(selectedFolder.map(_.files))
 
   def renderTag(md: ModifierT*): TagT = {
-    val folderTree = FolderTree(Path.root)
-    val folderView = FolderFileList(selectedFolderRx.map(_.files))
-
     GridSystem.row(
       GridSystem.col.responsive(12, 3, 3, 2).asDiv(folderTree),
-      GridSystem.col.responsive(12, 9, 5, 6).asDiv(folderView),
-      GridSystem.col.responsive(12, 12, 4, 4).asDiv(folderView.selectedFile.map[Frag] {
-        case Some(file) ⇒ FileView(file)(appContext, folderContext, folderView.fileController)
+      GridSystem.col.responsive(12, 9, 5, 6).asDiv(folderFiles),
+      GridSystem.col.responsive(12, 12, 4, 4).asDiv(folderFiles.selectedFile.map[Frag] {
+        case Some(file) ⇒ FileView(file)(context, folderContext, folderFiles.fileController)
         case None ⇒ ()
       }),
       md

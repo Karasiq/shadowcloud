@@ -7,8 +7,9 @@ import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.repository.wrappers.{PathStringRepositoryWrapper, RepositoryKeyMapper}
 
 trait PathTreeRepository extends Repository[Path] {
-  def subKeys(fromPath: Path): Source[Path, Result] /* = { // Should return relative paths
-    keys.via(PathTreeRepository.filterKeys(fromPath))
+  // Should return relative paths
+  def subKeys(fromPath: Path): Source[Path, Result] /* = {
+    keys.via(PathTreeRepository.extractSubPaths(fromPath))
   } */
 
   override def keys: Source[Path, Result] = {
@@ -22,7 +23,9 @@ object PathTreeRepository {
       ptr
 
     case _ ⇒
-      new RepositoryKeyMapper[Path, Path](repository, identity, identity) with PathTreeRepository
+      new RepositoryKeyMapper[Path, Path](repository, identity, identity) with PathTreeRepository {
+        def subKeys(fromPath: Path): Source[Path, Result] = repository.keys.via(extractSubPaths(fromPath))
+      }
   }
 
   def traverse(repository: PathTreeRepository, path: Path): PathTreeRepository = {
@@ -69,7 +72,7 @@ object PathTreeRepository {
     new PathStringRepositoryWrapper(repository, delimiter)
   }
 
-  def filterKeys(fromPath: Path): Flow[Path, Path, NotUsed] = {
+  def extractSubPaths(fromPath: Path): Flow[Path, Path, NotUsed] = {
     Flow[Path]
       .filter(_.startsWith(fromPath))
       .map(_.toRelative(fromPath))

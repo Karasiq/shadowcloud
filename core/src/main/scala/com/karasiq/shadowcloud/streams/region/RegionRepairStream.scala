@@ -1,7 +1,6 @@
 package com.karasiq.shadowcloud.streams.region
 
 import scala.concurrent.Promise
-import scala.util.Failure
 
 import akka.NotUsed
 import akka.stream.{ActorAttributes, Supervision}
@@ -18,11 +17,11 @@ object RegionRepairStream {
   sealed trait Strategy
   object Strategy {
     case object AutoAffinity extends Strategy
-    case class SetAffinity(newAffinity: ChunkWriteAffinity) extends Strategy
-    case class TransformAffinity(newAffinity: ChunkStatus ⇒ Option[ChunkWriteAffinity]) extends Strategy
+    final case class SetAffinity(newAffinity: ChunkWriteAffinity) extends Strategy
+    final case class TransformAffinity(newAffinity: ChunkStatus ⇒ Option[ChunkWriteAffinity]) extends Strategy
   }
 
-  case class Request(regionId: RegionId, strategy: Strategy, chunks: Seq[Chunk] = Nil, result: Promise[Seq[Chunk]] = Promise())
+  final case class Request(regionId: RegionId, strategy: Strategy, chunks: Seq[Chunk] = Nil, result: Promise[Seq[Chunk]] = Promise())
 
   def apply(parallelism: ParallelismConfig, regionOps: RegionOps): Sink[Request, NotUsed] = {
     def createNewAffinity(status: ChunkStatus, strategy: Strategy): Option[ChunkWriteAffinity] = {
@@ -56,18 +55,13 @@ object RegionRepairStream {
               .mapAsyncUnordered(parallelism.read)(status ⇒ regionOps.readChunk(request.regionId, status.chunk))
               .mapAsyncUnordered(parallelism.write)(chunk ⇒ regionOps.rewriteChunk(request.regionId, chunk, newAffinity))
               .map(_.withoutData)
-              .log("region-repair-chunk", chunk ⇒ chunk.toString + " at " + request.regionId)
-              .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
-              .fold(Vector.empty[Chunk])(_ :+ _)
-              .alsoTo(Sink.onComplete {
-                case Failure(error) ⇒
-                  request.result.tryFailure(error)
-
-                case _ ⇒
-                  // Ignore
-              })
-              .alsoTo(Sink.foreach(request.result.success))
           }
+          .log("region-repair-chunk", chunk ⇒ s"$chunk at ${request.regionId}")
+          .fold(Nil: Seq[Chunk])(_ :+ _)
+          .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+          .alsoTo(Sink.foreach(request.result.success))
+          .alsoTo(Sink.onComplete(_.failed.foreach(request.result.tryFailure)))
+          .recoverWithRetries(1, { case _ ⇒ Source.empty })
       }
       .to(Sink.ignore)
       .named("regionRepairStream")

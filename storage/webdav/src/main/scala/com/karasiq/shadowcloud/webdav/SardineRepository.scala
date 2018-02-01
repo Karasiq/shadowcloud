@@ -13,7 +13,12 @@ import akka.NotUsed
 import akka.dispatch.MessageDispatcher
 import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source, StreamConverters}
-import com.github.sardine.{DavResource, Sardine, SardineFactory}
+import com.github.sardine.{DavResource, Sardine}
+import com.github.sardine.impl.SardineImpl
+import org.apache.http.config.Registry
+import org.apache.http.conn.HttpClientConnectionManager
+import org.apache.http.conn.socket.ConnectionSocketFactory
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager
 
 import com.karasiq.common.configs.ConfigImplicits._
 import com.karasiq.shadowcloud.model.Path
@@ -35,15 +40,8 @@ object SardineRepository {
   }
 
   def createSardine(props: StorageProps) = {
-    val sardine = SardineFactory.begin(props.credentials.login, props.credentials.password, createProxySelector(props.rootConfig))
-    sardine.enablePreemptiveAuthentication(props.address.uri.get.getHost)
-    sardine.disableCompression()
-    sardine
-  }
-
-  private def createProxySelector(config: Config) = {
-    new ProxySelector {
-      private[this] val proxies = {
+    def createProxySelector(config: Config) = {
+      val proxies = {
         val proxies = config.withDefault(Nil, _.getStrings("proxies")).map { ps ⇒
           val uri = new URI(if (ps.contains("://")) ps else "http://" + ps)
           val proxyType = uri.getScheme match {
@@ -52,12 +50,30 @@ object SardineRepository {
           }
           new net.Proxy(proxyType, InetSocketAddress.createUnresolved(uri.getHost, uri.getPort))
         }
-        if (proxies.isEmpty) List(net.Proxy.NO_PROXY).asJava else proxies.asJava
+        if (proxies.isEmpty) List(net.Proxy.NO_PROXY) else proxies
       }
 
-      def select(uri: URI): util.List[Proxy] = proxies
-      def connectFailed(uri: URI, sa: SocketAddress, ioe: IOException): Unit = ()
+      new ProxySelector {
+        def select(uri: URI): util.List[Proxy] = proxies.asJava
+        def connectFailed(uri: URI, sa: SocketAddress, ioe: IOException): Unit = ()
+      }
     }
+
+    val sardineConfig = props.rootConfig.getConfigIfExists("sardine")
+    val maxConnections = sardineConfig.withDefault(8, _.getInt("max-connections"))
+    val proxySelector = createProxySelector(sardineConfig)
+
+    val sardine = new SardineImpl(props.credentials.login, props.credentials.password, proxySelector) {
+      override def createDefaultConnectionManager(schemeRegistry: Registry[ConnectionSocketFactory]): HttpClientConnectionManager = {
+        val manager = new PoolingHttpClientConnectionManager(schemeRegistry)
+        manager.setDefaultMaxPerRoute(maxConnections)
+        manager.setMaxTotal(maxConnections * 2)
+        manager
+      }
+    }
+    sardine.enablePreemptiveAuthentication(props.address.uri.get.getHost)
+    sardine.disableCompression()
+    sardine
   }
 }
 

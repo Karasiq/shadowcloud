@@ -75,11 +75,11 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
 
     val mainMetadatas = mainContents ++ mainMetadata ++
       mainMetadata.flatMap(conversions.toImageData) ++
+      mainMetadata.flatMap(conversions.toDescription) ++
       conversions.toArchiveTables(subMetadatas.flatten, autoParserSettings.fileListPreviewSize)
 
     mainMetadatas ++
-      conversions.toTextPreviews(mainMetadatas ++ subMetadatas.flatten,
-        autoParserSettings.textMaxPreviews, autoParserSettings.textPreviewSize) ++
+      conversions.toTextPreviews(mainMetadatas ++ subMetadatas.flatten, autoParserSettings.textMaxPreviews, autoParserSettings.textPreviewSize) ++
       conversions.toEmbeddedResources(subMetadatas)
   }
 

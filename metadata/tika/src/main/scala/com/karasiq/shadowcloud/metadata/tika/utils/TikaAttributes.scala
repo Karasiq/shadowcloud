@@ -11,6 +11,9 @@ private[tika] object TikaAttributes {
   val ImageWidth = "tiff:ImageWidth"
   val ImageHeight = "tiff:ImageLength"
 
+  val Title = "dc:title"
+  val Description = "dc:description"
+
   def optional(md: TikaMetadata, name: String): Option[String] = {
     Option(md.get(name)).filter(_.nonEmpty)
   }

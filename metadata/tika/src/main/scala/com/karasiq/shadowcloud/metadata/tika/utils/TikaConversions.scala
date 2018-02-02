@@ -72,6 +72,7 @@ private[tika] class TikaConversions(plugin: String, parser: String) {
 
   def toTextPreviews(metadatas: Seq[Metadata], maxPreviews: Int, maxLength: Int): Seq[Metadata] = {
     metadatas.iterator
+      .filter(_.tag.exists(_.disposition == MDDisposition.CONTENT))
       .flatMap(_.value.text)
       .filter(_.format == TikaFormats.Text)
       .map(text ⇒ Utils.takeWords(text.data, maxLength))
@@ -84,12 +85,23 @@ private[tika] class TikaConversions(plugin: String, parser: String) {
   }
 
   def toImageData(metadataTable: Metadata): Option[Metadata] = {
-    assert(metadataTable.value.isTable, s"Not a table: $metadataTable")
+    require(metadataTable.value.isTable, s"Not a table: $metadataTable")
     for {
       width ← TikaAttributes.optional(metadataTable, TikaAttributes.ImageWidth)
       height ← TikaAttributes.optional(metadataTable, TikaAttributes.ImageHeight)
     } yield Metadata(createTag(MDDisposition.METADATA),
       Metadata.Value.ImageData(Metadata.ImageData(width.toInt, height.toInt)))
+  }
+
+  def toDescription(metadataTable: Metadata): Option[Metadata] = {
+    require(metadataTable.value.isTable, s"Not a table: $metadataTable")
+
+    val title = TikaAttributes.optional(metadataTable, TikaAttributes.Title)
+    val description = TikaAttributes.optional(metadataTable, TikaAttributes.Description)
+
+    Some((title.toSeq ++ description).mkString("\r\n\r\n").trim)
+      .filter(_.nonEmpty)
+      .map(text ⇒ Metadata(createTag(MDDisposition.CONTENT), Metadata.Value.Text(Metadata.Text("text/plain", text))))
   }
 
   private[this] def createTag(disposition: MDDisposition): Option[Metadata.Tag] = {

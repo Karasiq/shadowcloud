@@ -80,8 +80,7 @@ private[tika] class TikaConversions(plugin: String, parser: String) {
       .take(maxPreviews)
       .toVector
       .sortBy(_.length)(Ordering[Int].reverse)
-      .map(result ⇒ Metadata(createTag(MDDisposition.PREVIEW),
-        Metadata.Value.Text(Metadata.Text(TikaFormats.Text, result))))
+      .map(result ⇒ Metadata(createTag(MDDisposition.PREVIEW), Metadata.Value.Text(Metadata.Text(TikaFormats.Text, result))))
   }
 
   def toImageData(metadataTable: Metadata): Option[Metadata] = {
@@ -101,7 +100,7 @@ private[tika] class TikaConversions(plugin: String, parser: String) {
 
     Some((title.toSeq ++ description).mkString("\r\n\r\n").trim)
       .filter(_.nonEmpty)
-      .map(text ⇒ Metadata(createTag(MDDisposition.CONTENT), Metadata.Value.Text(Metadata.Text("text/plain", text))))
+      .map(text ⇒ Metadata(createTag(MDDisposition.PREVIEW), Metadata.Value.Text(Metadata.Text("text/plain", text))))
   }
 
   private[this] def createTag(disposition: MDDisposition): Option[Metadata.Tag] = {

@@ -1,5 +1,6 @@
 package com.karasiq.shadowcloud.mailrucloud
 
+import scala.concurrent.Future
 import scala.language.implicitConversions
 
 import akka.NotUsed
@@ -40,22 +41,22 @@ object MailRuCloudRepository {
 class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, session: Session, token: CsrfToken) extends PathTreeRepository {
   import MailRuCloudRepository._
 
-  def read(key: Path) = {
-    client.download(key)
-      .alsoToMat(countBytes(key))(Keep.right)
+  def read(path: Path) = {
+    client.download(path)
+      .alsoToMat(countBytes(path))(Keep.right)
       .named("mailrucloudRead")
   }
 
-  def write(key: Path) = {
+  def write(path: Path) = {
     Flow[ByteString]
       .via(ByteStreams.concat)
       .flatMapConcat { bytes ⇒
-        getOrCreateFolder(key.parent)
-          .mapAsync(1)(_ ⇒ client.upload(key, HttpEntity(ContentTypes.`application/octet-stream`, bytes)))
+        getOrCreateFolder(path.parent)
+          .mapAsync(1)(_ ⇒ client.upload(path, HttpEntity(ContentTypes.`application/octet-stream`, bytes)))
           .mapAsync(2)(client.file)
           .log("mailrucloud-files")
-          .map { file ⇒ require(Path.fromString(file.home) == key, s"Invalid path: $file"); file.size }
-          .via(StorageUtils.wrapCountStream(key))
+          .map { file ⇒ require(Path.fromString(file.home) == path, s"Invalid path: $file"); file.size }
+          .via(StorageUtils.wrapCountStream(path))
       }
       .toMat(Sink.head)(Keep.right)
       .named("mailrucloudWrite")
@@ -78,10 +79,12 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
   def subKeys(fromPath: Path) = {
     def listFolderFlow(filesPerRequest: Int = 100000): Flow[Path, MailCloudTypes.Folder, NotUsed] = {
       Flow[Path].flatMapConcat { path ⇒
-        def futureIterator = Iterator.from(0, filesPerRequest)
-          .map(offset ⇒ client.folder(path, offset, filesPerRequest))
+        def createFuturesIterator(): Iterator[Future[MailCloudTypes.Folder]] = {
+          lazy val offsets: Stream[Long] = 0L #:: offsets.map(_ + filesPerRequest) // Iterator.from(0, filesPerRequest)
+          offsets.iterator.map(client.folder(path, _, filesPerRequest))
+        }
 
-        Source.fromIterator(() ⇒ futureIterator)
+        Source.fromIterator(() ⇒ createFuturesIterator())
           .mapAsync(1)(identity)
           .takeWhile(_.list.nonEmpty)
           .orElse(Source.single(MailCloudTypes.Folder("folder", "folder", path.name, path.toString, 0, "")))
@@ -115,6 +118,6 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
     Source.fromFuture(client.createFolder(path))
       .map(ep ⇒ ep: Path)
       .recover { case ae: ApiException if ae.errorName.contains("exists") ⇒ path }
-      .named("getOrCreateFolder")
+      .named("mailrucloudCreateFolder")
   } 
 }

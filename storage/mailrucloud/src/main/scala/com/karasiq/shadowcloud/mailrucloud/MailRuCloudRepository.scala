@@ -76,8 +76,22 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
   }
 
   def subKeys(fromPath: Path) = {
+    def listFolderFlow(filesPerRequest: Int = 100000): Flow[Path, MailCloudTypes.Folder, NotUsed] = {
+      Flow[Path].flatMapConcat { path ⇒
+        def futureIterator = Iterator.from(0, filesPerRequest)
+          .map(offset ⇒ client.folder(path, offset, filesPerRequest))
+
+        Source.fromIterator(() ⇒ futureIterator)
+          .mapAsync(1)(identity)
+          .takeWhile(_.list.nonEmpty)
+          .orElse(Source.single(MailCloudTypes.Folder("folder", "folder", path.name, path.toString, 0, "")))
+          .reduce((f1, f2) ⇒ f1.copy(list = f1.list ++ f2.list))
+          .named("mailrucloudListFolder")
+      }
+    }
+
     def traverseFlow: Flow[Path, Path, NotUsed] = Flow[Path]
-      .mapAsync(1)(client.folder(_))
+      .via(listFolderFlow())
       .flatMapConcat { folder ⇒
         val (files, folders) = folder.list.partition(_.`type` == "file")
         Source(files.map(_.home: Path).toList)
@@ -98,10 +112,9 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
   }
 
   private[this] def getOrCreateFolder(path: Path): Source[Path, NotUsed] = {
-    Source.fromFuture(client.folder(path))
-      .map(_.home: MailCloudTypes.EntityPath)
-      .recoverWithRetries(1, { case _ ⇒ Source.fromFuture(client.createFolder(path)) })
+    Source.fromFuture(client.createFolder(path))
       .map(ep ⇒ ep: Path)
+      .recover { case ae: ApiException if ae.errorName.contains("exists") ⇒ path }
       .named("getOrCreateFolder")
   } 
 }

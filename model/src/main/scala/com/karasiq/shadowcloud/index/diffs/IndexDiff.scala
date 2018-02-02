@@ -61,7 +61,7 @@ final case class IndexDiff(time: Long = Utils.timestamp,
   }
 
   override def toString: String = {
-    s"IndexDiff($time, $folders, $chunks)"
+    if (isEmpty) "IndexDiff.empty" else s"IndexDiff($time, $folders, $chunks)"
   }
 
   private[this] def withDiffs(folders: FolderIndexDiff = this.folders,

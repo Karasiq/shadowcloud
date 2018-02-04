@@ -17,7 +17,7 @@ trait ShadowCloudApi {
   def getRegions(): Future[RegionStateReport]
   def getRegion(regionId: RegionId): Future[RegionStateReport.RegionStatus]
   def getStorage(storageId: StorageId): Future[RegionStateReport.StorageStatus]
-  def createRegion(regionId: RegionId, regionConfig: SerializedProps): Future[RegionStateReport.RegionStatus]
+  def createRegion(regionId: RegionId, regionConfig: SerializedProps = SerializedProps.empty): Future[RegionStateReport.RegionStatus]
   def createStorage(storageId: StorageId, storageProps: SerializedProps): Future[RegionStateReport.StorageStatus]
   def suspendRegion(regionId: RegionId): Future[Done]
   def suspendStorage(storageId: StorageId): Future[Done]

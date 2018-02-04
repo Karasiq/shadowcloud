@@ -21,7 +21,7 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 object RegionSupervisor {
   // Messages
   sealed trait Message
-  final case class CreateRegion(regionId: RegionId, regionConfig: RegionConfig) extends Message
+  final case class CreateRegion(regionId: RegionId, regionConfig: RegionConfig = RegionConfig.empty) extends Message
   final case class DeleteRegion(regionId: RegionId) extends Message
   final case class CreateStorage(storageId: StorageId, props: StorageProps) extends Message
   final case class DeleteStorage(storageId: StorageId) extends Message

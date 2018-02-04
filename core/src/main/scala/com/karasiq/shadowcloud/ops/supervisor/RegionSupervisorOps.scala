@@ -23,7 +23,7 @@ final class RegionSupervisorOps(regionSupervisor: ActorRef, timeouts: TimeoutsCo
     regionSupervisor ! CreateStorage(storageId, storageProps)
   }
 
-  def createRegion(regionId: RegionId, regionConfig: RegionConfig): Unit = {
+  def createRegion(regionId: RegionId, regionConfig: RegionConfig = RegionConfig.empty): Unit = {
     regionSupervisor ! CreateRegion(regionId, regionConfig)
   }
 

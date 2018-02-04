@@ -31,7 +31,7 @@ object FilePreview {
       // println(metadatas)
       val image = metadatas.flatMap(_.value.thumbnail).headOption
       val text = {
-        val texts = metadatas.flatMap(_.value.text)
+        val texts = metadatas.flatMap(_.value.text).sortBy(_.data.length)(Ordering[Int].reverse)
         texts.find(_.format == "text/html").orElse(texts.find(_.format == "text/plain"))
       }
       val files = metadatas.flatMap(_.value.fileList).headOption

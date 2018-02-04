@@ -28,12 +28,12 @@ private[actors] final class RegionContainer(regionId: RegionId) extends Actor wi
   def receive: Receive = {
     case SetConfig(rc) ⇒
       log.warning("Region config changed: {}", rc)
-      this.regionConfig = rc
+      this.regionConfig = sc.configs.regionConfig(regionId, rc)
       restartActor()
   }
 
   def startActor(): Unit = {
-    val dispatcher = context.actorOf(RegionDispatcher.props(regionId, regionConfig), Utils.uniqueActorName(regionId))
+    val dispatcher = context.actorOf(RegionDispatcher.props(regionId, this.regionConfig), Utils.uniqueActorName(regionId))
     afterStart(dispatcher)
   }
 

@@ -21,11 +21,13 @@ object SCDesktopMain extends App {
   private[this] val config = {
     val defaultConfig = ConfigFactory.load()
     val serverAppConfig = {
-      val optionalConfFile = Paths.get("shadowcloud.conf")
-      val fileConfig = if (Files.isRegularFile(optionalConfFile))
-        ConfigFactory.parseFile(optionalConfFile.toFile)
-      else
-        ConfigUtils.emptyConfig
+      val fileConfig = {
+        val optionalConfFile = Paths.get("shadowcloud.conf")
+        if (Files.isRegularFile(optionalConfFile))
+          ConfigFactory.parseFile(optionalConfFile.toFile)
+        else
+          ConfigUtils.emptyConfig
+      }
 
       val serverConfig = ConfigFactory.load("sc-desktop")
       fileConfig
@@ -37,11 +39,12 @@ object SCDesktopMain extends App {
   }
 
   implicit val actorSystem = ActorSystem("shadowcloud", config)
+  if (actorSystem.log.isDebugEnabled) actorSystem.logConfiguration()
+
   val sc = ShadowCloud(actorSystem)
+  import sc.implicits.{executionContext, materializer}
 
   val httpServer = SCAkkaHttpServer(sc)
-
-  import sc.implicits.{executionContext, materializer}
   H2DB(actorSystem).context // Init db
   sc.actors.regionSupervisor // Init actor
 

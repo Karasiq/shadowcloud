@@ -59,7 +59,13 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
       RegionConfig.forId(regionId, rootConfig)
     }
 
-    def storageConfig(storageId: StorageId): StorageConfig = { // Uses only static config
+    def regionConfig(regionId: RegionId, regionConfig: RegionConfig): RegionConfig = {
+      val custom = regionConfig.rootConfig
+      val default = this.regionConfig(regionId).rootConfig
+      RegionConfig(custom.withFallback(default))
+    }
+
+    def storageConfig(storageId: StorageId): StorageConfig = {
       StorageConfig.forId(storageId, rootConfig)
     }
 

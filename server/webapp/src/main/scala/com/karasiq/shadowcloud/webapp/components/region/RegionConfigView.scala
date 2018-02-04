@@ -2,11 +2,11 @@ package com.karasiq.shadowcloud.webapp.components.region
 
 import scala.concurrent.Future
 
-import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import akka.util.ByteString
 import rx.{Rx, Var}
+
+import com.karasiq.bootstrap.Bootstrap.default._
+import scalaTags.all._
 
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
@@ -131,13 +131,25 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
   }
 
   private[this] def renderConfigField(regionStatus: RegionStatus) = {
+    val defaultConfig =
+      """storage-selector="com.karasiq.shadowcloud.storage.replication.selectors.SimpleStorageSelector"
+        |data-replication-factor=1
+        |index-replication-factor=0
+        |garbage-collector {
+        |    auto-delete=false
+        |    keep-file-revisions=5
+        |    keep-recent-files="30d"
+        |    run-on-low-space="100M"
+        |}
+      """.stripMargin
+
     def renderConfigForm() = {
       val changed = Var(false)
       val newConfigRx = Var(regionStatus.regionConfig.data.utf8String)
       newConfigRx.triggerLater(changed() = true)
       
       Form(
-        FormInput.textArea((), rows := 20, newConfigRx.reactiveInput, AppComponents.tabOverride),
+        FormInput.textArea((), rows := 20, newConfigRx.reactiveInput, placeholder := defaultConfig, AppComponents.tabOverride),
         Form.submit(context.locale.submit)(changed.reactiveShow, onclick := Callback.onClick { _ ⇒
           val newConfig = SerializedProps(regionStatus.regionConfig.format, ByteString(newConfigRx.now))
           context.api.createRegion(regionId, newConfig)

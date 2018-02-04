@@ -61,9 +61,7 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
   }
 
   def createRegion(regionId: RegionId, regionConfig: SerializedProps) = {
-    val defaultConfig = sc.configs.regionConfig(regionId)
-    val resolvedConfig = RegionConfig(ConfigProps.toConfig(regionConfig).withFallback(defaultConfig.rootConfig))
-    sc.ops.supervisor.createRegion(regionId, resolvedConfig)
+    sc.ops.supervisor.createRegion(regionId, RegionConfig(ConfigProps.toConfig(regionConfig)))
     getRegion(regionId)
   }
 

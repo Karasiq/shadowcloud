@@ -21,13 +21,17 @@ object SCDesktopMain extends App {
   private[this] val config = {
     val defaultConfig = ConfigFactory.load()
     val serverAppConfig = {
-      val fileConfig = if (Files.isRegularFile(Paths.get("shadowcloud.conf")))
-        ConfigFactory.parseFile(new java.io.File("shadowcloud.conf"))
+      val optionalConfFile = Paths.get("shadowcloud.conf")
+      val fileConfig = if (Files.isRegularFile(optionalConfFile))
+        ConfigFactory.parseFile(optionalConfFile.toFile)
       else
         ConfigUtils.emptyConfig
 
       val serverConfig = ConfigFactory.load("sc-desktop")
-      fileConfig.withFallback(serverConfig).withFallback(defaultConfig)
+      fileConfig
+        .withFallback(serverConfig)
+        .withFallback(defaultConfig)
+        .resolve()
     }
     serverAppConfig
   }

@@ -10,7 +10,7 @@ import akka.http.scaladsl.server.{Directives, Route}
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.util.ByteString
-import org.scalatest.{FlatSpec, Matchers}
+import org.scalatest.{FlatSpec, Matchers, SequentialNestedSuiteExecution}
 
 import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.{ShadowCloud, ShadowCloudExtension}
@@ -19,8 +19,8 @@ import com.karasiq.shadowcloud.server.http.SCAkkaHttpRoutes
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.test.utils.TestUtils
 
-class SCHttpServerTest extends FlatSpec with Matchers with ScalatestRouteTest {
-  val sc = ShadowCloud(system)
+class SCHttpServerTest extends FlatSpec with Matchers with ScalatestRouteTest with SequentialNestedSuiteExecution {
+  implicit val sc = ShadowCloud(system)
 
   object TestServer extends SCAkkaHttpRoutes with Directives {
     protected val sc: ShadowCloudExtension = SCHttpServerTest.this.sc

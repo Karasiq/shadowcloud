@@ -9,6 +9,8 @@ val commonSettings = Seq(
   resolvers += Resolver.sonatypeRepo("snapshots"),
   licenses := Seq("Apache License, Version 2.0" → url("http://opensource.org/licenses/Apache-2.0")),
   coverageExcludedPackages := "com.karasiq.shadowcloud.javafx;com.karasiq.shadowcloud.desktop;com.karasiq.shadowcloud.webapp;com.karasiq.shadowcloud.storage"
+  //parallelExecution in test := false,
+  //fork in test := false
 )
 
 val packageSettings = Seq(
@@ -216,7 +218,7 @@ lazy val autowireApiJS = autowireApi.js
 
 lazy val server = project
   .settings(commonSettings, name := "shadowcloud-server")
-  .dependsOn(`server-api-routes` % "compile->compile;test->test", `server-static-routes`, `server-webzinc-routes`)
+  .dependsOn(`server-api-routes` % "compile->compile;test->test", `server-static-routes`, `server-webzinc-routes`, coreAssembly % "test")
   .aggregate(`server-api-routes`, `server-static-routes`, `server-webzinc-routes`)
 
 lazy val `server-api-routes` = (project in file("server") / "api-routes")

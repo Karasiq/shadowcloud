@@ -22,7 +22,7 @@ private[kryo] final class ConfigSerializer(json: Boolean) extends chill.KSeriali
     val isNotEmpty = input.readBoolean()
     if (isNotEmpty) {
       val configString = input.readString()
-      val serialized = SerializedProps(if (json) "json" else "hocon", ByteString(configString))
+      val serialized = SerializedProps(if (json) SerializedProps.JsonFormat else SerializedProps.DefaultFormat, ByteString(configString))
       ConfigProps.toConfig(serialized)
     } else {
       Utils.emptyConfig

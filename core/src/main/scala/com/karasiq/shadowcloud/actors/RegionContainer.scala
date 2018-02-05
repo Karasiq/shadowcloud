@@ -14,7 +14,7 @@ import com.karasiq.shadowcloud.utils.Utils
 
 private[actors] object RegionContainer {
   sealed trait Message
-  case class SetConfig(regionConfig: RegionConfig)
+  final case class SetConfig(regionConfig: RegionConfig) extends Message
 
   def props(regionId: RegionId): Props = {
     Props(new RegionContainer(regionId))

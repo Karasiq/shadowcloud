@@ -9,10 +9,10 @@ import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
 import com.karasiq.shadowcloud.utils.Utils
 
 private[shadowcloud] object ConfigProps {
-  private[this] val SupportedFormats = Set("json", "hocon")
+  private[this] val SupportedFormats = Set(SerializedProps.DefaultFormat, SerializedProps.JsonFormat)
   
-  private[this] val JSONOptions = ConfigRenderOptions.concise()
-  private[this] val HOCONOptions = {
+  private[this] val JsonOptions = ConfigRenderOptions.concise()
+  private[this] val HoconOptions = {
     ConfigRenderOptions.defaults()
       .setOriginComments(false)
       .setJson(false)
@@ -23,9 +23,9 @@ private[shadowcloud] object ConfigProps {
       SerializedProps.empty
     } else {
       val (format, options) = if (json) {
-        ("json", JSONOptions)
+        (SerializedProps.JsonFormat, JsonOptions)
       } else {
-        ("hocon", HOCONOptions)
+        (SerializedProps.DefaultFormat, HoconOptions)
       }
 
       val configString = config.root().render(options)
@@ -38,7 +38,7 @@ private[shadowcloud] object ConfigProps {
   }
 
   def fromString(configString: String, json: Boolean = false): SerializedProps = {
-    SerializedProps(if (json) "json" else "hocon", ByteString(configString))
+    SerializedProps(if (json) SerializedProps.JsonFormat else SerializedProps.DefaultFormat, ByteString(configString))
   }
 
   def apply(values: (String, _)*): SerializedProps = {

@@ -1,11 +1,11 @@
 package com.karasiq.shadowcloud.webapp.components.region
 
-import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import akka.util.ByteString
 import rx.{Rx, Var}
 import rx.async._
+
+import com.karasiq.bootstrap.Bootstrap.default._
+import scalaTags.all._
 
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
@@ -40,7 +40,7 @@ class StoragesView(implicit context: AppContext, regionContext: RegionContext) e
 
   private[this] def renderAddButton() = {
     def doCreate(storageId: StorageId, propsString: String) = {
-      val props = SerializedProps("hocon", ByteString(propsString))
+      val props = SerializedProps(SerializedProps.DefaultFormat, ByteString(propsString))
       context.api.createStorage(storageId, props).foreach { _ ⇒
         regionContext.updateAll()
       }

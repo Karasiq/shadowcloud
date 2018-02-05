@@ -1,12 +1,12 @@
 package com.karasiq.shadowcloud.webapp.components.keys
 
-import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import akka.util.ByteString
 import org.scalajs.dom.MouseEvent
 import org.scalajs.dom.html.TextArea
 import rx.{Rx, Var}
+
+import com.karasiq.bootstrap.Bootstrap.default._
+import scalaTags.all._
 
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.model.keys.KeySet
@@ -71,7 +71,7 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
 
     def showGenerateDialog(): Unit = {
       def doGenerate(propsString: String): Unit = {
-        val props = SerializedProps("hocon", ByteString(propsString))
+        val props = SerializedProps(SerializedProps.DefaultFormat, ByteString(propsString))
         context.api.generateKey(props = props).foreach { key ⇒
           showExportDialog(key)
           kc.updateAll()

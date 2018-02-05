@@ -15,13 +15,14 @@ import com.karasiq.shadowcloud.utils.Utils
 
 private[actors] object StorageContainer {
   sealed trait Message
-  case class SetProps(storageProps: StorageProps) extends Message
+  final case class SetProps(storageProps: StorageProps) extends Message
 
   def props(instantiator: StorageInstantiator, storageId: StorageId): Props = {
     Props(new StorageContainer(instantiator, storageId))
   }
 }
 
+//noinspection ActorMutableStateInspection
 private[actors] final class StorageContainer(instantiator: StorageInstantiator, storageId: StorageId)
   extends Actor with ActorLogging with Stash with ContainerActor {
 

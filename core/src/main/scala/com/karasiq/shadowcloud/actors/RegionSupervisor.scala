@@ -220,7 +220,7 @@ private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
     // Virtual regions
     // -----------------------------------------------------------------------
     case RegionAdded(regionId, regionConfig, active) ⇒
-      log.info("Region added: {}", regionId)
+      log.info("Region added: {} ({})", regionId, regionConfig)
       state.addRegion(regionId, regionConfig)
       if (active) state.resumeRegion(regionId) else state.suspendRegion(regionId)
 

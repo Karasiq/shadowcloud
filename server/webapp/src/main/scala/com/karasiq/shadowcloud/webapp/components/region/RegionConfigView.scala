@@ -21,19 +21,27 @@ object RegionConfigView {
   def apply(regionId: RegionId)(implicit context: AppContext, regionContext: RegionContext): RegionConfigView = {
     new RegionConfigView(regionId)
   }
+
+  private def toRegionConfig(regionStatus: RegionStatus, newConfig: String): SerializedProps = {
+    val format = Option(regionStatus.regionConfig.format)
+      .filter(_.nonEmpty)
+      .getOrElse(SerializedProps.DefaultFormat)
+
+    SerializedProps(format, ByteString(newConfig))
+  }
 }
 
 class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionContext: RegionContext) extends BootstrapHtmlComponent {
-  private[this] lazy val regionRx = regionContext.region(regionId)
-  private[this] lazy val regionHealthRx = RxWithKey(regionRx, RegionHealth.empty)(r ⇒ context.api.getRegionHealth(r.regionId))
+  private[this] lazy val regionStatus = regionContext.region(regionId)
+  private[this] lazy val regionHealth = RxWithKey(regionStatus, RegionHealth.empty)(r ⇒ context.api.getRegionHealth(r.regionId))
   private[this] lazy val compactStarted = Var(false)
-  private[this] lazy val compactReportRx = Var(Map.empty: Map[StorageId, SyncReport])
+  private[this] lazy val compactReport = Var(Map.empty: Map[StorageId, SyncReport])
   private[this] lazy val gcStarted = Var(false)
   private[this] lazy val gcAnalysed = Var(false)
-  private[this] lazy val gcReportRx = Var(None: Option[GCReport])
+  private[this] lazy val gcReport = Var(None: Option[GCReport])
 
   def renderTag(md: ModifierT*): TagT = {
-    div(regionRx.map { regionStatus ⇒
+    div(regionStatus.map { regionStatus ⇒
       div(
         if (!regionStatus.suspended) {
           Seq(
@@ -52,16 +60,17 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
   }
 
   private[this] def renderRegionHealth() = {
-    HealthView(regionHealthRx.toRx)
+    HealthView(regionHealth.toRx)
   }
 
   private[this] def renderGCButton() = {
-    def doGC(delete: Boolean) = {
+    def startGC(delete: Boolean) = {
+      gcStarted() = true
       val future = context.api.collectGarbage(regionId, delete)
       future.onComplete(_ ⇒ gcStarted() = false)
       future.foreach { report ⇒
         gcAnalysed() = !delete
-        gcReportRx() = Some(report)
+        gcReport() = Some(report)
       }
     }
 
@@ -70,10 +79,10 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
         val buttonStyle = if (gcAnalysed()) ButtonStyle.danger else ButtonStyle.warning
         Button(buttonStyle, ButtonSize.extraSmall)(
           AppIcons.delete, context.locale.collectGarbage, "disabled".classIf(gcStarted),
-          onclick := Callback.onClick(_ ⇒ if (!gcStarted.now) doGC(delete = gcAnalysed.now))
+          onclick := Callback.onClick(_ ⇒ if (!gcStarted.now) startGC(delete = gcAnalysed.now))
         )
       },
-      div(gcReportRx.map[Frag] {
+      div(gcReport.map[Frag] {
         case Some(report) ⇒
           div(Alert(AlertStyle.warning, report.toString))
 
@@ -84,50 +93,40 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
   }
 
   private[this] def renderCompactButton() = {
-    def doCompact() = {
+    def startCompact() = {
+      compactStarted() = true
       val future = context.api.compactIndexes(regionId)
       future.onComplete(_ ⇒ compactStarted() = false)
-      future.foreach(compactReportRx.update)
+      future.foreach(compactReport() = _)
     }
 
     def renderReports(reports: Map[StorageId, SyncReport]): Frag = {
       if (reports.nonEmpty)
-        div(Alert(AlertStyle.success, reports.toSeq.map(rp ⇒ div(b(rp._1), ": ", rp._2.toString))))
+        div(Alert(AlertStyle.success, for ((storageId, report) ← reports.toSeq) yield div(b(storageId), ": ", report.toString)))
       else
         Bootstrap.noContent
     }
 
     div(
       Button(ButtonStyle.danger, ButtonSize.extraSmall)(AppIcons.compress, context.locale.compactIndex, "disabled".classIf(compactStarted),
-        onclick := Callback.onClick(_ ⇒ if (!compactStarted.now) doCompact())),
-      div(compactReportRx.map(reports ⇒ renderReports(reports)))
+        onclick := Callback.onClick(_ ⇒ if (!compactStarted.now) startCompact())),
+      div(compactReport.map(renderReports))
     )
   }
 
   private[this] def renderStateButtons(regionStatus: RegionStatus) = {
-    def doSuspend() = {
-      context.api.suspendRegion(regionId)
-        .foreach(_ ⇒ regionContext.updateRegion(regionId))
-    }
+    def doSuspend() = context.api.suspendRegion(regionId).foreach(_ ⇒ regionContext.updateRegion(regionId))
+    def doResume() = context.api.resumeRegion(regionId).foreach(_ ⇒ regionContext.updateRegion(regionId))
+    def doDelete() = context.api.deleteRegion(regionId).foreach(_ ⇒ regionContext.updateAll())
 
-    def doResume() = {
-      context.api.resumeRegion(regionId)
-        .foreach(_ ⇒ regionContext.updateRegion(regionId))
-    }
-
-    def doDelete() = {
-      context.api.deleteRegion(regionId)
-        .foreach(_ ⇒ regionContext.updateAll())
-    }
-
-    val suspendButton = if (regionStatus.suspended)
+    val suspendResumeButton = if (regionStatus.suspended)
       Button(ButtonStyle.success, ButtonSize.extraSmall)(AppIcons.resume, context.locale.resume, onclick := Callback.onClick(_ ⇒ doResume()))
     else
       Button(ButtonStyle.warning, ButtonSize.extraSmall)(AppIcons.suspend, context.locale.suspend, onclick := Callback.onClick(_ ⇒ doSuspend()))
 
     val deleteButton = Button(ButtonStyle.danger, ButtonSize.extraSmall)(AppIcons.delete, context.locale.delete, onclick := Callback.onClick(_ ⇒ doDelete()))
 
-    ButtonGroup(ButtonGroupSize.extraSmall, suspendButton, deleteButton)
+    ButtonGroup(ButtonGroupSize.extraSmall, suspendResumeButton, deleteButton)
   }
 
   private[this] def renderConfigField(regionStatus: RegionStatus) = {
@@ -150,10 +149,9 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
       
       Form(
         FormInput.textArea((), rows := 20, newConfigRx.reactiveInput, placeholder := defaultConfig, AppComponents.tabOverride),
-        Form.submit(context.locale.submit)(changed.reactiveShow, onclick := Callback.onClick { _ ⇒
-          val newConfig = SerializedProps(regionStatus.regionConfig.format, ByteString(newConfigRx.now))
-          context.api.createRegion(regionId, newConfig)
-            .foreach(_ ⇒ regionContext.updateRegion(regionId))
+        Form.submit(context.locale.submit, changed.reactiveShow, onclick := Callback.onClick { _ ⇒
+          val newConfig = RegionConfigView.toRegionConfig(regionStatus, newConfigRx.now)
+          context.api.createRegion(regionId, newConfig).foreach(_ ⇒ regionContext.updateRegion(regionId))
         })
       )
     }

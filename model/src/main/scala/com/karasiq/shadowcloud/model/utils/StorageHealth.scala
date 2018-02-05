@@ -26,7 +26,7 @@ object StorageHealth {
   def normalized(writableSpace: Long, totalSpace: Long, usedSpace: Long = 0L, online: Boolean = true): StorageHealth = {
     val totalSpaceN = if (totalSpace >= 0) totalSpace else Long.MaxValue
     val usedSpaceN = if (usedSpace >= 0) math.min(totalSpaceN, usedSpace) else totalSpaceN
-    val writableSpaceN = math.min(totalSpaceN /* - usedSpaceN */, math.max(0L, writableSpace))
+    val writableSpaceN = math.max(0L, math.min(totalSpaceN - usedSpaceN, writableSpace))
 
     new StorageHealth(
       writableSpaceN,

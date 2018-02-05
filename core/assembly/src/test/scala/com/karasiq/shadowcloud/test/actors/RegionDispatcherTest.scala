@@ -19,7 +19,6 @@ import com.karasiq.shadowcloud.actors.RegionDispatcher.{GetFileAvailability, Rea
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
-import com.karasiq.shadowcloud.actors.events.StorageEvents.HealthUpdated
 import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
@@ -52,31 +51,32 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike with Sequen
   "Virtual region" should "register storage" in {
     storage ! StorageIndex.OpenIndex("testRegion")
     testRegion ! RegionDispatcher.AttachStorage("testStorage", storageProps, storage, initialHealth)
-    expectNoMsg(1 second)
   }
 
   it should "write chunk" in {
     storageSubscribe()
 
     // Write chunk
-    val result = testRegion ? WriteChunk(chunk)
-    result.futureValue shouldBe WriteChunk.Success(chunk, chunk)
+    (testRegion ? WriteChunk(chunk)).futureValue shouldBe WriteChunk.Success(chunk, chunk)
 
-    receiveN(2).map(_.asInstanceOf[StorageEnvelope]).map(_.message).sortBy(_.isInstanceOf[HealthUpdated]) match {
-      case StorageEvents.ChunkWritten(ChunkPath("testRegion", chunk.checksum.hash), chunk) +: StorageEvents.HealthUpdated(health) +: Nil ⇒
-        health.totalSpace shouldBe initialHealth.totalSpace
-        health.usedSpace shouldBe (initialHealth.usedSpace + chunk.checksum.encSize)
-        health.writableSpace shouldBe (initialHealth.writableSpace - chunk.checksum.encSize)
+    receiveWhile(idle = 3 seconds) {
+      case StorageEnvelope("testStorage", StorageEvents.ChunkWritten(ChunkPath("testRegion", chunk.checksum.hash), writtenChunk)) ⇒
+        writtenChunk shouldBe chunk
+
+      case StorageEnvelope("testStorage", StorageEvents.HealthUpdated(health)) ⇒
+        if (health.usedSpace != 0) {
+          health.totalSpace shouldBe initialHealth.totalSpace
+          health.usedSpace shouldBe (initialHealth.usedSpace + chunk.checksum.encSize)
+          health.writableSpace shouldBe (initialHealth.writableSpace - chunk.checksum.encSize)
+        }
+
+      case StorageEnvelope("testStorage", StorageEvents.PendingIndexUpdated("testRegion", diff)) ⇒
+        diff.folders shouldBe empty
+        diff.time should be > TestUtils.testTimestamp
+        diff.chunks.newChunks shouldBe Set(chunk)
+        diff.chunks.deletedChunks shouldBe empty
     }
 
-    // Chunk index update
-    val StorageEnvelope("testStorage", StorageEvents.PendingIndexUpdated("testRegion", diff)) = receiveOne(1 second)
-    diff.folders shouldBe empty
-    diff.time should be > TestUtils.testTimestamp
-    diff.chunks.newChunks shouldBe Set(chunk)
-    diff.chunks.deletedChunks shouldBe empty
-
-    expectNoMsg(1 second)
     val storedChunks = fileRepository.subRepository("testRegion").keys.runWith(TestSink.probe)
     storedChunks.requestNext(chunk.checksum.hash)
     storedChunks.expectComplete()

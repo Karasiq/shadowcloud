@@ -26,7 +26,8 @@ object StorageHealthProvider {
   private final case class QuotedStorageHealthProvider(underlying: StorageHealthProvider, quota: Quota)(implicit ec: ExecutionContext) extends StorageHealthProvider {
     def health: Future[StorageHealth] = underlying.health.map { sh ⇒
       val newTotalSpace = Quota.limitTotalSpace(quota, sh.totalSpace)
-      StorageHealth.normalized(sh.writableSpace, newTotalSpace, sh.usedSpace, sh.online)
+      val newWritableSpace = math.min(sh.writableSpace, newTotalSpace - sh.usedSpace)
+      StorageHealth.normalized(newWritableSpace, newTotalSpace, sh.usedSpace, sh.online)
     }
   }
 }

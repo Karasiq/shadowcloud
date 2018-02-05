@@ -66,7 +66,8 @@ class SerializationModuleTest extends SCExtensionSpec with FlatSpecLike {
     it should "read test diff" in {
       val diff = TestUtils.testDiff
       val bytes = Source.fromResource(s"test-diff-$name.txt").mkString.trim()
-      module.fromBytes[IndexDiff](ByteString.fromHexString(bytes)) shouldBe diff
+      val deserializedDiff = module.fromBytes[IndexDiff](ByteString.fromHexString(bytes))
+      deserializedDiff shouldBe diff
     }
   }
 }

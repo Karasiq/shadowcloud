@@ -49,7 +49,7 @@ class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike with Sequent
     testIn.sendComplete()
 
     testOut.request(2)
-    val resultFile = testOut.expectNext()
+    val resultFile = testOut.expectNext(1 minute)
     testOut.expectComplete()
 
     resultFile.checksum.size should be > 0L

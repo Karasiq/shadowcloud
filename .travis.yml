@@ -5,7 +5,7 @@ scala:
 jdk:
   - oraclejdk8
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION compile coreAssembly/coverageReport coreAssembly/test server/coverageReport server/test autowireApiJVM/test
+  - sbt ++$TRAVIS_SCALA_VERSION desktopApp/compile meta-tests/coverage meta-tests/coverageReport meta-tests/test
 after_success:
   - bash <(curl -s https://codecov.io/bash)
 sudo: false

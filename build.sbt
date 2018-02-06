@@ -270,7 +270,7 @@ lazy val webapp = (project in file("server") / "webapp")
   .enablePlugins(ScalaJSPlugin)
 
 // -----------------------------------------------------------------------
-// Misc
+// Desktop app
 // -----------------------------------------------------------------------
 lazy val javafx = (project in file("javafx"))
   .settings(commonSettings)
@@ -288,6 +288,13 @@ lazy val desktopApp = (project in file("desktop-app"))
   )
   .dependsOn(coreAssembly, server, javafx)
   .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin)
+
+// -----------------------------------------------------------------------
+// Misc
+// -----------------------------------------------------------------------
+lazy val `meta-tests` = (project in file("target") / "meta-tests")
+  .settings(commonSettings, name := "shadowcloud-meta-tests")
+  .aggregate(coreAssembly, server, autowireApiJVM)
 
 lazy val shell = (project in file("."))
   .settings(commonSettings)

@@ -1,11 +1,11 @@
 language: scala
 scala:
 # - 2.11.8
-  - 2.12.3
+  - 2.12.4
 jdk:
   - oraclejdk8
 script:
-  - sbt ++$TRAVIS_SCALA_VERSION desktopApp/compile coverage meta-tests/coverageReport meta-tests/test
+  - sbt ++$TRAVIS_SCALA_VERSION desktopApp/clean desktopApp/compile coverage meta-tests/coverageReport meta-tests/test
 after_success:
   - bash <(curl -s https://codecov.io/bash)
 sudo: false

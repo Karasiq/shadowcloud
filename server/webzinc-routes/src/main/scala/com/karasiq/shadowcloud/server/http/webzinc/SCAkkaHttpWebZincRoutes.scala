@@ -1,19 +1,19 @@
 package com.karasiq.shadowcloud.server.http.webzinc
 
-import java.net.URI
+import java.net.{URI, URLDecoder}
 
 import scala.concurrent.Future
 
 import akka.NotUsed
-import akka.http.scaladsl.Http
-import akka.http.scaladsl.model.HttpRequest
 import akka.http.scaladsl.model.headers.`Content-Disposition`
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.stream.scaladsl.Source
 import akka.util.ByteString
 
+import com.karasiq.common.configs.ConfigImplicits._
 import com.karasiq.shadowcloud.server.http.{SCAkkaHttpApiRoutes, SCAkkaHttpFileRoutes}
-import com.karasiq.webzinc.WebResourceInliner
+import com.karasiq.webzinc.{WebClient, WebResourceInliner}
+import com.karasiq.webzinc.config.WebZincConfig
 import com.karasiq.webzinc.impl.htmlunit.HtmlUnitWebResourceFetcher
 import com.karasiq.webzinc.utils.WebZincUtils
 
@@ -34,8 +34,9 @@ trait SCAkkaHttpWebZincRoutes { self: SCAkkaHttpFileRoutes with SCAkkaHttpApiRou
 
     import sc.implicits.{actorSystem, materializer}
     private[this] implicit val dispatcher = actorSystem.dispatchers.lookup(SCWebZinc.dispatcherId)
-    private[this] val akkaHttp = Http(actorSystem)
 
+    private[this] implicit val config = WebZincConfig(sc.config.rootConfig.getConfigIfExists("webzinc"))
+    private[this] implicit val client = WebClient()
     private[this] val fetcher = HtmlUnitWebResourceFetcher() // TODO: https://github.com/akka/akka-http/issues/86
     private[this] val inliner = WebResourceInliner()
 
@@ -45,10 +46,11 @@ trait SCAkkaHttpWebZincRoutes { self: SCAkkaHttpFileRoutes with SCAkkaHttpApiRou
     }
 
     def fetchHttpFile(url: String): PageFuture = {
-      akkaHttp.singleRequest(HttpRequest(uri = url)).map { response ⇒
+      client.doHttpRequest(url).map { response ⇒
         val fileName = response.header[`Content-Disposition`]
           .flatMap(_.params.get("filename"))
           .orElse(new URI(url).getPath.split('/').lastOption)
+          .map(URLDecoder.decode(_, "UTF-8"))
           .filter(_.nonEmpty)
           .getOrElse(url)
 

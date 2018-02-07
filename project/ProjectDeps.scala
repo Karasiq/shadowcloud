@@ -48,10 +48,13 @@ object ProjectDeps {
     "com.twitter" %% "chill-akka" % "0.9.2"
   )
 
-  def protobuf: Deps = Seq(
-    "com.trueaccord.scalapb" %% "scalapb-runtime" % com.trueaccord.scalapb.compiler.Version.scalapbVersion,
-    "com.trueaccord.scalapb" %% "scalapb-runtime" % com.trueaccord.scalapb.compiler.Version.scalapbVersion % "protobuf"
-  )
+  def protobuf: Deps = {
+    val version = com.trueaccord.scalapb.compiler.Version.scalapbVersion
+    Seq(
+      "com.trueaccord.scalapb" %% "scalapb-runtime" % version,
+      "com.trueaccord.scalapb" %% "scalapb-runtime" % version % "protobuf"
+    )
+  }
 
   def autowire: Deps = Seq(
     "com.lihaoyi" %% "autowire" % "0.2.6"
@@ -80,10 +83,13 @@ object ProjectDeps {
   )
 
   // https://tika.apache.org/
-  def tika: Deps = Seq(
-    "org.apache.tika" % "tika-parsers" % "1.16",
-    "org.apache.tika" % "tika-core" % "1.16"
-  )
+  def tika: Deps = {
+    val version = "1.16"
+    Seq(
+      "org.apache.tika" % "tika-parsers" % version,
+      "org.apache.tika" % "tika-core" % version
+    )
+  }
 
   // https://github.com/lz4/lz4-java
   def lz4: Deps = Seq(
@@ -132,8 +138,11 @@ object ProjectDeps {
     "com.vladsch.flexmark" % "flexmark-all" % "0.28.4"
   )
 
-  def webzinc: Deps = Seq(
-    "com.github.karasiq" %% "webzinc" % "1.0.5",
-    "com.github.karasiq" %% "webzinc-htmlunit" % "1.0.5"
-  )
+  def webzinc: Deps = {
+    val version = "1.0.6"
+    Seq(
+      "com.github.karasiq" %% "webzinc" % version,
+      "com.github.karasiq" %% "webzinc-htmlunit" % version
+    )
+  }
 }

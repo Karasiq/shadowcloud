@@ -294,7 +294,7 @@ lazy val desktopApp = (project in file("desktop-app"))
 // -----------------------------------------------------------------------
 lazy val `meta-tests` = (project in file("target") / "meta-tests")
   .settings(commonSettings, name := "shadowcloud-meta-tests")
-  .aggregate(coreAssembly, server, autowireApiJVM)
+  .aggregate(coreAssembly, `server-api-routes`, autowireApiJVM)
 
 lazy val shell = (project in file("."))
   .settings(commonSettings)

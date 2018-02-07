@@ -49,12 +49,12 @@ object SCDesktopMain extends App {
   sc.actors.regionSupervisor // Init actor
 
   // Start server
-  val bindFuture = Http().bindAndHandle(httpServer.scWebAppRoutes, httpServer.httpServerSettings.host, httpServer.httpServerSettings.port)
+  val bindFuture = Http().bindAndHandle(httpServer.scWebAppRoutes, httpServer.httpServerConfig.host, httpServer.httpServerConfig.port)
 
   new SCTrayIcon {
     def onOpen(): Unit = {
       if (Desktop.isDesktopSupported) {
-        Desktop.getDesktop.browse(new URI(s"http://localhost:${httpServer.httpServerSettings.port}"))
+        Desktop.getDesktop.browse(new URI(s"http://localhost:${httpServer.httpServerConfig.port}"))
       }
     }
 

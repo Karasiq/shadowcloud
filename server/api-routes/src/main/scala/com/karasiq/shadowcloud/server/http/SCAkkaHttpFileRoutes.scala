@@ -120,7 +120,7 @@ trait SCAkkaHttpFileRoutes { self: SCAkkaHttpApiRoutes with SCHttpServerSettings
       (SCApiDirectives.extractChunkRanges(chunkStreamSize) & extractLog) { (ranges, log) ⇒
         val fullRangesSize = ranges.size
         ranges match {
-          case ranges if !httpServerSettings.useMultipartByteRanges || ranges.isOverlapping ⇒
+          case ranges if !httpServerConfig.multipartByteRanges || ranges.isOverlapping ⇒
             log.debug("Byte ranges of size {} requested: {}", MemorySize(fullRangesSize), ranges)
             val stream = sc.streams.file.readChunkStreamRanged(regionId, chunks, ranges)
             respondWithHeader(`Content-Range`(toContentRange(ranges.toRange))) {

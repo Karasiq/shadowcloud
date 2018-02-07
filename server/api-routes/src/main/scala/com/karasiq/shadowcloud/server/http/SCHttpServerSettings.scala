@@ -1,7 +1,8 @@
 package com.karasiq.shadowcloud.server.http
 
-import com.karasiq.common.configs.ConfigImplicits
+import com.karasiq.common.configs.ConfigImplicits._
 import com.karasiq.shadowcloud.ShadowCloudExtension
+import com.karasiq.shadowcloud.server.http.config.SCHttpServerConfig
 
 trait SCHttpServerSettings {
   protected val sc: ShadowCloudExtension
@@ -9,10 +10,5 @@ trait SCHttpServerSettings {
   // -----------------------------------------------------------------------
   // Config
   // -----------------------------------------------------------------------
-  object httpServerSettings extends ConfigImplicits {
-    val config = sc.config.rootConfig.getConfig("http-server")
-    val host = config.withDefault("127.0.0.1", _.getString("host"))
-    val port = config.withDefault(1911, _.getInt("port"))
-    val useMultipartByteRanges = config.getBoolean("use-multipart-byte-ranges")
-  }
+  lazy val httpServerConfig = SCHttpServerConfig(sc.config.rootConfig.getConfigIfExists("http-server"))
 }

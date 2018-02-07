@@ -1,5 +1,9 @@
 logLevel := Level.Warn
 
+addSbtPlugin("com.thesamet" % "sbt-protoc" % "0.99.13")
+
+libraryDependencies += "com.trueaccord.scalapb" %% "compilerplugin" % "0.6.7" // Should go before Scala.js
+
 addSbtPlugin("com.github.sbtliquibase" % "sbt-liquibase" % "0.2.0") // TODO: https://github.com/sbtliquibase/sbt-liquibase-plugin/issues/17
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.3.3")

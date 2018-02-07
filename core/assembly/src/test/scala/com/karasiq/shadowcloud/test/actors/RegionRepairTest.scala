@@ -23,9 +23,7 @@ class RegionRepairTest extends SCExtensionSpec with FlatSpecLike with Sequential
   "Region repair stream" should "repair chunks" in {
     val chunk = TestUtils.testChunk
     sc.ops.region.writeChunk(testRegionId, chunk).futureValue shouldBe chunk
-    sc.ops.region.synchronize(testRegionId)
-    
-    expectNoMessage(1 second)
+    sc.ops.region.synchronize(testRegionId).futureValue
 
     val (repairStream, repairResult) = TestSource.probe[RegionRepairStream.Request]
       .alsoTo(RegionRepairStream(sc.config.parallelism, sc.ops.region))

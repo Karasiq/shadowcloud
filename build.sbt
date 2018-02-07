@@ -218,7 +218,7 @@ lazy val autowireApiJS = autowireApi.js
 
 lazy val server = project
   .settings(commonSettings, name := "shadowcloud-server")
-  .dependsOn(`server-api-routes` % "compile->compile;test->test", `server-static-routes`, `server-webzinc-routes`, coreAssembly % "test")
+  .dependsOn(`server-api-routes` % "compile->compile;test->test", `server-static-routes`, `server-webzinc-routes`)
   .aggregate(`server-api-routes`, `server-static-routes`, `server-webzinc-routes`)
 
 lazy val `server-api-routes` = (project in file("server") / "api-routes")
@@ -230,7 +230,7 @@ lazy val `server-api-routes` = (project in file("server") / "api-routes")
       ProjectDeps.akka.http ++
       ProjectDeps.akka.testKit.map(_ % "test")
   )
-  .dependsOn(core % "compile->compile;test->test", autowireApiJVM)
+  .dependsOn(core % "compile->compile;test->test", autowireApiJVM, coreAssembly % "test")
 
 lazy val `server-static-routes` = (project in file("server") / "static-routes")
   .settings(

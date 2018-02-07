@@ -1,16 +1,12 @@
 logLevel := Level.Warn
 
-addSbtPlugin("com.thesamet" % "sbt-protoc" % "0.99.8")
+addSbtPlugin("com.github.sbtliquibase" % "sbt-liquibase" % "0.2.0") // TODO: https://github.com/sbtliquibase/sbt-liquibase-plugin/issues/17
 
-libraryDependencies += "com.trueaccord.scalapb" %% "compilerplugin" % "0.6.0-pre4"
+addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.3.3")
 
-addSbtPlugin("com.github.sbtliquibase" % "sbt-liquibase" % "0.2.0")
+addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.22")
 
-addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.2.2")
-
-addSbtPlugin("org.scala-js" % "sbt-scalajs" % "0.6.20")
-
-addSbtPlugin("com.github.karasiq" % "sbt-scalajs-bundler" % "1.0.7")
+addSbtPlugin("com.github.karasiq" % "sbt-scalajs-bundler" % "1.2.1")
 
 addSbtPlugin("pl.project13.sbt" % "sbt-jol" % "0.1.2")
 

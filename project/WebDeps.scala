@@ -3,6 +3,8 @@ import sbt._
 import com.karasiq.scalajsbundler.ScalaJSBundler.PageContent
 import com.karasiq.scalajsbundler.dsl.{Script, _}
 
+private object JSModuleIDBuilder // Implicit fix
+
 object WebDeps {
   private object Assets {
     def index: String = {
@@ -85,7 +87,6 @@ object WebDeps {
   }
 
   def markedJS: Seq[PageContent] = {
-    import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
 
     val highlightJSLanguages = Seq(
       "bash", "clojure", "coffeescript", "cpp", "cs", "d", "delphi", "erlang", "fsharp",

@@ -249,7 +249,7 @@ lazy val `server-static-routes` = (project in file("server") / "static-routes")
       .value
   )
   .dependsOn(`server-api-routes`)
-  .enablePlugins(ScalaJSBundlerPlugin)
+  .enablePlugins(SJSAssetBundlerPlugin)
 
 lazy val `server-webzinc-routes` = (project in file("server") / "webzinc-routes")
   .settings(commonSettings, name := "shadowcloud-server-webzinc", libraryDependencies ++= ProjectDeps.webzinc)

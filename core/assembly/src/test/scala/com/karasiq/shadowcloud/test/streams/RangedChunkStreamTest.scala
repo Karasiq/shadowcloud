@@ -4,7 +4,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.stream.scaladsl.{Sink, Source}
-import org.scalatest.FlatSpecLike
+import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 
 import com.karasiq.shadowcloud.storage.props.StorageProps
@@ -12,7 +12,7 @@ import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.test.utils.{SCExtensionSpec, TestUtils}
 
-class RangedChunkStreamTest extends SCExtensionSpec with FlatSpecLike {
+class RangedChunkStreamTest extends SCExtensionSpec with FlatSpecLike with SequentialNestedSuiteExecution {
   val testRegion = "testRegion"
   val (testBytes, testFile) = TestUtils.indexedBytes
 
@@ -39,12 +39,12 @@ class RangedChunkStreamTest extends SCExtensionSpec with FlatSpecLike {
     sc.ops.supervisor.createRegion(testRegion, sc.configs.regionConfig(testRegion))
     sc.ops.supervisor.createStorage(testStorage, StorageProps.inMemory)
     sc.ops.supervisor.register(testRegion, testStorage)
-    Thread.sleep(500)
+    expectNoMessage(3 seconds)
 
     Source(testFile.chunks.toVector)
       .map((testRegion, _))
       .via(sc.streams.region.writeChunks)
       .runWith(Sink.ignore)
-      .futureValue(Timeout(5 seconds))
+      .futureValue(Timeout(10 seconds))
   }
 }

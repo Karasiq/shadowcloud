@@ -4,7 +4,7 @@ object ProjectDeps {
   type Deps = Seq[ModuleID]
 
   object akka {
-    val version = "2.5.6"
+    val version = "2.5.9"
     val httpVersion = "10.0.11"
 
     def actors: Deps = Seq(

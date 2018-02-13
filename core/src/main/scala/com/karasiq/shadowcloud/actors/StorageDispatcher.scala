@@ -24,8 +24,8 @@ import com.karasiq.shadowcloud.utils.AkkaStreamUtils
 object StorageDispatcher {
   // Messages
   sealed trait Message
-  case object CheckHealth extends Message with NotInfluenceReceiveTimeout with MessageStatus[StorageId, StorageHealth]
-  case object GetHealth extends Message with NotInfluenceReceiveTimeout with MessageStatus[StorageId, StorageHealth]
+  final case class GetHealth(checkNow: Boolean = false) extends Message with NotInfluenceReceiveTimeout
+  object GetHealth extends MessageStatus[StorageId, StorageHealth]
 
   // Internal messages
   private sealed trait InternalMessage extends PossiblyHarmful
@@ -49,7 +49,7 @@ private final class StorageDispatcher(storageId: StorageId, storageProps: Storag
   private[this] implicit val materializer: Materializer = ActorMaterializer()
   private[this] val sc = ShadowCloud()
   private[this] val config = sc.configs.storageConfig(storageId, storageProps)
-  private[this] val healthCheckSchedule = context.system.scheduler.schedule(1 second, config.healthCheckInterval, self, CheckHealth)
+  private[this] val healthCheckSchedule = context.system.scheduler.schedule(1 second, config.healthCheckInterval, self, GetHealth(true))
 
   // -----------------------------------------------------------------------
   // State
@@ -100,19 +100,18 @@ private final class StorageDispatcher(storageId: StorageId, storageProps: Storag
     // -----------------------------------------------------------------------
     // Storage health
     // -----------------------------------------------------------------------
-    case GetHealth ⇒
-      sender() ! GetHealth.Success(storageId, health)
+    case GetHealth(check) ⇒
+      if (check) {
+        val future = GetHealth.wrapFuture(storageId, healthProvider.health)
+        future.pipeTo(self).pipeTo(sender())
+      } else {
+        sender() ! GetHealth.Success(storageId, health)
+      }
 
-    case CheckHealth ⇒
-      healthProvider.health
-        .map(CheckHealth.Success(storageId, _))
-        .recover(PartialFunction(CheckHealth.Failure(storageId, _)))
-        .pipeTo(self)
-
-    case CheckHealth.Success(`storageId`, health) ⇒
+    case GetHealth.Success(`storageId`, health) ⇒
       updateHealth(_ ⇒ health)
 
-    case CheckHealth.Failure(`storageId`, error) ⇒
+    case GetHealth.Failure(`storageId`, error) ⇒
       updateHealth(_.copy(online = false))
       log.error(error, "Health update failure: {}", storageId)
 

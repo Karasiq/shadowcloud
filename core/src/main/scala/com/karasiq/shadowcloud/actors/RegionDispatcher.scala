@@ -285,7 +285,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
 
     case GetHealth ⇒
       val regionHealth = {
-        val storages = storageTracker.storages.map(s ⇒ (s.id, s.health))
+        val storages = storageTracker.storages.map(storage ⇒ (storage.id, storage.health))
         RegionHealth(storages.toMap)
       }
       sender() ! GetHealth.Success(regionId, regionHealth)
@@ -295,7 +295,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
       val storage = storageTracker.getStorage(storageId)
 
       storage.dispatcher ! StorageIndex.OpenIndex(regionId)
-      storage.dispatcher ! StorageDispatcher.CheckHealth
+      storage.dispatcher ! StorageDispatcher.GetHealth(true)
 
       val indexFuture = RegionIndex.GetIndex.unwrapFuture(storage.dispatcher ?
         StorageIndex.Envelope(regionId, RegionIndex.GetIndex))

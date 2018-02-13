@@ -75,10 +75,7 @@ final class StorageOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(imp
   // Utils
   // -----------------------------------------------------------------------
   def getHealth(storageId: StorageId, checkNow: Boolean = false): Future[StorageHealth] = {
-    if (checkNow)
-      askStorage(storageId, StorageDispatcher.CheckHealth, StorageDispatcher.CheckHealth)
-    else
-      askStorage(storageId, StorageDispatcher.GetHealth, StorageDispatcher.GetHealth)
+    askStorage(storageId, StorageDispatcher.GetHealth, StorageDispatcher.GetHealth(checkNow))
   }
 
   private[this] def askStorage[V](storageId: StorageId, status: MessageStatus[_, V], message: Any)

@@ -6,7 +6,7 @@ val commonSettings = Seq(
   // crossScalaVersions := Seq("2.11.11", "2.12.4"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
   licenses := Seq("Apache License, Version 2.0" → url("http://opensource.org/licenses/Apache-2.0")),
-  coverageExcludedPackages := "com.karasiq.shadowcloud.javafx;com.karasiq.shadowcloud.desktop;com.karasiq.shadowcloud.webapp;com.karasiq.shadowcloud.storage"
+  coverageExcludedPackages := "com.karasiq.shadowcloud.javafx.*;com.karasiq.shadowcloud.desktop.*;com.karasiq.shadowcloud.webapp.*;com.karasiq.shadowcloud.storage.*;com.karasiq.shadowcloud.persistence.*"
   //parallelExecution in test := false,
   //fork in test := false
 )

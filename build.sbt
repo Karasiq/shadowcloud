@@ -1,5 +1,3 @@
-import com.github.sbtliquibase.SbtLiquibase
-
 val commonSettings = Seq(
   organization := "com.github.karasiq",
   version := "1.0.0-SNAPSHOT",
@@ -296,9 +294,9 @@ lazy val `meta-tests` = (project in file("target") / "meta-tests")
   .settings(commonSettings, name := "shadowcloud-meta-tests")
   .aggregate(coreAssembly, `server-api-routes`, autowireApiJVM)
 
-lazy val shell = (project in file("."))
-  .settings(commonSettings)
+lazy val shell = project
   .settings(
+    commonSettings,
     name := "shadowcloud-shell",
     mainClass in Compile := Some("com.karasiq.shadowcloud.test.Benchmark"),
     libraryDependencies ++= Seq(
@@ -307,8 +305,15 @@ lazy val shell = (project in file("."))
     initialCommands in console :=
       """import com.karasiq.shadowcloud.shell.Shell._
         |init()
-        |test()
-        |""".stripMargin,
+        |//test()
+        |""".stripMargin
+  )
+  .dependsOn(coreAssembly, javafx)
+
+lazy val shadowcloud = (project in file("."))
+  .settings(
+    commonSettings,
+    name := "shadowcloud-root",
     liquibaseUsername := "sa",
     liquibasePassword := s"${sys.props("shadowcloud.persistence.h2.password").ensuring(_.ne(null), "No password").replace(' ', '_')} sa",
     liquibaseDriver := "org.h2.Driver",
@@ -318,7 +323,7 @@ lazy val shell = (project in file("."))
       val compress = sys.props.getOrElse("shadowcloud.persistence.h2.compress", true)
       s"jdbc:h2:file:$path;CIPHER=$cipher;COMPRESS=$compress"
     },
-    liquibaseChangelog := file("src/main/migrations/changelog.sql")
+    liquibaseChangelog := sourceDirectory.value / "migrations" / "changelog.sql"
   )
-  .dependsOn(coreAssembly, javafx)
-  .enablePlugins(SbtLiquibase)
+  .enablePlugins(com.github.sbtliquibase.SbtLiquibase)
+  .aggregate(coreAssembly, server, javafx)

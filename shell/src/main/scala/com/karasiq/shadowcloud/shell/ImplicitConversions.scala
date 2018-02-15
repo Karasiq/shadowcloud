@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.shell
 
-import java.nio.file.{Paths, Path => FSPath}
+import java.nio.file.{Paths, Path ⇒ FSPath}
 
 import scala.language.{implicitConversions, postfixOps}
 

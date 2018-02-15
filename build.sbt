@@ -290,10 +290,6 @@ lazy val desktopApp = (project in file("desktop-app"))
 // -----------------------------------------------------------------------
 // Misc
 // -----------------------------------------------------------------------
-lazy val `meta-tests` = (project in file("target") / "meta-tests")
-  .settings(commonSettings, name := "shadowcloud-meta-tests")
-  .aggregate(coreAssembly, `server-api-routes`, autowireApiJVM)
-
 lazy val shell = project
   .settings(
     commonSettings,
@@ -326,4 +322,4 @@ lazy val shadowcloud = (project in file("."))
     liquibaseChangelog := sourceDirectory.value / "migrations" / "changelog.sql"
   )
   .enablePlugins(com.github.sbtliquibase.SbtLiquibase)
-  .aggregate(coreAssembly, server, javafx)
+  .aggregate(coreAssembly, `server-api-routes`)

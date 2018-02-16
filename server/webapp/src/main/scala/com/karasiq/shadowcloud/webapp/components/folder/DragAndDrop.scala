@@ -9,50 +9,12 @@ import com.karasiq.shadowcloud.model.utils.IndexScope
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 
 private[folder] object DragAndDrop {
-  implicit class DataTransferOps(dataTransfer: DataTransfer) extends collection.mutable.AbstractMap[String, String] {
-    def +=(kv: (String, String)): this.type = {
-      dataTransfer.setData(kv._1, kv._2)
-      this
-    }
-
-    def -=(key: String): DataTransferOps.this.type = {
-      dataTransfer.clearData(key)
-      this
-    }
-
-    def get(name: String): Option[String] = {
-      Option(dataTransfer.getData(name)).filter(_.nonEmpty)
-    }
-
-    def iterator: Iterator[(String, String)] = {
-      dataTransfer.types.toIterator
-        .map(key ⇒ (key, dataTransfer.getData(key)))
-    }
-
-    def setBytes(name: String, value: ByteString): Unit = {
-      this += name → SCApiEncoding.toUrlSafe(value)
-    }
-
-    def getEncoded[T](name: String)(decode: ByteString ⇒ T): Option[T] = {
-      get(name).map(str ⇒ decode(SCApiEncoding.toBinary(str)))
-    }
-  }
-
-  private[this] object Attributes {
-    val path = "path"
-    val file = "file"
-    val folder = "folder"
-    val entityType = "entityType"
-    val regionId = "regionId"
-    val scope = "scope"
-  }
-
   def addRegionId(dataTransfer: DataTransfer, regionId: RegionId): Unit = {
-    dataTransfer += Attributes.regionId → regionId
+    dataTransfer(Attributes.regionId) = regionId
   }
 
   def addScope(dataTransfer: DataTransfer, scope: IndexScope)(implicit context: AppContext): Unit = {
-    dataTransfer.setBytes(Attributes.scope, context.api.encoding.encodeScope(scope))
+    dataTransfer(Attributes.scope) = context.api.encoding.encodeScope(scope)
   }
 
   def addFolderContext(dataTransfer: DataTransfer)(implicit context: AppContext, folderContext: FolderContext): Unit = {
@@ -61,18 +23,18 @@ private[folder] object DragAndDrop {
   }
 
   def addFolderPath(dataTransfer: DataTransfer, path: Path)(implicit context: AppContext): Unit = {
-    dataTransfer += Attributes.entityType → Attributes.folder
-    dataTransfer.setBytes(Attributes.path, context.api.encoding.encodePath(path))
+    dataTransfer(Attributes.entityType) = Attributes.folder
+    dataTransfer(Attributes.path) = context.api.encoding.encodePath(path)
   }
 
   def addFilePath(dataTransfer: DataTransfer, path: Path)(implicit context: AppContext): Unit = {
-    dataTransfer += Attributes.entityType → Attributes.file
-    dataTransfer.setBytes(Attributes.path, context.api.encoding.encodePath(path))
+    dataTransfer(Attributes.entityType) = Attributes.file
+    dataTransfer(Attributes.path) = context.api.encoding.encodePath(path)
   }
 
   def addFileHandle(dataTransfer: DataTransfer, file: File)(implicit context: AppContext): Unit = {
-    dataTransfer += Attributes.entityType → Attributes.file
-    dataTransfer.setBytes(Attributes.file, context.api.encoding.encodeFile(file))
+    dataTransfer(Attributes.entityType) = Attributes.file
+    dataTransfer(Attributes.file) = context.api.encoding.encodeFile(file)
   }
 
   def isCopyable(dataTransfer: DataTransfer): Boolean = {
@@ -101,5 +63,47 @@ private[folder] object DragAndDrop {
 
   private[this] def getEntityType(dataTransfer: DataTransfer) = {
     dataTransfer.get(Attributes.entityType)
+  }
+
+  implicit class DataTransferOps(dataTransfer: DataTransfer) extends collection.mutable.AbstractMap[String, String] {
+    def +=(kv: (String, String)): this.type = {
+      dataTransfer.setData(kv._1, kv._2)
+      this
+    }
+
+    def -=(key: String): DataTransferOps.this.type = {
+      dataTransfer.clearData(key)
+      this
+    }
+
+    def get(name: String): Option[String] = {
+      Option(dataTransfer.getData(name)).filter(_.nonEmpty)
+    }
+
+    def iterator: Iterator[(String, String)] = {
+      dataTransfer.types.toIterator
+        .map(key ⇒ (key, dataTransfer.getData(key)))
+    }
+
+    def update(name: String, value: ByteString): Unit = {
+      this += name → SCApiEncoding.toUrlSafe(value)
+    }
+
+    def getBytes(name: String): Option[ByteString] = {
+      get(name).map(SCApiEncoding.toBinary)
+    }
+
+    def getEncoded[T](name: String)(decode: ByteString ⇒ T): Option[T] = {
+      getBytes(name).map(decode)
+    }
+  }
+
+  private[this] object Attributes {
+    val path = "path"
+    val file = "file"
+    val folder = "folder"
+    val entityType = "entityType"
+    val regionId = "regionId"
+    val scope = "scope"
   }
 }

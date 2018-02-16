@@ -33,9 +33,10 @@ class FileRevisionsView(path: Path)(implicit context: AppContext, folderContext:
     (_, _) ⇒ filesRx.update()
   )(_fileController)
 
-  lazy val fileList = FolderFileList(filesRx.toRx, flat = false)(context, folderContext, fileController)
-
-  def renderTag(md: ModifierT*): TagT = {
+  lazy val fileList = {
+    val fileList = FolderFileList(filesRx.toRx, flat = false)(context, folderContext, fileController)
+    fileList.fileTable.setOrdering(fileList.fileTable.columns.now.last)
+    fileList.fileTable.reverseOrdering() = true
     fileList.selectedFile.triggerLater(fileList.selectedFile.now.foreach { file ⇒
       Modal()
         .withTitle(context.locale.file)
@@ -43,10 +44,14 @@ class FileRevisionsView(path: Path)(implicit context: AppContext, folderContext:
         .withButtons(AppComponents.modalClose())
         .withDialogStyle(ModalDialogSize.large)
         .show(events = Map("hidden.bs.modal" → { () ⇒
-          fileList.selectedFile() = None 
+          fileList.selectedFile() = None
         }))
     })
     fileList
+  }
+
+  def renderTag(md: ModifierT*): TagT = {
+    fileList.renderTag(md:_*)
   }
 }
 

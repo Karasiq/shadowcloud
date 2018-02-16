@@ -30,15 +30,15 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
     onUpdateFile = (oldFile, newFile) ⇒ if (selectedFile.now.contains(oldFile)) selectedFile() = Some(newFile),
     onRenameFile = (file, newName) ⇒ if (selectedFile.now.contains(file)) selectedFile() = Some(file.copy(file.path.withName(newName)))
   )(_fileController)
-  
-  def renderTag(md: ModifierT*): TagT = {
+
+  lazy val fileTable = {
     val files = Rx {
       val fileSet = filesRx()
       if (flat) FileVersions.toFlatDirectory(fileSet) else fileSet.toVector
     }
 
     val baseTable = SortableTable.Builder[File]()
-      .withRowModifiers(file ⇒ fileRowModifiers(file))
+      .withRowModifiers(file ⇒ this.fileRowModifiers(file))
       .withFilter((file, str) ⇒ file.path.name.toLowerCase.contains(str.toLowerCase))
 
     val table = if (flat) {
@@ -56,7 +56,11 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
       )
     }
 
-    table.createTable(files).renderTag(md:_*)
+    table.createTable(files)
+  }
+
+  def renderTag(md: ModifierT*): TagT = {
+    fileTable.renderTag(md:_*)
   }
 
   protected def fileRowModifiers(file: File): Modifier = {

@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.mailrucloud
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.language.implicitConversions
 
 import akka.NotUsed
@@ -15,9 +15,10 @@ import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
+import com.karasiq.shadowcloud.utils.CacheMap
 
 object MailRuCloudRepository {
-  def apply(client: MailCloudClient)(implicit nodes: Nodes, session: Session, token: CsrfToken): MailRuCloudRepository = {
+  def apply(client: MailCloudClient)(implicit nodes: Nodes, session: Session, token: CsrfToken, ec: ExecutionContext): MailRuCloudRepository = {
     new MailRuCloudRepository(client)
   }
 
@@ -38,8 +39,11 @@ object MailRuCloudRepository {
     .named("countBytes")
 }
 
-class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, session: Session, token: CsrfToken) extends PathTreeRepository {
+class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, session: Session,
+                                                     token: CsrfToken, ec: ExecutionContext) extends PathTreeRepository {
+
   import MailRuCloudRepository._
+  private[this] val foldersCache = CacheMap[Path, Path]
 
   def read(path: Path) = {
     client.download(path)
@@ -115,9 +119,13 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
   }
 
   private[this] def getOrCreateFolder(path: Path): Source[Path, NotUsed] = {
-    Source.fromFuture(client.createFolder(path))
-      .map(ep ⇒ ep: Path)
-      .recover { case ae: ApiException if ae.errorName.contains("exists") ⇒ path }
+    val future = foldersCache(path) {
+      client.createFolder(path)
+        .map(ep ⇒ ep: Path)
+        .recover { case ae: ApiException if ae.errorName.contains("exists") ⇒ path }
+    }
+
+    Source.fromFuture(future)
       .named("mailrucloudCreateFolder")
   } 
 }

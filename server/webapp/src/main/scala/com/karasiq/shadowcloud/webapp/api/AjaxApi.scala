@@ -104,6 +104,10 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
     apiClient.compactIndexes(regionId).call()
   }
 
+  def repairRegion(regionId: RegionId, storages: Seq[StorageId]) = {
+    apiClient.repairRegion(regionId, storages).call()
+  }
+
   def getRegionHealth(regionId: RegionId) = {
     apiClient.getRegionHealth(regionId).call()
   }

@@ -131,6 +131,10 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
     synchronizeRegion(regionId)
   }
 
+  def repairRegion(regionId: RegionId, storages: Seq[StorageId]) = {
+    sc.ops.background.repair(regionId, RegionRepairStream.Strategy.SetAffinity(ChunkWriteAffinity(storages)))
+      .map(_ ⇒ Done)
+  }
 
   def getRegionHealth(regionId: RegionId) = {
     sc.ops.region.getHealth(regionId)

@@ -73,6 +73,7 @@ trait AppLocale {
 
   def collectGarbage: String
   def compactIndex: String
+  def repairRegion: String
 
   def writableSpace: String
   def totalSpace: String

@@ -13,7 +13,6 @@ import com.karasiq.shadowcloud.providers.SessionProvider
 private[shadowcloud] class InMemSessionProvider extends SessionProvider {
   private[this] val dataMap = TrieMap.empty[(StorageId, String), ByteString]
 
-
   def getSessions(storageId: StorageId) = {
     Future.fromTry(Try(dataMap.keys.filter(_._1 == storageId).map(_._2).toSet))
   }

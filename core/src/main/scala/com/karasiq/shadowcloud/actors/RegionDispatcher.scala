@@ -350,6 +350,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
       case StorageEvents.ChunkWritten(ChunkPath(`regionId`, _), chunk) ⇒
         log.debug("Chunk written: {}", chunk)
         // chunks.onWriteSuccess(chunk, storageId)
+        indexTracker.indexes.registerChunk(chunk)
         sc.eventStreams.publishRegionEvent(regionId, RegionEvents.ChunkWritten(storageId, chunk))
         schedules.deferGC()
 

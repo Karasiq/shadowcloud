@@ -73,6 +73,7 @@ private[locales] object English extends AppLocale {
 
   val collectGarbage = "Collect garbage"
   val compactIndex = "Compact index"
+  val repairRegion = "Repair region"
 
   val writableSpace = "Writable space"
   val totalSpace = "Total space"

@@ -39,6 +39,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
   private[this] lazy val gcStarted = Var(false)
   private[this] lazy val gcAnalysed = Var(false)
   private[this] lazy val gcReport = Var(None: Option[GCReport])
+  private[this] lazy val repairStarted = Var(false)
 
   def renderTag(md: ModifierT*): TagT = {
     div(regionStatus.map { regionStatus ⇒
@@ -48,6 +49,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
             renderRegionHealth(),
             renderCompactButton(),
             renderGCButton(),
+            renderRepairButton(),
             hr
           )
         } else (),
@@ -112,6 +114,32 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
         onclick := Callback.onClick(_ ⇒ if (!compactStarted.now) startCompact())),
       div(compactReport.map(renderReports))
     )
+  }
+
+  def renderRepairButton(): TagT = {
+    def showDialog(): Unit = {
+      def doRepair(storages: Seq[StorageId]) = {
+        if (!repairStarted.now) {
+          repairStarted() = true
+          val future = context.api.repairRegion(regionId, storages)
+          future.onComplete(_ ⇒ repairStarted() = false)
+        }
+      }
+
+      context.api.getRegion(regionId).foreach { status ⇒
+        val storagesSelector = FormInput.simpleMultipleSelect(context.locale.storages, status.storages.toSeq:_*)
+        Modal(context.locale.repairFile)
+          .withBody(Form(storagesSelector))
+          .withButtons(
+            AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ doRepair(storagesSelector.selected.now))),
+            AppComponents.modalClose()
+          )
+          .show()
+      }
+    }
+
+    Button(ButtonStyle.success, ButtonSize.extraSmall)(AppIcons.repair, context.locale.repairRegion, "disabled".classIf(repairStarted),
+      onclick := Callback.onClick(_ ⇒ if (!repairStarted.now) showDialog()))
   }
 
   private[this] def renderStateButtons(regionStatus: RegionStatus) = {

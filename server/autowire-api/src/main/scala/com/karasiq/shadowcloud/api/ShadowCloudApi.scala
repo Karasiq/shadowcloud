@@ -32,6 +32,7 @@ trait ShadowCloudApi {
   def collectGarbage(regionId: RegionId, delete: Boolean = false): Future[GCReport]
   def compactIndex(storageId: StorageId, regionId: RegionId): Future[SyncReport]
   def compactIndexes(regionId: RegionId): Future[Map[StorageId, SyncReport]]
+  def repairRegion(regionId: RegionId, storages: Seq[StorageId]): Future[Done]
   def getRegionHealth(regionId: RegionId): Future[RegionHealth]
   def getStorageHealth(storageId: StorageId): Future[StorageHealth]
   def getStorageTypes(): Future[Set[String]]

@@ -73,6 +73,7 @@ private[locales] object Russian extends AppLocale {
 
   val collectGarbage = "Собрать мусор"
   val compactIndex = "Сжать индекс"
+  val repairRegion = "Починить регион"
 
   val writableSpace = "Доступно"
   val totalSpace = "Всего"

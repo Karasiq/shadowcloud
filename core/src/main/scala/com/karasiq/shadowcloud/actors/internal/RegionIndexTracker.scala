@@ -12,7 +12,7 @@ import com.karasiq.shadowcloud.actors.events.RegionEvents
 import com.karasiq.shadowcloud.actors.RegionIndex.WriteDiff
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.model.{File, RegionId, SequenceNr, StorageId}
+import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.utils.{FileAvailability, IndexScope, SyncReport}
 import com.karasiq.shadowcloud.storage.replication.StorageSelector
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
@@ -140,16 +140,16 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
       IndexMerger.createState(this.withScope(scope))
     }
 
-    private[this] def getCurrentState(): IndexMerger.State[RegionKey] = {
-      IndexMerger.createState(globalIndex)
-    }
-
     def pending: IndexDiff = {
       globalIndex.pending
     }
 
     def markAsPending(diff: IndexDiff): Unit = {
       globalIndex.addPending(diff)
+    }
+
+    def registerChunk(chunk: Chunk): Unit = {
+      globalIndex.addPending(IndexDiff.newChunks(chunk))
     }
 
     def toMergedDiff: IndexDiff = {

@@ -9,7 +9,7 @@ import com.karasiq.dropbox.client.DropboxClient
 import com.karasiq.dropbox.model.Dropbox
 import com.karasiq.dropbox.model.Dropbox.UserToken
 import com.karasiq.dropbox.oauth.DropboxOAuth
-import com.karasiq.shadowcloud.{ShadowCloud, ShadowCloudExtension}
+import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.actors.SessionProxyActor
 import com.karasiq.shadowcloud.actors.utils.SessionAuthenticator
 import com.karasiq.shadowcloud.model.StorageId
@@ -18,29 +18,25 @@ import com.karasiq.shadowcloud.storage.utils.StoragePluginBuilder
 
 object DropboxSessionProxy {
   def props(storageId: StorageId, props: StorageProps)(implicit sc: ShadowCloudExtension): Props = {
-    val config = sc.configs.storageConfig(storageId, props)
+    val config = {
+      val defaultConfig = sc.config.rootConfig.getConfigIfExists("storage.dropbox")
+      sc.configs.storageConfig(storageId, props).rootConfig
+        .getConfigIfExists("dropbox")
+        .withFallback(defaultConfig)
+    }
+
     implicit val requestConfig = {
-      val rootConfig = config.rootConfig.getConfigIfExists("dropbox.requests")
+      val rootConfig = config.getConfigIfExists("requests")
       val appName = rootConfig.withDefault("shadowcloud/1.0.0", _.getString("app-name"))
-      val maxRetries = rootConfig.withDefault(5, _.getInt("max-retries"))
+      val maxRetries = rootConfig.withDefault(3, _.getInt("max-retries"))
       Dropbox.RequestConfig(appName, maxRetries)
     }
+
+    val appKeys = Dropbox.AppKeys(config.getConfigIfExists("app-keys"))
 
     SessionProxyActor.props(implicit context ⇒ new SessionAuthenticator[UserToken] {
       implicit val materializer = ActorMaterializer()
       import context.{dispatcher, system}
-
-      val sc = ShadowCloud()
-      val dropboxConfig = sc.configs.storageConfig(storageId, props).rootConfig.getConfigIfExists("dropbox")
-
-      implicit val requestConfig = {
-        val config = dropboxConfig.getConfigIfExists("requests")
-        val appName = config.withDefault("shadowcloud/1.0.0", _.getString("app-name"))
-        val maxRetries = config.withDefault(5, _.getInt("max-retries"))
-        Dropbox.RequestConfig(appName, maxRetries)
-      }
-
-      val appKeys = Dropbox.AppKeys(dropboxConfig.getConfigIfExists("app-keys"))
 
       def getSession() = {
         val cachedToken = for {

@@ -22,7 +22,9 @@ private[gdrive] class GDriveStoragePlugin(implicit sc: ShadowCloudExtension) ext
   private[this] def defaultConfig = sc.config.rootConfig.getConfigIfExists("storage.gdrive")
 
   def createStorage(storageId: StorageId, props: StorageProps)(implicit context: ActorContext) = {
-    val config = props.rootConfig.getConfigIfExists("gdrive").withFallback(defaultConfig)
+    val config = sc.configs.storageConfig(storageId, props).rootConfig
+      .getConfigIfExists("gdrive")
+      .withFallback(defaultConfig)
 
     val proxyProps = Props(new Actor {
       import context.{dispatcher ⇒ executionContext} // API dispatcher

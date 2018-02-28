@@ -3,9 +3,9 @@ package com.karasiq.shadowcloud.model.utils
 import com.karasiq.shadowcloud.model.StorageId
 
 @SerialVersionUID(0L)
-final case class RegionHealth(storages: Map[StorageId, StorageHealth]) extends HealthStatus  {
+final case class RegionHealth(usedSpace: Long, storages: Map[StorageId, StorageHealth]) extends HealthStatus {
   def totalSpace: Long = createSum(_.totalSpace)
-  def usedSpace: Long = createSum(_.usedSpace)
+  // def usedSpace: Long = createSum(_.usedSpace)
   def freeSpace: Long = createSum(_.freeSpace)
   def writableSpace: Long = createSum(_.writableSpace)
 
@@ -27,5 +27,5 @@ final case class RegionHealth(storages: Map[StorageId, StorageHealth]) extends H
 }
 
 object RegionHealth {
-  val empty = RegionHealth(Map.empty)
+  val empty = RegionHealth(0L, Map.empty)
 }

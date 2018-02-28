@@ -284,10 +284,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
       sender() ! GetStorages.Success(regionId, storageTracker.storages)
 
     case GetHealth ⇒
-      val regionHealth = {
-        val storages = storageTracker.storages.map(storage ⇒ (storage.id, storage.health))
-        RegionHealth(storages.toMap)
-      }
+      val regionHealth = chunksTracker.storages.state.getHealth()
       sender() ! GetHealth.Success(regionId, regionHealth)
 
     case PullStorageIndex(storageId) if storageTracker.contains(storageId) ⇒

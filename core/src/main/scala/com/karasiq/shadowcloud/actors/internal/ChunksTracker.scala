@@ -16,6 +16,7 @@ import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.exceptions.{RegionException, SCExceptions}
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
 import com.karasiq.shadowcloud.model.{Chunk, ChunkId, RegionId, StorageId}
+import com.karasiq.shadowcloud.model.utils.RegionHealth
 import com.karasiq.shadowcloud.storage.replication.{ChunkAvailability, ChunkStatusProvider, ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.{ChunkStatus, WriteStatus}
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
@@ -268,6 +269,16 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
       chunksMap.values
     }
 
+    def getUsedSpace(): Long = {
+      // Estimation
+      val usedByChunk = chunksMap.values.map { chunkStatus ⇒
+        val size: Long = chunkStatus.chunk.checksum.encSize
+        val storages = chunkStatus.availability.hasChunk
+        size * storages.size
+      }
+      usedByChunk.sum
+    }
+
     private[ChunksTracker] def update(status: ChunkStatus): ChunkStatus = {
       assert(status.writeStatus != WriteStatus.Finished || status.chunk.data.isEmpty)
       chunksMap += toChunkMapKey(status.chunk) → status
@@ -390,6 +401,12 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
       def registerDiff(storageId: StorageId, diff: ChunkIndexDiff): Unit = {
         diff.deletedChunks.foreach(unregisterChunk(storageId, _))
         diff.newChunks.foreach(registerChunk(storageId, _))
+      }
+
+      def getHealth(): RegionHealth = {
+        val usedSpace = chunks.getUsedSpace()
+        val storages = storageTracker.storages.map(storage ⇒ (storage.id, storage.health))
+        RegionHealth(usedSpace, storages.toMap)
       }
 
       private[ChunksTracker] def resetFailures(status: ChunkStatus): ChunkStatus = {

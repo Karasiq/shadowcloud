@@ -2,12 +2,12 @@ package com.karasiq.shadowcloud.webapp.components.region
 
 import scala.concurrent.Future
 
-import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import akka.util.ByteString
 import rx.Var
 import rx.async._
+
+import com.karasiq.bootstrap.Bootstrap.default._
+import scalaTags.all._
 
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.model.StorageId
@@ -24,11 +24,10 @@ object StorageConfigView {
 }
 
 class StorageConfigView(storageId: StorageId)(implicit context: AppContext, regionContext: RegionContext) extends BootstrapHtmlComponent {
-  private[this] lazy val storageRx = regionContext.storage(storageId)
-  private[this] lazy val storageHealthRx = context.api.getStorageHealth(storageId).toRx(StorageHealth.empty)
+  private[this] lazy val storageStatus = regionContext.storage(storageId)
 
   def renderTag(md: ModifierT*): TagT = {
-    div(storageRx.map { storageStatus ⇒
+    div(storageStatus.map { storageStatus ⇒
       div(
         if (!storageStatus.suspended) Seq(renderStorageHealth(), hr) else (),
         renderStateButtons(storageStatus),
@@ -40,7 +39,8 @@ class StorageConfigView(storageId: StorageId)(implicit context: AppContext, regi
   }
 
   private[this] def renderStorageHealth() = {
-    HealthView(storageHealthRx)
+    val storageHealth = context.api.getStorageHealth(storageId).toRx(StorageHealth.empty)
+    HealthView(storageHealth)
   }
 
   private[this] def renderStateButtons(storageStatus: StorageStatus) = {

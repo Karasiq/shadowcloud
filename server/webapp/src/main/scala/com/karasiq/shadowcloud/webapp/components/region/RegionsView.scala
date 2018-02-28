@@ -1,9 +1,9 @@
 package com.karasiq.shadowcloud.webapp.components.region
 
+import rx.{Rx, Var}
+
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
-
-import rx.{Rx, Var}
 
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.model.RegionId
@@ -62,8 +62,9 @@ class RegionsView(implicit context: AppContext, regionContext: RegionContext) ex
   }
 
   private[this] def renderRegion(regionId: RegionId) = {
+    lazy val regionConfigView = RegionConfigView(regionId)
     AppComponents.dropdown(regionId) {
-      Bootstrap.well(RegionConfigView(regionId))
+      Bootstrap.well(regionConfigView)
     }
   }
 }

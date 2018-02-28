@@ -87,8 +87,9 @@ class StoragesView(implicit context: AppContext, regionContext: RegionContext) e
   }
 
   private[this] def renderStorage(storageId: StorageId) = {
+    lazy val storageConfigView = StorageConfigView(storageId)
     AppComponents.dropdown(storageId) {
-      Bootstrap.well(StorageConfigView(storageId))
+      Bootstrap.well(storageConfigView)
     }
   }
 }

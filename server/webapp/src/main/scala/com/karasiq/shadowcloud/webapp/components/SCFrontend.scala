@@ -45,7 +45,7 @@ class SCFrontend()(implicit val context: AppContext) extends BootstrapComponent 
     NavigationBar()
       .withBrand(img(src := "/favicon.png", maxHeight := 100.pct, display.inline,
         marginRight := 3.px), "shadowcloud", onclick := Callback.onClick(_ ⇒ themeSelector.nextTheme()))
-      .withContentContainer(GridSystem.containerFluid(_))
+      .withContentContainer(GridSystem.containerFluid(_, "sc-main-container".addClass))
       .withStyles(NavigationBarStyle.default, NavigationBarStyle.staticTop)
       .withTabs(
         NavigationTab(context.locale.foldersView, "folders", AppIcons.foldersView, renderFoldersPanel()),

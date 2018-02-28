@@ -52,7 +52,7 @@ object ScalaJSDeps {
   }
 
   def playJson: Deps = {
-    libraryDependencies ++= Seq("com.typesafe.play" %%% "play-json" % "2.6.0" )
+    libraryDependencies ++= Seq("com.typesafe.play" %%% "play-json" % "2.6.7")
   }
 
   def boopickle: Deps = {

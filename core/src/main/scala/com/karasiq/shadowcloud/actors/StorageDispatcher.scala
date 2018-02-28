@@ -100,8 +100,8 @@ private final class StorageDispatcher(storageId: StorageId, storageProps: Storag
     // -----------------------------------------------------------------------
     // Storage health
     // -----------------------------------------------------------------------
-    case GetHealth(check) ⇒
-      if (check) {
+    case GetHealth(checkNow) ⇒
+      if (checkNow) {
         val future = GetHealth.wrapFuture(storageId, healthProvider.health)
         future.pipeTo(self).pipeTo(sender())
       } else {

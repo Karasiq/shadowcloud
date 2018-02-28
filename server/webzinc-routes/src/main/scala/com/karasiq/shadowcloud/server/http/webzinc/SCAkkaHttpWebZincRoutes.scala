@@ -54,7 +54,7 @@ trait SCAkkaHttpWebZincRoutes { self: SCAkkaHttpFileRoutes with SCAkkaHttpApiRou
           .filter(_.nonEmpty)
           .getOrElse(url)
 
-        (fileName, response.entity/*.withoutSizeLimit()*/.dataBytes.mapMaterializedValue(_ ⇒ NotUsed))
+        (fileName, response.entity.withoutSizeLimit().dataBytes.mapMaterializedValue(_ ⇒ NotUsed))
       }
     }
 

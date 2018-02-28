@@ -62,7 +62,7 @@ object ProjectDeps {
   )
 
   def playJson: Deps = Seq(
-    "com.typesafe.play" %% "play-json" % "2.6.0"
+    "com.typesafe.play" %% "play-json" % "2.6.7"
   )
 
   def boopickle: Deps = Seq(

@@ -32,6 +32,7 @@ class PlaintextMetadataParser(config: Config) extends MetadataParser {
     Flow[ByteString]
       .via(ByteStreams.truncate(settings.sizeLimit))
       .via(ByteStreams.concat)
+      .filter(_.nonEmpty)
       .map { bytes ⇒
         val preview = Utils.takeWords(bytes.utf8String, settings.sizeLimit)
         Metadata(Some(Tag("markdown", "plaintext", Tag.Disposition.PREVIEW)), Metadata.Value.Text(Metadata.Text("text/plain", preview)))

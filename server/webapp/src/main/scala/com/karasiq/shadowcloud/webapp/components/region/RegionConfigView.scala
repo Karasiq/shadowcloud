@@ -33,7 +33,7 @@ object RegionConfigView {
 
 class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionContext: RegionContext) extends BootstrapHtmlComponent {
   private[this] lazy val regionStatus = regionContext.region(regionId)
-  private[this] lazy val regionHealth = RxWithKey(regionStatus, RegionHealth.empty)(r ⇒ context.api.getRegionHealth(r.regionId))
+
   private[this] lazy val compactStarted = Var(false)
   private[this] lazy val compactReport = Var(Map.empty: Map[StorageId, SyncReport])
   private[this] lazy val gcStarted = Var(false)
@@ -62,6 +62,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
   }
 
   private[this] def renderRegionHealth() = {
+    val regionHealth = RxWithKey(regionStatus, RegionHealth.empty)(r ⇒ context.api.getRegionHealth(r.regionId))
     HealthView(regionHealth.toRx)
   }
 
@@ -76,12 +77,13 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
       }
     }
 
+    val gcBlocked = Rx(gcStarted() || compactStarted() || repairStarted())
     div(
       Rx {
         val buttonStyle = if (gcAnalysed()) ButtonStyle.danger else ButtonStyle.warning
         Button(buttonStyle, ButtonSize.extraSmall)(
-          AppIcons.delete, context.locale.collectGarbage, "disabled".classIf(gcStarted),
-          onclick := Callback.onClick(_ ⇒ if (!gcStarted.now) startGC(delete = gcAnalysed.now))
+          AppIcons.delete, context.locale.collectGarbage, "disabled".classIf(gcBlocked),
+          onclick := Callback.onClick(_ ⇒ if (!gcBlocked.now) startGC(delete = gcAnalysed.now))
         )
       },
       div(gcReport.map[Frag] {

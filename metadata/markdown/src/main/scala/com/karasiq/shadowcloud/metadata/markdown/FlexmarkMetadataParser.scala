@@ -45,6 +45,7 @@ private[markdown] class FlexmarkMetadataParser(config: Config) extends MetadataP
   def parseMetadata(name: String, mime: String) = {
     Flow[ByteString]
       .via(ByteStreams.concat)
+      .filter(_.nonEmpty)
       .map { bytes ⇒
         val markdownStr = bytes.utf8String
         val html = renderer.render(parser.parse(markdownStr))

@@ -25,11 +25,11 @@ object WebDeps {
     def style: String ="""
         |.glyphicon {
         |  margin-right: 3px;
-        |};
+        |}
         |
         |.sc-main-container {
         |  margin-bottom: 20px;
-        |};
+        |}
       """.stripMargin
   }
 

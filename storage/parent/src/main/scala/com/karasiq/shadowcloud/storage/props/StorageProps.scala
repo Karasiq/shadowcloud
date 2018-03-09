@@ -87,7 +87,7 @@ object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplic
     require(limitSpace.forall(_ >= 0), "Limit space should be >= 0")
     require(useSpacePercent >= 0 && useSpacePercent <= 100, "Space percent should be between 0 and 100")
 
-    def isEmpty: Boolean = limitSpace.isEmpty
+    def isEmpty: Boolean = limitSpace.isEmpty && useSpacePercent >= 100
 
     override def toString: String = {
       "Quota(" + useSpacePercent + "%" + limitSpace.fold("")(bs ⇒ " of " + MemorySize(bs)) + ")"

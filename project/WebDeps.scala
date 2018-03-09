@@ -28,7 +28,7 @@ object WebDeps {
         |}
         |
         |.sc-main-container {
-        |  margin-bottom: 20px;
+        |  margin-bottom: 100px;
         |}
       """.stripMargin
   }

@@ -50,6 +50,9 @@ object SCDesktopMain extends App {
 
   // Start server
   val bindFuture = Http().bindAndHandle(httpServer.scWebAppRoutes, httpServer.httpServerConfig.host, httpServer.httpServerConfig.port)
+  bindFuture.foreach { binding ⇒
+    actorSystem.log.info("shadowcloud server running on {}", binding.localAddress)
+  }
 
   new SCTrayIcon {
     def onOpen(): Unit = {

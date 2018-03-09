@@ -77,11 +77,12 @@ class StorageConfigView(storageId: StorageId)(implicit context: AppContext, regi
 
       Form(
         FormInput.textArea((), rows := 20, newConfigRx.reactiveInput, AppComponents.tabOverride),
-        Form.submit(context.locale.submit)(changed.reactiveShow, onclick := Callback.onClick { _ ⇒
+        Form.submit(context.locale.submit, changed.reactiveShow),
+        onsubmit := Callback.onSubmit { _ ⇒
           val newConfig = SerializedProps(storageStatus.storageProps.format, ByteString(newConfigRx.now))
           context.api.createStorage(storageId, newConfig)
             .foreach(_ ⇒ regionContext.updateStorage(storageId))
-        })
+        }
       )
     }
 

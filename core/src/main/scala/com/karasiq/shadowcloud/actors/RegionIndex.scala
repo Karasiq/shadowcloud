@@ -303,6 +303,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
           case StreamCompleted ⇒
             log.debug("Synchronization write completed")
+            if (state.index.pending.nonEmpty) log.warning("Pending index is not flushed: {}", state.index.pending)
             deferAsync(NotUsed)(_ ⇒ becomeCompactOrSnapshotOrFinish())
         }
 

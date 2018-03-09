@@ -3,7 +3,8 @@ package com.karasiq.shadowcloud.webapp.components.region
 import scala.concurrent.Future
 
 import akka.util.ByteString
-import rx.{Rx, Var}
+import rx._
+import rx.async._
 
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
@@ -15,7 +16,6 @@ import com.karasiq.shadowcloud.model.utils.RegionStateReport.RegionStatus
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
 import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
-import com.karasiq.shadowcloud.webapp.utils.RxWithKey
 
 object RegionConfigView {
   def apply(regionId: RegionId)(implicit context: AppContext, regionContext: RegionContext): RegionConfigView = {
@@ -37,8 +37,6 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
   private[this] lazy val compactStarted = Var(false)
   private[this] lazy val compactReport = Var(Map.empty: Map[StorageId, SyncReport])
   private[this] lazy val gcStarted = Var(false)
-  private[this] lazy val gcAnalysed = Var(false)
-  private[this] lazy val gcReport = Var(None: Option[GCReport])
   private[this] lazy val repairStarted = Var(false)
 
   def renderTag(md: ModifierT*): TagT = {
@@ -62,11 +60,14 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
   }
 
   private[this] def renderRegionHealth() = {
-    val regionHealth = RxWithKey(regionStatus, RegionHealth.empty)(r ⇒ context.api.getRegionHealth(r.regionId))
-    HealthView(regionHealth.toRx)
+    val regionHealth = context.api.getRegionHealth(regionId).toRx(RegionHealth.empty)
+    HealthView(regionHealth)
   }
 
   private[this] def renderGCButton() = {
+    val gcAnalysed = Var(false)
+    val gcReport = Var(None: Option[GCReport])
+
     def startGC(delete: Boolean) = {
       gcStarted() = true
       val future = context.api.collectGarbage(regionId, delete)
@@ -87,11 +88,8 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
         )
       },
       div(gcReport.map[Frag] {
-        case Some(report) ⇒
-          div(Alert(AlertStyle.warning, report.toString))
-
-        case None ⇒
-          Bootstrap.noContent
+        case Some(report) ⇒ div(Alert(AlertStyle.warning, report.toString))
+        case None ⇒ Bootstrap.noContent
       })
     )
   }
@@ -179,10 +177,11 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
       
       Form(
         FormInput.textArea((), rows := 20, newConfigRx.reactiveInput, placeholder := defaultConfig, AppComponents.tabOverride),
-        Form.submit(context.locale.submit, changed.reactiveShow, onclick := Callback.onClick { _ ⇒
+        Form.submit(context.locale.submit, changed.reactiveShow),
+        onsubmit := Callback.onSubmit { _ ⇒
           val newConfig = RegionConfigView.toRegionConfig(regionStatus, newConfigRx.now)
           context.api.createRegion(regionId, newConfig).foreach(_ ⇒ regionContext.updateRegion(regionId))
-        })
+        }
       )
     }
 

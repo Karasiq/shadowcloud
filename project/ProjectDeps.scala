@@ -140,7 +140,7 @@ object ProjectDeps {
   )
 
   def webzinc: Deps = {
-    val version = "1.0.7"
+    val version = "1.0.8"
     Seq(
       "com.github.karasiq" %% "webzinc" % version,
       "com.github.karasiq" %% "webzinc-htmlunit" % version

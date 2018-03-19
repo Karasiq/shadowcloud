@@ -9,6 +9,7 @@ import akka.actor.{ActorLogging, OneForOneStrategy, Props, Status, SupervisorStr
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import akka.util.Timeout
 
+import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.events.SupervisorEvents._
 import com.karasiq.shadowcloud.actors.internal.RegionTracker
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
@@ -55,7 +56,11 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
   // Settings
   // -----------------------------------------------------------------------
   private[this] implicit val timeout: Timeout = Timeout(10 seconds)
-  val persistenceId: String = "regions"
+  private[this] implicit lazy val sc = ShadowCloud()
+
+  override def persistenceId: String = "regions"
+  override def journalPluginId: String = sc.config.persistence.journalPlugin
+  override def snapshotPluginId: String = sc.config.persistence.snapshotPlugin
 
   // -----------------------------------------------------------------------
   // Recover

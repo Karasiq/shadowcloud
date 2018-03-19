@@ -59,6 +59,8 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
                                         storageProps: StorageProps, repository: Repository[SequenceNr])
   extends PersistentActor with ActorLogging {
 
+  import RegionIndex._
+
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
@@ -66,10 +68,8 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
   import context.dispatcher
   private[this] implicit val materializer = ActorMaterializer()
-  private[this] val sc = ShadowCloud()
+  private[this] implicit val sc = ShadowCloud()
   private[this] val config = sc.configs.storageConfig(storageId, storageProps)
-
-  import RegionIndex._
 
   private[this] object state {
     val indexId = RegionIndexId(storageId, regionId)
@@ -89,6 +89,8 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
     }
   }
 
+  override val journalPluginId: String = sc.config.persistence.journalPlugin
+  override val snapshotPluginId: String = sc.config.persistence.snapshotPlugin
   override val persistenceId: String = state.indexId.toPersistenceId
 
   // -----------------------------------------------------------------------

@@ -156,7 +156,7 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
   // Keys
   // -----------------------------------------------------------------------
   def getKeys() = {
-    sc.keys.provider.getKeyChain().map(_.withoutKeys)
+    sc.keys.provider.getKeyChain() // .map(_.withoutKeys)
   }
 
   def modifyKey(keyId: KeyId, regionSet: Set[RegionId], forEncryption: Boolean, forDecryption: Boolean) = {

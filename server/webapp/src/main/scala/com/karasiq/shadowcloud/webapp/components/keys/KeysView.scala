@@ -15,7 +15,7 @@ import com.karasiq.shadowcloud.webapp.components.common.AppComponents
 import com.karasiq.shadowcloud.webapp.components.region.RegionContext
 import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
-import com.karasiq.shadowcloud.webapp.utils.ExportUtils
+import com.karasiq.shadowcloud.webapp.utils.{Blobs, ExportUtils}
 
 object KeysView {
   def apply()(implicit context: AppContext, kc: KeysContext, rc: RegionContext): KeysView = {
@@ -56,19 +56,6 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
   }
 
   private[this] def renderAddButtons(): TagT = {
-    def showExportDialog(key: KeySet): Unit = {
-      val keyString = ExportUtils.encodeKey(key)
-      Modal()
-        .withTitle(context.locale.exportKey)
-        .withBody(FormInput.textArea("", keyString, rows := 20, readonly, onclick := { (e: MouseEvent) ⇒
-          val textArea = e.target.asInstanceOf[TextArea]
-          textArea.focus()
-          textArea.select()
-        }))
-        .withButtons(AppComponents.modalClose())
-        .show(backdrop = false)
-    }
-
     def showGenerateDialog(): Unit = {
       def doGenerate(propsString: String): Unit = {
         val props = SerializedProps(SerializedProps.DefaultFormat, ByteString(propsString))
@@ -125,6 +112,27 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
     ButtonGroup(ButtonGroupSize.default, generateButton, importButton)
   }
 
+  private[this] def showExportDialog(key: KeySet): Unit = {
+    val keyString = ExportUtils.encodeKey(key)
+
+    def downloadKey(): Unit = {
+      Blobs.saveBlob(Blobs.fromString(keyString, "application/json"), s"${key.id}.json")
+    }
+
+    Modal()
+      .withTitle(context.locale.exportKey)
+      .withBody(FormInput.textArea("", keyString, rows := 20, readonly, onclick := { (e: MouseEvent) ⇒
+        val textArea = e.target.asInstanceOf[TextArea]
+        textArea.focus()
+        textArea.select()
+      }))
+      .withButtons(
+        Button(ButtonStyle.success)(context.locale.downloadFile, onclick := Callback.onClick(_ ⇒ downloadKey())),
+        AppComponents.modalClose()
+      )
+      .show(backdrop = false)
+  }
+
   private[this] def showKeyDialog(key: KeySet, regionSet: RegionSet, forEncryption: Boolean, forDecryption: Boolean): Unit = {
     def updatePermissions(regionSet: RegionSet, forEncryption: Boolean, forDecryption: Boolean): Unit = {
       context.api.modifyKey(key.id, regionSet, forEncryption, forDecryption).foreach(_ ⇒ kc.updateAll())
@@ -156,7 +164,10 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
         GridSystem.mkRow(renderKeyInfo()),
         GridSystem.mkRow(renderPermissions())
       )
-      .withButtons(AppComponents.modalClose())
+      .withButtons(
+        Button(ButtonStyle.warning)(context.locale.exportKey, onclick := Callback.onClick(_ ⇒ showExportDialog(key))),
+        AppComponents.modalClose()
+      )
       .show()
   }
 }

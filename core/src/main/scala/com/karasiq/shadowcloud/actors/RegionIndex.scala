@@ -68,11 +68,12 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
   import context.dispatcher
   private[this] implicit val materializer = ActorMaterializer()
-  private[this] implicit val sc = ShadowCloud()
-  private[this] val config = sc.configs.storageConfig(storageId, storageProps)
+  private[this] implicit lazy val sc = ShadowCloud()
+  private[this] lazy val config = sc.configs.storageConfig(storageId, storageProps)
 
   private[this] object state {
     val indexId = RegionIndexId(storageId, regionId)
+    val persistenceId = indexId.toPersistenceId
 
     val index = IndexMerger.sequential()
     val streams = IndexRepositoryStreams(regionId, config)
@@ -89,9 +90,9 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
     }
   }
 
-  override val journalPluginId: String = sc.config.persistence.journalPlugin
-  override val snapshotPluginId: String = sc.config.persistence.snapshotPlugin
-  override val persistenceId: String = state.indexId.toPersistenceId
+  override def journalPluginId: String = sc.config.persistence.journalPlugin
+  override def snapshotPluginId: String = sc.config.persistence.snapshotPlugin
+  override def persistenceId: String = state.persistenceId
 
   // -----------------------------------------------------------------------
   // Local operations

@@ -11,7 +11,7 @@ import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.crypto._
-import com.karasiq.shadowcloud.model.keys.{KeyChain, KeySet}
+import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyProps, KeySet}
 
 private[kryo] final class SCKryoRegistrar extends IKryoRegistrar {
   def apply(kryo: Kryo): Unit = {
@@ -24,15 +24,15 @@ private[kryo] final class SCKryoRegistrar extends IKryoRegistrar {
       classOf[FolderIndex], classOf[ChunkIndexDiff], classOf[Data], classOf[File], classOf[Folder], classOf[FolderDiff],
       classOf[FolderIndexDiff], classOf[IndexDiff], classOf[Path], classOf[SerializedProps], classOf[HashingMethod], classOf[EncryptionMethod],
       classOf[SignMethod], classOf[SymmetricEncryptionParameters], classOf[AsymmetricEncryptionParameters], classOf[SignParameters], classOf[KeySet],
-      classOf[KeyChain]
+      classOf[KeyChain], classOf[KeyProps], classOf[IndexData]
     ))
   }
   
   @inline
   private[this] def register[T: ClassTag](kryo: Kryo, serializer: chill.KSerializer[T]): Unit = {
     if (!kryo.alreadyRegistered[T]) {
-      kryo.forClass(serializer)
-      kryo.forSubclass(serializer)
+      kryo.forClass[T](serializer)
+      kryo.forSubclass[T](serializer)
     }
   }
 }

@@ -14,7 +14,7 @@ import com.karasiq.shadowcloud.exceptions.CryptoException
 import com.karasiq.shadowcloud.model.crypto.{AsymmetricEncryptionParameters, EncryptionMethod, EncryptionParameters, SymmetricEncryptionParameters}
 import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyId, KeySet}
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
-import com.karasiq.shadowcloud.serialization.SerializationModule
+import com.karasiq.shadowcloud.serialization.IndexSerialization
 import com.karasiq.shadowcloud.serialization.protobuf.index.EncryptedIndexData
 
 private[shadowcloud] trait IndexEncryption {
@@ -30,7 +30,7 @@ private[shadowcloud] object IndexEncryption {
   type PlaintextT = ByteString
   type CiphertextT = EncryptedIndexData
 
-  def apply(cryptoModules: CryptoModuleRegistry, serialization: SerializationModule): IndexEncryption = {
+  def apply(cryptoModules: CryptoModuleRegistry, serialization: IndexSerialization): IndexEncryption = {
     new DefaultIndexEncryption(cryptoModules, serialization)
   }
   
@@ -59,7 +59,7 @@ private[shadowcloud] object IndexEncryption {
 }
 
 private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoModuleRegistry,
-                                                        serialization: SerializationModule) extends IndexEncryption {
+                                                        serialization: IndexSerialization) extends IndexEncryption {
   private[this] lazy val secureRandom = new SecureRandom()
 
   def encrypt(plaintext: ByteString, dataEncMethod: EncryptionMethod, keys: KeyChain): EncryptedIndexData = {
@@ -88,7 +88,7 @@ private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoMod
       val dataNonce = generateNonce(staticKeys.encryption)
       val keyEncParameters = IndexEncryption.updateNonce(staticKeys.encryption, dataNonce)
 
-      val headerCiphertext = keyEncModule.encrypt(serialization.toBytes(dataEncParameters), keyEncParameters)
+      val headerCiphertext = keyEncModule.encrypt(serialization.wrapKey(dataEncParameters), keyEncParameters)
       val header = EncryptedIndexData.Header(
         keyHash = IndexEncryption.getKeyHash(encData.id, staticKeys.id),
         nonce = dataNonce,
@@ -120,7 +120,7 @@ private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoMod
     val keyEncParameters = IndexEncryption.updateNonce(keySet.encryption, header.nonce)
     val keyEncModule = cryptoModules.encryptionModule(keyEncParameters.method)
 
-    val dataEncParameters = serialization.fromBytes[EncryptionParameters](keyEncModule.decrypt(header.data, keyEncParameters))
+    val dataEncParameters = serialization.unwrapKey(keyEncModule.decrypt(header.data, keyEncParameters))
     val dataEncModule = cryptoModules.encryptionModule(dataEncParameters.method)
 
     dataEncModule.decrypt(data.data, dataEncParameters)

@@ -6,6 +6,7 @@ import play.api.libs.json._
 import com.karasiq.shadowcloud.api.SCApiEncoding
 import com.karasiq.shadowcloud.model.{File, Path}
 import com.karasiq.shadowcloud.model.utils.IndexScope
+import com.karasiq.shadowcloud.serialization.json.SCJsonEncoders
 
 trait SCJsonEncoding extends SCApiEncoding {
   type ImplicitsT = SCJsonEncoders.type

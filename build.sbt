@@ -82,6 +82,16 @@ lazy val testUtilsJVM = testUtils.jvm
 
 lazy val testUtilsJS = testUtils.js 
 
+lazy val serialization = crossProject.crossType(CrossType.Pure)
+  .settings(commonSettings, name := "shadowcloud-serialization")
+  .jvmSettings(libraryDependencies ++= ProjectDeps.playJson ++ ProjectDeps.boopickle ++ ProjectDeps.kryo)
+  .jsSettings(ScalaJSDeps.playJson, ScalaJSDeps.boopickle)
+  .dependsOn(model, utils)
+
+lazy val serializationJVM = serialization.jvm
+
+lazy val serializationJS = serialization.js
+
 // -----------------------------------------------------------------------
 // Core
 // -----------------------------------------------------------------------
@@ -89,9 +99,9 @@ lazy val core = project
   .settings(commonSettings)
   .settings(
     name := "shadowcloud-core",
-    libraryDependencies ++= ProjectDeps.akka.all ++ ProjectDeps.kryo
+    libraryDependencies ++= ProjectDeps.akka.all
   )
-  .dependsOn(modelJVM, utilsJVM, storageParent, cryptoParent, metadataParent, testUtilsJVM % "test")
+  .dependsOn(modelJVM, utilsJVM, serializationJVM, storageParent, cryptoParent, metadataParent, testUtilsJVM % "test")
 
 lazy val persistence = project
   .settings(commonSettings)
@@ -206,9 +216,9 @@ lazy val markdownMetadata = metadataPlugin("markdown")
 // -----------------------------------------------------------------------
 lazy val autowireApi = (crossProject.crossType(CrossType.Pure) in (file("server") / "autowire-api"))
   .settings(commonSettings)
-  .jvmSettings(libraryDependencies ++= ProjectDeps.autowire ++ ProjectDeps.playJson ++ ProjectDeps.boopickle ++ ProjectDeps.scalaTest.map(_ % "test"))
-  .jsSettings(ScalaJSDeps.autowire, ScalaJSDeps.playJson, ScalaJSDeps.boopickle, ScalaJSDeps.browserDom, ScalaJSDeps.scalaTest)
-  .dependsOn(model)
+  .jvmSettings(libraryDependencies ++= ProjectDeps.autowire ++ ProjectDeps.scalaTest.map(_ % "test"))
+  .jsSettings(ScalaJSDeps.autowire, ScalaJSDeps.browserDom, ScalaJSDeps.scalaTest)
+  .dependsOn(model, serialization)
 
 lazy val autowireApiJVM = autowireApi.jvm
 

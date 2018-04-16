@@ -35,7 +35,6 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
   private[this] lazy val regionStatus = regionContext.region(regionId)
 
   private[this] lazy val compactStarted = Var(false)
-  private[this] lazy val compactReport = Var(Map.empty: Map[StorageId, SyncReport])
   private[this] lazy val gcStarted = Var(false)
   private[this] lazy val repairStarted = Var(false)
 
@@ -95,6 +94,8 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
   }
 
   private[this] def renderCompactButton() = {
+    val compactReport = Var(Map.empty[StorageId, SyncReport])
+
     def startCompact() = {
       compactStarted() = true
       val future = context.api.compactIndexes(regionId)

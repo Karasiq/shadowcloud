@@ -3,8 +3,8 @@ package com.karasiq.shadowcloud.webapp.components
 import play.api.libs.json.Json
 import rx.{Ctx, Rx, Var}
 
-import com.karasiq.shadowcloud.api.json.SCJsonEncoders
 import com.karasiq.shadowcloud.model.{Path, RegionId}
+import com.karasiq.shadowcloud.serialization.json.SCJsonEncoders
 
 private[webapp] object SCContextBinding {
   def apply()(implicit ctxOwner: Ctx.Owner): SCContextBinding = {

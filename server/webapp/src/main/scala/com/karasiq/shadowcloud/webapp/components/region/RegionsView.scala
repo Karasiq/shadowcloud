@@ -16,7 +16,7 @@ object RegionsView {
     new RegionsView
   }
 
-  private def newRegionName()(implicit rc: RegionContext): RegionId = {
+  private def newRegionId()(implicit rc: RegionContext): RegionId = {
     s"region-${rc.regions.now.regions.size}"
   }
 }
@@ -44,12 +44,12 @@ class RegionsView(implicit context: AppContext, regionContext: RegionContext) ex
     }
 
     def showCreateDialog() = {
-      val newRegionNameRx = Var(RegionsView.newRegionName())
+      val newRegionIdRx = Var(RegionsView.newRegionId())
       Modal()
         .withTitle(context.locale.createRegion)
-        .withBody(Form(FormInput.text(context.locale.regionId, newRegionNameRx.reactiveInput)))
+        .withBody(Form(FormInput.text(context.locale.regionId, newRegionIdRx.reactiveInput)))
         .withButtons(
-          AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ doCreate(newRegionNameRx.now /* Utils.toSafeIdentifier(newRegionNameRx.now) */))),
+          AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ doCreate(newRegionIdRx.now /* Utils.toSafeIdentifier(newRegionNameRx.now) */))),
           AppComponents.modalClose()
         )
         .show()

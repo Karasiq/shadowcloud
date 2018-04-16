@@ -1,11 +1,11 @@
 package com.karasiq.shadowcloud.serialization.kryo
 
+import scala.language.postfixOps
+
 import akka.util.ByteString
 import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.{Input, Output}
 import com.twitter.chill
-
-import scala.language.postfixOps
 
 private[kryo] final class ByteStringSerializer extends chill.KSerializer[ByteString](false, true) {
   def write(kryo: Kryo, output: Output, bs: ByteString): Unit = {

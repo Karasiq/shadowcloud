@@ -2,13 +2,12 @@ package com.karasiq.shadowcloud.webapp.utils
 
 import play.api.libs.json.Json
 
-import com.karasiq.shadowcloud.api.json.SCJsonEncoders
 import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.model.keys.KeySet
+import com.karasiq.shadowcloud.serialization.json.SCJsonEncoders
 
 object ExportUtils {
-  private[this] object JsonEncoders extends SCJsonEncoders
-  import JsonEncoders._
+  import SCJsonEncoders._
 
   def encodeKey(key: KeySet): String = {
     Json.prettyPrint(Json.toJson(key))

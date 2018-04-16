@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.api.boopickle
+package com.karasiq.shadowcloud.serialization.boopickle
 
 import akka.Done
 import akka.util.ByteString
@@ -6,7 +6,7 @@ import boopickle._
 import com.trueaccord.scalapb.{GeneratedEnum, GeneratedEnumCompanion, GeneratedMessage, GeneratedMessageCompanion}
 
 import com.karasiq.shadowcloud.config.SerializedProps
-import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
+import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex, IndexData}
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.crypto._
@@ -69,6 +69,7 @@ trait SCBooPickleEncoders extends Base with BasicImplicitPicklers with Transform
   implicit val folderIndexDiffFormat = generatePickler[FolderIndexDiff]
   implicit val chunkIndexDiffFormat = generatePickler[ChunkIndexDiff]
   implicit val indexDiffFormat = generatePickler[IndexDiff]
+  implicit val indexDataFormat = generatePickler[IndexData]
   implicit val fileAvailabilityFormat = generatePickler[FileAvailability]
   implicit val storageGCStateFormat = generatePickler[StorageGCState]
   implicit val regionGCStateFormat = generatePickler[RegionGCState]

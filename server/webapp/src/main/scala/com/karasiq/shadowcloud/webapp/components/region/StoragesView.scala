@@ -18,7 +18,7 @@ object StoragesView {
     new StoragesView
   }
 
-  private def newStorageName()(implicit regionContext: RegionContext): StorageId = {
+  private def newStorageId()(implicit regionContext: RegionContext): StorageId = {
     s"storage-${regionContext.regions.now.storages.size}"
   }
 }
@@ -47,7 +47,7 @@ class StoragesView(implicit context: AppContext, regionContext: RegionContext) e
     }
 
     def showCreateDialog() = {
-      val newStorageNameRx = Var(StoragesView.newStorageName())
+      val newStorageIdRx = Var(StoragesView.newStorageId())
       val propsRx = Var("")
 
       val storageTypeSelect = {
@@ -68,13 +68,13 @@ class StoragesView(implicit context: AppContext, regionContext: RegionContext) e
       Modal()
         .withTitle(context.locale.createStorage)
         .withBody(Form(
-          FormInput.text(context.locale.regionId, newStorageNameRx.reactiveInput),
+          FormInput.text(context.locale.storageId, newStorageIdRx.reactiveInput),
           storageTypeSelect,
           FormInput.textArea(context.locale.config, rows := 20, Rx(placeholder := propsRx()).auto,
             AppComponents.tabOverride, propsRx.reactiveInput)
         ))
         .withButtons(
-          AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ doCreate(newStorageNameRx.now, propsRx.now))),
+          AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ doCreate(newStorageIdRx.now, propsRx.now))),
           AppComponents.modalClose()
         )
         .show()

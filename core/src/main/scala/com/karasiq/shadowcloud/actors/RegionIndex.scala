@@ -215,7 +215,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
           deferAsync(NotUsed)(_ ⇒ startRead(loadedKeys))
       }
 
-      def startRead(keys: Set[SequenceNr]): Unit = {
+      def startRead(storageKeys: Set[SequenceNr]): Unit = {
         def receiveRead: Receive = {
           case ReadSuccess(indexIOResult @ IndexIOResult(sequenceNr, data, ioResult)) ⇒
             if (data.regionId == regionId && data.sequenceNr == sequenceNr) {
@@ -260,15 +260,15 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
           becomeOrDefault(receiveRead)
         }
 
-        val deletedDiffs = state.index.diffs.keySet.diff(keys)
-        if (deletedDiffs.nonEmpty) {
+        val deletedDiffs = state.index.diffs.keySet.diff(storageKeys)
+        if (deletedDiffs.nonEmpty && !config.index.keepDeleted) {
           log.warning("Diffs deleted: {}", deletedDiffs)
           state.pendingSyncReport = state.pendingSyncReport
             .copy(deleted = state.pendingSyncReport.deleted ++ deletedDiffs)
           persistAsync(IndexDeleted(regionId, deletedDiffs.toSet))(updateState)
         }
 
-        deferAsync(NotUsed)(_ ⇒ becomeRead(keys))
+        deferAsync(NotUsed)(_ ⇒ becomeRead(storageKeys))
       }
 
       loadRepositoryKeys()
@@ -369,7 +369,10 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
         val index = IndexMerger.restore(indexState)
         log.debug("Compacting diffs: {}", index.diffs)
 
-        val diffs = index.diffs.toVector
+        val diffsToDelete =
+          if (config.index.compactDeleteOld) index.diffs.keys.toVector
+          else Vector.empty
+
         val newDiff = IndexMerger.compact(index)
         val newSequenceNr = index.lastSequenceNr + 1
 
@@ -387,8 +390,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
         writeResult.flatMapConcat(wr ⇒ wr.ioResult match {
           case StorageIOResult.Success(_, _) ⇒
-            Source(diffs)
-              .map(_._1)
+            Source(diffsToDelete)
               .via(state.streams.delete(repository))
               .log("compact-delete")
               .filter(_.ioResult.isSuccess)

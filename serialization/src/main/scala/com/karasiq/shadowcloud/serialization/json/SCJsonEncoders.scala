@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.api.json
+package com.karasiq.shadowcloud.serialization.json
 
 import akka.Done
 import akka.util.ByteString
@@ -7,7 +7,7 @@ import play.api.libs.json._
 
 import com.karasiq.common.encoding.{Base64, HexString}
 import com.karasiq.shadowcloud.config.SerializedProps
-import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
+import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex, IndexData}
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.crypto._
@@ -34,7 +34,16 @@ trait SCJsonEncoders {
   implicit val hashingMethodFormat = Json.format[HashingMethod]
   implicit val symmetricEncryptionParametersFormat = Json.format[SymmetricEncryptionParameters]
   implicit val asymmetricEncryptionParametersFormat = Json.format[AsymmetricEncryptionParameters]
-  implicit val encryptionParametersFormat = Json.format[EncryptionParameters]
+  implicit val encryptionParametersFormat = Format[EncryptionParameters](
+    Reads(value ⇒ (value \ "_key_type").as[String] match {
+      case "symmetric" ⇒ symmetricEncryptionParametersFormat.reads(value)
+      case "asymmetric" ⇒ asymmetricEncryptionParametersFormat.reads(value)
+    }),
+    Writes {
+      case s: SymmetricEncryptionParameters ⇒ symmetricEncryptionParametersFormat.writes(s) + ("_key_type" → JsString("symmetric"))
+      case as: AsymmetricEncryptionParameters ⇒ asymmetricEncryptionParametersFormat.writes(as) + ("_key_type" → JsString("asymmetric"))
+    }
+  )
   implicit val signMethodFormat = Json.format[SignMethod]
   implicit val signParametersFormat = Json.format[SignParameters]
   implicit val timestampFormat = Json.format[Timestamp]
@@ -66,6 +75,7 @@ trait SCJsonEncoders {
   implicit val folderIndexDiffFormat = Json.format[FolderIndexDiff]
   implicit val chunkIndexDiffFormat = Json.format[ChunkIndexDiff]
   implicit val indexDiffFormat = Json.format[IndexDiff]
+  implicit val indexDataFormat = Json.format[IndexData]
   implicit val fileAvailabilityFormat = Json.format[FileAvailability]
   implicit val storageGCStateFormat = Json.format[StorageGCState]
   implicit val regionGCStateFormat = Json.format[RegionGCState]

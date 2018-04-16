@@ -313,7 +313,8 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
       }
 
       private[this] def getChunkPath(storage: RegionStorage, chunk: Chunk): ChunkPath = {
-        ChunkPath(regionId, storage.config.chunkKey(chunk))
+        val chunkKey = ChunkUtils.getChunkKeyMapper(config, storage.config)
+        ChunkPath(regionId, chunkKey(chunk))
       }
     }
 

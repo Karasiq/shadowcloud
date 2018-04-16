@@ -10,7 +10,7 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.utils.ChunkKeyMapper
 
 final case class StorageConfig(rootConfig: Config,
-                               chunkKey: ChunkKeyMapper,
+                               chunkKey: Option[ChunkKeyMapper],
                                healthCheckInterval: FiniteDuration,
                                index: StorageIndexConfig,
                                chunkIO: StorageChunkIOConfig) extends WrappedConfig
@@ -35,7 +35,7 @@ object StorageConfig extends WrappedConfigFactory[StorageConfig] with ConfigImpl
   def apply(config: Config): StorageConfig = {
     StorageConfig(
       config,
-      ChunkKeyMapper.forName(config.getString("chunk-key"), config),
+      config.optional(config ⇒ ChunkKeyMapper.forName(config.getString("chunk-key"), config)),
       config.getFiniteDuration("health-check-interval"),
       StorageIndexConfig(config.getConfig("index")),
       StorageChunkIOConfig(config.getConfig("chunk-io"))

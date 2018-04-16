@@ -2,9 +2,11 @@ package com.karasiq.shadowcloud.utils
 
 import akka.util.ByteString
 
+import com.karasiq.shadowcloud.config.{RegionConfig, StorageConfig}
 import com.karasiq.shadowcloud.exceptions.SCExceptions
 import com.karasiq.shadowcloud.model.{Chunk, Data}
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
+import com.karasiq.shadowcloud.storage.utils.ChunkKeyMapper
 
 private[shadowcloud] object ChunkUtils {
   def getPlainBytes(modules: CryptoModuleRegistry, chunk: Chunk): ByteString = {
@@ -53,5 +55,11 @@ private[shadowcloud] object ChunkUtils {
     } else {
       existingChunk.copy(data = newChunk.data.copy(encrypted = ByteString.empty))
     }
+  }
+
+  def getChunkKeyMapper(regionConfig: RegionConfig, storageConfig: StorageConfig) = {
+    regionConfig.chunkKey
+      .orElse(storageConfig.chunkKey)
+      .getOrElse(ChunkKeyMapper.hash)
   }
 }

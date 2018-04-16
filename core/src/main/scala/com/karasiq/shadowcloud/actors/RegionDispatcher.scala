@@ -114,7 +114,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
   // -----------------------------------------------------------------------
   // Actors
   // -----------------------------------------------------------------------
-  private[this] val gcActor = context.actorOf(RegionGC.props(regionId, regionConfig.garbageCollector), "region-gc")
+  private[this] val gcActor = context.actorOf(RegionGC.props(regionId, regionConfig), "region-gc")
 
   // -----------------------------------------------------------------------
   // Streams

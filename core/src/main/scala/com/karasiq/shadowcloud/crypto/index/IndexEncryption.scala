@@ -15,7 +15,7 @@ import com.karasiq.shadowcloud.model.crypto.{AsymmetricEncryptionParameters, Enc
 import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyId, KeySet}
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 import com.karasiq.shadowcloud.serialization.IndexSerialization
-import com.karasiq.shadowcloud.serialization.protobuf.index.EncryptedIndexData
+import com.karasiq.shadowcloud.serialization.protobuf.index.{EncryptedIndexData, SerializedKeyData}
 
 private[shadowcloud] trait IndexEncryption {
   def encrypt(plaintext: PlaintextT, dataEncMethod: EncryptionMethod, keys: KeyChain): CiphertextT
@@ -88,7 +88,8 @@ private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoMod
       val dataNonce = generateNonce(staticKeys.encryption)
       val keyEncParameters = IndexEncryption.updateNonce(staticKeys.encryption, dataNonce)
 
-      val headerCiphertext = keyEncModule.encrypt(serialization.wrapKey(dataEncParameters), keyEncParameters)
+      val serializedKey = serialization.wrapKey(dataEncParameters)
+      val headerCiphertext = keyEncModule.encrypt(ByteString(serializedKey.toByteArray), keyEncParameters)
       val header = EncryptedIndexData.Header(
         keyHash = IndexEncryption.getKeyHash(encData.id, staticKeys.id),
         nonce = dataNonce,
@@ -120,7 +121,8 @@ private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoMod
     val keyEncParameters = IndexEncryption.updateNonce(keySet.encryption, header.nonce)
     val keyEncModule = cryptoModules.encryptionModule(keyEncParameters.method)
 
-    val dataEncParameters = serialization.unwrapKey(keyEncModule.decrypt(header.data, keyEncParameters))
+    val decryptedKey = SerializedKeyData.parseFrom(keyEncModule.decrypt(header.data, keyEncParameters).toArray)
+    val dataEncParameters = serialization.unwrapKey(decryptedKey)
     val dataEncModule = cryptoModules.encryptionModule(dataEncParameters.method)
 
     dataEncModule.decrypt(data.data, dataEncParameters)

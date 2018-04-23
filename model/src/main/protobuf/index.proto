@@ -20,6 +20,11 @@ message EncryptedIndexData {
 }
 
 message SerializedIndexData {
-    string format = 2;
-    bytes data = 1 [(scalapb.field).type = "akka.util.ByteString"];
+    string format = 1;
+    bytes data = 2 [(scalapb.field).type = "akka.util.ByteString"];
+}
+
+message SerializedKeyData {
+    string format = 1;
+    bytes data = 2 [(scalapb.field).type = "akka.util.ByteString"];
 }

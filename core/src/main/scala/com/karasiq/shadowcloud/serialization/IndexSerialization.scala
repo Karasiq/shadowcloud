@@ -8,13 +8,13 @@ import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.model.crypto.EncryptionParameters
 import com.karasiq.shadowcloud.serialization.boopickle.SCBooPickleEncoders
 import com.karasiq.shadowcloud.serialization.json.SCJsonEncoders
-import com.karasiq.shadowcloud.serialization.protobuf.index.SerializedIndexData
+import com.karasiq.shadowcloud.serialization.protobuf.index.{SerializedIndexData, SerializedKeyData}
 
 private[shadowcloud] trait IndexSerialization {
   def wrapIndexFrame(data: IndexData): SerializedIndexData
   def unwrapIndexFrame(data: SerializedIndexData): IndexData
-  def wrapKey(parameters: EncryptionParameters): ByteString
-  def unwrapKey(data: ByteString): EncryptionParameters
+  def wrapKey(parameters: EncryptionParameters): SerializedKeyData
+  def unwrapKey(data: SerializedKeyData): EncryptionParameters
 }
 
 private[shadowcloud] object IndexSerialization {
@@ -24,9 +24,6 @@ private[shadowcloud] object IndexSerialization {
 }
 
 private[shadowcloud] final class DefaultIndexSerialization(implicit sc: ShadowCloudExtension) extends IndexSerialization  {
-  private[this] val JsonPrefix = ByteString("{")
-  private[this] val BooPicklePrefix = ByteString("__boopickle")
-
   def wrapIndexFrame(data: IndexData): SerializedIndexData = {
     val format = sc.config.serialization.indexFormat
     val bytes = format match {
@@ -57,30 +54,35 @@ private[shadowcloud] final class DefaultIndexSerialization(implicit sc: ShadowCl
       Json.parse(data.data.toArray).as[IndexData]
   }
 
-  def wrapKey(parameters: EncryptionParameters): ByteString = {
-    sc.config.serialization.indexFormat match {
+  def wrapKey(parameters: EncryptionParameters): SerializedKeyData = {
+    val format = sc.config.serialization.indexFormat
+    val bytes = format match {
       case "default" | "" ⇒
         sc.serialization.toBytes(parameters)
 
       case "boopickle" ⇒
         import SCBooPickleEncoders._
-        BooPicklePrefix ++ ByteString(Pickle.intoBytes(parameters))
+        ByteString(Pickle.intoBytes(parameters))
 
       case "json" ⇒
         import SCJsonEncoders._
         ByteString(Json.toBytes(Json.toJson(parameters)))
     }
+    SerializedKeyData(format, bytes)
   }
 
-  def unwrapKey(data: ByteString): EncryptionParameters = {
-    if (data.startsWith(JsonPrefix)) {
-      import SCJsonEncoders._
-      Json.parse(data.toArray).as[EncryptionParameters]
-    } else if (data.startsWith(BooPicklePrefix)) {
-      import SCBooPickleEncoders._
-      Unpickle[EncryptionParameters].fromBytes(data.drop(BooPicklePrefix.length).toByteBuffer)
-    } else {
-      sc.serialization.fromBytes[EncryptionParameters](data)
+  def unwrapKey(data: SerializedKeyData): EncryptionParameters = {
+    data.format match {
+      case "default" | "" ⇒
+        sc.serialization.fromBytes[EncryptionParameters](data.data)
+
+      case "json" ⇒
+        import SCJsonEncoders._
+        Json.parse(data.data.toArray).as[EncryptionParameters]
+
+      case "boopickle" ⇒
+        import SCBooPickleEncoders._
+        Unpickle[EncryptionParameters].fromBytes(data.data.toByteBuffer)
     }
   }
 }

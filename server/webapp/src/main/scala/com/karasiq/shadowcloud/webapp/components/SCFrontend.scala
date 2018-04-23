@@ -1,5 +1,9 @@
 package com.karasiq.shadowcloud.webapp.components
 
+import scala.util.control.NonFatal
+
+import org.scalajs.dom
+
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
@@ -10,6 +14,7 @@ import com.karasiq.shadowcloud.webapp.components.region.{RegionContext, RegionsS
 import com.karasiq.shadowcloud.webapp.components.themes.ThemeSelector
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.controllers.{FileController, FolderController}
+import com.karasiq.shadowcloud.webapp.utils.RxLocation
 
 object SCFrontend {
   def apply()(implicit appContext: AppContext): SCFrontend = {
@@ -17,7 +22,7 @@ object SCFrontend {
   }
 }
 
-class SCFrontend()(implicit val context: AppContext) extends BootstrapComponent {
+class SCFrontend()(implicit val context: AppContext) {
   implicit val regionContext = RegionContext()
   implicit val keysContext = KeysContext()
 
@@ -34,11 +39,23 @@ class SCFrontend()(implicit val context: AppContext) extends BootstrapComponent 
 
   val themeSelector = ThemeSelector()
 
-  def render(md: ModifierT*) = {
-    Seq(
-      themeSelector,
-      renderNavigationBar().render(md:_*)
-    )
+  def init(): Unit = {
+    // Themes
+    try {
+      val themeCss = dom.document.head.querySelector("#sc-theme")
+      themeSelector.linkModifier.applyTo(themeCss)
+    } catch { case NonFatal(_) ⇒
+      themeSelector.applyTo(dom.document.head)
+    }
+
+    // Frontend
+    renderNavigationBar().applyTo(dom.document.body)
+
+    // Context binding
+    val contextBinding = SCContextBinding()
+    contextBinding.bindToFrontend(this)
+    contextBinding.bindToString(RxLocation().hash)
+    contextBinding.toTitleRx.foreach(title ⇒ dom.document.title = s"shadowcloud - $title")
   }
 
   def renderNavigationBar(): NavigationBar = {

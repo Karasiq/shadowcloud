@@ -43,7 +43,9 @@ class ThemeSelector extends BootstrapHtmlComponent {
     setTheme(ThemeSelector.Themes(nextIndex))
   }
 
+  lazy val linkModifier = Rx(href := s"themes/${currentTheme().toLowerCase}.css").auto
+
   def renderTag(md: ModifierT*): TagT = {
-    link(rel := "stylesheet", Rx(href := s"/themes/${currentTheme().toLowerCase}.css").auto)
+    link(rel := "stylesheet", linkModifier, md)
   }
 }

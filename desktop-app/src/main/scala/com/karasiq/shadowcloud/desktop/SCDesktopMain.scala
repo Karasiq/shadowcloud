@@ -6,7 +6,8 @@ import java.nio.file.{Files, Paths}
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{ConfigFactory, ConfigParseOptions}
+import com.typesafe.config.impl.{ConfigImpl, Parseable}
 
 import com.karasiq.common.configs.ConfigUtils
 import com.karasiq.shadowcloud.ShadowCloud
@@ -21,7 +22,11 @@ object SCDesktopMain extends App {
   private[this] val config = {
     val defaultConfig = ConfigFactory.defaultOverrides()
       .withFallback(ConfigFactory.defaultApplication())
-      .withFallback(ConfigFactory.defaultReference())
+      .withFallback {
+        // reference.conf without ".resolve()" workaround
+        val unresolvedResources = Parseable.newResources("reference.conf", ConfigParseOptions.defaults.setClassLoader(getClass.getClassLoader)).parse.toConfig
+        ConfigImpl.systemPropertiesAsConfig().withFallback(unresolvedResources)
+      }
 
     val serverAppConfig = {
       val fileConfig = {
@@ -44,7 +49,7 @@ object SCDesktopMain extends App {
   }
 
   implicit val actorSystem = ActorSystem("shadowcloud", config)
-  if (actorSystem.log.isDebugEnabled) actorSystem.logConfiguration()
+  // if (actorSystem.log.isDebugEnabled) actorSystem.logConfiguration() // log-config-on-start = on
 
   val sc = ShadowCloud(actorSystem)
   import sc.implicits.{executionContext, materializer}

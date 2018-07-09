@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.drive
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.language.postfixOps
+import scala.language.{implicitConversions, postfixOps}
 
 import akka.{Done, NotUsed}
 import akka.actor.{Actor, ActorLogging, Props, ReceiveTimeout}
@@ -36,7 +36,7 @@ object FileIOScheduler {
     override def toString: String = s"WriteData($offset, ${data.length} bytes)"
   }
   object WriteData extends MessageStatus[WriteData, Done] {
-    implicit def toChunkPath(wd: WriteData): ChunkPatch = ChunkPatch(wd.offset, wd.data)
+    implicit def toChunkPatch(wd: WriteData): ChunkPatch = ChunkPatch(wd.offset, wd.data)
   }
 
   final case class CutFile(size: Long) extends Message

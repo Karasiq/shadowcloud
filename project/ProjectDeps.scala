@@ -132,7 +132,13 @@ object ProjectDeps {
     "com.vladsch.flexmark" % "flexmark-all" % "0.28.4"
   )
 
+  // https://github.com/Karasiq/webzinc
   def webzinc: Deps = Seq(
     "com.github.karasiq" %% "webzinc" % "1.0.1"
+  )
+
+  // https://github.com/SerCeMan/jnr-fuse
+  def `jnr-fuse`: Deps = Seq(
+    "com.github.serceman" % "jnr-fuse" % "0.5.1"
   )
 }

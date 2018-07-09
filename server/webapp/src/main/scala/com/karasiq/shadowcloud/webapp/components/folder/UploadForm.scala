@@ -38,7 +38,8 @@ object UploadForm {
 class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, fileController: FileController) extends BootstrapHtmlComponent {
 
   import folderContext.{regionId, selected ⇒ selectedFolderPathRx}
-  private[this] val uploadQuota = SizeUnit.MB * 8
+  private[this] val maxUploads = 5
+  private[this] val maxUploadsSize = SizeUnit.MB * 8
   private[this] val uploadProgressBars = div().render
   private[this] val uploadQueue = Var(List.empty[dom.File])
   private[this] val uploading = Var(List.empty[dom.File])
@@ -107,12 +108,14 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
           limitUploads(list, newListSize, currentCount + 1)
       }
 
-      val nextUploadsLimit: Long = uploadQuota - uploading.now.map(_.size.toLong).sum
+      val nextUploadsLimit: Long = maxUploadsSize - uploading.now.map(_.size.toLong).sum
 
       val nextDownloads = uploadQueue.now
         .filterNot(uploading.now.contains)
 
-      val toUpload = limitUploads(nextDownloads, nextUploadsLimit)
+      val toUpload = limitUploads(nextDownloads, nextUploadsLimit, if (uploading.now.isEmpty) 1 else 0)
+        .take(maxUploads - uploading.now.length)
+
       (toUpload, nextDownloads.drop(toUpload.length))
     }
 

@@ -1,5 +1,6 @@
 package com.karasiq.shadowcloud.webapp.components.folder
 
+import scala.annotation.tailrec
 import scala.concurrent.Future
 
 import org.scalajs.dom
@@ -8,6 +9,7 @@ import rx.{Rx, Var}
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
+import com.karasiq.common.memory.SizeUnit
 import com.karasiq.shadowcloud.model.{File, Path, RegionId}
 import com.karasiq.shadowcloud.utils.Utils
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons, TextEditor}
@@ -34,7 +36,9 @@ object UploadForm {
 }
 
 class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, fileController: FileController) extends BootstrapHtmlComponent {
+
   import folderContext.{regionId, selected ⇒ selectedFolderPathRx}
+  private[this] val uploadQuota = SizeUnit.MB * 8
   private[this] val uploadProgressBars = div().render
   private[this] val uploadQueue = Var(List.empty[dom.File])
   private[this] val uploading = Var(List.empty[dom.File])
@@ -91,10 +95,26 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
   }
 
   private[this] def processQueue() = {
-    val toUploadN = 3 - uploading.now.length
-    val (toUpload, rest) = uploadQueue.now
-      .filterNot(uploading.now.contains)
-      .splitAt(toUploadN)
+    val (toUpload, rest) = {
+      @tailrec def limitUploads(list: Seq[dom.File], maxSize: Long, currentCount: Int = 0): Seq[dom.File] = {
+        val newListSize = list
+          .take(currentCount + 1)
+          .map(_.size.toLong).sum
+
+        if (newListSize > maxSize)
+          list.take(currentCount)
+        else
+          limitUploads(list, newListSize, currentCount + 1)
+      }
+
+      val nextUploadsLimit: Long = uploadQuota - uploading.now.map(_.size.toLong).sum
+
+      val nextDownloads = uploadQueue.now
+        .filterNot(uploading.now.contains)
+
+      val toUpload = limitUploads(nextDownloads, nextUploadsLimit)
+      (toUpload, nextDownloads.drop(toUpload.length))
+    }
 
     toUpload.foreach { file ⇒
       val parent: Path = selectedFolderPathRx.now

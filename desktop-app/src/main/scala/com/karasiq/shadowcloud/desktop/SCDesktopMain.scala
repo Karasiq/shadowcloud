@@ -19,7 +19,10 @@ object SCDesktopMain extends App {
   // Context
   // -----------------------------------------------------------------------
   private[this] val config = {
-    val defaultConfig = ConfigFactory.load()
+    val defaultConfig = ConfigFactory.defaultOverrides()
+      .withFallback(ConfigFactory.defaultApplication())
+      .withFallback(ConfigFactory.defaultReference())
+
     val serverAppConfig = {
       val fileConfig = {
         val optionalConfFile = Paths.get("shadowcloud.conf")
@@ -29,12 +32,14 @@ object SCDesktopMain extends App {
           ConfigUtils.emptyConfig
       }
 
-      val serverConfig = ConfigFactory.load("sc-desktop")
+      val desktopConfig = ConfigFactory.parseResourcesAnySyntax("sc-desktop")
+
       fileConfig
-        .withFallback(serverConfig)
+        .withFallback(desktopConfig)
         .withFallback(defaultConfig)
         .resolve()
     }
+
     serverAppConfig
   }
 

@@ -102,7 +102,7 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
           .take(currentCount + 1)
           .map(_.size.toLong).sum
 
-        if (newListSize > maxSize)
+        if (newListSize > maxSize || currentCount >= list.length)
           list.take(currentCount)
         else
           limitUploads(list, newListSize, currentCount + 1)
@@ -119,23 +119,25 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
       (toUpload, nextDownloads.drop(toUpload.length))
     }
 
-    toUpload.foreach { file ⇒
-      val parent: Path = selectedFolderPathRx.now
-      val (progressRx, fileFuture) = appContext.api.uploadFile(regionId, parent / file.name, file)
-      val progressBar = renderProgressBar(file.name, progressRx).render
+    if (toUpload.nonEmpty) {
+      toUpload.foreach { file ⇒
+        val parent: Path = selectedFolderPathRx.now
+        val (progressRx, fileFuture) = appContext.api.uploadFile(regionId, parent / file.name, file)
+        val progressBar = renderProgressBar(file.name, progressRx).render
 
-      uploadProgressBars.appendChild(progressBar)
-      fileFuture.onComplete { _ ⇒
-        uploading() = uploading.now.filterNot(_ == file)
-        uploadProgressBars.removeChild(progressBar)
-        progressRx.kill()
+        uploadProgressBars.appendChild(progressBar)
+        fileFuture.onComplete { _ ⇒
+          uploading() = uploading.now.filterNot(_ == file)
+          uploadProgressBars.removeChild(progressBar)
+          progressRx.kill()
+        }
+
+        fileFuture.foreach(fileController.addFile)
       }
 
-      fileFuture.foreach(fileController.addFile)
+      uploading() = uploading.now ++ toUpload
+      uploadQueue() = rest
     }
-
-    uploading() = uploading.now ++ toUpload
-    uploadQueue() = rest
   }
 }
 

@@ -25,6 +25,6 @@ private[bouncycastle] trait BCSymmetricKeys { self: EncryptionModule ⇒
   protected def generateBytes(size: Int): ByteString = {
     val result = new Array[Byte](size)
     secureRandom.nextBytes(result)
-    ByteString(result)
+    ByteString.fromArrayUnsafe(result)
   }
 }

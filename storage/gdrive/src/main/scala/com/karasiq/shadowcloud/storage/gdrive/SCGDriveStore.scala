@@ -78,7 +78,7 @@ class SCGDriveStore(storageId: StorageId, userId: String)(implicit sc: ShadowClo
     }
 
     private[this] def serialize(data: V): ByteString = {
-      ByteString(IOUtils.serialize(data))
+      ByteString.fromArrayUnsafe(IOUtils.serialize(data))
     }
 
     private[this] def deserialize(data: ByteString) = {

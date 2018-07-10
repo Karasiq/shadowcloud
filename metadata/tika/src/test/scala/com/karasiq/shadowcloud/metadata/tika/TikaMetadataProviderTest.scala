@@ -18,7 +18,7 @@ import com.karasiq.shadowcloud.test.utils.{ActorSpec, ActorSpecImplicits}
 class TikaMetadataProviderTest extends ActorSpec with ActorSpecImplicits with FlatSpecLike with SequentialNestedSuiteExecution {
   val testPdfName = "TypeClasses.pdf"
   val testPdfFile = new File(getClass.getClassLoader.getResource(testPdfName).toURI)
-  val testPdfBytes = ByteString(FileUtils.readFileToByteArray(testPdfFile))
+  val testPdfBytes = ByteString.fromArrayUnsafe(FileUtils.readFileToByteArray(testPdfFile))
 
   val tika = new Tika()
   val detector = TikaMimeDetector(tika)

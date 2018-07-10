@@ -39,7 +39,8 @@ private[libsodium] final class MultiPartHashModule(val method: HashingMethod, ne
 
     def finish(): ByteString = {
       requireInitialized()
-      ByteString(hasher.done())
+      val outArray = hasher.done()
+      ByteString.fromArrayUnsafe(outArray)
     }
 
     def reset(): Unit = {

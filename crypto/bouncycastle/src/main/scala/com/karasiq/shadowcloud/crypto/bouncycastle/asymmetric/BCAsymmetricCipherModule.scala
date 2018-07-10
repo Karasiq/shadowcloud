@@ -17,11 +17,11 @@ private[bouncycastle] trait BCAsymmetricBlockCipherStreamer extends EncryptionMo
     val blockSize = cipher.getInputBlockSize
     if (data.length <= blockSize) {
       // Single block
-      ByteString(cipher.processBlock(data.toArray, 0, data.length))
+      ByteString.fromArrayUnsafe(cipher.processBlock(data.toArray, 0, data.length))
     } else {
       // Split to blocks
       data.grouped(blockSize)
-        .map(block ⇒ ByteString(cipher.processBlock(block.toArray, 0, block.length)))
+        .map(block ⇒ ByteString.fromArrayUnsafe(cipher.processBlock(block.toArray, 0, block.length)))
         .fold(ByteString.empty)(_ ++ _)
     }
   }

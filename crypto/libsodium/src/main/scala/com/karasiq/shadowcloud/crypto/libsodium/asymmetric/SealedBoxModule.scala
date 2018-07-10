@@ -23,8 +23,8 @@ private[libsodium] final class SealedBoxModule(val method: EncryptionMethod) ext
     val keyPair = new KeyPair()
     AsymmetricEncryptionParameters(
       method,
-      publicKey = ByteString(keyPair.getPublicKey.toBytes),
-      privateKey = ByteString(keyPair.getPrivateKey.toBytes)
+      publicKey = ByteString.fromArrayUnsafe(keyPair.getPublicKey.toBytes),
+      privateKey = ByteString.fromArrayUnsafe(keyPair.getPrivateKey.toBytes)
     )
   }
 
@@ -36,13 +36,13 @@ private[libsodium] final class SealedBoxModule(val method: EncryptionMethod) ext
     val asymmetricParameters = EncryptionParameters.asymmetric(parameters)
     val sealedBox = new SealedBox(asymmetricParameters.publicKey.toArray)
     val outArray = sealedBox.encrypt(data.toArray)
-    ByteString(outArray)
+    ByteString.fromArrayUnsafe(outArray)
   }
 
   def decrypt(data: ByteString, parameters: EncryptionParameters) = {
     val asymmetricParameters = EncryptionParameters.asymmetric(parameters)
     val sealedBox = new SealedBox(asymmetricParameters.publicKey.toArray, asymmetricParameters.privateKey.toArray)
     val outArray = sealedBox.decrypt(data.toArray)
-    ByteString(outArray)
+    ByteString.fromArrayUnsafe(outArray)
   }
 }

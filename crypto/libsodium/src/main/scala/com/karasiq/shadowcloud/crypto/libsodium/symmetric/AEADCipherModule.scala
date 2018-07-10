@@ -52,7 +52,7 @@ private[libsodium] final class AEADCipherModule(defaultOptions: AEADCipherOption
     val (nonce, additionalData) = splitNonce(aeadOptions, symmetricParameters.nonce)
 
     val outArray = cipher.encrypt(nonce.toArray, data.toArray, additionalData.toArray)
-    ByteString(outArray)
+    ByteString.fromArrayUnsafe(outArray)
   }
 
   def decrypt(data: ByteString, parameters: EncryptionParameters): ByteString = {

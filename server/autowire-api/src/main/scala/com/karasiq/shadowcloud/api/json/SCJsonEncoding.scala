@@ -6,13 +6,10 @@ import play.api.libs.json._
 import com.karasiq.shadowcloud.api.SCApiEncoding
 import com.karasiq.shadowcloud.model.{File, Path}
 import com.karasiq.shadowcloud.model.utils.IndexScope
-import com.karasiq.shadowcloud.serialization.json.SCJsonEncoders
 
 trait SCJsonEncoding extends SCApiEncoding {
   type ImplicitsT = SCJsonEncoders.type
   val implicits = SCJsonEncoders
-
-  import implicits._
 
   private[this] val SlashBytes = ByteString(Path.Delimiter)
 
@@ -52,7 +49,7 @@ trait SCJsonEncoding extends SCApiEncoding {
   }
 
   private[this] def toJsonBytes[T: Writes](value: T): ByteString = {
-    ByteString(Json.toBytes(Json.toJson(value)))
+    ByteString.fromArrayUnsafe(Json.toBytes(Json.toJson(value)))
   }
 
   private[this] def fromJsonBytes[T: Reads](value: ByteString): T = {

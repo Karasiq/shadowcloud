@@ -6,11 +6,11 @@ import org.bouncycastle.crypto.util.{PrivateKeyFactory, PrivateKeyInfoFactory, P
 
 private[bouncycastle] object KeyUtils {
   def encodePublicKey(key: AsymmetricKeyParameter): ByteString = {
-    ByteString(SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(key).getEncoded)
+    ByteString.fromArrayUnsafe(SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(key).getEncoded)
   }
 
   def encodePrivateKey(key: AsymmetricKeyParameter): ByteString = {
-    ByteString(PrivateKeyInfoFactory.createPrivateKeyInfo(key).getEncoded)
+    ByteString.fromArrayUnsafe(PrivateKeyInfoFactory.createPrivateKeyInfo(key).getEncoded)
   }
 
   def decodePublicKey(bytes: ByteString): AsymmetricKeyParameter = {

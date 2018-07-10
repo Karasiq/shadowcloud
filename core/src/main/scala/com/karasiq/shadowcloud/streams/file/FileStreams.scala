@@ -69,6 +69,7 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
   def writeChunkStream(regionId: RegionId): Flow[ByteString, FileIndexer.Result, NotUsed] = {
     val matSink = Flow.fromGraph(chunkProcessing.split())
       .via(chunkProcessing.beforeWrite())
+      // .map(c ⇒ c.copy(data = c.data.copy(plain = ByteString.empty))) // Memory optimization
       .map((regionId, _))
       .via(regionStreams.writeChunks)
       // .log("chunk-stream-write")

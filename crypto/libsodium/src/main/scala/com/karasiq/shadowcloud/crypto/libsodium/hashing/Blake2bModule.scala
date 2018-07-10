@@ -44,7 +44,7 @@ private[libsodium] final class Blake2bModule(options: DigestOptions) extends Str
       data.toArray, data.length,
       options.digestKey.toArray, options.digestKey.length
     )
-    ByteString(outArray)
+    ByteString.fromArrayUnsafe(outArray)
   }
 
   protected class Blake2bStreamer extends HashingModuleStreamer {
@@ -69,7 +69,7 @@ private[libsodium] final class Blake2bModule(options: DigestOptions) extends Str
     def finish(): ByteString = {
       val out = Util.zeros(outBytes)
       sodium.crypto_generichash_final(state, out, outBytes)
-      ByteString(out)
+      ByteString.fromArrayUnsafe(out)
     }
   }
 }

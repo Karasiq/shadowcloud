@@ -11,7 +11,7 @@ trait SCJsonApiServer extends SCApiServer[ByteString, Reads, Writes] with SCJson
   }
 
   def write[Result: Writes](r: Result): ByteString = {
-    ByteString(Json.toBytes(Json.toJson(r)))
+    ByteString.fromArrayUnsafe(Json.toBytes(Json.toJson(r)))
   }
 
   def decodePayload(payload: ByteString): Map[String, ByteString] = {

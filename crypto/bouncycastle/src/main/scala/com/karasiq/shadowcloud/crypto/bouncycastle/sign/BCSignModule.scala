@@ -30,7 +30,7 @@ private[bouncycastle] trait BCSignerStreamer extends SignModuleStreamer {
 
   def finishSign(): ByteString = {
     requireInitialized()
-    ByteString(signer.generateSignature())
+    ByteString.fromArrayUnsafe(signer.generateSignature())
   }
 
   private[this] def requireInitialized(): Unit = {

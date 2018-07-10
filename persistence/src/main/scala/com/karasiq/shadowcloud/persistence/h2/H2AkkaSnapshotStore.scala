@@ -54,7 +54,7 @@ final class H2AkkaSnapshotStore extends SnapshotStore {
     private[this] val serializer = SerializationExtension(context.system).serializerFor(classOf[Snapshot])
 
     private[this] def serializeSnapshot(data: Any): ByteString = {
-      ByteString(serializer.toBinary(Snapshot(data)))
+      ByteString.fromArrayUnsafe(serializer.toBinary(Snapshot(data)))
     }
 
     private[this] def deserializeSnapshot(data: ByteString): Any = {

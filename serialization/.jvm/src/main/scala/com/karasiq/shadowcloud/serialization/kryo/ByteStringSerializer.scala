@@ -18,7 +18,7 @@ private[kryo] final class ByteStringSerializer extends chill.KSerializer[ByteStr
     val length = input.readInt(true)
     if (length != 0) {
       val buffer = input.readBytes(length)
-      ByteString(buffer)
+      ByteString.fromArrayUnsafe(buffer)
     } else {
       ByteString.empty
     }

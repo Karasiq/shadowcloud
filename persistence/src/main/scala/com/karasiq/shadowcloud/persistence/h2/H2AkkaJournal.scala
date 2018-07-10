@@ -80,7 +80,7 @@ final class H2AkkaJournal extends AsyncWriteJournal {
     }
 
     def serialize(pr: PersistentRepr): ByteString = {
-      ByteString(serializer.toBinary(pr))
+      ByteString.fromArrayUnsafe(serializer.toBinary(pr))
     }
 
     def toJournalRow(pr: PersistentRepr): DBMessage = {

@@ -7,7 +7,7 @@ import scala.language.{implicitConversions, postfixOps}
 import akka.actor.{ActorContext, ActorRef}
 import akka.event.Logging
 import akka.pattern.{ask, pipe}
-import akka.util.Timeout
+import akka.util.{ByteString, Timeout}
 
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.actors.RegionDispatcher._
@@ -120,8 +120,8 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
 
             case WriteStatus.Finished ⇒
               val chunkWithData =
-                if (status.chunk.data.nonEmpty) status.chunk
-                else status.chunk.copy(data = status.chunk.data.copy(plain = ChunkUtils.getPlainBytes(sc.modules.crypto, chunk)))
+                if (status.chunk.data.plain.nonEmpty) status.chunk
+                else status.chunk.copy(data = status.chunk.data.copy(plain = chunk.data.plain /* ChunkUtils.getPlainBytes(sc.modules.crypto, chunk) */))
 
               assert(chunkWithData.data.nonEmpty)
               receiver ! WriteChunk.Success(chunkWithData.withoutData, chunkWithData)
@@ -132,7 +132,8 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
         case None ⇒
           // context.watch(receiver)
           require(chunk.data.nonEmpty, "Chunk data is empty")
-          val status = ChunkStatus(WriteStatus.Pending(ChunkWriteAffinity.empty), chunk, waitingChunk = Set(receiver))
+          val chunkWithoutPlain = chunk.copy(data = chunk.data.copy(plain = ByteString.empty)) // Memory optimization
+          val status = ChunkStatus(WriteStatus.Pending(ChunkWriteAffinity.empty), chunkWithoutPlain, waitingChunk = Set(receiver))
           val affinity = storageSelector.forWrite(status)
           val statusWithAffinity = status.copy(WriteStatus.Pending(affinity))
           startWriteChunk(statusWithAffinity)

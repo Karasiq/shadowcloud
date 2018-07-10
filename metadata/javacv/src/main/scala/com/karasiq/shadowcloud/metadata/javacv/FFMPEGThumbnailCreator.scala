@@ -38,7 +38,7 @@ private[javacv] class FFMPEGThumbnailCreator(config: Config) extends BlockingMet
       val image = converter.convert(grabber.grabImage())
       val thumb = OpenCVThumbnailCreator.resizeIplImage(image, settings.thumbnailSize, settings.thumbnailSize)
       val result = try {
-        val jpegBytes = ByteString(JavaCV.asJpeg(thumb, settings.thumbnailQuality))
+        val jpegBytes = ByteString.fromArrayUnsafe(JavaCV.asJpeg(thumb, settings.thumbnailQuality))
         Metadata(Some(Metadata.Tag("javacv", "ffmpeg", Metadata.Tag.Disposition.PREVIEW)),
           Metadata.Value.Thumbnail(Metadata.Thumbnail("jpeg", jpegBytes)))
       } finally {

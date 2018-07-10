@@ -33,6 +33,6 @@ private[shadowcloud] class HashNonceHMACKeyMapper(config: Config) extends ChunkK
       result = hmac.doFinal(result)
     }
 
-    ByteString(result)
+    ByteString.fromArrayUnsafe(result)
   }
 }

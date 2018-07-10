@@ -10,7 +10,7 @@ import com.karasiq.shadowcloud.serialization.SerializationModule
 
 private[serialization] final class AkkaSerializerModule(serializer: AkkaSerializer) extends SerializationModule {
   def toBytes[T <: AnyRef](value: T): ByteString = {
-    ByteString(serializer.toBinary(value))
+    ByteString.fromArrayUnsafe(serializer.toBinary(value))
   }
 
   def fromBytes[T <: AnyRef : ClassTag](value: ByteString): T = {

@@ -12,10 +12,10 @@ trait SCJsonApiClient extends SCApiClient[ByteString, json.Reads, json.Writes] w
   }
 
   def write[Result: Writes](r: Result): ByteString = {
-    ByteString(Json.toBytes(Json.toJson(r)))
+    ByteString.fromArrayUnsafe(Json.toBytes(Json.toJson(r)))
   }
 
   def encodePayload(value: Map[String, ByteString]): ByteString = {
-    ByteString(Json.toBytes(JsObject(value.mapValues(bs ⇒ JsString(bs.utf8String)))))
+    ByteString.fromArrayUnsafe(Json.toBytes(JsObject(value.mapValues(bs ⇒ JsString(bs.utf8String)))))
   }
 }

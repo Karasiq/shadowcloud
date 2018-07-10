@@ -21,13 +21,13 @@ private[libsodium] final class CryptoSignModule(val method: SignMethod) extends 
   def createParameters(): SignParameters = {
     val signingKey = new SigningKey()
     val verifyKey = signingKey.getVerifyKey
-    SignParameters(method, publicKey = ByteString(verifyKey.toBytes), privateKey = ByteString(signingKey.toBytes))
+    SignParameters(method, publicKey = ByteString.fromArrayUnsafe(verifyKey.toBytes), privateKey = ByteString.fromArrayUnsafe(signingKey.toBytes))
   }
 
   def sign(data: ByteString, parameters: SignParameters): ByteString = {
     val signingKey = new SigningKey(parameters.privateKey.toArray)
     val signature = signingKey.sign(data.toArray)
-    ByteString(signature)
+    ByteString.fromArrayUnsafe(signature)
   }
 
   def verify(data: ByteString, signature: ByteString, parameters: SignParameters): Boolean = {

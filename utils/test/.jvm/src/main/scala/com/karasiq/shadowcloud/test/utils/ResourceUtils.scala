@@ -20,7 +20,7 @@ object ResourceUtils {
   }
 
   def toBytes(name: String): ByteString = {
-    getPathOption(name).fold(ByteString.empty)(path ⇒ ByteString(Files.readAllBytes(path)))
+    getPathOption(name).fold(ByteString.empty)(path ⇒ ByteString.fromArrayUnsafe(Files.readAllBytes(path)))
   }
 
   def toString(name: String): String = {

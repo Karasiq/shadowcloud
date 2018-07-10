@@ -35,7 +35,7 @@ private[bouncycastle] final class BCDigestModule(val method: HashingMethod) exte
     def finish(): ByteString = {
       val outArray = new Array[Byte](digest.getDigestSize)
       digest.doFinal(outArray, 0)
-      ByteString(outArray)
+      ByteString.fromArrayUnsafe(outArray)
     }
 
     def reset(): Unit = {

@@ -16,7 +16,7 @@ object TestUtils {
   def randomBytes(length: Int): ByteString = {
     val array = new Array[Byte](length)
     Random.nextBytes(array)
-    ByteString(array)
+    ByteString.fromArrayUnsafe(array)
   }
 
   def randomString: String = {

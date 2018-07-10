@@ -78,7 +78,7 @@ private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoMod
       }
       val outArray = new Array[Byte](nonceLength)
       secureRandom.nextBytes(outArray)
-      ByteString(outArray)
+      ByteString.fromArrayUnsafe(outArray)
     }
 
     def createHeader(encData: EncryptedIndexData, dataEncParameters: EncryptionParameters, staticKeys: KeySet): EncryptedIndexData.Header = {
@@ -89,7 +89,7 @@ private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoMod
       val keyEncParameters = IndexEncryption.updateNonce(staticKeys.encryption, dataNonce)
 
       val serializedKey = serialization.wrapKey(dataEncParameters)
-      val headerCiphertext = keyEncModule.encrypt(ByteString(serializedKey.toByteArray), keyEncParameters)
+      val headerCiphertext = keyEncModule.encrypt(ByteString.fromArrayUnsafe(serializedKey.toByteArray), keyEncParameters)
       val header = EncryptedIndexData.Header(
         keyHash = IndexEncryption.getKeyHash(encData.id, staticKeys.id),
         nonce = dataNonce,

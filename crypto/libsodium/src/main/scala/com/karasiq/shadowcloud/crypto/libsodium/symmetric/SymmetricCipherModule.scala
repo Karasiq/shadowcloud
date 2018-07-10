@@ -29,7 +29,7 @@ private[libsodium] trait SymmetricCipherModule extends EncryptionModule {
   }
 
   def updateParameters(parameters: EncryptionParameters): EncryptionParameters = {
-    val nonce = ByteString(secureRandom.randomBytes(nonceSize))
+    val nonce = ByteString.fromArrayUnsafe(secureRandom.randomBytes(nonceSize))
     EncryptionParameters.symmetric(parameters).copy(nonce = nonce)
   }
 }
@@ -41,15 +41,15 @@ private[libsodium] trait SymmetricCipherAtomic extends SymmetricCipherModule {
   override def encrypt(data: ByteString, parameters: EncryptionParameters): ByteString = {
     val symmetricParameters = EncryptionParameters.symmetric(parameters)
     SymmetricCipherModule.requireValidParameters(this, symmetricParameters)
-    val result = encrypt(data.toArray, symmetricParameters.key.toArray, symmetricParameters.nonce.toArray)
-    ByteString(result)
+    val outArray = encrypt(data.toArray, symmetricParameters.key.toArray, symmetricParameters.nonce.toArray)
+    ByteString.fromArrayUnsafe(outArray)
   }
 
   override def decrypt(data: ByteString, parameters: EncryptionParameters): ByteString = {
     val symmetricParameters = EncryptionParameters.symmetric(parameters)
     SymmetricCipherModule.requireValidParameters(this, symmetricParameters)
-    val result = decrypt(data.toArray, symmetricParameters.key.toArray, symmetricParameters.nonce.toArray)
-    ByteString(result)
+    val outArray = decrypt(data.toArray, symmetricParameters.key.toArray, symmetricParameters.nonce.toArray)
+    ByteString.fromArrayUnsafe(outArray)
   }
 }
 
@@ -67,7 +67,7 @@ private[libsodium] trait SymmetricCipherStreaming extends EncryptionModuleStream
 
   def process(data: ByteString): ByteString = {
     val outArray = process(data.toArray)
-    ByteString(outArray)
+    ByteString.fromArrayUnsafe(outArray)
   }
 
   def finish(): ByteString = {

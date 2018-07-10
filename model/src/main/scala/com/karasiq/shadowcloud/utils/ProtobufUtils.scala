@@ -13,7 +13,7 @@ object ProtobufUtils {
   private[this] val emptyUUID = new UUID(0, 0)
 
   implicit val byteStringMapper = TypeMapper[PBByteString, ByteString] { bs ⇒
-    if (bs.isEmpty) ByteString.empty else ByteString(bs.toByteArray)
+    if (bs.isEmpty) ByteString.empty else ByteString.fromArrayUnsafe(bs.toByteArray)
   } { bs ⇒
     if (bs.isEmpty) PBByteString.EMPTY else PBByteString.copyFrom(bs.toArray)
   }

@@ -143,7 +143,7 @@ trait SCJsonEncoders {
     }
 
     def writes(o: T): JsValue = {
-      JsString(Base64.encode(ByteString(o.toByteArray)))
+      JsString(Base64.encode(ByteString.fromArrayUnsafe(o.toByteArray)))
     }
   }
 

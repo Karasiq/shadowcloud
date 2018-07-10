@@ -6,8 +6,7 @@ import java.nio.file.{Files, Paths}
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import com.typesafe.config.{ConfigFactory, ConfigParseOptions}
-import com.typesafe.config.impl.{ConfigImpl, Parseable}
+import com.typesafe.config.ConfigFactory
 
 import com.karasiq.common.configs.ConfigUtils
 import com.karasiq.shadowcloud.ShadowCloud
@@ -20,13 +19,47 @@ object SCDesktopMain extends App {
   // Context
   // -----------------------------------------------------------------------
   private[this] val config = {
+    val autoParallelismConfig = {
+      val cpuAvailable = Runtime.getRuntime.availableProcessors()
+      val parallelism = math.max(8, math.min(1, cpuAvailable / 2))
+      ConfigFactory.parseString(s"shadowcloud.parallelism.default = $parallelism")
+    }
+
+    val parallelismFixConfig = ConfigFactory.parseString("""
+      shadowcloud.parallelism {
+        default-crypto = ${shadowcloud.parallelism.default}
+        default-io = ${shadowcloud.parallelism.default}
+
+        query = ${shadowcloud.parallelism.default}
+        hashing = ${shadowcloud.parallelism.default-crypto}
+        encryption = ${shadowcloud.parallelism.default-crypto}
+        write = ${shadowcloud.parallelism.default-io}
+        read = ${shadowcloud.parallelism.default-io}
+      }
+
+      shadowcloud.default-storage.chunk-io {
+        default-parallelism = ${shadowcloud.parallelism.default-io}
+        read-parallelism = ${shadowcloud.default-storage.chunk-io.default-parallelism}
+        write-parallelism = ${shadowcloud.default-storage.chunk-io.default-parallelism}
+      }""")
+
     val defaultConfig = ConfigFactory.defaultOverrides()
       .withFallback(ConfigFactory.defaultApplication())
-      .withFallback {
+      .withFallback(ConfigFactory.defaultReference())
+      /* .withFallback {
         // reference.conf without ".resolve()" workaround
-        val unresolvedResources = Parseable.newResources("reference.conf", ConfigParseOptions.defaults.setClassLoader(getClass.getClassLoader)).parse.toConfig
-        ConfigImpl.systemPropertiesAsConfig().withFallback(unresolvedResources)
-      }
+
+        val classLoader = Thread.currentThread().getContextClassLoader
+        ConfigImpl.computeCachedConfig(classLoader, "scReference", () ⇒ {
+          val parseOptions = ConfigParseOptions.defaults.setClassLoader(classLoader)
+          val unresolvedResources = Parseable.newResources("reference.conf", parseOptions)
+            .parse
+            .toConfig
+
+          ConfigImpl.systemPropertiesAsConfig()
+            .withFallback(unresolvedResources)
+        })
+      } */
 
     val serverAppConfig = {
       val fileConfig = {
@@ -40,6 +73,8 @@ object SCDesktopMain extends App {
       val desktopConfig = ConfigFactory.parseResourcesAnySyntax("sc-desktop")
 
       fileConfig
+        .withFallback(parallelismFixConfig)
+        .withFallback(autoParallelismConfig)
         .withFallback(desktopConfig)
         .withFallback(defaultConfig)
         .resolve()

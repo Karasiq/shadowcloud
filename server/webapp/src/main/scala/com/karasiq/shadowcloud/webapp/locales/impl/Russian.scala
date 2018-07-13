@@ -81,6 +81,7 @@ private[locales] object Russian extends AppLocale {
   val usedSpace = "Занято"
 
   val regionId = "ID региона"
+  val regionIdHint = "Подсказка: рекомендуется формат [a-z0-9_-]"
   val storageId = "ID хранилища"
   val storageType = "Тип хранилища"
   val createRegion = "Создать регион"

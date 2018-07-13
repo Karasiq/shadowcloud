@@ -81,6 +81,7 @@ trait AppLocale {
   def usedSpace: String
 
   def regionId: String
+  def regionIdHint: String
   def storageId: String
   def storageType: String
   def createRegion: String

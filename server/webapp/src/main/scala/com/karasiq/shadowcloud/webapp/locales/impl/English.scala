@@ -81,6 +81,7 @@ private[locales] object English extends AppLocale {
   val usedSpace = "Used space"
 
   val regionId = "Region ID"
+  val regionIdHint = "Hint: format [a-z0-9_-] is recommended"
   val storageId = "Storage ID"
   val storageType = "Storage type"
   val createRegion = "Create region"

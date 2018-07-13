@@ -47,7 +47,9 @@ class RegionsView(implicit context: AppContext, regionContext: RegionContext) ex
       val newRegionIdRx = Var(RegionsView.newRegionId())
       Modal()
         .withTitle(context.locale.createRegion)
-        .withBody(Form(FormInput.text(context.locale.regionId, newRegionIdRx.reactiveInput)))
+        .withBody(Form(
+          FormInput.text(context.locale.regionId, newRegionIdRx.reactiveInput)(div(small(context.locale.regionIdHint)))
+        ))
         .withButtons(
           AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ doCreate(newRegionIdRx.now /* Utils.toSafeIdentifier(newRegionNameRx.now) */))),
           AppComponents.modalClose()

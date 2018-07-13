@@ -25,23 +25,7 @@ object SCDesktopMain extends App {
       ConfigFactory.parseString(s"shadowcloud.parallelism.default = $parallelism")
     }
 
-    val parallelismFixConfig = ConfigFactory.parseString("""
-      shadowcloud.parallelism {
-        default-crypto = ${shadowcloud.parallelism.default}
-        default-io = ${shadowcloud.parallelism.default}
-
-        query = ${shadowcloud.parallelism.default}
-        hashing = ${shadowcloud.parallelism.default-crypto}
-        encryption = ${shadowcloud.parallelism.default-crypto}
-        write = ${shadowcloud.parallelism.default-io}
-        read = ${shadowcloud.parallelism.default-io}
-      }
-
-      shadowcloud.default-storage.chunk-io {
-        default-parallelism = ${shadowcloud.parallelism.default-io}
-        read-parallelism = ${shadowcloud.default-storage.chunk-io.default-parallelism}
-        write-parallelism = ${shadowcloud.default-storage.chunk-io.default-parallelism}
-      }""")
+    val substitutionsConfig = ConfigFactory.parseResourcesAnySyntax("sc-substitutions")
 
     val defaultConfig = ConfigFactory.defaultOverrides()
       .withFallback(ConfigFactory.defaultApplication())
@@ -73,7 +57,7 @@ object SCDesktopMain extends App {
       val desktopConfig = ConfigFactory.parseResourcesAnySyntax("sc-desktop")
 
       fileConfig
-        .withFallback(parallelismFixConfig)
+        .withFallback(substitutionsConfig)
         .withFallback(autoParallelismConfig)
         .withFallback(desktopConfig)
         .withFallback(defaultConfig)

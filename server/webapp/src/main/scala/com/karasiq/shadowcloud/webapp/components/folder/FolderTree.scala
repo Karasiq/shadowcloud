@@ -29,9 +29,10 @@ object FolderTree {
     folderContext.selected.now.startsWith(path)
   }
 
-  private def toPathString(path: Path)(implicit context: AppContext): String = {
+  private def toPathString(path: Path)(implicit fc: FolderContext, context: AppContext): String = {
     if (path.isRoot) {
-      context.locale.rootPath
+      s"(${fc.regionId.capitalize})"
+      // context.locale.rootPath
     } else if (path.name.isEmpty) {
       context.locale.emptyPath
     } else {

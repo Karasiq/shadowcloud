@@ -37,19 +37,24 @@ object UploadForm {
 
 class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, fileController: FileController) extends BootstrapHtmlComponent {
 
-  import folderContext.{regionId, selected ⇒ selectedFolderPathRx}
+  private[this] final case class UploadRequest(regionId: RegionId, path: Path, file: dom.File)
+
   private[this] val maxUploads = 5
   private[this] val maxUploadsSize = SizeUnit.MB * 8
   private[this] val uploadProgressBars = div().render
-  private[this] val uploadQueue = Var(List.empty[dom.File])
-  private[this] val uploading = Var(List.empty[dom.File])
+  private[this] val uploadQueue = Var(List.empty[UploadRequest])
+  private[this] val uploading = Var(List.empty[UploadRequest])
 
   uploadQueue.triggerLater(processQueue())
   uploading.triggerLater(processQueue())
 
   def renderTag(md: ModifierT*): TagT = {
     val uploadInput = FormInput.file(appContext.locale.file, multiple, md, onchange := Callback.onInput { input ⇒
-      uploadQueue() = uploadQueue.now ++ input.files.toList
+      // Preserve context at click time
+      val newFiles = input.files.toList
+        .map(file ⇒ UploadRequest(folderContext.regionId, folderContext.selected.now, file))
+
+      uploadQueue() = uploadQueue.now ++ newFiles
       input.form.reset()
     })
 
@@ -95,12 +100,12 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
     )
   }
 
-  private[this] def processQueue() = {
+  private[this] def processQueue(): Unit = {
     val (toUpload, rest) = {
-      @tailrec def limitUploads(list: Seq[dom.File], maxSize: Long, currentCount: Int = 0): Seq[dom.File] = {
+      @tailrec def limitUploads(list: Seq[UploadRequest], maxSize: Long, currentCount: Int = 0): Seq[UploadRequest] = {
         val newListSize = list
           .take(currentCount + 1)
-          .map(_.size.toLong).sum
+          .map(_.file.size.toLong).sum
 
         if (newListSize > maxSize || currentCount >= list.length)
           list.take(currentCount)
@@ -108,7 +113,7 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
           limitUploads(list, newListSize, currentCount + 1)
       }
 
-      val nextUploadsLimit: Long = maxUploadsSize - uploading.now.map(_.size.toLong).sum
+      val nextUploadsLimit: Long = maxUploadsSize - uploading.now.map(_.file.size.toLong).sum
 
       val nextDownloads = uploadQueue.now
         .filterNot(uploading.now.contains)
@@ -120,14 +125,13 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
     }
 
     if (toUpload.nonEmpty) {
-      toUpload.foreach { file ⇒
-        val parent: Path = selectedFolderPathRx.now
-        val (progressRx, fileFuture) = appContext.api.uploadFile(regionId, parent / file.name, file)
-        val progressBar = renderProgressBar(file.name, progressRx).render
+      toUpload.foreach { request ⇒
+        val (progressRx, fileFuture) = appContext.api.uploadFile(request.regionId, request.path / request.file.name, request.file)
+        val progressBar = renderProgressBar(request.file.name, progressRx).render
 
         uploadProgressBars.appendChild(progressBar)
         fileFuture.onComplete { _ ⇒
-          uploading() = uploading.now.filterNot(_ == file)
+          uploading() = uploading.now.filterNot(_ == request)
           uploadProgressBars.removeChild(progressBar)
           progressRx.kill()
         }

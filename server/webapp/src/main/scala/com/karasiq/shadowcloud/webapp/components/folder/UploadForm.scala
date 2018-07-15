@@ -23,7 +23,11 @@ object UploadForm {
   }
 
   private def newNoteName(text: String): String = {
-    Utils.takeWords(text, 50).replaceAll("\\s+", " ").trim + ".md"
+    val conciseName = Utils.takeWords(text, 50)
+      .replaceAll("\\s+", " ")
+      .trim
+
+    conciseName + ".md"
   }
 
   private def uploadNoteOrPage(regionId: RegionId, path: Path, text: String)(implicit appContext: AppContext): Future[File] = {

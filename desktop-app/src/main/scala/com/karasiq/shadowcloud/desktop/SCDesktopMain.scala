@@ -6,7 +6,8 @@ import java.nio.file.{Files, Paths}
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import com.typesafe.config.ConfigFactory
+import com.typesafe.config.{ConfigFactory, ConfigParseOptions}
+import com.typesafe.config.impl.ConfigImpl
 
 import com.karasiq.common.configs.ConfigUtils
 import com.karasiq.shadowcloud.ShadowCloud
@@ -19,52 +20,9 @@ object SCDesktopMain extends App {
   // Context
   // -----------------------------------------------------------------------
   private[this] val config = {
-    val autoParallelismConfig = {
-      val cpuAvailable = Runtime.getRuntime.availableProcessors()
-      val parallelism = math.max(8, math.min(1, cpuAvailable / 2))
-      ConfigFactory.parseString(s"shadowcloud.parallelism.default = $parallelism")
-    }
-
-    val substitutionsConfig = ConfigFactory.parseResourcesAnySyntax("sc-substitutions")
-
-    val defaultConfig = ConfigFactory.defaultOverrides()
-      .withFallback(ConfigFactory.defaultApplication())
-      .withFallback(ConfigFactory.defaultReference())
-      /* .withFallback {
-        // reference.conf without ".resolve()" workaround
-
-        val classLoader = Thread.currentThread().getContextClassLoader
-        ConfigImpl.computeCachedConfig(classLoader, "scReference", () ⇒ {
-          val parseOptions = ConfigParseOptions.defaults.setClassLoader(classLoader)
-          val unresolvedResources = Parseable.newResources("reference.conf", parseOptions)
-            .parse
-            .toConfig
-
-          ConfigImpl.systemPropertiesAsConfig()
-            .withFallback(unresolvedResources)
-        })
-      } */
-
-    val serverAppConfig = {
-      val fileConfig = {
-        val optionalConfFile = Paths.get("shadowcloud.conf")
-        if (Files.isRegularFile(optionalConfFile))
-          ConfigFactory.parseFile(optionalConfFile.toFile)
-        else
-          ConfigUtils.emptyConfig
-      }
-
-      val desktopConfig = ConfigFactory.parseResourcesAnySyntax("sc-desktop")
-
-      fileConfig
-        .withFallback(substitutionsConfig)
-        .withFallback(autoParallelismConfig)
-        .withFallback(desktopConfig)
-        .withFallback(defaultConfig)
-        .resolve()
-    }
-
-    serverAppConfig
+    // Replace default ConfigFactory.load() config
+    val classLoader = Thread.currentThread.getContextClassLoader
+    ConfigImpl.computeCachedConfig(classLoader, "load", () ⇒ SCDesktopConfig.load())
   }
 
   implicit val actorSystem = ActorSystem("shadowcloud", config)

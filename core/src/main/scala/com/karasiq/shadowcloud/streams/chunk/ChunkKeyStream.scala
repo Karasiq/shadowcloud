@@ -9,13 +9,13 @@ import akka.stream.stage.{GraphStage, GraphStageLogic, OutHandler}
 
 import com.karasiq.shadowcloud.exceptions.CryptoException
 import com.karasiq.shadowcloud.model.crypto._
-import com.karasiq.shadowcloud.providers.SCModules
+import com.karasiq.shadowcloud.providers.{CryptoModuleRegistry, SCModules}
 
 private[shadowcloud] object ChunkKeyStream {
-  def apply(registry: SCModules,
+  def apply(cryptoModules: CryptoModuleRegistry,
             method: EncryptionMethod,
             maxKeyReuse: Int = 256): ChunkKeyStream = {
-    new ChunkKeyStream(registry, method, maxKeyReuse)
+    new ChunkKeyStream(cryptoModules, method, maxKeyReuse)
   }
 
   private def isKeyReused(p1: EncryptionParameters, p2: EncryptionParameters) = (p1, p2) match {
@@ -44,14 +44,14 @@ private[shadowcloud] object ChunkKeyStream {
   }
 }
 
-private[shadowcloud] final class ChunkKeyStream(modules: SCModules, method: EncryptionMethod, maxKeyReuse: Int)
+private[shadowcloud] final class ChunkKeyStream(cryptoModules: CryptoModuleRegistry, method: EncryptionMethod, maxKeyReuse: Int)
   extends GraphStage[SourceShape[EncryptionParameters]] {
 
   val outlet = Outlet[EncryptionParameters]("ChunkKeyStream.out")
   val shape = SourceShape(outlet)
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with OutHandler {
-    private[this] val encryptionModule = modules.crypto.encryptionModule(method)
+    private[this] val encryptionModule = cryptoModules.encryptionModule(method)
     private[this] var secureRandom: SecureRandom = _
     private[this] var keyParameters: EncryptionParameters = _
     private[this] var encryptedCount: Int = _

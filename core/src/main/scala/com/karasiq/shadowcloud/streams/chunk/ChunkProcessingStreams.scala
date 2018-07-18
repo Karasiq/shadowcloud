@@ -12,13 +12,13 @@ import com.karasiq.shadowcloud.config.{ChunksConfig, CryptoConfig, ParallelismCo
 import com.karasiq.shadowcloud.exceptions.{CryptoException, SCExceptions}
 import com.karasiq.shadowcloud.model.{Chunk, Data}
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod}
-import com.karasiq.shadowcloud.providers.SCModules
+import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 import com.karasiq.shadowcloud.streams.file.FileIndexer
 
 object ChunkProcessingStreams {
-  def apply(modules: SCModules, chunks: ChunksConfig, crypto: CryptoConfig,
+  def apply(cryptoModules: CryptoModuleRegistry, chunks: ChunksConfig, crypto: CryptoConfig,
             parallelism: ParallelismConfig)(implicit ec: ExecutionContext): ChunkProcessingStreams = {
-    new ChunkProcessingStreams(modules, chunks, crypto, parallelism)
+    new ChunkProcessingStreams(cryptoModules, chunks, crypto, parallelism)
   }
 
   /* def apply(config: SCConfig)(implicit ec: ExecutionContext, inst: ProviderInstantiator): ChunkProcessingStreams = {
@@ -26,7 +26,7 @@ object ChunkProcessingStreams {
   } */ 
 }
 
-final class ChunkProcessingStreams(modules: SCModules, chunks: ChunksConfig,
+final class ChunkProcessingStreams(cryptoModules: CryptoModuleRegistry, chunks: ChunksConfig,
                                    crypto: CryptoConfig, parallelism: ParallelismConfig)(implicit ec: ExecutionContext) {
   type ChunkFlow = Flow[Chunk, Chunk, NotUsed]
 
@@ -38,7 +38,7 @@ final class ChunkProcessingStreams(modules: SCModules, chunks: ChunksConfig,
                    maxKeyReuse: Int = crypto.encryption.maxKeyReuse): ChunkFlow = {
     val graph = GraphDSL.create() { implicit builder ⇒
       import GraphDSL.Implicits._
-      val keys = builder.add(ChunkKeyStream(modules, method, maxKeyReuse))
+      val keys = builder.add(ChunkKeyStream(cryptoModules, method, maxKeyReuse))
       val chunkWithKey = builder.add(ZipWith((key: EncryptionParameters, chunk: Chunk) ⇒ chunk.copy(encryption = key)))
       keys ~> chunkWithKey.in0
       FlowShape(chunkWithKey.in1, chunkWithKey.out)
@@ -49,7 +49,7 @@ final class ChunkProcessingStreams(modules: SCModules, chunks: ChunksConfig,
   def encrypt: ChunkFlow = parallelFlow(parallelism.encryption) { chunk ⇒
     chunk.data match {
       case Data(plain, ByteString.empty) if plain.nonEmpty ⇒
-        val module = modules.crypto.encryptionModule(chunk.encryption.method)
+        val module = cryptoModules.encryptionModule(chunk.encryption.method)
         chunk.copy(data = chunk.data.copy(encrypted = module.encrypt(plain, chunk.encryption)))
 
       case Data(_, encrypted) if encrypted.nonEmpty || chunk.checksum.encSize == 0 ⇒
@@ -63,8 +63,8 @@ final class ChunkProcessingStreams(modules: SCModules, chunks: ChunksConfig,
   def createHashes(plainMethod: HashingMethod = crypto.hashing.chunks,
                    encMethod: HashingMethod = crypto.hashing.chunksEncrypted): ChunkFlow = {
     parallelFlow(parallelism.hashing) { chunk ⇒
-      val hasher = modules.crypto.hashingModule(plainMethod)
-      val encHasher = modules.crypto.hashingModule(encMethod)
+      val hasher = cryptoModules.hashingModule(plainMethod)
+      val encHasher = cryptoModules.hashingModule(encMethod)
 
       val size = chunk.data.plain.length
       val hash = if (chunk.data.plain.nonEmpty) hasher.createHash(chunk.data.plain) else ByteString.empty
@@ -79,7 +79,7 @@ final class ChunkProcessingStreams(modules: SCModules, chunks: ChunksConfig,
   def decrypt: ChunkFlow = parallelFlow(parallelism.encryption) { chunk ⇒
     chunk.data match {
       case Data(ByteString.empty, encrypted) if encrypted.nonEmpty ⇒
-        val decryptor = modules.crypto.encryptionModule(chunk.encryption.method)
+        val decryptor = cryptoModules.encryptionModule(chunk.encryption.method)
         val decryptedData = decryptor.decrypt(encrypted, chunk.encryption)
         chunk.copy(data = chunk.data.copy(plain = decryptedData))
 
@@ -100,7 +100,7 @@ final class ChunkProcessingStreams(modules: SCModules, chunks: ChunksConfig,
       }
     }
 
-    val hasher = modules.crypto.hashingModule(chunk.checksum.method)
+    val hasher = cryptoModules.hashingModule(chunk.checksum.method)
 
     if ((chunk.data.plain.nonEmpty && chunk.checksum.size != chunk.data.plain.length) ||
       (chunk.data.encrypted.nonEmpty && chunk.checksum.encSize != chunk.data.encrypted.length)) {
@@ -128,7 +128,7 @@ final class ChunkProcessingStreams(modules: SCModules, chunks: ChunksConfig,
 
   def index(plainHashing: HashingMethod = crypto.hashing.files,
             encHashing: HashingMethod = crypto.hashing.filesEncrypted): Sink[Chunk, Future[FileIndexer.Result]] = {
-    FileIndexer(modules.crypto, plainHashing, encHashing).async
+    FileIndexer(cryptoModules, plainHashing, encHashing).async
   }
 
   protected def parallelFlow(parallelism: Int)(func: Chunk ⇒ Chunk): ChunkFlow = {

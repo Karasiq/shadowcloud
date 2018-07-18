@@ -14,6 +14,7 @@ import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.javafx.JavaFXContext
 import com.karasiq.shadowcloud.persistence.h2.H2DB
 import com.karasiq.shadowcloud.server.http.SCAkkaHttpServer
+import com.karasiq.common.configs.ConfigImplicits._
 
 object SCDesktopMain extends App {
   // -----------------------------------------------------------------------
@@ -32,8 +33,13 @@ object SCDesktopMain extends App {
   import sc.implicits.{executionContext, materializer}
 
   val httpServer = SCAkkaHttpServer(sc)
-  H2DB(actorSystem).context // Init db
-  sc.actors.regionSupervisor // Init actor
+
+  if (!config.optional(_.getBoolean("shadowcloud.persistence.h2.disabled")).contains(true)) {
+    // Init db
+    H2DB(actorSystem).context
+  }
+
+  sc.init()
 
   // Start server
   val bindFuture = Http().bindAndHandle(httpServer.scWebAppRoutes, httpServer.httpServerConfig.host, httpServer.httpServerConfig.port)

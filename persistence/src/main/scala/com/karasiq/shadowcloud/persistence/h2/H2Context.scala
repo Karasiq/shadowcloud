@@ -23,9 +23,9 @@ object H2Context {
     //noinspection SpellCheckingInspection
     ConfigFactory.parseMap(Map(
       "dataSourceClassName" → "org.h2.jdbcx.JdbcDataSource",
-      "dataSource.url" → s"jdbc:h2:file:$path;COMPRESS=$compress"
+      "dataSource.url" → (s"jdbc:h2:file:$path;COMPRESS=$compress"
         + cipher.fold("")(cipher ⇒ s";CIPHER=$cipher")
-        + initScript.fold("")(script ⇒ s";INIT=RUNSCRIPT FROM '$script'"),
+        + initScript.fold("")(script ⇒ s";INIT=RUNSCRIPT FROM '$script'")),
       "dataSource.user" → "sa",
       "dataSource.password" → (if (cipher.nonEmpty) s"$password sa" else "sa")
     ).asJava)

@@ -89,8 +89,8 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
 
   import implicits._
 
-  val modules: SCModules = SCModules(config)
-  val serialization: SerializationModule = SerializationModules.forActorSystem(_actorSystem)
+  lazy val modules: SCModules = SCModules(config)
+  lazy val serialization: SerializationModule = SerializationModules.forActorSystem(_actorSystem)
 
   // -----------------------------------------------------------------------
   // User keys and passwords
@@ -174,17 +174,17 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // Streams
   // -----------------------------------------------------------------------
   object streams {
-    val chunk = ChunkProcessingStreams(modules, config.chunks, config.crypto, config.parallelism)(executionContexts.cryptography)
-    val region = RegionStreams(actors.regionSupervisor, config.parallelism, config.timeouts)
-    val file = FileStreams(region, chunk)
-    val metadata = MetadataStreams(ShadowCloudExtension.this)
+    lazy val chunk = ChunkProcessingStreams(modules.crypto, config.chunks, config.crypto, config.parallelism)(executionContexts.cryptography)
+    lazy val region = RegionStreams(actors.regionSupervisor, config.parallelism, config.timeouts)
+    lazy val file = FileStreams(region, chunk)
+    lazy val metadata = MetadataStreams(ops.region, this.region, this.file, config.metadata, modules.metadata, config.serialization, serialization)
   }
 
   object ops {
-    val supervisor = RegionSupervisorOps(actors.regionSupervisor, config.timeouts)
-    val region = RegionOps(actors.regionSupervisor, config.timeouts)
-    val storage = StorageOps(actors.regionSupervisor, config.timeouts)
-    val background = BackgroundOps(config, this.region)
+    lazy val supervisor = RegionSupervisorOps(actors.regionSupervisor, config.timeouts)
+    lazy val region = RegionOps(actors.regionSupervisor, config.timeouts)
+    lazy val storage = StorageOps(actors.regionSupervisor, config.timeouts)
+    lazy val background = BackgroundOps(config, this.region)
   }
 
   // -----------------------------------------------------------------------
@@ -194,5 +194,9 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     val metadata = _actorSystem.dispatchers.lookup(SCDispatchers.metadata)
     val metadataBlocking = _actorSystem.dispatchers.lookup(SCDispatchers.metadataBlocking)
     val cryptography = _actorSystem.dispatchers.lookup(SCDispatchers.cryptography)
+  }
+
+  def init(): Unit = {
+    actors.regionSupervisor // Init actor
   }
 }

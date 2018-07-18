@@ -25,7 +25,8 @@ final class H2DBExtension(system: ExtendedActorSystem) extends Extension {
     implicit lazy val executionContext = system.dispatchers.lookup(dispatcherId)
 
     private[H2DBExtension] def getDbPassword(): String = {
-      sc.passwords.getOrAsk("persistence.h2.password", "h2-db").replace(' ', '_')
+      sc.passwords.getOrAsk("persistence.h2.password")
+        .replace(' ', '_')
     }
   }
 

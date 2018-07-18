@@ -12,19 +12,22 @@ object H2Context {
 
   private[this] def createJdbcConfig(config: Config, password: String): Config = {
     import scala.collection.JavaConverters._
+    import com.karasiq.common.configs.ConfigImplicits._
     require(!password.contains(" "), "Space character is not allowed")
 
     val path = config.getString("path")
-    val cipher = config.getString("cipher")
-    val compress = config.getBoolean("compress")
-    val initScript = config.getString("init-script")
+    val compress = config.withDefault(true, _.getBoolean("compress"))
+    val cipher = config.optional(_.getString("cipher")).filter(_.nonEmpty)
+    val initScript = config.optional(_.getString("init-script")).filter(_.nonEmpty)
 
     //noinspection SpellCheckingInspection
     ConfigFactory.parseMap(Map(
       "dataSourceClassName" → "org.h2.jdbcx.JdbcDataSource",
-      "dataSource.url" → s"jdbc:h2:file:$path;CIPHER=$cipher;COMPRESS=$compress;INIT=RUNSCRIPT FROM '$initScript'",
+      "dataSource.url" → s"jdbc:h2:file:$path;COMPRESS=$compress"
+        + cipher.fold("")(cipher ⇒ s";CIPHER=$cipher")
+        + initScript.fold("")(script ⇒ s";INIT=RUNSCRIPT FROM '$script'"),
       "dataSource.user" → "sa",
-      "dataSource.password" → s"$password sa"
+      "dataSource.password" → (if (cipher.nonEmpty) s"$password sa" else "sa")
     ).asJava)
   }
 }

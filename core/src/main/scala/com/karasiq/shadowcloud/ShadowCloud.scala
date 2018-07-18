@@ -128,9 +128,10 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   object passwords {
     val provider: PasswordProvider = provInstantiator.getInstance(config.crypto.passwordProvider)
 
-    def getOrAsk(configPath: String, passwordId: String): String = {
+    def getOrAsk(configPath: String, passwordId: String = null): String = {
       import ConfigImplicits._
-      rootConfig.withDefault(provider.askPassword(passwordId), _.getString(configPath))
+      val validId = if (passwordId == null) configPath else passwordId
+      rootConfig.withDefault(provider.askPassword(validId), _.getString(configPath))
     }
   }
 

@@ -36,7 +36,8 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
 
       val activeRows = activeKeys.map { kp ⇒
         val key = kp.key
-        TableRow(Seq(key.id.toString, key.encryption.method.algorithm, key.signing.method.algorithm), TableRowStyle.active,
+        val style = if (kp.regionSet.isEmpty) TableRowStyle.active else TableRowStyle.info
+        TableRow(Seq(key.id.toString, key.encryption.method.algorithm, key.signing.method.algorithm), style,
           onclick := Callback.onClick(_ ⇒ showKeyDialog(key, kp.regionSet, kp.forEncryption, kp.forDecryption)))
       }
 

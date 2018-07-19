@@ -1,5 +1,6 @@
 package com.karasiq.shadowcloud.webapp.components.region
 
+import locales.cldr.data.rm
 import rx.{Rx, Var}
 
 import com.karasiq.bootstrap.Bootstrap.default._
@@ -18,6 +19,17 @@ object RegionsView {
 
   private def newRegionId()(implicit rc: RegionContext): RegionId = {
     s"region-${rc.regions.now.regions.size}"
+  }
+
+  private def uniqueRegionId(id: RegionId): RegionId = {
+    def timestampString = "-u" + System.currentTimeMillis().toHexString
+
+    val regex = "-u\\w+$".r
+    val prefix = regex.findFirstMatchIn(id) match {
+      case Some(rm) ⇒ rm.before
+      case None ⇒ id
+    }
+    prefix + timestampString
   }
 }
 
@@ -51,7 +63,13 @@ class RegionsView(implicit context: AppContext, regionContext: RegionContext) ex
           FormInput.text(context.locale.regionId, newRegionIdRx.reactiveInput)(div(small(context.locale.regionIdHint)))
         ))
         .withButtons(
-          AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ doCreate(newRegionIdRx.now /* Utils.toSafeIdentifier(newRegionNameRx.now) */))),
+          AppComponents.modalSubmit(onclick := Callback.onClick { _ ⇒
+            // Utils.toSafeIdentifier(newRegionNameRx.now)
+            doCreate(newRegionIdRx.now)
+          }),
+          Button(ButtonStyle.info)(context.locale.uniqueRegionId, onclick := Callback.onClick { _ ⇒
+            newRegionIdRx() = RegionsView.uniqueRegionId(newRegionIdRx.now)
+          }),
           AppComponents.modalClose()
         )
         .show()

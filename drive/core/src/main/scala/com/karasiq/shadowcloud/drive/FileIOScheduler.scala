@@ -388,7 +388,21 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     case PersistRevision ⇒
       val future = dataIO.updateRevision()
       future.map(RevisionUpdated).pipeTo(self)
-      PersistRevision.wrapFuture(file, future).pipeTo(sender())
+
+      val futureWithMetadata = future.flatMap { newFile ⇒
+        if (config.fileIO.createMetadata) {
+          sc.streams.file.read(regionId, newFile)
+            .via(sc.streams.metadata.create(newFile.path.name).async)
+            .via(sc.streams.metadata.writeAll(regionId, newFile.id).async)
+            .log("drive-metadata-files")
+            .runWith(Sink.ignore)
+            .map(_ ⇒ newFile)
+        } else {
+          Future.successful(newFile)
+        }
+      }
+
+      PersistRevision.wrapFuture(file, futureWithMetadata).pipeTo(sender())
 
     case GetCurrentRevision ⇒
       val currentRevision = dataState.fixRevisionBounds()
@@ -408,14 +422,6 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     case RevisionUpdated(newFile) ⇒
       log.info("File revision updated: {}", newFile)
       dataOps.updateRevision(newFile)
-
-      if (config.fileIO.createMetadata) {
-        sc.streams.file.read(regionId, newFile)
-          .via(sc.streams.metadata.create(newFile.path.name))
-          .via(sc.streams.metadata.writeAll(regionId, newFile.id))
-          .log("drive-metadata-files")
-          .runWith(Sink.ignore)
-      }
 
     case ReceiveTimeout ⇒
       if (dataState.isChunksModified) {

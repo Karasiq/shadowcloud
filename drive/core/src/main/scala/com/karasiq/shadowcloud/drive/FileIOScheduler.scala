@@ -409,6 +409,14 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       log.info("File revision updated: {}", newFile)
       dataOps.updateRevision(newFile)
 
+      if (config.fileIO.createMetadata) {
+        sc.streams.file.read(regionId, newFile)
+          .via(sc.streams.metadata.create(newFile.path.name))
+          .via(sc.streams.metadata.writeAll(regionId, newFile.id))
+          .log("drive-metadata-files")
+          .runWith(Sink.ignore)
+      }
+
     case ReceiveTimeout ⇒
       if (dataState.isChunksModified) {
         (self ? Flush).foreach(_ ⇒ self ! PersistRevision)

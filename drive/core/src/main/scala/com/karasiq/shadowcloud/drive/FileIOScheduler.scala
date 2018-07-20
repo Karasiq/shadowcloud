@@ -44,6 +44,7 @@ object FileIOScheduler {
 
   final case object Flush extends Message with MessageStatus[File, FlushResult]
   final case object PersistRevision extends Message with MessageStatus[File, File]
+  final case object GetCurrentRevision extends Message with MessageStatus[File, File]
 
   // -----------------------------------------------------------------------
   // Internal Messages
@@ -110,6 +111,14 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
 
     def isChunksModified: Boolean = {
       pendingWrites.nonEmpty || currentChunks.values.toSeq != lastRevision.chunks
+    }
+
+    def createNewRevision(): File = {
+      val newChunks = currentChunks.values.toVector
+      val newSize = newChunks.map(_.checksum.size).sum
+      val newEncSize = newChunks.map(_.checksum.encSize).sum
+      val newChecksum = Checksum(HashingMethod.none, HashingMethod.none, newSize, ByteString.empty, newEncSize, ByteString.empty)
+      File.modified(lastRevision, newChecksum, newChunks)
     }
   }
 
@@ -260,11 +269,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     // Revisions
     // -----------------------------------------------------------------------
     def updateRevision(): Future[File] = {
-      val newChunks = dataState.currentChunks.values.toVector
-      val newSize = newChunks.map(_.checksum.size).sum
-      val newEncSize = newChunks.map(_.checksum.encSize).sum
-      val newChecksum = Checksum(HashingMethod.none, HashingMethod.none, newSize, ByteString.empty, newEncSize, ByteString.empty)
-      val newFile = File.modified(dataState.lastRevision, newChecksum, newChunks)
+      val newFile = dataState.createNewRevision()
       sc.ops.region.createFile(regionId, newFile)
     }
   }
@@ -372,6 +377,10 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       val future = dataIO.updateRevision()
       future.map(RevisionUpdated).pipeTo(self)
       PersistRevision.wrapFuture(file, future).pipeTo(sender())
+
+    case GetCurrentRevision ⇒
+      val currentRevision = dataState.createNewRevision()
+      sender() ! GetCurrentRevision.Success(file, currentRevision)
 
     case result: Flush.Status ⇒
       result match {

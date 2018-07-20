@@ -61,31 +61,35 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
 
   protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T]): T = {
     implicit val timeout = Timeout(config.fileIO.timeout)
-    println(message)
+    // println(message)
     val result = Await.result(status.unwrapFuture(fsDispatcher ? message), Duration.Inf)
-    println(message + " -> " + result)
+    // println(message + " -> " + result)
     result 
   }
 
 
   override def getattr(path: String, stat: FileStat): Int = {
     def returnFolderAttrs(folder: Folder): Unit = {
-      stat.st_mode.set(FileStat.S_IFDIR | 0x1ed)
+      stat.st_mode.set(FileStat.S_IFDIR | 0x1ff)
       stat.st_nlink.set(folder.files.size + folder.folders.size + 1)
-      stat.st_ctim.tv_sec.set(folder.timestamp.created / 1000)
-      stat.st_ctim.tv_nsec.set((folder.timestamp.created % 1000) * 1000)
+      stat.st_birthtime.tv_sec.set(folder.timestamp.created / 1000)
+      stat.st_birthtime.tv_nsec.set((folder.timestamp.created % 1000) * 1000)
       stat.st_mtim.tv_sec.set(folder.timestamp.lastModified / 1000)
       stat.st_mtim.tv_nsec.set((folder.timestamp.lastModified % 1000) * 1000)
+      stat.st_atim.tv_sec.set(folder.timestamp.lastModified / 1000)
+      stat.st_atim.tv_nsec.set((folder.timestamp.lastModified % 1000) * 1000)
     }
 
     def returnFileAttrs(file: File): Unit = {
-      stat.st_mode.set(FileStat.S_IFREG | 0x1ed)
+      stat.st_mode.set(FileStat.S_IFREG | 0x1ff)
       stat.st_nlink.set(1)
       stat.st_size.set(file.checksum.size)
-      stat.st_ctim.tv_sec.set(file.timestamp.created / 1000)
-      stat.st_ctim.tv_nsec.set((file.timestamp.created % 1000) * 1000)
+      stat.st_birthtime.tv_sec.set(file.timestamp.created / 1000)
+      stat.st_birthtime.tv_nsec.set((file.timestamp.created % 1000) * 1000)
       stat.st_mtim.tv_sec.set(file.timestamp.lastModified / 1000)
       stat.st_mtim.tv_nsec.set((file.timestamp.lastModified % 1000) * 1000)
+      stat.st_atim.tv_sec.set(file.timestamp.lastModified / 1000)
+      stat.st_atim.tv_nsec.set((file.timestamp.lastModified % 1000) * 1000)
     }
 
     val folder = Try(dispatch(GetFolder(path), GetFolder))
@@ -200,7 +204,12 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   }
 
   override def fsync(path: String, isdatasync: Int, fi: FuseFileInfo): Int = {
-    Try(dispatch(DispatchIOOperation(path, FileIOScheduler.PersistRevision), DispatchIOOperation)) match {
+    val persistResult = Try {
+      dispatch(DispatchIOOperation(path, FileIOScheduler.Flush), DispatchIOOperation)
+      dispatch(DispatchIOOperation(path, FileIOScheduler.PersistRevision), DispatchIOOperation)
+    }
+
+    persistResult match {
       case Success(FileIOScheduler.PersistRevision.Success(_, _)) ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case _ ⇒ -ErrorCodes.EIO()

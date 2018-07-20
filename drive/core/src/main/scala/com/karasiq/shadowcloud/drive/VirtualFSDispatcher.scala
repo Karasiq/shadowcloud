@@ -166,7 +166,10 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
 
     def syncFile(path: Path): Future[File] = {
       state.fileWrites.get(path) match {
-        case Some(dispatcher) ⇒ FileIOScheduler.PersistRevision.unwrapFuture(dispatcher ? FileIOScheduler.PersistRevision)
+        case Some(dispatcher) ⇒
+          FileIOScheduler.Flush.unwrapFuture(dispatcher ? FileIOScheduler.Flush)
+            .flatMap(_ ⇒ FileIOScheduler.PersistRevision.unwrapFuture(dispatcher ? FileIOScheduler.PersistRevision))
+          
         case None ⇒ Future.failed(StorageException.NotFound(path))
       }
     }

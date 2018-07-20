@@ -103,6 +103,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     var currentChunks = mutable.TreeMap(ChunkRanges.RangeList.zipWithRange(file.chunks).map(_.swap):_*)
     var pendingWrites = Seq.empty[ChunkPatch]
     var lastRevision = file
+    var lastSetSize = file.checksum.size
 
     def isFlushRequired: Boolean = {
       (System.nanoTime() - actorState.lastFlush).nanos > config.fileIO.flushInterval ||
@@ -113,12 +114,21 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       pendingWrites.nonEmpty || currentChunks.values.toSeq != lastRevision.chunks
     }
 
-    def createNewRevision(): File = {
+    def buildNewRevision(): File = {
       val newChunks = currentChunks.values.toVector
       val newSize = newChunks.map(_.checksum.size).sum
       val newEncSize = newChunks.map(_.checksum.encSize).sum
       val newChecksum = Checksum(HashingMethod.none, HashingMethod.none, newSize, ByteString.empty, newEncSize, ByteString.empty)
       File.modified(lastRevision, newChecksum, newChunks)
+    }
+
+    def fixRevisionBounds(): File = {
+      val maxChunkEnd = if (currentChunks.isEmpty) 0 else currentChunks.keys.maxBy(_.end).end
+      val maxPatchEnd = if (pendingWrites.isEmpty) 0 else pendingWrites.maxBy(_.range.end).range.end
+
+      val newSize = math.max(lastSetSize, math.max(maxChunkEnd, maxPatchEnd))
+      val newChecksum = Checksum(HashingMethod.none, HashingMethod.none, newSize, ByteString.empty, newSize, ByteString.empty)
+      lastRevision.copy(checksum = newChecksum, chunks = Nil)
     }
   }
 
@@ -269,7 +279,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     // Revisions
     // -----------------------------------------------------------------------
     def updateRevision(): Future[File] = {
-      val newFile = dataState.createNewRevision()
+      val newFile = dataState.buildNewRevision()
       sc.ops.region.createFile(regionId, newFile)
     }
   }
@@ -307,6 +317,8 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
           val dropBytes = newSize - data.range.end
           data.copy(data.offset, data.data.dropRight(dropBytes.toInt))
       }
+
+      dataState.lastSetSize = newSize
     }
   }
 
@@ -316,7 +328,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   object dataUtils {
     def pendingAppends(pendingWrites: Seq[ChunkPatch], chunksEnd: Long): Iterator[(ChunkRanges.Range, Chunk)] = {
       val appends = pendingWrites.filter(_.range.end > chunksEnd)
-      val newSize = appends.lastOption.fold(chunksEnd)(_.range.end)
+      val newSize = if (appends.isEmpty) chunksEnd else appends.map(_.range.end).max
 
       def appendsIterator(offset: Long, restSize: Long): Iterator[(ChunkRanges.Range, Chunk)] = {
         def padding(restSize: Long) = {
@@ -363,7 +375,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       }
 
     case CutFile(newSize) ⇒
-      log.info("Cutting file to {}", MemorySize(newSize))
+      log.debug("Cutting file to {}", MemorySize(newSize))
       CutFile.wrapFuture(file, dataIO.cutFile(newSize)).pipeTo(sender())
 
     case DropChunks(newSize) ⇒
@@ -379,7 +391,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       PersistRevision.wrapFuture(file, future).pipeTo(sender())
 
     case GetCurrentRevision ⇒
-      val currentRevision = dataState.createNewRevision()
+      val currentRevision = dataState.fixRevisionBounds()
       sender() ! GetCurrentRevision.Success(file, currentRevision)
 
     case result: Flush.Status ⇒

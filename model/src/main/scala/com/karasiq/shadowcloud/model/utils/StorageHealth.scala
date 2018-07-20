@@ -10,6 +10,10 @@ final case class StorageHealth(writableSpace: Long, totalSpace: Long, usedSpace:
     math.max(0L, totalSpace - usedSpace)
   }
 
+  def +(h1: StorageHealth): StorageHealth = {
+    copy(writableSpace + h1.writableSpace, totalSpace + h1.totalSpace, usedSpace + h1.usedSpace, online && h1.online)
+  }
+
   def -(bytes: Long): StorageHealth = {
     StorageHealth.normalized(writableSpace - bytes, totalSpace, usedSpace + bytes, online)
   }

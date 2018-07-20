@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.drive
 import java.io.IOException
 
 import scala.collection.mutable
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
@@ -18,7 +18,7 @@ import com.karasiq.shadowcloud.drive.config.SCDriveConfig
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.model.{File, Folder, Path, RegionId}
-import com.karasiq.shadowcloud.model.utils.RegionHealth
+import com.karasiq.shadowcloud.model.utils.{RegionHealth, StorageHealth}
 
 object VirtualFSDispatcher {
   // Messages
@@ -42,7 +42,7 @@ object VirtualFSDispatcher {
   object DeleteFolder extends MessageStatus[Path, Folder]
 
   final case class GetHealth(path: Path) extends Message
-  object GetHealth extends MessageStatus[Path, RegionHealth]
+  object GetHealth extends MessageStatus[Path, StorageHealth]
 
   final case class ReleaseFile(path: Path) extends Message
   object ReleaseFile extends MessageStatus[Path, File]
@@ -79,11 +79,10 @@ object VirtualFSDispatcher {
 }
 
 class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging {
-  import context.dispatcher
-
   import VirtualFSDispatcher._
   private[this] implicit lazy val sc = ShadowCloud()
-  private[this] implicit val timeout = Timeout(10 seconds)
+  private[this] implicit val ec: ExecutionContext = context.dispatcher
+  private[this] implicit val timeout = Timeout(config.fileIO.timeout)
 
   object state {
     val fileWrites = mutable.AnyRefMap.empty[Path, ActorRef]
@@ -250,20 +249,27 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
       state.fileWrites.get(path) match {
         case Some(dispatcher) ⇒
           DispatchIOOperation.wrapFuture(path, dispatcher ? operation)
+            .pipeTo(currentSender)
 
         case None ⇒
           operations.openFileForWrite(path).onComplete {
-            case Success(_) ⇒ self.forward(msg) // Retry
+            case Success(_) ⇒ self.tell(msg, currentSender) // Retry
             case Failure(exc) ⇒ currentSender ! DispatchIOOperation.Failure(path, exc)
           }
       }
 
     case GetHealth(path) ⇒
       if (path.isRoot) {
-        sender() ! GetHealth.Success(path, RegionHealth.empty)
+        val allHealths = sc.ops.supervisor.getSnapshot().flatMap { ss ⇒
+          val storages = ss.storages.keys.toSeq
+          val futures = storages.map(storageId ⇒ sc.ops.storage.getHealth(storageId))
+          Future.sequence(futures)
+        }
+        val mergedHealth = allHealths.map(_.foldLeft(StorageHealth.empty)(_ + _))
+        GetHealth.wrapFuture(path, mergedHealth).pipeTo(sender())
       } else {
         val (regionId, _) = path.regionAndPath
-        GetHealth.wrapFuture(path, sc.ops.region.getHealth(regionId)).pipeTo(sender())
+        GetHealth.wrapFuture(path, sc.ops.region.getHealth(regionId).map(_.toStorageHealth)).pipeTo(sender())
       }
   }
 }

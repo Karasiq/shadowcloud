@@ -1,26 +1,104 @@
 package com.karasiq.shadowcloud.drive.fuse
 
-import scala.concurrent.{Await, ExecutionContext}
+import java.nio.file.Paths
+
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.concurrent.duration.Duration
 import scala.util.{Failure, Success, Try}
+import scala.util.control.NonFatal
 
+import akka.Done
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
-import jnr.ffi.Pointer
+import com.typesafe.config.Config
+import jnr.ffi.{Platform, Pointer}
+import jnr.ffi.Platform.OS
 import ru.serce.jnrfuse.{ErrorCodes, FuseFillDir, FuseStubFS}
-import ru.serce.jnrfuse.struct.{FuseFileInfo, Statvfs}
+import ru.serce.jnrfuse.struct.{FileStat, FuseFileInfo, Statvfs}
 
+import com.karasiq.common.configs.ConfigUtils
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.drive.FileIOScheduler
+import com.karasiq.shadowcloud.drive.config.SCDriveConfig
 import com.karasiq.shadowcloud.exceptions.SCException
+import com.karasiq.shadowcloud.model.{File, Folder}
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 
-class SCFileSystem(fsDispatcher: ActorRef)(implicit ec: ExecutionContext, timeout: Timeout) extends FuseStubFS {
+object SCFileSystem {
+  def apply(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: ExecutionContext): SCFileSystem = {
+    new SCFileSystem(config, fsDispatcher)
+  }
+
+  def getMountPath(config: Config = ConfigUtils.emptyConfig): String = {
+    Try(config.getString("mount-path")).getOrElse {
+      Platform.getNativePlatform.getOS match {
+        case OS.WINDOWS ⇒ "S:\\"
+        case _ ⇒ "/mnt/sc"
+      }
+    }
+  }
+
+  def mountInSeparateThread(fs: SCFileSystem, path: String): Future[Done] = {
+    val promise = Promise[Done]
+    val thread = new Thread(new Runnable {
+      def run(): Unit = {
+        try {
+          fs.mount(Paths.get(path))
+          promise.success(Done)
+        } catch { case NonFatal(exc) ⇒
+          promise.failure(exc)
+        }
+      }
+    })
+    thread.start()
+    promise.future
+  }
+}
+
+class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: ExecutionContext) extends FuseStubFS {
   import com.karasiq.shadowcloud.drive.VirtualFSDispatcher._
 
   protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T]): T = {
-    Await.result(status.unwrapFuture(fsDispatcher ? message), Duration.Inf)
+    implicit val timeout = Timeout(config.fileIO.timeout)
+    println(message)
+    val result = Await.result(status.unwrapFuture(fsDispatcher ? message), Duration.Inf)
+    println(message + " -> " + result)
+    result 
+  }
+
+
+  override def getattr(path: String, stat: FileStat): Int = {
+    def returnFolderAttrs(folder: Folder): Unit = {
+      stat.st_mode.set(FileStat.S_IFDIR | 0x1ed)
+      stat.st_nlink.set(folder.files.size + folder.folders.size + 1)
+      stat.st_ctim.tv_sec.set(folder.timestamp.created / 1000)
+      stat.st_ctim.tv_nsec.set((folder.timestamp.created % 1000) * 1000)
+      stat.st_mtim.tv_sec.set(folder.timestamp.lastModified / 1000)
+      stat.st_mtim.tv_nsec.set((folder.timestamp.lastModified % 1000) * 1000)
+    }
+
+    def returnFileAttrs(file: File): Unit = {
+      stat.st_mode.set(FileStat.S_IFREG | 0x1ed)
+      stat.st_nlink.set(1)
+      stat.st_size.set(file.checksum.size)
+      stat.st_ctim.tv_sec.set(file.timestamp.created / 1000)
+      stat.st_ctim.tv_nsec.set((file.timestamp.created % 1000) * 1000)
+      stat.st_mtim.tv_sec.set(file.timestamp.lastModified / 1000)
+      stat.st_mtim.tv_nsec.set((file.timestamp.lastModified % 1000) * 1000)
+    }
+
+    val folder = Try(dispatch(GetFolder(path), GetFolder))
+    lazy val file = Try(dispatch(GetFile(path), GetFile))
+    if (folder.isSuccess) {
+      returnFolderAttrs(folder.get)
+      0
+    } else if (file.isSuccess) {
+      returnFileAttrs(file.get)
+      0
+    } else {
+      -ErrorCodes.ENOENT()
+    }
   }
 
   override def mkdir(path: String, mode: Long): Int = {
@@ -142,8 +220,12 @@ class SCFileSystem(fsDispatcher: ActorRef)(implicit ec: ExecutionContext, timeou
   }
 
   override def create(path: String, mode: Long, fi: FuseFileInfo): Int = {
-    Try(dispatch(CreateFile(path), CreateFile)) match {
+    val file = Try(dispatch(GetFile(path), GetFile))
+
+    if (file.isSuccess) -ErrorCodes.EEXIST()
+    else Try(dispatch(CreateFile(path), CreateFile)) match {
       case Success(_) ⇒ 0
+      case Failure(exc) if SCException.isAlreadyExists(exc) ⇒ -ErrorCodes.EEXIST()
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case _ ⇒ -ErrorCodes.EIO()
     }

@@ -10,9 +10,12 @@ import com.typesafe.config.ConfigFactory
 
 import com.karasiq.common.configs.ConfigUtils
 import com.karasiq.shadowcloud.ShadowCloud
+import com.karasiq.shadowcloud.drive.{fuse, SCDrive}
+import com.karasiq.shadowcloud.drive.fuse.SCFileSystem
 import com.karasiq.shadowcloud.javafx.JavaFXContext
 import com.karasiq.shadowcloud.persistence.h2.H2DB
 import com.karasiq.shadowcloud.server.http.SCAkkaHttpServer
+import com.karasiq.common.configs.ConfigImplicits._
 
 object SCDesktopMain extends App {
   // -----------------------------------------------------------------------
@@ -27,7 +30,7 @@ object SCDesktopMain extends App {
         ConfigUtils.emptyConfig
 
       val serverConfig = ConfigFactory.load("sc-desktop")
-      fileConfig.withFallback(serverConfig).withFallback(defaultConfig)
+      fileConfig.withFallback(serverConfig).withFallback(defaultConfig).resolve()
     }
     serverAppConfig
   }
@@ -58,6 +61,14 @@ object SCDesktopMain extends App {
         .onComplete(_ ⇒ System.exit(0))
     }
   }.addToTray()
+
+  // Init FUSE file system
+  val drive = SCDrive(actorSystem)
+  val fileSystem = SCFileSystem(drive.config, drive.dispatcher)
+  val mountPath = SCFileSystem.getMountPath(drive.config.rootConfig.getConfigIfExists("fuse"))
+  val mountFuture = SCFileSystem.mountInSeparateThread(fileSystem, mountPath)
+  mountFuture.failed.foreach(actorSystem.log.error(_, "FUSE filesystem mount failed"))
+  actorSystem.registerOnTermination(mountFuture.foreach(_ ⇒ fileSystem.umount()))
 
   JavaFXContext(actorSystem)
     .initFuture

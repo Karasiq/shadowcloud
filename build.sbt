@@ -308,7 +308,7 @@ lazy val desktopApp = (project in file("desktop-app"))
     name := "shadowcloud-desktop",
     libraryDependencies ++= ProjectDeps.akka.slf4j ++ ProjectDeps.logback
   )
-  .dependsOn(coreAssembly, server, javafx)
+  .dependsOn(coreAssembly, server, javafx, `drive-fuse`)
   .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin)
 
 lazy val shell = (project in file("."))

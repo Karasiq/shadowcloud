@@ -107,7 +107,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
 
     def isFlushRequired: Boolean = {
       (System.nanoTime() - actorState.lastFlush).nanos > config.fileIO.flushInterval ||
-        pendingWrites.map(_.range.size).sum > config.fileIO.flushLimit
+        pendingWrites.map(_.range.size).sum >= config.fileIO.flushLimit
     }
 
     def isChunksModified: Boolean = {

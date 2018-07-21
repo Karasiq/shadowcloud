@@ -71,7 +71,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   override def getattr(path: String, stat: FileStat): Int = {
     def returnFolderAttrs(folder: Folder): Unit = {
       stat.st_mode.set(FileStat.S_IFDIR | 0x1ff)
-      stat.st_nlink.set(folder.files.size + folder.folders.size + 1)
+      // stat.st_nlink.set(folder.files.size + folder.folders.size + 1)
       stat.st_birthtime.tv_sec.set(folder.timestamp.created / 1000)
       stat.st_birthtime.tv_nsec.set((folder.timestamp.created % 1000) * 1000)
       stat.st_mtim.tv_sec.set(folder.timestamp.lastModified / 1000)
@@ -82,7 +82,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
 
     def returnFileAttrs(file: File): Unit = {
       stat.st_mode.set(FileStat.S_IFREG | 0x1ff)
-      stat.st_nlink.set(1)
+      // stat.st_nlink.set(1)
       stat.st_size.set(file.checksum.size)
       stat.st_birthtime.tv_sec.set(file.timestamp.created / 1000)
       stat.st_birthtime.tv_nsec.set((file.timestamp.created % 1000) * 1000)

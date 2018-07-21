@@ -111,7 +111,11 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     }
 
     def isChunksModified: Boolean = {
-      pendingWrites.nonEmpty || currentChunks.values.toSeq != lastRevision.chunks
+      pendingWrites.nonEmpty || isRevisionModified
+    }
+
+    def isRevisionModified: Boolean = {
+      currentChunks.values.toSeq != lastRevision.chunks
     }
 
     def buildNewRevision(): File = {
@@ -278,7 +282,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     // -----------------------------------------------------------------------
     // Revisions
     // -----------------------------------------------------------------------
-    def updateRevision(): Future[File] = {
+    def saveNewRevision(): Future[File] = {
       val newFile = dataState.buildNewRevision()
       sc.ops.region.createFile(regionId, newFile)
     }
@@ -386,23 +390,27 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       actorState.pendingFlush.addWaiter(NotUsed, sender(), () ⇒ Flush.wrapFuture(file, dataIO.flush()).pipeTo(self))
 
     case PersistRevision ⇒
-      val future = dataIO.updateRevision()
-      future.map(RevisionUpdated).pipeTo(self)
+      val future = if (dataState.isRevisionModified) {
+        val future = dataIO.saveNewRevision()
+        future.map(RevisionUpdated).pipeTo(self)
 
-      val futureWithMetadata = future.flatMap { newFile ⇒
-        if (config.fileIO.createMetadata) {
-          sc.streams.file.read(regionId, newFile)
-            .via(sc.streams.metadata.create(newFile.path.name).async)
-            .via(sc.streams.metadata.writeAll(regionId, newFile.id).async)
-            .log("drive-metadata-files")
-            .runWith(Sink.ignore)
-            .map(_ ⇒ newFile)
-        } else {
-          Future.successful(newFile)
+        future.flatMap { newFile ⇒
+          if (config.fileIO.createMetadata) {
+            sc.streams.file.read(regionId, newFile)
+              .via(sc.streams.metadata.create(newFile.path.name).async)
+              .via(sc.streams.metadata.writeAll(regionId, newFile.id).async)
+              .log("drive-metadata-files")
+              .runWith(Sink.ignore)
+              .map(_ ⇒ newFile)
+          } else {
+            Future.successful(newFile)
+          }
         }
+      } else {
+        Future.successful(dataState.lastRevision)
       }
 
-      PersistRevision.wrapFuture(file, futureWithMetadata).pipeTo(sender())
+      PersistRevision.wrapFuture(file, future).pipeTo(sender())
 
     case GetCurrentRevision ⇒
       val currentRevision = dataState.fixRevisionBounds()

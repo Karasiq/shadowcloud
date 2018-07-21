@@ -92,13 +92,13 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
       stat.st_atim.tv_nsec.set((file.timestamp.lastModified % 1000) * 1000)
     }
 
-    val folder = Try(dispatch(GetFolder(path), GetFolder))
-    lazy val file = Try(dispatch(GetFile(path), GetFile))
-    if (folder.isSuccess) {
-      returnFolderAttrs(folder.get)
-      0
-    } else if (file.isSuccess) {
+    val file = Try(dispatch(GetFile(path), GetFile))
+    lazy val folder = Try(dispatch(GetFolder(path), GetFolder))
+    if (file.isSuccess) {
       returnFileAttrs(file.get)
+      0
+    } else if (folder.isSuccess) {
+      returnFolderAttrs(folder.get)
       0
     } else {
       -ErrorCodes.ENOENT()

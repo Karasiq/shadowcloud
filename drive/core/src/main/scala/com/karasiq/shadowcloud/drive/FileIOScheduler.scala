@@ -6,7 +6,7 @@ import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
 import akka.{Done, NotUsed}
-import akka.actor.{Actor, ActorLogging, Props, ReceiveTimeout}
+import akka.actor.{Actor, ActorLogging, PoisonPill, Props, ReceiveTimeout}
 import akka.pattern.{ask, pipe}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
@@ -45,6 +45,7 @@ object FileIOScheduler {
   final case object Flush extends Message with MessageStatus[File, FlushResult]
   final case object PersistRevision extends Message with MessageStatus[File, File]
   final case object GetCurrentRevision extends Message with MessageStatus[File, File]
+  final case object ReleaseFile extends Message with MessageStatus[File, File]
 
   // -----------------------------------------------------------------------
   // Internal Messages
@@ -392,16 +393,15 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     case PersistRevision ⇒
       val future = if (dataState.isRevisionModified) {
         val future = dataIO.saveNewRevision()
-        future.map(RevisionUpdated).pipeTo(self)
-
         future.flatMap { newFile ⇒
           if (config.fileIO.createMetadata) {
             sc.streams.file.read(regionId, newFile)
-              .via(sc.streams.metadata.create(newFile.path.name).async)
-              .via(sc.streams.metadata.writeAll(regionId, newFile.id).async)
+              .via(sc.streams.metadata.create(newFile.path.name))
+              .via(sc.streams.metadata.writeAll(regionId, newFile.id))
               .log("drive-metadata-files")
-              .runWith(Sink.ignore)
+              .runWith(Sink.seq)
               .map(_ ⇒ newFile)
+              .recover { case _ ⇒ newFile }
           } else {
             Future.successful(newFile)
           }
@@ -410,6 +410,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
         Future.successful(dataState.lastRevision)
       }
 
+      future.map(RevisionUpdated).pipeTo(self)
       PersistRevision.wrapFuture(file, future).pipeTo(sender())
 
     case GetCurrentRevision ⇒
@@ -427,17 +428,24 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       }
       actorState.finishFlush(result)
 
-    case RevisionUpdated(newFile) ⇒
+    case RevisionUpdated(newFile) if newFile != dataState.lastRevision ⇒
       log.info("File revision updated: {}", newFile)
       dataOps.updateRevision(newFile)
 
-    case ReceiveTimeout ⇒
+    case ReleaseFile ⇒
+      log.debug("Stopping file IO scheduler")
       if (dataState.isChunksModified) {
-        (self ? Flush).foreach(_ ⇒ self ! PersistRevision)
+        val future = Flush.unwrapFuture(self ? Flush)
+          .flatMap(_ ⇒ PersistRevision.unwrapFuture(self ? PersistRevision))
+        ReleaseFile.wrapFuture(file, future).pipeTo(sender())
+        future.map(_ ⇒ ReleaseFile).pipeTo(self)(sender())
       } else {
-        log.debug("Stopping file IO scheduler")
+        sender() ! ReleaseFile.Success(file, dataState.lastRevision)
         context.stop(self)
       }
+
+    case ReceiveTimeout ⇒
+      self ! ReleaseFile
   }
 
   // -----------------------------------------------------------------------

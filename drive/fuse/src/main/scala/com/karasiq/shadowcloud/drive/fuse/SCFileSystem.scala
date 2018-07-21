@@ -206,11 +206,11 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   override def fsync(path: String, isdatasync: Int, fi: FuseFileInfo): Int = {
     val persistResult = Try {
       dispatch(DispatchIOOperation(path, FileIOScheduler.Flush), DispatchIOOperation)
-      dispatch(DispatchIOOperation(path, FileIOScheduler.PersistRevision), DispatchIOOperation)
+      // dispatch(DispatchIOOperation(path, FileIOScheduler.PersistRevision), DispatchIOOperation)
     }
 
     persistResult match {
-      case Success(FileIOScheduler.PersistRevision.Success(_, _)) ⇒ 0
+      case Success(FileIOScheduler.Flush.Success(_, _)) ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case _ ⇒ -ErrorCodes.EIO()
     }
@@ -229,10 +229,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   }
 
   override def create(path: String, mode: Long, fi: FuseFileInfo): Int = {
-    val file = Try(dispatch(GetFile(path), GetFile))
-
-    if (file.isSuccess) -ErrorCodes.EEXIST()
-    else Try(dispatch(CreateFile(path), CreateFile)) match {
+    Try(dispatch(CreateFile(path), CreateFile)) match {
       case Success(_) ⇒ 0
       case Failure(exc) if SCException.isAlreadyExists(exc) ⇒ -ErrorCodes.EEXIST()
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()

@@ -4,6 +4,9 @@ import java.awt.Desktop
 import java.net.URI
 import java.nio.file.{Files, Paths}
 
+import scala.concurrent.Future
+
+import akka.Done
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import com.typesafe.config.ConfigFactory
@@ -54,6 +57,17 @@ object SCDesktopMain extends App {
       }
     }
 
+    def onMount(): Future[Done] = {
+      // Init FUSE file system
+      val drive = SCDrive(actorSystem)
+      val fileSystem = SCFileSystem(drive.config, drive.dispatcher)
+      val mountPath = SCFileSystem.getMountPath(drive.config.rootConfig.getConfigIfExists("fuse"))
+      val mountFuture = SCFileSystem.mountInSeparateThread(fileSystem, mountPath)
+      mountFuture.failed.foreach(actorSystem.log.error(_, "FUSE filesystem mount failed"))
+      actorSystem.registerOnTermination(mountFuture.foreach(_ ⇒ fileSystem.umount()))
+      mountFuture
+    }
+
     def onExit(): Unit = {
       bindFuture
         .flatMap(_.unbind())
@@ -61,14 +75,6 @@ object SCDesktopMain extends App {
         .onComplete(_ ⇒ System.exit(0))
     }
   }.addToTray()
-
-  // Init FUSE file system
-  val drive = SCDrive(actorSystem)
-  val fileSystem = SCFileSystem(drive.config, drive.dispatcher)
-  val mountPath = SCFileSystem.getMountPath(drive.config.rootConfig.getConfigIfExists("fuse"))
-  val mountFuture = SCFileSystem.mountInSeparateThread(fileSystem, mountPath)
-  mountFuture.failed.foreach(actorSystem.log.error(_, "FUSE filesystem mount failed"))
-  actorSystem.registerOnTermination(mountFuture.foreach(_ ⇒ fileSystem.umount()))
 
   JavaFXContext(actorSystem)
     .initFuture

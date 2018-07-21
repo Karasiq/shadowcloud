@@ -8,7 +8,7 @@ import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-import akka.actor.{Actor, ActorLogging, ActorRef, PossiblyHarmful, Props, Terminated}
+import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, PossiblyHarmful, Props, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 
@@ -167,15 +167,15 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
     def syncFile(path: Path): Future[File] = {
       state.fileWrites.get(path) match {
         case Some(dispatcher) ⇒
-          FileIOScheduler.Flush.unwrapFuture(dispatcher ? FileIOScheduler.Flush)
-            .flatMap(_ ⇒ FileIOScheduler.PersistRevision.unwrapFuture(dispatcher ? FileIOScheduler.PersistRevision))
+          FileIOScheduler.ReleaseFile.unwrapFuture(dispatcher ? FileIOScheduler.ReleaseFile)
           
-        case None ⇒ Future.failed(StorageException.NotFound(path))
+        case None ⇒
+          Future.failed(StorageException.IOFailure(path, new IOException("Not opened for write")))
       }
     }
 
     def closeFile(path: Path): Unit = {
-      state.fileWrites.remove(path).foreach(context.stop)
+      state.fileWrites.remove(path).foreach(_ ! PoisonPill)
     }
 
     def renameFile(path: Path, newPath: Path): Future[File] = {

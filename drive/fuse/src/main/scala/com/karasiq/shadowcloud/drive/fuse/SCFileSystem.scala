@@ -22,7 +22,7 @@ import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.drive.FileIOScheduler
 import com.karasiq.shadowcloud.drive.config.SCDriveConfig
 import com.karasiq.shadowcloud.exceptions.SCException
-import com.karasiq.shadowcloud.model.{File, Folder}
+import com.karasiq.shadowcloud.model.{File, Folder, Path}
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 
 object SCFileSystem {
@@ -44,7 +44,7 @@ object SCFileSystem {
     val thread = new Thread(new Runnable {
       def run(): Unit = {
         try {
-          fs.mount(Paths.get(path))
+          fs.mount(Paths.get(path)/*, false, true*/)
           promise.success(Done)
         } catch { case NonFatal(exc) ⇒
           promise.failure(exc)
@@ -62,8 +62,13 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T]): T = {
     implicit val timeout = Timeout(config.fileIO.timeout)
     // println(message)
-    val result = Await.result(status.unwrapFuture(fsDispatcher ? message), Duration.Inf)
-    // println(message + " -> " + result)
+    val result = // try {
+      Await.result(status.unwrapFuture(fsDispatcher ? message), Duration.Inf)
+    /* } catch { case NonFatal(exc) ⇒
+      println(message + "-> ERROR " + exc)
+      throw exc 
+    }
+    println(message + " -> " + result) */
     result 
   }
 
@@ -71,7 +76,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   override def getattr(path: String, stat: FileStat): Int = {
     def returnFolderAttrs(folder: Folder): Unit = {
       stat.st_mode.set(FileStat.S_IFDIR | 0x1ff)
-      // stat.st_nlink.set(folder.files.size + folder.folders.size + 1)
+      stat.st_nlink.set(folder.files.size + folder.folders.size + 1)
       stat.st_birthtime.tv_sec.set(folder.timestamp.created / 1000)
       stat.st_birthtime.tv_nsec.set((folder.timestamp.created % 1000) * 1000)
       stat.st_mtim.tv_sec.set(folder.timestamp.lastModified / 1000)
@@ -82,7 +87,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
 
     def returnFileAttrs(file: File): Unit = {
       stat.st_mode.set(FileStat.S_IFREG | 0x1ff)
-      // stat.st_nlink.set(1)
+      stat.st_nlink.set(1)
       stat.st_size.set(file.checksum.size)
       stat.st_birthtime.tv_sec.set(file.timestamp.created / 1000)
       stat.st_birthtime.tv_nsec.set((file.timestamp.created % 1000) * 1000)
@@ -92,13 +97,13 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
       stat.st_atim.tv_nsec.set((file.timestamp.lastModified % 1000) * 1000)
     }
 
-    val file = Try(dispatch(GetFile(path), GetFile))
-    lazy val folder = Try(dispatch(GetFolder(path), GetFolder))
-    if (file.isSuccess) {
-      returnFileAttrs(file.get)
-      0
-    } else if (folder.isSuccess) {
+    val folder = Try(dispatch(GetFolder(path), GetFolder))
+    lazy val file = Try(dispatch(GetFile(path), GetFile))
+    if (folder.isSuccess) {
       returnFolderAttrs(folder.get)
+      0
+    } else if (file.isSuccess) {
+      returnFileAttrs(file.get)
       0
     } else {
       -ErrorCodes.ENOENT()
@@ -196,11 +201,12 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   }
 
   override def release(path: String, fi: FuseFileInfo): Int = {
-    Try(dispatch(ReleaseFile(path), ReleaseFile)) match {
+    Try(dispatch(ReleaseFile(path), ReleaseFile)) /* match {
       case Success(_) ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case Failure(_) ⇒ -ErrorCodes.EACCES()
-    }
+    } */
+    0
   }
 
   override def fsync(path: String, isdatasync: Int, fi: FuseFileInfo): Int = {
@@ -220,7 +226,9 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
     Try(dispatch(GetFolder(path), GetFolder)) match {
       case Success(folder) ⇒
         val names = folder.folders ++ folder.files.map(_.path.name)
-        names.foreach(filter.apply(buf, _, null, 0))
+        names
+          .filter(str ⇒ Path.isStrictlyConventional(Path(Seq(str))))
+          .foreach(filter.apply(buf, _, null, 0))
         0
 
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()

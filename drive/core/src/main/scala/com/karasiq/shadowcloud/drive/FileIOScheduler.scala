@@ -441,11 +441,11 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
         future.map(_ ⇒ ReleaseFile).pipeTo(self)(sender())
       } else {
         sender() ! ReleaseFile.Success(file, dataState.lastRevision)
-        context.stop(self)
       }
 
     case ReceiveTimeout ⇒
-      self ! ReleaseFile
+      if (dataState.isChunksModified) self ! ReleaseFile
+      else context.stop(self)
   }
 
   // -----------------------------------------------------------------------

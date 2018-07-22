@@ -13,7 +13,7 @@ import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.actors.utils.MessageStatus
+import com.karasiq.shadowcloud.actors.utils.{ActorState, MessageStatus}
 import com.karasiq.shadowcloud.drive.config.SCDriveConfig
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.index.files.FileVersions
@@ -105,7 +105,7 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
       if (path.isRoot) {
         // List region IDs
         sc.ops.supervisor.getSnapshot()
-          .map(ss ⇒ Folder(path, folders = ss.regions.keySet))
+          .map(ss ⇒ Folder(path, folders = ss.regions.filter(_._2.actorState.isInstanceOf[ActorState.Active]).keySet))
       } else {
         val (regionId, regionPath) = path.regionAndPath
         sc.ops.region.getFolder(regionId, regionPath)
@@ -264,8 +264,16 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
     case GetHealth(path) ⇒
       if (path.isRoot) {
         val allHealths = sc.ops.supervisor.getSnapshot().flatMap { ss ⇒
-          val storages = ss.storages.keys.toSeq
-          val futures = storages.map(storageId ⇒ sc.ops.storage.getHealth(storageId))
+          val storages = ss.storages
+            .filter(_._2.actorState.isInstanceOf[ActorState.Active])
+            .keys
+            .toSeq
+
+          val futures = storages.map { storageId ⇒
+            sc.ops.storage.getHealth(storageId)
+              .recover { case _ ⇒ StorageHealth.empty }
+          }
+          
           Future.sequence(futures)
         }
         val mergedHealth = allHealths.map(_.foldLeft(StorageHealth.empty)(_ + _))

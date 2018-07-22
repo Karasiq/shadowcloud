@@ -1,6 +1,7 @@
 package com.karasiq.shadowcloud.streams.chunk
 
 import scala.annotation.tailrec
+import scala.language.{higherKinds, implicitConversions}
 
 import akka.util.ByteString
 
@@ -9,7 +10,7 @@ import com.karasiq.shadowcloud.model.Chunk
 import com.karasiq.shadowcloud.utils.Utils
 
 object ChunkRanges {
-  case class Range(start: Long, end: Long) {
+  final case class Range(start: Long, end: Long) {
     require(start <= end, s"Invalid range: $start - $end")
 
     def size: Long = {
@@ -32,13 +33,29 @@ object ChunkRanges {
       if (start == 0 && end == data.length) {
         data
       } else {
-        val start = math.max(0L, this.start)
-        data.drop(start.toInt).take((end - start).toInt)
+        val start = math.max(this.start, 0L)
+        val end = math.min(this.end, data.length)
+        data.slice(start.toInt, end.toInt) // data.drop(start.toInt).take((end - start).toInt)
       }
     }
   }
 
-  case class RangeList(ranges: Seq[Range]) extends HasEmpty {
+  object Range {
+    implicit val ordering = Ordering.by((r: Range) ⇒ (r.start, r.end))
+    
+    implicit def fromScalaRange(range: scala.Range): Range = {
+      Range(range.start, if (range.isInclusive) range.end + 1 else range.end)
+    }
+
+    def patch(data: ByteString, range: Range, patchData: ByteString): ByteString = {
+      val normalizedRange = range.fitToSize(data.length)
+      require(normalizedRange.size <= patchData.length, "Invalid patch size")
+      // data.take(normalizedRange.start.toInt) ++ patchData.take(normalizedRange.size.toInt) ++ data.slice(normalizedRange.end.toInt, data.length)
+      data.patch(normalizedRange.start.toInt, patchData, normalizedRange.size.toInt)
+    }
+  }
+
+  final case class RangeList(ranges: Seq[Range]) extends HasEmpty {
     def isEmpty: Boolean = {
       ranges.isEmpty
     }
@@ -90,6 +107,25 @@ object ChunkRanges {
       new RangeList(firstRange +: otherRanges)
     }
 
+    implicit def fromRange(range: Range): RangeList = {
+      RangeList(Vector(range))
+    }
+
+    def zipWithRange(chunkStream: Seq[Chunk]): Seq[(Chunk, Range)] = {
+      var position = 0L
+
+      val rangedChunks = List.newBuilder[(Chunk, Range)]
+      rangedChunks.sizeHint(chunkStream.length)
+
+      for (chunk ← chunkStream) {
+        val chunkSize = chunk.checksum.size
+        val range = Range(position, position + chunkSize)
+        rangedChunks += (chunk → range)
+        position += chunkSize
+      }
+      rangedChunks.result()
+    }
+
     def mapChunkStream(ranges: RangeList, chunkStream: Seq[Chunk]): Seq[(Chunk, RangeList)] = {
       @tailrec
       def groupRanges(ranges: Seq[(Chunk, Range)], currentChunk: Option[(Chunk, RangeList)],
@@ -105,20 +141,7 @@ object ChunkRanges {
           result ++ currentChunk
       }
 
-      val rangedChunks = {
-        var position = 0L
-
-        val rangedChunks = List.newBuilder[(Chunk, Range)]
-        rangedChunks.sizeHint(chunkStream.length)
-
-        for (chunk ← chunkStream) {
-          val chunkSize = chunk.checksum.size
-          val range = Range(position, position + chunkSize)
-          rangedChunks += (chunk → range)
-          position += chunkSize
-        }
-        rangedChunks.result()
-      }
+      val rangedChunks = zipWithRange(chunkStream)
 
       val flatRanged = ranges.ranges.flatMap { range ⇒
         for ((chunk, fullRange) ← rangedChunks if fullRange.contains(range))

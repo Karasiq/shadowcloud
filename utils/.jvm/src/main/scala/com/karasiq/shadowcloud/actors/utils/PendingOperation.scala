@@ -5,7 +5,13 @@ import scala.language.postfixOps
 
 import akka.actor.ActorRef
 
-private[actors] final class PendingOperation[Key <: AnyRef] {
+object PendingOperation {
+  def apply[Key <: AnyRef]: PendingOperation[Key] = {
+    new PendingOperation[Key]()
+  }
+}
+
+class PendingOperation[Key <: AnyRef] {
   private[this] val subscribers = mutable.AnyRefMap[Key, mutable.Set[ActorRef]]()
 
   def addWaiter(key: Key, actor: ActorRef, ifFirst: () ⇒ Unit = () ⇒ ()): Unit = {

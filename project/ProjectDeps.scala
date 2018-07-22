@@ -139,6 +139,7 @@ object ProjectDeps {
     "com.vladsch.flexmark" % "flexmark-all" % "0.28.4"
   )
 
+  // https://github.com/Karasiq/webzinc
   def webzinc: Deps = {
     val version = "1.0.8"
     Seq(
@@ -147,4 +148,9 @@ object ProjectDeps {
       "com.github.karasiq" %% "webzinc-htmlunit" % version
     )
   }
+
+  // https://github.com/SerCeMan/jnr-fuse
+  def `jnr-fuse`: Deps = Seq(
+    "com.github.serceman" % "jnr-fuse" % "0.5.1"
+  )
 }

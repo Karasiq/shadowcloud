@@ -278,6 +278,26 @@ lazy val webapp = (project in file("server") / "webapp")
   .enablePlugins(ScalaJSPlugin)
 
 // -----------------------------------------------------------------------
+// shadowcloud-drive
+// -----------------------------------------------------------------------
+lazy val `drive-core` = (project in file("drive") / "core")
+  .settings(
+    commonSettings,
+    name := "shadowcloud-drive-core",
+    libraryDependencies ++= ProjectDeps.scalaTest.map(_ % "test")
+  )
+  .dependsOn(core % "compile->compile;test->test", coreAssembly % "test->test", utilsJVM)
+
+lazy val `drive-fuse` = (project in file("drive") / "fuse")
+  .settings(
+    commonSettings,
+    name := "shadowcloud-drive-fuse",
+    resolvers += "jcenter" at "http://jcenter.bintray.com",
+    libraryDependencies ++= ProjectDeps.`jnr-fuse`
+  )
+  .dependsOn(`drive-core`)
+
+// -----------------------------------------------------------------------
 // Desktop app
 // -----------------------------------------------------------------------
 lazy val javafx = (project in file("javafx"))
@@ -294,7 +314,7 @@ lazy val desktopApp = (project in file("desktop-app"))
     name := "shadowcloud-desktop",
     libraryDependencies ++= ProjectDeps.akka.slf4j ++ ProjectDeps.logback
   )
-  .dependsOn(coreAssembly, server, javafx)
+  .dependsOn(coreAssembly, server, javafx, `drive-fuse`)
   .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin)
 
 // -----------------------------------------------------------------------

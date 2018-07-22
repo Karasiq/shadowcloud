@@ -4,11 +4,10 @@ import java.io.IOException
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration._
 import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
-import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, PossiblyHarmful, Props, Terminated}
+import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, PossiblyHarmful, Props}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
 
@@ -16,9 +15,10 @@ import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.utils.{ActorState, MessageStatus}
 import com.karasiq.shadowcloud.drive.config.SCDriveConfig
 import com.karasiq.shadowcloud.exceptions.StorageException
+import com.karasiq.shadowcloud.index.diffs.FolderIndexDiff
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.model.{File, Folder, Path, RegionId}
-import com.karasiq.shadowcloud.model.utils.{RegionHealth, StorageHealth}
+import com.karasiq.shadowcloud.model.utils.StorageHealth
 
 object VirtualFSDispatcher {
   // Messages
@@ -49,6 +49,9 @@ object VirtualFSDispatcher {
 
   final case class RenameFile(path: Path, newPath: Path) extends Message
   object RenameFile extends MessageStatus[Path, File]
+
+  final case class RenameFolder(path: Path, newPath: Path) extends Message
+  object RenameFolder extends MessageStatus[Path, Folder]
 
   final case class DispatchIOOperation(path: Path, operation: FileIOScheduler.Message) extends Message
   object DispatchIOOperation extends MessageStatus[Path, Any]
@@ -126,9 +129,10 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
     }
 
     def createFile(path: Path): Future[File] = {
-      if (path.isRoot || path.isRegionRoot || state.fileWrites.contains(path)) {
+      if (path.isRoot || path.isRegionRoot) {
         Future.failed(StorageException.AlreadyExists(path))
       } else {
+        state.fileWrites.remove(path).foreach(_ ! PoisonPill)
         val (_, regionPath) = path.regionAndPath
         val newFile = File(regionPath)
         OpenFile.unwrapFuture(self ? OpenFile(path, newFile))
@@ -168,7 +172,7 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
       state.fileWrites.get(path) match {
         case Some(dispatcher) ⇒
           FileIOScheduler.ReleaseFile.unwrapFuture(dispatcher ? FileIOScheduler.ReleaseFile)
-          
+
         case None ⇒
           Future.failed(StorageException.IOFailure(path, new IOException("Not opened for write")))
       }
@@ -202,6 +206,25 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
           _ ← sc.ops.region.deleteFiles(regionId, oldRegionPath)
         } yield newFile
       }
+    }
+
+    def renameFolder(path: Path, newPath: Path): Future[Folder] = {
+      if (path.isRoot || path.isRegionRoot || newPath.isRoot || newPath.isRegionRoot)
+        return Future.failed(StorageException.NotFound(path))
+
+      val (regionId, oldRegionPath) = path.regionAndPath
+      val (regionId2, newRegionPath) = path.regionAndPath
+
+      if (regionId != regionId2)
+        return Future.failed(StorageException.IOFailure(path, new IOException("Regions id should match")))
+
+      for {
+        oldFolder ← sc.ops.region.getFolder(regionId, oldRegionPath)
+        index ← sc.ops.region.getFolderIndex(regionId)
+        _ ← sc.ops.region.writeIndex(regionId, FolderIndexDiff.copyFolder(index, oldRegionPath, newRegionPath))
+        newFolder ← sc.ops.region.getFolder(regionId, newRegionPath)
+        _ ← sc.ops.region.deleteFolder(regionId, oldRegionPath)
+      } yield newFolder
     }
   }
 
@@ -246,6 +269,9 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
 
     case RenameFile(path, newPath) ⇒
       RenameFile.wrapFuture(path, operations.renameFile(path, newPath)).pipeTo(sender())
+
+    case RenameFolder(path, newPath) ⇒
+      RenameFolder.wrapFuture(path, operations.renameFolder(path, newPath)).pipeTo(sender())
 
     case msg @ DispatchIOOperation(path, operation) ⇒
       val currentSender = sender()

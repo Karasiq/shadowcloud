@@ -31,8 +31,8 @@ val packageSettings = Seq(
   jdkPackagerProperties := Map(
     "app.name" → "shadowcloud",
     "app.version" → version.value.replace("-SNAPSHOT", ""),
-    "file.encoding" → "UTF-8",
-    "jnrfuse.winfsp.path" → "C:\\Program Files (x86)\\WinFsp\\bin\\winfsp-x64.dll"
+    "file.encoding" → "UTF-8"
+    // "jnrfuse.winfsp.path" → "C:\\Program Files (x86)\\WinFsp\\bin\\winfsp-x64.dll"
   ),
   // antPackagerTasks in JDKPackager := Some(file("/usr/lib/jvm/java-8-oracle/lib/ant-javafx.jar")),
   mappings in Universal += file("setup/shadowcloud_example.conf") → "shadowcloud_example.conf"

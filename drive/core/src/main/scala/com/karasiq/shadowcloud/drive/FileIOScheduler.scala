@@ -433,12 +433,11 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       dataOps.updateRevision(newFile)
 
     case ReleaseFile ⇒
-      log.debug("Stopping file IO scheduler")
       if (dataState.isChunksModified) {
+        log.debug("Releasing file")
         val future = Flush.unwrapFuture(self ? Flush)
           .flatMap(_ ⇒ PersistRevision.unwrapFuture(self ? PersistRevision))
         ReleaseFile.wrapFuture(file, future).pipeTo(sender())
-        future.map(_ ⇒ ReleaseFile).pipeTo(self)(sender())
       } else {
         sender() ! ReleaseFile.Success(file, dataState.lastRevision)
       }
@@ -453,6 +452,6 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   // -----------------------------------------------------------------------
   override def preStart(): Unit = {
     super.preStart()
-    context.setReceiveTimeout(config.fileIO.flushInterval)
+    context.setReceiveTimeout(config.fileIO.timeout * 2)
   }
 }

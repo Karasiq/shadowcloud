@@ -39,16 +39,26 @@ class LArrayChunkCache(size: Long) extends ChunkCache {
   }
 
   def readCached(chunk: Chunk, getChunk: () ⇒ Future[Chunk]): Future[Chunk] = {
-    entriesByChunk.get(chunk) match {
-      case Some(entry) ⇒
-        val data = new Array[Byte](entry.size)
-        for (i ← data.indices) data(i) = cache(entry.start + i)
-        Future.successful(chunk.copy(data = chunk.data.copy(encrypted = ByteString.fromArrayUnsafe(data))))
+    def fetchChunkAndSave() = {
+      val future = getChunk()
+      future.onComplete(_.foreach(chunk ⇒ addCacheEntry(chunk.withoutData, chunk.data.encrypted)))
+      future
+    }
 
-      case None ⇒
-        val future = getChunk()
-        future.onComplete(_.foreach(chunk ⇒ addCacheEntry(chunk.withoutData, chunk.data.encrypted)))
-        future
+    if (entriesByChunk.contains(chunk)) {
+      val future = Future {
+        entriesByChunk.get(chunk) match {
+          case Some(entry) ⇒
+            val data = new Array[Byte](entry.size)
+            for (i ← data.indices) data(i) = cache(entry.start + i)
+            Future.successful(chunk.copy(data = chunk.data.copy(encrypted = ByteString.fromArrayUnsafe(data))))
+          case None ⇒
+            fetchChunkAndSave()
+        }
+      }
+      future.flatten
+    } else {
+      fetchChunkAndSave()
     }
   }
 

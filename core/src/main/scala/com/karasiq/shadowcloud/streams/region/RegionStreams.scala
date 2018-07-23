@@ -15,18 +15,20 @@ import com.karasiq.shadowcloud.ops.region.RegionOps
 import com.karasiq.shadowcloud.streams.file.FileIndexer
 
 object RegionStreams {
-  def apply(regionSupervisor: ActorRef, parallelism: ParallelismConfig, timeouts: TimeoutsConfig)
+  def apply(regionOps: RegionOps,
+            parallelism: ParallelismConfig,
+            timeouts: TimeoutsConfig)
            (implicit ec: ExecutionContext): RegionStreams = {
-    new RegionStreams(regionSupervisor, parallelism, timeouts)
+    new RegionStreams(regionOps, parallelism, timeouts)
   }
 }
 
 //noinspection TypeAnnotation
 // RegionOps wrapped in flows
-final class RegionStreams(regionSupervisor: ActorRef, parallelism: ParallelismConfig, timeouts: TimeoutsConfig)
+final class RegionStreams(regionOps: RegionOps,
+                          parallelism: ParallelismConfig,
+                          timeouts: TimeoutsConfig)
                          (implicit ec: ExecutionContext) {
-
-  private[this] val regionOps = RegionOps(regionSupervisor, timeouts)
 
   val writeChunks = Flow[(RegionId, Chunk)]
     .mapAsync(parallelism.write) { case (regionId, chunk) ⇒ regionOps.writeChunk(regionId, chunk) }

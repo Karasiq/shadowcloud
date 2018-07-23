@@ -12,6 +12,7 @@ import com.karasiq.shadowcloud.actors.RegionDispatcher._
 import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.actors.RegionGC.GCStrategy
+import com.karasiq.shadowcloud.cache.ChunkCache
 import com.karasiq.shadowcloud.config.TimeoutsConfig
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
@@ -25,12 +26,19 @@ import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 
 object RegionOps {
-  def apply(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(implicit ec: ExecutionContext): RegionOps = {
-    new RegionOps(regionSupervisor, timeouts)
+  def apply(regionSupervisor: ActorRef,
+            timeouts: TimeoutsConfig,
+            chunkCache: ChunkCache)
+           (implicit ec: ExecutionContext): RegionOps = {
+    new RegionOps(regionSupervisor, timeouts, chunkCache)
   }
 }
 
-final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(implicit ec: ExecutionContext) {
+final class RegionOps(regionSupervisor: ActorRef,
+                      timeouts: TimeoutsConfig,
+                      chunkCache: ChunkCache)
+                     (implicit ec: ExecutionContext) {
+
   // -----------------------------------------------------------------------
   // Index
   // -----------------------------------------------------------------------
@@ -130,7 +138,7 @@ final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(impl
   }
 
   def readChunk(regionId: RegionId, chunk: Chunk): Future[Chunk] = {
-    askRegion(regionId, ReadChunk, ReadChunk(chunk))(timeouts.regionChunkRead)
+    chunkCache.readCached(chunk, () ⇒ askRegion(regionId, ReadChunk, ReadChunk(chunk))(timeouts.regionChunkRead))
   }
 
   def rewriteChunk(regionId: RegionId, chunk: Chunk, newAffinity: Option[ChunkWriteAffinity]): Future[Chunk] = {

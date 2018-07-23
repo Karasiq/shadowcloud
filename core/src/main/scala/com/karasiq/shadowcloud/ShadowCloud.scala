@@ -16,6 +16,7 @@ import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.actors.{RegionSupervisor, SCDispatchers}
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.StringEventBus
+import com.karasiq.shadowcloud.cache.CacheProvider
 import com.karasiq.shadowcloud.config._
 import com.karasiq.shadowcloud.config.passwords.PasswordProvider
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
@@ -148,6 +149,14 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   }
 
   // -----------------------------------------------------------------------
+  // Cache
+  // -----------------------------------------------------------------------
+  object cache {
+    val provider: CacheProvider = provInstantiator.getInstance(config.cache.provider)
+    lazy val chunkCache = provider.createChunkCache(_actorSystem)
+  }
+
+  // -----------------------------------------------------------------------
   // Actors
   // -----------------------------------------------------------------------
   object actors {
@@ -175,14 +184,14 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // -----------------------------------------------------------------------
   object streams {
     lazy val chunk = ChunkProcessingStreams(modules.crypto, config.chunks, config.crypto, config.parallelism)(executionContexts.cryptography)
-    lazy val region = RegionStreams(actors.regionSupervisor, config.parallelism, config.timeouts)
+    lazy val region = RegionStreams(ops.region, config.parallelism, config.timeouts)
     lazy val file = FileStreams(region, chunk)
     lazy val metadata = MetadataStreams(ops.region, this.region, this.file, config.metadata, modules.metadata, config.serialization, serialization)
   }
 
   object ops {
     lazy val supervisor = RegionSupervisorOps(actors.regionSupervisor, config.timeouts)
-    lazy val region = RegionOps(actors.regionSupervisor, config.timeouts)
+    lazy val region = RegionOps(actors.regionSupervisor, config.timeouts, cache.chunkCache)
     lazy val storage = StorageOps(actors.regionSupervisor, config.timeouts)
     lazy val background = BackgroundOps(config, this.region)
   }

@@ -9,17 +9,15 @@ import scala.concurrent.Future
 import akka.Done
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
-import com.typesafe.config.{ConfigFactory, ConfigParseOptions}
 import com.typesafe.config.impl.ConfigImpl
 
-import com.karasiq.common.configs.ConfigUtils
+import com.karasiq.common.configs.ConfigImplicits._
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.drive.{fuse, SCDrive}
+import com.karasiq.shadowcloud.drive.SCDrive
 import com.karasiq.shadowcloud.drive.fuse.SCFileSystem
 import com.karasiq.shadowcloud.javafx.JavaFXContext
 import com.karasiq.shadowcloud.persistence.h2.H2DB
 import com.karasiq.shadowcloud.server.http.SCAkkaHttpServer
-import com.karasiq.common.configs.ConfigImplicits._
 
 object SCDesktopMain extends App {
   // -----------------------------------------------------------------------

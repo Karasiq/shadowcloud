@@ -59,7 +59,7 @@ object SCFileSystem {
 class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: ExecutionContext) extends FuseStubFS {
   import com.karasiq.shadowcloud.drive.VirtualFSDispatcher._
 
-  protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T]): T = {
+  protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T]): T = synchronized {
     implicit val timeout = Timeout(config.fileIO.timeout)
     // println(message)
     val result = // try {
@@ -76,7 +76,9 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   override def getattr(path: String, stat: FileStat): Int = {
     def returnFolderAttrs(folder: Folder): Unit = {
       stat.st_mode.set(FileStat.S_IFDIR | 0x1ff)
-      stat.st_nlink.set(1)
+      // stat.st_nlink.set(1)
+      stat.st_uid.set(getContext.uid.get)
+      stat.st_gid.set(getContext.pid.get)
       stat.st_birthtime.tv_sec.set(folder.timestamp.created / 1000)
       stat.st_birthtime.tv_nsec.set((folder.timestamp.created % 1000) * 1000)
       stat.st_mtim.tv_sec.set(folder.timestamp.lastModified / 1000)
@@ -87,7 +89,9 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
 
     def returnFileAttrs(file: File): Unit = {
       stat.st_mode.set(FileStat.S_IFREG | 0x1ff)
-      stat.st_nlink.set(1)
+      // stat.st_nlink.set(1)
+      stat.st_uid.set(getContext.uid.get)
+      stat.st_gid.set(getContext.pid.get)
       stat.st_size.set(file.checksum.size)
       stat.st_ino.set(file.id.getMostSignificantBits)
       stat.st_birthtime.tv_sec.set(file.timestamp.created / 1000)
@@ -230,6 +234,8 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
     Try(dispatch(GetFolder(path), GetFolder)) match {
       case Success(folder) ⇒
         val names = folder.folders ++ folder.files.map(_.path.name)
+        filter.apply(buf, ".", null, 0)
+        filter.apply(buf, "..", null, 0)
         names
           .filter(str ⇒ Path.isStrictlyConventional(Path(Seq(str))))
           .foreach(filter.apply(buf, _, null, 0))

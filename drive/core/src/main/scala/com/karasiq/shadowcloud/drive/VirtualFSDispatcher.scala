@@ -187,7 +187,7 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
         return Future.failed(StorageException.NotFound(path))
 
       val (regionId, oldRegionPath) = path.regionAndPath
-      val (regionId2, newRegionPath) = path.regionAndPath
+      val (regionId2, newRegionPath) = newPath.regionAndPath
 
       if (regionId != regionId2)
         return Future.failed(StorageException.IOFailure(path, new IOException("Regions id should match")))
@@ -213,7 +213,7 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
         return Future.failed(StorageException.NotFound(path))
 
       val (regionId, oldRegionPath) = path.regionAndPath
-      val (regionId2, newRegionPath) = path.regionAndPath
+      val (regionId2, newRegionPath) = newPath.regionAndPath
 
       if (regionId != regionId2)
         return Future.failed(StorageException.IOFailure(path, new IOException("Regions id should match")))

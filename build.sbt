@@ -106,7 +106,7 @@ lazy val core = project
     name := "shadowcloud-core",
     libraryDependencies ++= ProjectDeps.akka.all
   )
-  .dependsOn(modelJVM, utilsJVM, serializationJVM, storageParent, cryptoParent, metadataParent, testUtilsJVM % "test")
+  .dependsOn(modelJVM, utilsJVM, serializationJVM, storageParent, cryptoParent, metadataParent, `cache-core`, testUtilsJVM % "test")
 
 lazy val persistence = project
   .settings(commonSettings)
@@ -119,7 +119,7 @@ lazy val persistence = project
 lazy val coreAssembly = (project in file("core/assembly"))
   .settings(commonSettings, name := "shadowcloud-core-assembly")
   .dependsOn(
-    core % "compile->compile;test->test", persistence,
+    core % "compile->compile;test->test", persistence, `cache-larray`,
     bouncyCastleCrypto, libsodiumCrypto,
     imageioMetadata, markdownMetadata,
     googleDriveStorage, mailruCloudStorage, dropboxStorage, webdavStorage
@@ -134,6 +134,24 @@ lazy val coreAssembly = (project in file("core/assembly"))
     tikaMetadata, imageioMetadata, markdownMetadata, javacvMetadata,
     googleDriveStorage, mailruCloudStorage, dropboxStorage, webdavStorage
   )
+
+// -----------------------------------------------------------------------
+// Cache
+// -----------------------------------------------------------------------
+lazy val `cache-core` = (project in file("cache") / "core")
+  .settings(
+    commonSettings,
+    name := "shadowcloud-cache-core"
+  )
+  .dependsOn(modelJVM)
+
+lazy val `cache-larray` = (project in file("cache") / "larray")
+  .settings(
+    commonSettings,
+    name := "shadowcloud-cache-larray",
+    libraryDependencies ++= ProjectDeps.larray
+  )
+  .dependsOn(`cache-core`, utilsJVM)
 
 // -----------------------------------------------------------------------
 // Plugins

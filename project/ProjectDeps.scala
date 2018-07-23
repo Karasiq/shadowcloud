@@ -153,4 +153,9 @@ object ProjectDeps {
   def `jnr-fuse`: Deps = Seq(
     "com.github.serceman" % "jnr-fuse" % "0.5.1"
   )
+
+  // https://github.com/xerial/larray
+  def larray: Deps = Seq(
+    "org.xerial.larray" %% "larray" % "0.4.0"
+  )
 }

@@ -54,6 +54,7 @@ class LArrayChunkCache(size: Long) extends ChunkCache {
 
   override def finalize(): Unit = {
     executionContext.shutdown()
+    cache.free
     super.finalize()
   }
 }

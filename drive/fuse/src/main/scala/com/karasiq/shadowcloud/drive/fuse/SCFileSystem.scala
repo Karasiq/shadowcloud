@@ -21,6 +21,7 @@ import com.karasiq.common.configs.ConfigUtils
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.drive.FileIOScheduler
 import com.karasiq.shadowcloud.drive.config.SCDriveConfig
+import com.karasiq.shadowcloud.drive.FileIOScheduler.ReleaseFile
 import com.karasiq.shadowcloud.exceptions.SCException
 import com.karasiq.shadowcloud.model.{File, Folder, Path}
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
@@ -209,7 +210,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   }
 
   override def release(path: String, fi: FuseFileInfo): Int = {
-    Try(dispatch(ReleaseFile(path), ReleaseFile)) /* match {
+    Try(dispatch(DispatchIOOperation(path, FileIOScheduler.ReleaseFile), DispatchIOOperation)) /* match {
       case Success(_) ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case Failure(_) ⇒ -ErrorCodes.EACCES()

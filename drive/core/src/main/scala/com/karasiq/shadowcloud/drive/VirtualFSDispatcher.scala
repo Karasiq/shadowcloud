@@ -44,9 +44,6 @@ object VirtualFSDispatcher {
   final case class GetHealth(path: Path) extends Message
   object GetHealth extends MessageStatus[Path, StorageHealth]
 
-  final case class ReleaseFile(path: Path) extends Message
-  object ReleaseFile extends MessageStatus[Path, File]
-
   final case class RenameFile(path: Path, newPath: Path) extends Message
   object RenameFile extends MessageStatus[Path, File]
 
@@ -178,10 +175,6 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
       }
     }
 
-    def closeFile(path: Path): Unit = {
-      state.fileWrites.remove(path).foreach(_ ! PoisonPill)
-    }
-
     def renameFile(path: Path, newPath: Path): Future[File] = {
       if (path.isRoot || path.isRegionRoot || newPath.isRoot || newPath.isRegionRoot)
         return Future.failed(StorageException.NotFound(path))
@@ -261,11 +254,6 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
 
     case CloseFile(path, dispatcher) ⇒
       if (state.fileWrites.get(path).contains(dispatcher)) state.fileWrites -= path
-
-    case ReleaseFile(path) ⇒
-      val future = operations.syncFile(path)
-      future.onComplete(_.foreach(_ ⇒ operations.closeFile(path)))
-      ReleaseFile.wrapFuture(path, future).pipeTo(sender())
 
     case RenameFile(path, newPath) ⇒
       RenameFile.wrapFuture(path, operations.renameFile(path, newPath)).pipeTo(sender())

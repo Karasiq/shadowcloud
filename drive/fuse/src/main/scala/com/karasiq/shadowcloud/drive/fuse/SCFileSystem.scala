@@ -195,6 +195,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
     var result: Try[Any] = tryRead()
     var tries = 5
     while (result.isFailure && tries > 0) {
+      // Thread.sleep(1000)
       result = tryRead()
       tries -= 1
     }

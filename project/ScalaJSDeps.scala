@@ -5,7 +5,7 @@ import sbt.Keys.libraryDependencies
 object ScalaJSDeps {
   type Deps = Def.Setting[Seq[ModuleID]]
   object akka {
-    val version = s"1.${ProjectDeps.akka.version}"
+    val version = "1.2.5.13" // s"1.${ProjectDeps.akka.version}"
 
     def actors: Deps = {
       libraryDependencies ++= Seq(

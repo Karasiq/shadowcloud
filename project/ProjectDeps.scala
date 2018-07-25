@@ -4,8 +4,8 @@ object ProjectDeps {
   type Deps = Seq[ModuleID]
 
   object akka {
-    val version = "2.5.9"
-    val httpVersion = "10.0.11"
+    val version = "2.5.14"
+    val httpVersion = "10.1.3"
 
     def actors: Deps = Seq(
       "com.typesafe.akka" %% "akka-actor" % version

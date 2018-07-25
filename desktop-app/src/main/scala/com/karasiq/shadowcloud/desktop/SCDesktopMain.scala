@@ -8,6 +8,7 @@ import scala.concurrent.Future
 
 import akka.Done
 import akka.actor.ActorSystem
+import akka.event.Logging
 import akka.http.scaladsl.Http
 import com.typesafe.config.impl.ConfigImpl
 
@@ -73,7 +74,7 @@ object SCDesktopMain extends App {
         System.setProperty("file.encoding", "UTF-8")
       }
 
-      val fileSystem = SCFileSystem(drive.config, drive.dispatcher)
+      val fileSystem = SCFileSystem(drive.config, drive.dispatcher, Logging(actorSystem, "SCFileSystem"))
       val mountFuture = SCFileSystem.mountInSeparateThread(fileSystem)
       mountFuture.failed.foreach(actorSystem.log.error(_, "FUSE filesystem mount failed"))
       actorSystem.registerOnTermination(mountFuture.foreach(_ ⇒ fileSystem.umount()))

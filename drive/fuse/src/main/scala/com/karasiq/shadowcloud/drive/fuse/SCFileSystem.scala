@@ -9,6 +9,7 @@ import scala.util.control.NonFatal
 
 import akka.Done
 import akka.actor.ActorRef
+import akka.event.LoggingAdapter
 import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
 import com.typesafe.config.Config
@@ -27,8 +28,8 @@ import com.karasiq.shadowcloud.model.{File, Folder, Path}
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 
 object SCFileSystem {
-  def apply(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: ExecutionContext): SCFileSystem = {
-    new SCFileSystem(config, fsDispatcher)
+  def apply(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAdapter)(implicit ec: ExecutionContext): SCFileSystem = {
+    new SCFileSystem(config, fsDispatcher, log)
   }
 
   def getMountPath(config: Config = ConfigUtils.emptyConfig): String = {
@@ -68,7 +69,7 @@ object SCFileSystem {
   }
 }
 
-class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: ExecutionContext) extends FuseStubFS {
+class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAdapter)(implicit ec: ExecutionContext) extends FuseStubFS {
   import SCFileSystem.implicitStrToPath
   import com.karasiq.shadowcloud.drive.VirtualFSDispatcher._
 
@@ -81,13 +82,19 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
     mount(Paths.get(mountPath))
   }
 
-  protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T]): T = {
+  protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T], critical: Boolean = false): T = {
     def getResult() = Await.result(status.unwrapFuture(fsDispatcher ? message), timeout.duration)
-    val result = if (synchronizedMode) {
-      synchronized(getResult())
-    } else {
-      getResult()
+    val result = try {
+      if (critical && synchronizedMode) {
+        synchronized(getResult())
+      } else {
+        getResult()
+      }
+    } catch { case NonFatal(exc) ⇒
+      if (critical) log.error(exc, "IO operation failed: {}", message)
+      throw exc
     }
+    if (critical) log.debug("IO operation: {} -> {}", message, result)
     result
   }
 
@@ -135,7 +142,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   }
 
   override def mkdir(path: String, mode: Long): Int = {
-    Try(dispatch(CreateFolder(path), CreateFolder)) match {
+    Try(dispatch(CreateFolder(path), CreateFolder, critical = true)) match {
       case Success(_) ⇒ 0
       case Failure(exc) if SCException.isAlreadyExists(exc) ⇒ -ErrorCodes.EEXIST()
       case Failure(_) ⇒ -ErrorCodes.ENOENT()
@@ -143,7 +150,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   }
 
   override def unlink(path: String): Int = {
-    Try(dispatch(DeleteFile(path), DeleteFile)) match {
+    Try(dispatch(DeleteFile(path), DeleteFile, critical = true)) match {
       case Success(_) ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case Failure(_) ⇒ -ErrorCodes.EACCES()
@@ -151,7 +158,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   }
 
   override def rmdir(path: String): Int = {
-    Try(dispatch(DeleteFolder(path), DeleteFolder)) match {
+    Try(dispatch(DeleteFolder(path), DeleteFolder, critical = true)) match {
       case Success(_) ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case Failure(_) ⇒ -ErrorCodes.EACCES()
@@ -159,8 +166,8 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   }
 
   override def rename(oldpath: String, newpath: String): Int = {
-    val file = Try(dispatch(RenameFile(oldpath, newpath), RenameFile))
-      .orElse(Try(dispatch(RenameFolder(oldpath, newpath), RenameFolder)))
+    val file = Try(dispatch(RenameFile(oldpath, newpath), RenameFile, critical = true))
+      .orElse(Try(dispatch(RenameFolder(oldpath, newpath), RenameFolder, critical = true)))
 
     file match {
       case Success(_) ⇒ 0                                                                       
@@ -171,7 +178,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   }
 
   override def truncate(path: String, size: Long): Int = {
-    Try(dispatch(DispatchIOOperation(path, FileIOScheduler.CutFile(size)), DispatchIOOperation)) match {
+    Try(dispatch(DispatchIOOperation(path, FileIOScheduler.CutFile(size)), DispatchIOOperation, critical = true)) match {
       case Success(_) ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case Failure(exc) if SCException.isAlreadyExists(exc) ⇒ -ErrorCodes.EEXIST()
@@ -183,19 +190,19 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
     Try(dispatch(GetFile(path), GetFile)) match {
       case Success(_) ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-      case Failure(_) ⇒ -ErrorCodes.EACCES()
+      case Failure(_) ⇒ -ErrorCodes.EIO()
     }
   }
 
   override def read(path: String, buf: Pointer, size: Long, offset: Long, fi: FuseFileInfo): Int = {
     def tryRead() = {
-      Try(dispatch(DispatchIOOperation(path, FileIOScheduler.ReadData(ChunkRanges.Range(offset, offset + size))), DispatchIOOperation))
+      Try(dispatch(DispatchIOOperation(path, FileIOScheduler.ReadData(ChunkRanges.Range(offset, offset + size))), DispatchIOOperation, critical = true))
     }
 
     var result: Try[Any] = tryRead()
     var tries = 5
     while (result.isFailure && tries > 0) {
-      // Thread.sleep(1000)
+      Thread.sleep(3000)
       result = tryRead()
       tries -= 1
     }
@@ -217,10 +224,18 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
       ByteString.fromArrayUnsafe(array)
     }
 
-    Try(dispatch(DispatchIOOperation(path, FileIOScheduler.WriteData(offset, bytes)), DispatchIOOperation)) match {
-      case Success(FileIOScheduler.WriteData.Success(data, _)) ⇒
-        data.data.length
+    def tryWrite() = Try(dispatch(DispatchIOOperation(path, FileIOScheduler.WriteData(offset, bytes)), DispatchIOOperation, critical = true))
 
+    var result: Try[Any] = tryWrite()
+    var tries = 5
+    while (result.isFailure && tries > 0) {
+      Thread.sleep(3000)
+      result = tryWrite()
+      tries -= 1
+    }
+
+    result match {
+      case Success(FileIOScheduler.WriteData.Success(data, _)) ⇒ data.data.length
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case _ ⇒ -ErrorCodes.EIO()
     }
@@ -246,7 +261,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   }
 
   override def release(path: String, fi: FuseFileInfo): Int = {
-    Try(dispatch(DispatchIOOperation(path, FileIOScheduler.ReleaseFile), DispatchIOOperation)) /* match {
+    Try(dispatch(DispatchIOOperation(path, FileIOScheduler.ReleaseFile), DispatchIOOperation, critical = true)) /* match {
       case Success(_) ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case Failure(_) ⇒ -ErrorCodes.EACCES()
@@ -256,12 +271,12 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
 
   override def fsync(path: String, isdatasync: Int, fi: FuseFileInfo): Int = {
     val persistResult = Try {
-      dispatch(DispatchIOOperation(path, FileIOScheduler.Flush), DispatchIOOperation)
-      // dispatch(DispatchIOOperation(path, FileIOScheduler.PersistRevision), DispatchIOOperation)
+      dispatch(DispatchIOOperation(path, FileIOScheduler.Flush), DispatchIOOperation, critical = true)
+      dispatch(DispatchIOOperation(path, FileIOScheduler.PersistRevision), DispatchIOOperation, critical = true)
     }
 
     persistResult match {
-      case Success(FileIOScheduler.Flush.Success(_, _)) ⇒ 0
+      case Success(FileIOScheduler.PersistRevision.Success(_, _)) ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case _ ⇒ -ErrorCodes.EIO()
     }
@@ -284,7 +299,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   }
 
   override def create(path: String, mode: Long, fi: FuseFileInfo): Int = {
-    Try(dispatch(CreateFile(path), CreateFile)) match {
+    Try(dispatch(CreateFile(path), CreateFile, critical = true)) match {
       case Success(_) ⇒ 0
       case Failure(exc) if SCException.isAlreadyExists(exc) ⇒ -ErrorCodes.EEXIST()
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()

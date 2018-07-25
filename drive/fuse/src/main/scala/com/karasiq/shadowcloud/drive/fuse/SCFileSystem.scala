@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.drive.fuse
 import java.nio.file.Paths
 
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
-import scala.concurrent.duration.Duration
+import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
 import scala.util.control.NonFatal
 
@@ -21,7 +21,6 @@ import com.karasiq.common.configs.ConfigUtils
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.drive.FileIOScheduler
 import com.karasiq.shadowcloud.drive.config.SCDriveConfig
-import com.karasiq.shadowcloud.drive.FileIOScheduler.ReleaseFile
 import com.karasiq.shadowcloud.exceptions.SCException
 import com.karasiq.shadowcloud.model.{File, Folder, Path}
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
@@ -55,22 +54,34 @@ object SCFileSystem {
     thread.start()
     promise.future
   }
+
+  private implicit def implicitStrToPath(path: String): Path = {
+    def normalizePath(path: Path): Path = path.nodes match {
+      case nodes :+ "." ⇒ normalizePath(Path(nodes))
+      case nodes :+ "" ⇒ normalizePath(Path(nodes))
+      case nodes :+ ".." ⇒ normalizePath(Path(nodes.dropRight(1)))
+      case nodes :+ last ⇒ normalizePath(Path(nodes)) / last
+      case Nil ⇒ Path.root 
+    }
+    normalizePath(Path(path.split(":?[/\\\\]+")))
+  }
 }
 
 class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: ExecutionContext) extends FuseStubFS {
+  import SCFileSystem.implicitStrToPath
   import com.karasiq.shadowcloud.drive.VirtualFSDispatcher._
 
-  protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T]): T = synchronized {
-    implicit val timeout = Timeout(config.fileIO.timeout)
-    // println(message)
-    val result = // try {
-      Await.result(status.unwrapFuture(fsDispatcher ? message), Duration.Inf)
-    /* } catch { case NonFatal(exc) ⇒
-      println(message + "-> ERROR " + exc)
-      throw exc 
+  protected implicit val timeout = Timeout(config.fileIO.timeout)
+  protected val synchronizedMode = Set("1", "true", "on").contains(System.getProperty("fuse.synchronized"))
+
+  protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T]): T = {
+    def getResult() = Await.result(status.unwrapFuture(fsDispatcher ? message), timeout.duration)
+    val result = if (synchronizedMode) {
+      synchronized(getResult())
+    } else {
+      getResult()
     }
-    println(message + " -> " + result) */
-    result 
+    result
   }
 
 
@@ -204,8 +215,14 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
         stbuf.f_bfree.set(health.writableSpace / 1024) // free blocks in fs
         0
 
-      case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-      case Failure(_) ⇒ -ErrorCodes.EACCES()
+      case Failure(_) ⇒
+        stbuf.f_frsize.set(1024) // fs block size
+        stbuf.f_blocks.set(0) // total data blocks in file system
+        stbuf.f_bfree.set(0) // free blocks in fs
+        0
+
+      // case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
+      // case Failure(_) ⇒ -ErrorCodes.EACCES()
     }
   }
 

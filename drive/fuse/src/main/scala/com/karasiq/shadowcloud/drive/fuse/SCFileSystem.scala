@@ -79,7 +79,9 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
 
   def mount(): Unit = {
     val mountPath = SCFileSystem.getMountPath(fuseConfig)
-    mount(Paths.get(mountPath))
+    val debug = fuseConfig.withDefault(false, _.getBoolean("debug"))
+    val options = fuseConfig.withDefault(Nil, _.getStrings("options"))
+    mount(Paths.get(mountPath), false, debug, options.toArray)
   }
 
   protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T], critical: Boolean = false): T = {
@@ -244,13 +246,13 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
   override def statfs(path: String, stbuf: Statvfs): Int = {
     Try(dispatch(GetHealth(path), GetHealth)) match {
       case Success(health) ⇒
-        stbuf.f_frsize.set(1024) // fs block size
-        stbuf.f_blocks.set(health.totalSpace / 1024) // total data blocks in file system
-        stbuf.f_bfree.set(health.writableSpace / 1024) // free blocks in fs
+        stbuf.f_frsize.set(512) // fs block size
+        stbuf.f_blocks.set(health.totalSpace / 512) // total data blocks in file system
+        stbuf.f_bfree.set(health.writableSpace / 512) // free blocks in fs
         0
 
       case Failure(_) ⇒
-        stbuf.f_frsize.set(1024) // fs block size
+        stbuf.f_frsize.set(512) // fs block size
         stbuf.f_blocks.set(0) // total data blocks in file system
         stbuf.f_bfree.set(0) // free blocks in fs
         0

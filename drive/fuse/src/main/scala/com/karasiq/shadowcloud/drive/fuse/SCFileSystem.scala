@@ -201,7 +201,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
 
     result match {
       case Success(FileIOScheduler.ReadData.Success(_, data)) ⇒
-        buf.put(0, data.toArray, 0, data.length)
+        for (i ← data.indices) buf.putByte(i, data(i))
         data.length
 
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()

@@ -56,7 +56,7 @@ private[bouncycastle] object ECIESCipherModule {
     def generateHexString(size: Int): String = {
       val bytes = new Array[Byte](size)
       secureRandom.nextBytes(bytes)
-      HexString.encode(ByteString(bytes))
+      HexString.encode(ByteString.fromArrayUnsafe(bytes))
     }
 
     val newConfig = ConfigProps.toConfig(parameters.method.config)
@@ -170,7 +170,7 @@ private[bouncycastle] final class ECIESCipherModule(val method: EncryptionMethod
     def process(data: ByteString): ByteString = {
       require(iesEngine ne null, "Not initialized")
       val outArray = iesEngine.processBlock(data.toArray, 0, data.length)
-      ByteString(outArray)
+      ByteString.fromArrayUnsafe(outArray)
     }
 
     def finish(): ByteString = {

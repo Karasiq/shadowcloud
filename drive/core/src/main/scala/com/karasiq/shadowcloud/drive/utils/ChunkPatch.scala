@@ -26,7 +26,7 @@ private[drive] final case class ChunkPatchList(patches: Seq[ChunkPatch]) {
   }
 
   def toBytes(chunkSize: Int): ByteString = {
-    val zeroBytes = ByteString(new Array[Byte](chunkSize))
+    val zeroBytes = ByteString.fromArrayUnsafe(new Array[Byte](chunkSize))
     patchChunk(0 until chunkSize, zeroBytes)
   }
 

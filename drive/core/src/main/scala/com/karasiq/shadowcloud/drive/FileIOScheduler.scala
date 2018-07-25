@@ -338,7 +338,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       def appendsIterator(offset: Long, restSize: Long): Iterator[(ChunkRanges.Range, Chunk)] = {
         def padding(restSize: Long) = {
           val size = math.min(restSize, sc.config.chunks.chunkSize)
-          ByteString(new Array[Byte](size.toInt))
+          ByteString.fromArrayUnsafe(new Array[Byte](size.toInt))
         }
 
         if (restSize <= 0) {

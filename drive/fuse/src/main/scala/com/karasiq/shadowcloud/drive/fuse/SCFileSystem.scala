@@ -74,7 +74,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
 
   protected val fuseConfig = config.rootConfig.getConfigIfExists("fuse")
   protected implicit val timeout = Timeout(config.fileIO.timeout)
-  protected val synchronizedMode = fuseConfig.withDefault(false, _.getBoolean("synchronized"))
+  protected val synchronizedMode = fuseConfig.withDefault(true, _.getBoolean("synchronized"))
 
   def mount(): Unit = {
     val mountPath = SCFileSystem.getMountPath(fuseConfig)
@@ -188,7 +188,18 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   }
 
   override def read(path: String, buf: Pointer, size: Long, offset: Long, fi: FuseFileInfo): Int = {
-    Try(dispatch(DispatchIOOperation(path, FileIOScheduler.ReadData(ChunkRanges.Range(offset, offset + size))), DispatchIOOperation)) match {
+    def tryRead() = {
+      Try(dispatch(DispatchIOOperation(path, FileIOScheduler.ReadData(ChunkRanges.Range(offset, offset + size))), DispatchIOOperation))
+    }
+
+    var result: Try[Any] = tryRead()
+    var tries = 5
+    while (result.isFailure && tries > 0) {
+      result = tryRead()
+      tries -= 1
+    }
+
+    result match {
       case Success(FileIOScheduler.ReadData.Success(_, data)) ⇒
         buf.put(0, data.toArray, 0, data.length)
         data.length

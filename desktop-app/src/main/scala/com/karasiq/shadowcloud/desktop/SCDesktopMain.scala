@@ -74,8 +74,7 @@ object SCDesktopMain extends App {
       }
 
       val fileSystem = SCFileSystem(drive.config, drive.dispatcher)
-      val mountPath = SCFileSystem.getMountPath(fuseConfig)
-      val mountFuture = SCFileSystem.mountInSeparateThread(fileSystem, mountPath)
+      val mountFuture = SCFileSystem.mountInSeparateThread(fileSystem)
       mountFuture.failed.foreach(actorSystem.log.error(_, "FUSE filesystem mount failed"))
       actorSystem.registerOnTermination(mountFuture.foreach(_ ⇒ fileSystem.umount()))
       mountFuture

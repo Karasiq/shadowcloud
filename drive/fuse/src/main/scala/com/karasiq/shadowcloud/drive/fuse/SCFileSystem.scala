@@ -18,6 +18,7 @@ import ru.serce.jnrfuse.{ErrorCodes, FuseFillDir, FuseStubFS}
 import ru.serce.jnrfuse.struct.{FileStat, FuseFileInfo, Statvfs}
 
 import com.karasiq.common.configs.ConfigUtils
+import com.karasiq.common.configs.ConfigImplicits._
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.drive.FileIOScheduler
 import com.karasiq.shadowcloud.drive.config.SCDriveConfig
@@ -39,12 +40,12 @@ object SCFileSystem {
     }
   }
 
-  def mountInSeparateThread(fs: SCFileSystem, path: String): Future[Done] = {
+  def mountInSeparateThread(fs: SCFileSystem): Future[Done] = {
     val promise = Promise[Done]
     val thread = new Thread(new Runnable {
       def run(): Unit = {
         try {
-          fs.mount(Paths.get(path)/*, false, true*/)
+          fs.mount()
           promise.success(Done)
         } catch { case NonFatal(exc) ⇒
           promise.failure(exc)
@@ -71,8 +72,14 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef)(implicit ec: E
   import SCFileSystem.implicitStrToPath
   import com.karasiq.shadowcloud.drive.VirtualFSDispatcher._
 
+  protected val fuseConfig = config.rootConfig.getConfigIfExists("fuse")
   protected implicit val timeout = Timeout(config.fileIO.timeout)
-  protected val synchronizedMode = Set("1", "true", "on").contains(System.getProperty("fuse.synchronized"))
+  protected val synchronizedMode = fuseConfig.withDefault(false, _.getBoolean("synchronized"))
+
+  def mount(): Unit = {
+    val mountPath = SCFileSystem.getMountPath(fuseConfig)
+    mount(Paths.get(mountPath))
+  }
 
   protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T]): T = {
     def getResult() = Await.result(status.unwrapFuture(fsDispatcher ? message), timeout.duration)

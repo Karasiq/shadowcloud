@@ -155,7 +155,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
     Try(dispatch(DeleteFile(path), DeleteFile, critical = true)) match {
       case Success(_) ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-      case Failure(_) ⇒ -ErrorCodes.EACCES()
+      case Failure(_) ⇒ -ErrorCodes.EIO()
     }
   }
 
@@ -163,7 +163,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
     Try(dispatch(DeleteFolder(path), DeleteFolder, critical = true)) match {
       case Success(_) ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-      case Failure(_) ⇒ -ErrorCodes.EACCES()
+      case Failure(_) ⇒ -ErrorCodes.EIO()
     }
   }
 
@@ -175,7 +175,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
       case Success(_) ⇒ 0                                                                       
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case Failure(exc) if SCException.isAlreadyExists(exc) ⇒ -ErrorCodes.EEXIST()
-      case Failure(_) ⇒ -ErrorCodes.EACCES()
+      case Failure(_) ⇒ -ErrorCodes.EIO()
     }
   }
 
@@ -184,12 +184,12 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
       case Success(_) ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case Failure(exc) if SCException.isAlreadyExists(exc) ⇒ -ErrorCodes.EEXIST()
-      case Failure(_) ⇒ -ErrorCodes.EACCES()
+      case Failure(_) ⇒ -ErrorCodes.EIO()
     }
   }
 
   override def open(path: String, fi: FuseFileInfo): Int = {
-    Try(dispatch(GetFile(path), GetFile)) match {
+    Try(dispatch(GetFile(path), GetFile, critical = false)) match {
       case Success(_) ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case Failure(_) ⇒ -ErrorCodes.EIO()
@@ -202,9 +202,9 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
     }
 
     var result: Try[Any] = tryRead()
-    var tries = 5
+    var tries = 3
     while (result.isFailure && tries > 0) {
-      Thread.sleep(3000)
+      // Thread.sleep(3000)
       result = tryRead()
       tries -= 1
     }
@@ -229,9 +229,9 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
     def tryWrite() = Try(dispatch(DispatchIOOperation(path, FileIOScheduler.WriteData(offset, bytes)), DispatchIOOperation, critical = true))
 
     var result: Try[Any] = tryWrite()
-    var tries = 5
+    var tries = 3
     while (result.isFailure && tries > 0) {
-      Thread.sleep(3000)
+      // Thread.sleep(3000)
       result = tryWrite()
       tries -= 1
     }
@@ -258,22 +258,21 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
         0
 
       // case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-      // case Failure(_) ⇒ -ErrorCodes.EACCES()
+      // case Failure(_) ⇒ -ErrorCodes.EIO()
     }
   }
 
   override def release(path: String, fi: FuseFileInfo): Int = {
-    Try(dispatch(DispatchIOOperation(path, FileIOScheduler.ReleaseFile), DispatchIOOperation, critical = true)) /* match {
+    Try(dispatch(DispatchIOOperation(path, FileIOScheduler.ReleaseFile), DispatchIOOperation, critical = true)) match {
       case Success(_) ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-      case Failure(_) ⇒ -ErrorCodes.EACCES()
-    } */
-    0
+      case Failure(_) ⇒ -ErrorCodes.EIO()
+    }
   }
 
   override def fsync(path: String, isdatasync: Int, fi: FuseFileInfo): Int = {
     val persistResult = Try {
-      dispatch(DispatchIOOperation(path, FileIOScheduler.Flush), DispatchIOOperation, critical = true)
+      val FileIOScheduler.Flush.Success(_, _) = dispatch(DispatchIOOperation(path, FileIOScheduler.Flush), DispatchIOOperation, critical = true)
       dispatch(DispatchIOOperation(path, FileIOScheduler.PersistRevision), DispatchIOOperation, critical = true)
     }
 

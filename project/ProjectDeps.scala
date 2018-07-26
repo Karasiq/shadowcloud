@@ -158,4 +158,9 @@ object ProjectDeps {
   def larray: Deps = Seq(
     "org.xerial.larray" %% "larray" % "0.4.0"
   )
+
+  // https://github.com/Karasiq/scala-cache
+  def larrayCache: Deps = Seq(
+    "com.github.karasiq" %% "scala-cache-larray" % "1.0.0"
+  )
 }

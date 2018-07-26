@@ -23,6 +23,8 @@ class LArrayChunkCache(size: Long) extends ChunkCache {
 
   protected def addCacheEntry(chunk: Chunk, data: ByteString): Unit = {
     if (data.isEmpty || data.length > size || entriesByChunk.contains(chunk)) return
+    require(chunk.data.isEmpty)
+
     val position = if (data.length > size - currentPosition) 0 else currentPosition
     for (i ← data.indices) cache(position + i) = data(i)
 
@@ -41,8 +43,10 @@ class LArrayChunkCache(size: Long) extends ChunkCache {
   def readCached(chunk: Chunk, getChunk: () ⇒ Future[Chunk]): Future[Chunk] = {
     def fetchChunkAndSave() = {
       val future = getChunk()
-      future.onComplete(_.foreach(chunk ⇒ addCacheEntry(chunk.withoutData, chunk.data.encrypted)))
-      future
+      future.map { chunk ⇒
+        addCacheEntry(chunk.withoutData, chunk.data.encrypted)
+        chunk
+      }
     }
 
     if (entriesByChunk.contains(chunk)) {

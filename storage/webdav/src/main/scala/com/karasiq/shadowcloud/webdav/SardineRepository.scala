@@ -91,6 +91,7 @@ class SardineRepository(props: StorageProps, sardine: Sardine)(implicit dispatch
       .mapMaterializedValue(_.map(rs ⇒ StorageUtils.foldIOResults(rs.map(StorageUtils.wrapAkkaIOResult(path, _)): _*)))
       .alsoToMat(StorageUtils.countPassedBytes(path).toMat(Sink.head)(Keep.right))(Keep.right)
       .withAttributes(ActorAttributes.dispatcher(dispatcher.id))
+      .log("webdav-read")
       .named("webdavRead")
   }
 
@@ -107,6 +108,7 @@ class SardineRepository(props: StorageProps, sardine: Sardine)(implicit dispatch
         result.failed.foreach(_ ⇒ inputStream.close())
         Source.fromFuture(StorageUtils.wrapFuture(path, result))
       }
+      .log("webdav-write")
       .toMat(Sink.head)(Keep.right)
       .withAttributes(ActorAttributes.dispatcher(dispatcher.id))
       .named("webdavWriteSink")
@@ -125,6 +127,7 @@ class SardineRepository(props: StorageProps, sardine: Sardine)(implicit dispatch
         StorageIOResult.Success(path, size)
       }
       .via(StorageUtils.foldStream())
+      // .log("webdav-delete")
       .toMat(Sink.head)(Keep.right)
       .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider) and ActorAttributes.dispatcher(dispatcher.id))
       .named("webdavDelete")

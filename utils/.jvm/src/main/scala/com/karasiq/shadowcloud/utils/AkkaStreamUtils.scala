@@ -3,7 +3,8 @@ package com.karasiq.shadowcloud.utils
 import java.io.InputStream
 
 import scala.concurrent.{Future, Promise}
-import scala.concurrent.duration.{Duration, FiniteDuration}
+import scala.concurrent.duration.{Duration, FiniteDuration, _}
+import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 import akka.NotUsed
@@ -70,7 +71,7 @@ object AkkaStreamUtils {
       .flatMapConcat { byteStream ⇒
         val promise = Promise[InputStream]
         byteStream
-          .alsoTo(StreamConverters.asInputStream().mapMaterializedValue(promise.success))
+          .alsoTo(StreamConverters.asInputStream(15 seconds).async.mapMaterializedValue(promise.success))
           .alsoTo(failPromiseOnFailure(promise))
           .via(dropUpstream(Source.fromFuture(promise.future)))
       }

@@ -23,8 +23,8 @@ import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
-import com.karasiq.shadowcloud.streams.utils.ByteStreams
-import com.karasiq.shadowcloud.utils.{AkkaStreamUtils, ChunkUtils, Utils}
+import com.karasiq.shadowcloud.streams.utils.{AkkaStreamUtils, ByteStreams}
+import com.karasiq.shadowcloud.utils.{ChunkUtils, Utils}
 
 object ChunkIODispatcher {
   @SerialVersionUID(0L)

@@ -18,7 +18,7 @@ import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
-import com.karasiq.shadowcloud.utils.AkkaStreamUtils
+import com.karasiq.shadowcloud.streams.utils.AkkaStreamUtils
 
 private[gdrive] object GDriveRepository {
   def apply(service: GDriveService)(implicit ec: ExecutionContext): GDriveRepository = {

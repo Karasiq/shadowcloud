@@ -10,7 +10,7 @@ import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.repository.{CategorizedRepository, Repository}
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
-import com.karasiq.shadowcloud.utils.AkkaStreamUtils
+import com.karasiq.shadowcloud.streams.utils.AkkaStreamUtils
 
 private[repository] final class SubRepositoriesWrapper[CatKey, Key](pathString: String,
                                                                     subRepositories: () ⇒ Source[(CatKey, Repository[Key]), NotUsed])

@@ -1,4 +1,4 @@
-package com.karasiq.shadowcloud.utils
+package com.karasiq.shadowcloud.streams.utils
 
 import java.io.InputStream
 
@@ -71,7 +71,9 @@ object AkkaStreamUtils {
       .flatMapConcat { byteStream ⇒
         val promise = Promise[InputStream]
         byteStream
-          .alsoTo(StreamConverters.asInputStream(15 seconds).async.mapMaterializedValue(promise.success))
+          .alsoTo(Flow[ByteString].async
+            .toMat(StreamConverters.asInputStream(15 seconds))(Keep.right)
+            .mapMaterializedValue(promise.success))
           .alsoTo(failPromiseOnFailure(promise))
           .via(dropUpstream(Source.fromFuture(promise.future)))
       }

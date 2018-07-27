@@ -30,7 +30,8 @@ import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStat
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
-import com.karasiq.shadowcloud.utils.{AkkaStreamUtils, Utils}
+import com.karasiq.shadowcloud.streams.utils.AkkaStreamUtils
+import com.karasiq.shadowcloud.utils.Utils
 
 object RegionDispatcher {
   // Messages

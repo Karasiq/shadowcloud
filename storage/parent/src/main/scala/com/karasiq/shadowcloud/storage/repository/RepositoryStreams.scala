@@ -8,7 +8,7 @@ import akka.util.ByteString
 
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
-import com.karasiq.shadowcloud.utils.AkkaStreamUtils
+import com.karasiq.shadowcloud.streams.utils.AkkaStreamUtils
 
 object RepositoryStreams {
   val DefaultRetries = 3

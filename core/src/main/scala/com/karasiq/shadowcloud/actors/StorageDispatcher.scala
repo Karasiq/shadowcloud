@@ -19,7 +19,7 @@ import com.karasiq.shadowcloud.model.{Chunk, StorageId}
 import com.karasiq.shadowcloud.model.utils.StorageHealth
 import com.karasiq.shadowcloud.storage.StorageHealthProvider
 import com.karasiq.shadowcloud.storage.props.StorageProps
-import com.karasiq.shadowcloud.utils.AkkaStreamUtils
+import com.karasiq.shadowcloud.streams.utils.AkkaStreamUtils
 
 object StorageDispatcher {
   // Messages

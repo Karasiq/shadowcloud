@@ -19,8 +19,7 @@ import com.karasiq.shadowcloud.providers.MetadataModuleRegistry
 import com.karasiq.shadowcloud.serialization.{SerializationModule, StreamSerialization}
 import com.karasiq.shadowcloud.streams.file.{FileIndexer, FileStreams}
 import com.karasiq.shadowcloud.streams.region.RegionStreams
-import com.karasiq.shadowcloud.streams.utils.ByteStreams
-import com.karasiq.shadowcloud.utils.AkkaStreamUtils
+import com.karasiq.shadowcloud.streams.utils.{AkkaStreamUtils, ByteStreams}
 
 private[shadowcloud] object MetadataStreams {
   def apply(regionOps: RegionOps, regionStreams: RegionStreams, fileStreams: FileStreams, 

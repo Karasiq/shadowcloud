@@ -21,8 +21,7 @@ import com.karasiq.shadowcloud.model.keys.KeyChain
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 import com.karasiq.shadowcloud.serialization.{IndexSerialization, StreamSerialization}
 import com.karasiq.shadowcloud.serialization.protobuf.index.{EncryptedIndexData, SerializedIndexData}
-import com.karasiq.shadowcloud.streams.utils.ByteStreams
-import com.karasiq.shadowcloud.utils.AkkaStreamUtils
+import com.karasiq.shadowcloud.streams.utils.{AkkaStreamUtils, ByteStreams}
 
 object IndexProcessingStreams {
   def apply(regionId: RegionId)(implicit sc: ShadowCloudExtension): IndexProcessingStreams = {

@@ -26,7 +26,7 @@ import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
-import com.karasiq.shadowcloud.utils.AkkaStreamUtils
+import com.karasiq.shadowcloud.streams.utils.AkkaStreamUtils
 
 object SardineRepository {
   def apply(props: StorageProps, sardine: Sardine)(implicit dispatcher: MessageDispatcher): SardineRepository = {

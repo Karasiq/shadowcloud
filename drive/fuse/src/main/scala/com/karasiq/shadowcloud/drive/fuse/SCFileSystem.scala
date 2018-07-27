@@ -204,7 +204,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
     var result: Try[Any] = tryRead()
     var tries = 3
     while (result.isFailure && tries > 0) {
-      // Thread.sleep(3000)
+      Thread.sleep(5000)
       result = tryRead()
       tries -= 1
     }
@@ -231,7 +231,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
     var result: Try[Any] = tryWrite()
     var tries = 3
     while (result.isFailure && tries > 0) {
-      // Thread.sleep(3000)
+      Thread.sleep(5000)
       result = tryWrite()
       tries -= 1
     }

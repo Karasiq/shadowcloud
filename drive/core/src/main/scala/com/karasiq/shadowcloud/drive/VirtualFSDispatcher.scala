@@ -110,12 +110,12 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
         val (regionId, regionPath) = path.regionAndPath
         val virtualFiles = state.fileWrites
           .filter(_._1.startsWith(path))
-          .map { case (_, actor) ⇒ FileIOScheduler.GetCurrentRevision.unwrapFuture(actor.ask(FileIOScheduler.GetCurrentRevision)(timeout = sc.implicits.defaultTimeout)) }
+          .map { case (_, actor) ⇒ FileIOScheduler.GetCurrentRevision.unwrapFuture(actor.ask(FileIOScheduler.GetCurrentRevision)(timeout = sc.implicits.defaultTimeout)).recover { case _ ⇒ null } }
 
         for {
           folder ← sc.ops.region.getFolder(regionId, regionPath)
           files ← Future.sequence(virtualFiles)
-        } yield folder.copy(files = folder.files ++ files)
+        } yield folder.copy(files = folder.files ++ files.filterNot(_ eq null))
       }
     }
 

@@ -4,6 +4,7 @@ import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
+import scala.util.control.NonFatal
 
 import akka.{Done, NotUsed}
 import akka.actor.{Actor, ActorLogging, Props, ReceiveTimeout}
@@ -415,8 +416,12 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       PersistRevision.wrapFuture(file, future).pipeTo(sender())
 
     case GetCurrentRevision ⇒
-      val currentRevision = dataState.fixRevisionBounds()
-      sender() ! GetCurrentRevision.Success(file, currentRevision)
+      try {
+        val currentRevision = dataState.fixRevisionBounds()
+        sender() ! GetCurrentRevision.Success(file, currentRevision)
+      } catch { case NonFatal(exc) ⇒
+        sender() ! GetCurrentRevision.Failure(file, exc)
+      }
 
     case result: Flush.Status ⇒
       result match {

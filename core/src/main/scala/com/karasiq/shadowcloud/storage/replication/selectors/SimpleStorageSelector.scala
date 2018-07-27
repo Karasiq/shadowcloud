@@ -20,6 +20,7 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
     val randomize = selectorConfig.withDefault(false, _.getBoolean("randomize"))
     val indexWriteMinSize = selectorConfig.withDefault[Long](SizeUnit.MB * 10, _.getBytes("index-write-min-size"))
     val priority = selectorConfig.withDefault(Nil, _.getStrings("priority"))
+    val writeExclude = selectorConfig.withDefault(Set.empty[String], _.getStringSet("write-exclude"))
   }
 
   def available(toWrite: Long = 0): Seq[RegionStorage] = {
@@ -39,7 +40,9 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
   def forWrite(chunk: ChunkStatus): ChunkWriteAffinity = {
     def generateList(): Seq[String] = {
       def canWriteChunk(storage: RegionStorage): Boolean = {
-        !chunk.availability.isWriting(storage.id) && !chunk.waitingChunk.contains(storage.dispatcher)
+        !settings.writeExclude.contains(storage.id) &&
+          !chunk.availability.isWriting(storage.id) &&
+          !chunk.waitingChunk.contains(storage.dispatcher)
       }
 
       val writeSize = chunk.chunk.checksum.encSize

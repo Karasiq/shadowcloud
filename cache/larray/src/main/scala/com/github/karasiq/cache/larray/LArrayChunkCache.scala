@@ -10,7 +10,7 @@ private[cache] class LArrayChunkCache(size: Int)(implicit ec: ExecutionContext) 
   protected val cache = LArrayAsyncLRUCache[Chunk](size)
 
   def readCached(chunk: Chunk, getChunk: () ⇒ Future[Chunk]): Future[Chunk] = {
-    val future = cache.getCached(chunk.withoutData, () ⇒ getChunk().map(_.data.encrypted))
-    future.map(bytes ⇒ chunk.copy(data = chunk.data.copy(encrypted = bytes)))
+    val future = cache.getCached(chunk.withoutData, () ⇒ getChunk().map(_.data.plain))
+    future.map(bytes ⇒ chunk.copy(data = chunk.data.copy(plain = bytes)))
   }
 }

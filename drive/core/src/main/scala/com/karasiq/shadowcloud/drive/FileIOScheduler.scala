@@ -6,7 +6,7 @@ import scala.concurrent.duration._
 import scala.language.{implicitConversions, postfixOps}
 
 import akka.{Done, NotUsed}
-import akka.actor.{Actor, ActorLogging, PoisonPill, Props, ReceiveTimeout}
+import akka.actor.{Actor, ActorLogging, Props, ReceiveTimeout}
 import akka.pattern.{ask, pipe}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
@@ -226,7 +226,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
         case PendingChunkIO.Rewrite(range, chunk, patches) ⇒
           Source.single((regionId, chunk))
             .via(sc.streams.region.readChunks)
-            .via(sc.streams.chunk.afterRead)
+            // .via(sc.streams.chunk.afterRead)
             .flatMapConcat { oldChunk ⇒
               val oldData = oldChunk.data.plain
               val newData = patches.patchChunk(range, oldData)
@@ -261,7 +261,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
         case Some((range, chunk)) ⇒
           Source.single((regionId, chunk))
             .via(sc.streams.region.readChunks)
-            .via(sc.streams.chunk.afterRead)
+            // .via(sc.streams.chunk.afterRead)
             .map { chunk ⇒
               val newRange = range.fitToSize(newSize)
               val newData = chunk.data.plain.take(newRange.size.toInt)

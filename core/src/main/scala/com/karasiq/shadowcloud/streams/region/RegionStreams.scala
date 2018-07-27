@@ -4,7 +4,6 @@ import scala.concurrent.ExecutionContext
 import scala.language.postfixOps
 
 import akka.NotUsed
-import akka.actor.ActorRef
 import akka.stream.scaladsl.{Flow, Source}
 
 import com.karasiq.shadowcloud.config.{ParallelismConfig, TimeoutsConfig}
@@ -33,6 +32,10 @@ final class RegionStreams(regionOps: RegionOps,
   val writeChunks = Flow[(RegionId, Chunk)]
     .mapAsync(parallelism.write) { case (regionId, chunk) ⇒ regionOps.writeChunk(regionId, chunk) }
     .named("writeChunks")
+
+  val readChunksEncrypted = Flow[(RegionId, Chunk)]
+    .mapAsync(parallelism.read) { case (regionId, chunk) ⇒ regionOps.readChunkEncrypted(regionId, chunk) }
+    .named("readChunks")
 
   val readChunks = Flow[(RegionId, Chunk)]
     .mapAsync(parallelism.read) { case (regionId, chunk) ⇒ regionOps.readChunk(regionId, chunk) }

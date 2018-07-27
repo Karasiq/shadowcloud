@@ -191,7 +191,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
 
   object ops {
     lazy val supervisor = RegionSupervisorOps(actors.regionSupervisor, config.timeouts)
-    lazy val region = RegionOps(actors.regionSupervisor, config.timeouts, cache.chunkCache)
+    lazy val region = RegionOps(actors.regionSupervisor, config.timeouts, cache.chunkCache, streams.chunk)
     lazy val storage = StorageOps(actors.regionSupervisor, config.timeouts)
     lazy val background = BackgroundOps(config, this.region)
   }

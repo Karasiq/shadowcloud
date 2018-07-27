@@ -26,7 +26,7 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
       .map((regionId, _))
       .via(regionStreams.readChunks)
       // .log("chunk-stream-read")
-      .via(chunkProcessing.afterRead)
+      // .via(chunkProcessing.afterRead)
       .map(_.data.plain)
       .named("readChunkStream")
   }

@@ -52,7 +52,7 @@ object RegionRepairStream {
             val newAffinity = createNewAffinity(status, request.strategy)
             Source.single(status)
               .filterNot(status ⇒ newAffinity.exists(_.isFinished(status)))
-              .mapAsyncUnordered(parallelism.read)(status ⇒ regionOps.readChunk(request.regionId, status.chunk))
+              .mapAsyncUnordered(parallelism.read)(status ⇒ regionOps.readChunkEncrypted(request.regionId, status.chunk))
               .mapAsyncUnordered(parallelism.write)(chunk ⇒ regionOps.rewriteChunk(request.regionId, chunk, newAffinity))
               .map(_.withoutData)
           }

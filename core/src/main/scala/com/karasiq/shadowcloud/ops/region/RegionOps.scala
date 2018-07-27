@@ -5,6 +5,8 @@ import scala.language.postfixOps
 
 import akka.actor.ActorRef
 import akka.pattern.ask
+import akka.stream.Materializer
+import akka.stream.scaladsl.{Sink, Source}
 import akka.util.Timeout
 
 import com.karasiq.shadowcloud.actors.{RegionDispatcher, RegionGC}
@@ -24,20 +26,23 @@ import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStat
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
+import com.karasiq.shadowcloud.streams.chunk.ChunkProcessingStreams
 
 object RegionOps {
   def apply(regionSupervisor: ActorRef,
             timeouts: TimeoutsConfig,
-            chunkCache: ChunkCache)
-           (implicit ec: ExecutionContext): RegionOps = {
-    new RegionOps(regionSupervisor, timeouts, chunkCache)
+            chunkCache: ChunkCache,
+            chunkProcessing: ChunkProcessingStreams)
+           (implicit ec: ExecutionContext, mat: Materializer): RegionOps = {
+    new RegionOps(regionSupervisor, timeouts, chunkCache, chunkProcessing)
   }
 }
 
 final class RegionOps(regionSupervisor: ActorRef,
                       timeouts: TimeoutsConfig,
-                      chunkCache: ChunkCache)
-                     (implicit ec: ExecutionContext) {
+                      chunkCache: ChunkCache,
+                      chunkProcessing: ChunkProcessingStreams)
+                     (implicit ec: ExecutionContext, mat: Materializer) {
 
   // -----------------------------------------------------------------------
   // Index
@@ -137,8 +142,17 @@ final class RegionOps(regionSupervisor: ActorRef,
     askRegion(regionId, WriteChunk, WriteChunk(chunk))(timeouts.regionChunkWrite)
   }
 
+  def readChunkEncrypted(regionId: RegionId, chunk: Chunk): Future[Chunk] = {
+    askRegion(regionId, ReadChunk, ReadChunk(chunk))(timeouts.regionChunkRead)
+  }
+
+  // TODO: Fix crypto parallelism not applied
   def readChunk(regionId: RegionId, chunk: Chunk): Future[Chunk] = {
-    chunkCache.readCached(chunk, () ⇒ askRegion(regionId, ReadChunk, ReadChunk(chunk))(timeouts.regionChunkRead))
+    chunkCache.readCached(chunk, { () ⇒
+      Source.fromFuture(readChunkEncrypted(regionId, chunk))
+        .via(chunkProcessing.afterRead)
+        .runWith(Sink.head)
+    })
   }
 
   def rewriteChunk(regionId: RegionId, chunk: Chunk, newAffinity: Option[ChunkWriteAffinity]): Future[Chunk] = {

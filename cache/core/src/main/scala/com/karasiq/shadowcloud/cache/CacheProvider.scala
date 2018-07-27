@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.cache
 
-import akka.actor.ActorSystem
+import com.karasiq.shadowcloud.config.CacheConfig
 
 trait CacheProvider {
-  def createChunkCache(actorSystem: ActorSystem): ChunkCache
+  def createChunkCache(config: CacheConfig): ChunkCache
 }

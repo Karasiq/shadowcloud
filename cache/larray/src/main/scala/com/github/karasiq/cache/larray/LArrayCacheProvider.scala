@@ -3,10 +3,10 @@ package com.github.karasiq.cache.larray
 import akka.actor.ActorSystem
 
 import com.karasiq.shadowcloud.cache.{CacheProvider, ChunkCache}
+import com.karasiq.shadowcloud.config.CacheConfig
 
-class LArrayCacheProvider extends CacheProvider {
-  def createChunkCache(actorSystem: ActorSystem): ChunkCache = {
-    val config = actorSystem.settings.config.getConfig("shadowcloud.cache.larray")
-    new LArrayChunkCache(config.getBytes("size"))
+private[cache] class LArrayCacheProvider(actorSystem: ActorSystem) extends CacheProvider {
+  def createChunkCache(config: CacheConfig): ChunkCache = {
+    new LArrayChunkCache(config.size)(actorSystem.dispatcher)
   }
 }

@@ -149,7 +149,7 @@ lazy val `cache-larray` = (project in file("cache") / "larray")
   .settings(
     commonSettings,
     name := "shadowcloud-cache-larray",
-    libraryDependencies ++= ProjectDeps.larray
+    libraryDependencies ++= ProjectDeps.larrayCache
   )
   .dependsOn(`cache-core`, utilsJVM)
 

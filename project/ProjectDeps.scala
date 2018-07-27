@@ -160,7 +160,7 @@ object ProjectDeps {
   )
 
   // https://github.com/Karasiq/scala-cache
-  def larrayCache: Deps = Seq(
-    "com.github.karasiq" %% "scala-cache-larray" % "1.0.0"
+  def larrayCache: Deps = larray ++ Seq(
+    "com.github.karasiq" %% "scala-cache-larray" % "1.0.2"
   )
 }

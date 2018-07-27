@@ -153,7 +153,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // -----------------------------------------------------------------------
   object cache {
     val provider: CacheProvider = provInstantiator.getInstance(config.cache.provider)
-    lazy val chunkCache = provider.createChunkCache(_actorSystem)
+    lazy val chunkCache = provider.createChunkCache(config.cache)
   }
 
   // -----------------------------------------------------------------------

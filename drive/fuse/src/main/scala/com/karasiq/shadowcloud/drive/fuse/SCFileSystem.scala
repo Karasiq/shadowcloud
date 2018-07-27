@@ -2,6 +2,7 @@ package com.karasiq.shadowcloud.drive.fuse
 
 import java.nio.file.Paths
 
+import scala.collection.concurrent.TrieMap
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
 import scala.language.implicitConversions
 import scala.util.{Failure, Success, Try}
@@ -70,12 +71,16 @@ object SCFileSystem {
 }
 
 class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAdapter)(implicit ec: ExecutionContext) extends FuseStubFS {
+  protected final case class FileHandle(handle: Long, file: File)
+
   import SCFileSystem.implicitStrToPath
   import com.karasiq.shadowcloud.drive.VirtualFSDispatcher._
 
   protected val fuseConfig = config.rootConfig.getConfigIfExists("fuse")
   protected implicit val timeout = Timeout(config.fileIO.timeout)
   protected val synchronizedMode = fuseConfig.withDefault(true, _.getBoolean("synchronized"))
+
+  protected val fileHandles = TrieMap.empty[Long, FileHandle]
 
   def mount(): Unit = {
     val mountPath = SCFileSystem.getMountPath(fuseConfig)
@@ -84,11 +89,13 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
     mount(Paths.get(mountPath), false, debug, options.toArray)
   }
 
-  protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T], critical: Boolean = false): T = {
+  protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T], critical: Boolean = false, handle: Long = 0): T = {
     def getResult() = Await.result(status.unwrapFuture(fsDispatcher ? message), timeout.duration)
     val result = try {
       if (critical && synchronizedMode) {
-        synchronized(getResult())
+        val fh = if (handle == 0) null else fileHandles.get(handle).orNull
+        if (fh eq null) synchronized(getResult())
+        else fh.synchronized(getResult())
       } else {
         getResult()
       }
@@ -189,8 +196,13 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
   }
 
   override def open(path: String, fi: FuseFileInfo): Int = {
-    Try(dispatch(GetFile(path), GetFile, critical = false)) match {
-      case Success(_) ⇒ 0
+    Try(dispatch(GetFile(path), GetFile, critical = true)) match {
+      case Success(file) ⇒
+        val handle = file.id.getMostSignificantBits
+        fileHandles(handle) = FileHandle(handle, file)
+        fi.fh.set(handle)
+        0
+
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case Failure(_) ⇒ -ErrorCodes.EIO()
     }
@@ -198,7 +210,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
 
   override def read(path: String, buf: Pointer, size: Long, offset: Long, fi: FuseFileInfo): Int = {
     def tryRead() = {
-      Try(dispatch(DispatchIOOperation(path, FileIOScheduler.ReadData(ChunkRanges.Range(offset, offset + size))), DispatchIOOperation, critical = true))
+      Try(dispatch(DispatchIOOperation(path, FileIOScheduler.ReadData(ChunkRanges.Range(offset, offset + size))), DispatchIOOperation, critical = true, handle = fi.fh.longValue()))
     }
 
     var result: Try[Any] = tryRead()
@@ -226,7 +238,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
       ByteString.fromArrayUnsafe(array)
     }
 
-    def tryWrite() = Try(dispatch(DispatchIOOperation(path, FileIOScheduler.WriteData(offset, bytes)), DispatchIOOperation, critical = true))
+    def tryWrite() = Try(dispatch(DispatchIOOperation(path, FileIOScheduler.WriteData(offset, bytes)), DispatchIOOperation, critical = true, handle = fi.fh.longValue()))
 
     var result: Try[Any] = tryWrite()
     var tries = 3
@@ -263,8 +275,11 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
   }
 
   override def release(path: String, fi: FuseFileInfo): Int = {
-    Try(dispatch(DispatchIOOperation(path, FileIOScheduler.ReleaseFile), DispatchIOOperation, critical = true)) match {
-      case Success(_) ⇒ 0
+    Try(dispatch(DispatchIOOperation(path, FileIOScheduler.ReleaseFile), DispatchIOOperation, critical = true, handle = fi.fh.longValue())) match {
+      case Success(_) ⇒
+        fileHandles -= fi.fh.longValue()
+        0
+
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
       case Failure(_) ⇒ -ErrorCodes.EIO()
     }
@@ -272,8 +287,8 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
 
   override def fsync(path: String, isdatasync: Int, fi: FuseFileInfo): Int = {
     val persistResult = Try {
-      val FileIOScheduler.Flush.Success(_, _) = dispatch(DispatchIOOperation(path, FileIOScheduler.Flush), DispatchIOOperation, critical = true)
-      dispatch(DispatchIOOperation(path, FileIOScheduler.PersistRevision), DispatchIOOperation, critical = true)
+      val FileIOScheduler.Flush.Success(_, _) = dispatch(DispatchIOOperation(path, FileIOScheduler.Flush), DispatchIOOperation, critical = true, handle = fi.fh.longValue())
+      dispatch(DispatchIOOperation(path, FileIOScheduler.PersistRevision), DispatchIOOperation, critical = true, handle = fi.fh.longValue())
     }
 
     persistResult match {

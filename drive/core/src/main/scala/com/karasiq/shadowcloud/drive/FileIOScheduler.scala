@@ -10,7 +10,7 @@ import akka.actor.{Actor, ActorLogging, Props, ReceiveTimeout}
 import akka.pattern.{ask, pipe}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
-import akka.util.ByteString
+import akka.util.{ByteString, Timeout}
 
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.ShadowCloud
@@ -84,8 +84,8 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   // -----------------------------------------------------------------------
   import context.dispatcher
   private[this] implicit val materializer = ActorMaterializer()
+  private[this] implicit val timeout = Timeout(config.fileIO.timeout)
   private[this] val sc = ShadowCloud()
-  import sc.implicits.defaultTimeout
 
   // -----------------------------------------------------------------------
   // State
@@ -239,6 +239,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       }
 
       streams
+        .idleTimeout(timeout.duration)
         .flatMapMerge(sc.config.parallelism.write, identity)
         .named("scDriveFinishWrite")
     }
@@ -452,6 +453,6 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   // -----------------------------------------------------------------------
   override def preStart(): Unit = {
     super.preStart()
-    context.setReceiveTimeout(config.fileIO.timeout * 2)
+    context.setReceiveTimeout(timeout.duration * 2)
   }
 }

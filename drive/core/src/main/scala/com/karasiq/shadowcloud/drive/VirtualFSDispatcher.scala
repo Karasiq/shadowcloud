@@ -158,8 +158,21 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
         Future.failed(StorageException.NotFound(path))
       } else {
         val (regionId, regionPath) = path.regionAndPath
-        state.fileWrites.remove(path).foreach(context.stop)
-        sc.ops.region.deleteFiles(regionId, regionPath).map(FileVersions.mostRecent)
+        val deletedFile = state.fileWrites.remove(path).map { dsp ⇒
+          FileIOScheduler.GetCurrentRevision.unwrapFuture(dsp.ask(FileIOScheduler.GetCurrentRevision)(timeout = sc.implicits.defaultTimeout))
+            .map((dsp, _))
+            .recover { case _ ⇒ (dsp, null) }
+        }
+
+        deletedFile.foreach(_.foreach { case (dispatcher, _) ⇒ dispatcher ! PoisonPill })
+
+        sc.ops.region.deleteFiles(regionId, regionPath)
+          .map(FileVersions.mostRecent)
+          .recoverWith { case _ if deletedFile.nonEmpty ⇒
+            deletedFile.get
+              .map(_._2)
+              .filter(_ ne null)
+          }
       }
     }
 

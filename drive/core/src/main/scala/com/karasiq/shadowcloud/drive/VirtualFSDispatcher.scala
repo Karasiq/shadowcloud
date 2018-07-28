@@ -78,6 +78,7 @@ object VirtualFSDispatcher {
   }
 }
 
+// TODO: Tests
 class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging {
   import VirtualFSDispatcher._
   private[this] implicit lazy val sc = ShadowCloud()
@@ -89,11 +90,20 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
   }
 
   object operations {
+    def getCurrentRevision(actor: ActorRef): Future[File] = {
+      val future = actor.ask(FileIOScheduler.GetCurrentRevision)(timeout = sc.implicits.defaultTimeout)
+      FileIOScheduler.GetCurrentRevision.unwrapFuture(future)
+    }
+    
+    def getCurrentRevision(path: Path): Future[File] = {
+      getCurrentRevision(state.fileWrites(path))
+    }
+  
     def getFile(path: Path): Future[File] = {
       if (path.isRoot || path.isRegionRoot) {
         Future.failed(StorageException.NotFound(path))
       } else if (state.fileWrites.contains(path)) {
-        FileIOScheduler.GetCurrentRevision.unwrapFuture(state.fileWrites(path) ? FileIOScheduler.GetCurrentRevision)
+        getCurrentRevision(path)
       } else {
         val (regionId, regionPath) = path.regionAndPath
         sc.ops.region.getFiles(regionId, regionPath)
@@ -110,7 +120,7 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
         val (regionId, regionPath) = path.regionAndPath
         val virtualFiles = state.fileWrites
           .filter(_._1.startsWith(path))
-          .map { case (_, actor) ⇒ FileIOScheduler.GetCurrentRevision.unwrapFuture(actor.ask(FileIOScheduler.GetCurrentRevision)(timeout = sc.implicits.defaultTimeout)).recover { case _ ⇒ null } }
+          .map { case (_, actor) ⇒ operations.getCurrentRevision(actor).recover { case _ ⇒ null } }
 
         for {
           folder ← sc.ops.region.getFolder(regionId, regionPath)
@@ -121,7 +131,7 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
 
     def openFileForWrite(path: Path): Future[File] = {
       if (state.fileWrites.contains(path)) {
-        FileIOScheduler.GetCurrentRevision.unwrapFuture(state.fileWrites(path).ask(FileIOScheduler.GetCurrentRevision)(timeout = sc.implicits.defaultTimeout))
+        operations.getCurrentRevision(path)
       } else {
         val (regionId, regionPath) = path.regionAndPath
         for {
@@ -159,7 +169,7 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
       } else {
         val (regionId, regionPath) = path.regionAndPath
         val deletedFile = state.fileWrites.remove(path).map { dsp ⇒
-          FileIOScheduler.GetCurrentRevision.unwrapFuture(dsp.ask(FileIOScheduler.GetCurrentRevision)(timeout = sc.implicits.defaultTimeout))
+          operations.getCurrentRevision(dsp)
             .map((dsp, _))
             .recover { case _ ⇒ (dsp, null) }
         }
@@ -269,7 +279,7 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
         state.fileWrites(path) = dispatcher
         context.watchWith(dispatcher, CloseFile(path, dispatcher))
       }
-      OpenFile.wrapFuture(path, FileIOScheduler.GetCurrentRevision.unwrapFuture(state.fileWrites(path) ? FileIOScheduler.GetCurrentRevision))
+      OpenFile.wrapFuture(path, operations.getCurrentRevision(path))
         .pipeTo(sender())
 
     case CloseFile(path, dispatcher) ⇒

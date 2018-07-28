@@ -104,9 +104,9 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
       } else {
         getResult()
       }
-    } catch { case NonFatal(exc) ⇒
-      if (critical) log.error(exc, "IO operation failed: {}", message)
-      throw exc
+    } catch { case NonFatal(error) ⇒
+      if (critical || log.isDebugEnabled) log.error(error, "IO operation failed: {}", message)
+      throw error
     }
     if (critical) log.debug("IO operation: {} -> {}", message, result)
     result

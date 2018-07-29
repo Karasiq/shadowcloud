@@ -177,7 +177,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
       newConfigRx.triggerLater(changed() = true)
       
       Form(
-        FormInput.textArea((), rows := 20, newConfigRx.reactiveInput, placeholder := defaultConfig, AppComponents.tabOverride),
+        FormInput.textArea((), rows := 10, newConfigRx.reactiveInput, placeholder := defaultConfig, AppComponents.tabOverride),
         Form.submit(context.locale.submit, changed.reactiveShow),
         onsubmit := Callback.onSubmit { _ ⇒
           val newConfig = RegionConfigView.toRegionConfig(regionStatus, newConfigRx.now)

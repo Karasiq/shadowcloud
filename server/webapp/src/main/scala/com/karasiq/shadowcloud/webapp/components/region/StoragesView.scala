@@ -70,7 +70,7 @@ class StoragesView(implicit context: AppContext, regionContext: RegionContext) e
         .withBody(Form(
           FormInput.text(context.locale.storageId, newStorageIdRx.reactiveInput),
           storageTypeSelect,
-          FormInput.textArea(context.locale.config, rows := 20, Rx(placeholder := propsRx()).auto,
+          FormInput.textArea(context.locale.config, rows := 10, Rx(placeholder := propsRx()).auto,
             AppComponents.tabOverride, propsRx.reactiveInput)
         ))
         .withButtons(

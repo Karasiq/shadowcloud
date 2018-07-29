@@ -17,7 +17,7 @@ final case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,
 
   def addFiles(files: GenTraversableOnce[File]): Folder = {
     val newFiles = this.files ++ files
-    require(newFiles.forall(_.path.parent == this.path), "Invalid file paths")
+    assert(newFiles.forall(_.path.parent == this.path), "Invalid file paths")
     copy(timestamp = timestamp.modifiedNow, files = newFiles)
   }
 

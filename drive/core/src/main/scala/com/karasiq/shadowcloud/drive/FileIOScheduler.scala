@@ -7,7 +7,7 @@ import scala.language.{implicitConversions, postfixOps}
 import scala.util.control.NonFatal
 
 import akka.{Done, NotUsed}
-import akka.actor.{Actor, ActorLogging, Props, ReceiveTimeout}
+import akka.actor.{Actor, ActorLogging, PoisonPill, Props, ReceiveTimeout}
 import akka.pattern.{ask, pipe}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
@@ -452,8 +452,12 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       }
 
     case ReceiveTimeout ⇒
-      if (dataState.isChunksModified) self ! ReleaseFile
-      else context.stop(self)
+      if (dataState.isChunksModified) {
+        ReleaseFile.unwrapFuture(self ? ReleaseFile)
+          .onComplete(_.foreach(_ ⇒ self ! PoisonPill))
+      } else {
+        context.stop(self)
+      }
   }
 
   // -----------------------------------------------------------------------
@@ -461,6 +465,6 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   // -----------------------------------------------------------------------
   override def preStart(): Unit = {
     super.preStart()
-    context.setReceiveTimeout(timeout.duration * 2)
+    context.setReceiveTimeout(timeout.duration)
   }
 }

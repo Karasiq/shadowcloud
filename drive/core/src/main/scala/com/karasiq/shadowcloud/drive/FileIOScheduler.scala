@@ -24,6 +24,7 @@ import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.crypto.HashingMethod
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
+import com.karasiq.shadowcloud.utils.Utils
 
 object FileIOScheduler {
   // -----------------------------------------------------------------------
@@ -106,6 +107,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     var pendingWrites = Seq.empty[ChunkPatch]
     var lastRevision = file
     var lastSetSize = file.checksum.size
+    var lastModified = file.timestamp.lastModified
 
     def isFlushRequired: Boolean = {
       (System.nanoTime() - actorState.lastFlush).nanos > config.fileIO.flushInterval ||
@@ -134,7 +136,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
 
       val newSize = math.max(lastSetSize, math.max(maxChunkEnd, maxPatchEnd))
       val newChecksum = Checksum(HashingMethod.none, HashingMethod.none, newSize, ByteString.empty, newSize, ByteString.empty)
-      lastRevision.copy(checksum = newChecksum, chunks = Nil)
+      lastRevision.copy(checksum = newChecksum, chunks = Nil, timestamp = lastRevision.timestamp.modified(lastModified))
     }
   }
 
@@ -294,6 +296,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   object dataOps {
     def applyPatch(patch: ChunkPatch): Unit = {
       dataState.pendingWrites :+= patch
+      dataState.lastModified = Utils.timestamp
     }
 
     def applyFlushResult(writes: Seq[ChunkPatch], ops: Seq[ChunkIOOperation]): Unit = {

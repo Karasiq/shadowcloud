@@ -433,8 +433,11 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
     becomeOrDefault {
       case SaveSnapshotSuccess(snapshot) ⇒
         log.info("Snapshot saved: {}", snapshot)
+        if (config.index.snapshotClearHistory) {
+          deleteSnapshots(SnapshotSelectionCriteria(maxSequenceNr = snapshot.sequenceNr - 1))
+          deleteMessages(snapshot.sequenceNr)
+        }
         state.diffsSaved = 0
-        // deleteMessages(snapshot.sequenceNr - 1)
         after()
 
       case SaveSnapshotFailure(snapshot, error) ⇒

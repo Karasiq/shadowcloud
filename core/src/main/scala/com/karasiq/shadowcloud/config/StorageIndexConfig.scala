@@ -10,6 +10,7 @@ import com.karasiq.common.configs.ConfigImplicits
 final case class StorageIndexConfig(rootConfig: Config,
                                     syncInterval: FiniteDuration,
                                     snapshotThreshold: Int,
+                                    snapshotClearHistory: Boolean,
                                     compactThreshold: Int,
                                     compactDeleteOld: Boolean,
                                     keepDeleted: Boolean)
@@ -20,6 +21,7 @@ object StorageIndexConfig extends ConfigImplicits {
       config,
       config.getFiniteDuration("sync-interval"),
       config.getInt("snapshot-threshold"),
+      config.getBoolean("snapshot-clear-history"),
       config.getInt("compact-threshold"),
       config.getBoolean("compact-delete-old"),
       config.getBoolean("keep-deleted")

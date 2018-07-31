@@ -63,6 +63,7 @@ class FileListItem(file: File, selectedFile: Var[Option[File]])(implicit context
       ),
       border := "solid 0.1px",
       marginTop := 2.px,
+      wordWrap.`break-word`,
       onclick := Callback.onClick(_ ⇒ selectedFile() = Some(file))
     )
   }

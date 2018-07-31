@@ -46,6 +46,7 @@ trait AppLocale {
   def viewTextFile: String
   def inspectFile: String
   def pasteText: String
+  def changeView: String
 
   def fileId: String
   def createdDate: String

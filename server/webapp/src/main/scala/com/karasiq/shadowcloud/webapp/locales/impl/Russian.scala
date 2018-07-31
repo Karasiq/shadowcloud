@@ -46,6 +46,7 @@ private[locales] object Russian extends AppLocale {
   val viewTextFile = "Открыть текст"
   val inspectFile = "Подробности"
   val pasteText = "Вставить текст"
+  val changeView = "Изменить отображение"
 
   val fileId = "ID файла"
   val createdDate = "Создан"

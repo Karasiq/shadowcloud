@@ -46,6 +46,7 @@ private[locales] object English extends AppLocale {
   val viewTextFile = "View text"
   val inspectFile = "Inspect"
   val pasteText = "Paste text"
+  val changeView = "Change view"
 
   val fileId = "File ID"
   val createdDate = "Created"

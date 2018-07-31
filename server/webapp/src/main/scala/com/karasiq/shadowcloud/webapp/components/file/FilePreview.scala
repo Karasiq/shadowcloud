@@ -21,11 +21,15 @@ object FilePreview {
                              text: Option[Metadata.Text] = None,
                              files: Option[Metadata.FileList] = None)
 
+  object PreviewVariants {
+    val empty = PreviewVariants()
+  }
+
   def apply(regionId: RegionId, file: File)(implicit context: AppContext): FilePreview = {
     new FilePreview(regionId: RegionId, file)
   }
 
-  private def getImagePreview(regionId: RegionId, fileId: FileId)(implicit context: AppContext): Future[PreviewVariants] = {
+  def getPreviews(regionId: RegionId, fileId: FileId)(implicit context: AppContext): Future[PreviewVariants] = {
     val futureMetadata = context.api.getFileMetadata(regionId, fileId, Metadata.Tag.Disposition.PREVIEW)
     futureMetadata.map { metadatas ⇒
       // println(metadatas)
@@ -41,7 +45,7 @@ object FilePreview {
 }
 
 class FilePreview(regionId: RegionId, file: File)(implicit context: AppContext) extends BootstrapHtmlComponent {
-  val previewsRx = FilePreview.getImagePreview(regionId, file.id).toRx(PreviewVariants())
+  val previewsRx = FilePreview.getPreviews(regionId, file.id).toRx(PreviewVariants())
 
   def renderTag(md: ModifierT*): TagT = {
     val image = Rx(previewsRx().image.map(MetadataView.thumbnail))

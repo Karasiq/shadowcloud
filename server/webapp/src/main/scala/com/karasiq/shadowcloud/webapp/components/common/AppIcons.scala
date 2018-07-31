@@ -14,6 +14,7 @@ object AppIcons {
   val preview: Icon = "file-image-o"
   val metadata: Icon = "file-code-o"
 
+  val file: Icon = "file-o"
   val folder: Icon = "folder-o"
   val folderOpen: Icon = "folder-open-o"
 
@@ -30,6 +31,7 @@ object AppIcons {
   val editText: Icon = "edit"
   val inspect: Icon = "user-secret"
   val repair: Icon = "wrench"
+  val changeView: Icon = "list-alt"
 
   val revisions: Icon = "clone"
   val availability: Icon = "balance-scale"

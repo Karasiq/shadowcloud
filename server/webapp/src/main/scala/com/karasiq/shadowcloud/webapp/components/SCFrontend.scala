@@ -8,7 +8,7 @@ import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
 import com.karasiq.shadowcloud.webapp.components.common.AppIcons
-import com.karasiq.shadowcloud.webapp.components.folder.{FoldersPanel, UploadForm}
+import com.karasiq.shadowcloud.webapp.components.folder.FoldersPanel
 import com.karasiq.shadowcloud.webapp.components.keys.KeysContext
 import com.karasiq.shadowcloud.webapp.components.region.{RegionContext, RegionsStoragesPanel, RegionSwitcher}
 import com.karasiq.shadowcloud.webapp.components.themes.ThemeSelector
@@ -86,17 +86,8 @@ class SCFrontend()(implicit val context: AppContext) {
         Bootstrap.noContent
     }
 
-    val uploadFormRx = folderContextRx.map[Frag] {
-      case Some(folderContext) ⇒
-        val fileController = FileController.forFolderContext(folderContext)
-        UploadForm()(context, folderContext, fileController).renderButton()
-
-      case None ⇒
-        Bootstrap.noContent
-    }
-
     div(
-      GridSystem.mkRow(ButtonGroup(ButtonGroupSize.small, regionSwitcher, uploadFormRx)),
+      GridSystem.mkRow(regionSwitcher),
       GridSystem.mkRow(foldersPanelRx)
     )
   }

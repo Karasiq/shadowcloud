@@ -9,6 +9,7 @@ import scalaTags.all._
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.model.File
+import com.karasiq.shadowcloud.webapp.components.common.AppIcons
 import com.karasiq.shadowcloud.webapp.components.file.FileDownloadLink
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.controllers.FileController
@@ -26,17 +27,19 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
 
   val selectedFile = Var(None: Option[File])
 
+  val selectedView = Var("table")
+
   implicit val fileController = FileController.inherit(
     onUpdateFile = (oldFile, newFile) ⇒ if (selectedFile.now.contains(oldFile)) selectedFile() = Some(newFile),
     onRenameFile = (file, newName) ⇒ if (selectedFile.now.contains(file)) selectedFile() = Some(file.copy(file.path.withName(newName)))
   )(_fileController)
 
-  lazy val fileTable = {
-    val files = Rx {
-      val fileSet = filesRx()
-      if (flat) FileVersions.toFlatDirectory(fileSet) else fileSet.toVector
-    }
+  lazy val filesSeqRx = Rx {
+    val fileSet = filesRx()
+    if (flat) FileVersions.toFlatDirectory(fileSet) else fileSet.toVector
+  }
 
+  lazy val fileTable = {
     val baseTable = SortableTable.Builder[File]()
       .withRowModifiers(file ⇒ this.fileRowModifiers(file))
       .withFilter((file, str) ⇒ file.path.name.toLowerCase.contains(str.toLowerCase))
@@ -56,17 +59,42 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
       )
     }
 
-    table.createTable(files)
+    table.createTable(filesSeqRx)
   }
 
   def renderTag(md: ModifierT*): TagT = {
-    fileTable.renderTag(md:_*)
+    val viewSelectButton = Button(ButtonStyle.info)(AppIcons.changeView, context.locale.changeView, onclick := Callback.onClick(_ ⇒ changeListView()))
+    val uploadForm = UploadForm()(context, folderContext, fileController)
+    GridSystem.containerFluid(
+      GridSystem.mkRow(ButtonGroup(ButtonGroupSize.small, uploadForm.renderButton(), viewSelectButton)),
+      Rx(GridSystem.mkRow {
+        if (selectedView() == "previews") {
+          RichFileTable(filesSeqRx, selectedFile).renderTag(md:_*)
+        } else {
+          fileTable.renderTag(md:_*)
+        }
+      })
+    )
+
+  }
+
+  protected def changeListView(): Unit = {
+    /* import org.scalajs.dom.window.sessionStorage
+    val selectedView = Var((sessionStorage.getItem("file-list-view"): UndefOr[String]).toOption.getOrElse("table"))
+    selectedView.triggerLater {
+      sessionStorage.setItem("file-list-view", selectedView.now)
+    }*/
+
+    selectedView() = selectedView.now match {
+      case "table" ⇒ "previews"
+      case _ ⇒ "table"
+    }
   }
 
   protected def fileRowModifiers(file: File): Modifier = {
     val dragAndDropHandlers = Seq[Modifier](
       draggable,
-      ondragstart := { (ev: DragEvent) ⇒
+      ondragstart := { ev: DragEvent ⇒
         DragAndDrop.addFolderContext(ev.dataTransfer)
         if (flat)
           DragAndDrop.addFilePath(ev.dataTransfer, file.path)

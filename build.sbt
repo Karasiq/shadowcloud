@@ -366,7 +366,7 @@ lazy val shell = project
 lazy val shadowcloud = (project in file("."))
   .settings(
     commonSettings,
-    name := "shadowcloud-root",
+    name := "shadowcloud-root"/*,
     liquibaseUsername := "sa",
     liquibasePassword := s"${sys.props("shadowcloud.persistence.h2.password").ensuring(_.ne(null), "No password").replace(' ', '_')} sa",
     liquibaseDriver := "org.h2.Driver",
@@ -376,7 +376,7 @@ lazy val shadowcloud = (project in file("."))
       val compress = sys.props.getOrElse("shadowcloud.persistence.h2.compress", true)
       s"jdbc:h2:file:$path;CIPHER=$cipher;COMPRESS=$compress"
     },
-    liquibaseChangelog := sourceDirectory.value / "migrations" / "changelog.sql"
+    liquibaseChangelog := sourceDirectory.value / "migrations" / "changelog.sql" */
   )
-  .enablePlugins(com.github.sbtliquibase.SbtLiquibase)
+  //.enablePlugins(com.github.sbtliquibase.SbtLiquibase)
   .aggregate(coreAssembly, `server-api-routes`)

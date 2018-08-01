@@ -9,6 +9,7 @@ import rx.async._
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
+import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.webapp.components.common.AppIcons
 import com.karasiq.shadowcloud.webapp.components.file.FilePreview
@@ -45,7 +46,17 @@ class FileListItem(file: File, selectedFile: Var[Option[File]])(implicit context
         lineHeight := 50.px
       ),
       GridSystem.col(9).asDiv(
-        GridSystem.mkRow(Rx[Frag](if (selectedFile().contains(file)) b(file.path.name) else file.path.name)),
+        GridSystem.row(
+          GridSystem.col(9).asDiv(Rx[Frag](if (selectedFile().contains(file)) b(file.path.name) else file.path.name)),
+          GridSystem.col(3).asDiv(
+            GridSystem.mkRow(MemorySize.toString(file.checksum.size)),
+            GridSystem.mkRow(context.timeFormat.timestamp(file.timestamp.lastModified)),
+            color.gray,
+            fontStyle.italic,
+            fontSizeAdjust := 0.4,
+            lineHeight := 80.pct
+          )
+        ),
         Rx[Frag](previews().text match {
           case Some(text) ⇒
             GridSystem.mkRow(

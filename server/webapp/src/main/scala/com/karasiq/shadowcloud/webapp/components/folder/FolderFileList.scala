@@ -65,9 +65,9 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
   def renderTag(md: ModifierT*): TagT = {
     val viewSelectButton = Button(ButtonStyle.info)(AppIcons.changeView, context.locale.changeView, onclick := Callback.onClick(_ ⇒ changeListView()))
     val uploadForm = UploadForm()(context, folderContext, fileController)
-    GridSystem.containerFluid(
-      GridSystem.mkRow(ButtonGroup(ButtonGroupSize.small, uploadForm.renderButton(), viewSelectButton)),
-      Rx(GridSystem.mkRow {
+    div(
+      div(ButtonGroup(ButtonGroupSize.extraSmall, uploadForm.renderButton(), viewSelectButton)),
+      Rx(div {
         if (selectedView() == "previews") {
           RichFileTable(filesSeqRx, selectedFile).renderTag(md:_*)
         } else {

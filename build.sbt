@@ -129,7 +129,7 @@ lazy val coreAssembly = (project in file("core/assembly"))
     googleDriveStorage, mailruCloudStorage, dropboxStorage, webdavStorage
   )
   .dependsOn(
-    Seq[ClasspathDep[ProjectReference]](javacvMetadata).filter(_ ⇒ sys.props.getOrElse("enable-javacv", "0") == "1") ++
+    Seq[ClasspathDep[ProjectReference]](javacvMetadata).filter(_ ⇒ ProjectDeps.javacv.isEnabled) ++
     Seq[ClasspathDep[ProjectReference]](tikaMetadata).filter(_ ⇒ sys.props.getOrElse("enable-tika", "1") == "1"):_*
   )
   .aggregate(
@@ -232,7 +232,7 @@ lazy val imageioMetadata = metadataPlugin("imageio")
   .dependsOn(utilsJVM)
 
 lazy val javacvMetadata = metadataPlugin("javacv")
-  .settings(libraryDependencies ++= ProjectDeps.javacv)
+  .settings(libraryDependencies ++= ProjectDeps.javacv.main)
   .dependsOn(utilsJVM)
 
 lazy val markdownMetadata = metadataPlugin("markdown")
@@ -339,7 +339,10 @@ lazy val desktopApp = (project in file("desktop-app"))
   .settings(commonSettings, packageSettings)
   .settings(
     name := "shadowcloud-desktop",
-    libraryDependencies ++= ProjectDeps.akka.slf4j ++ ProjectDeps.logback
+    libraryDependencies ++= ProjectDeps.akka.slf4j ++ ProjectDeps.logback ++
+      (if (ProjectDeps.javacv.isFullEnabled) ProjectDeps.javacv.mainPlatforms
+      else if (ProjectDeps.javacv.isEnabled) ProjectDeps.javacv.currentPlatform
+      else Nil)
   )
   .dependsOn(coreAssembly, server, javafx, `drive-fuse`)
   .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin)

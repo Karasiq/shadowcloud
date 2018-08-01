@@ -126,9 +126,56 @@ object ProjectDeps {
     "ch.qos.logback" % "logback-classic" % "1.2.3"
   )
 
-  def javacv: Deps = Seq(
-    "org.bytedeco" % "javacv-platform" % "1.3.3"
-  )
+  object javacv {
+    private val JavaCVVersion = "1.4.2"
+    private val OpenCVVersion = "3.4.2"
+    private val FFMpegVersion = "4.0.1"
+
+    def isEnabled: Boolean = {
+      sys.props.get("enable-javacv").exists(Set("1", "true").contains) || isFullEnabled
+    }
+
+    def isFullEnabled: Boolean = {
+      sys.props.get("enable-javacv-all").exists(Set("1", "true").contains)
+    }
+
+    def main: Deps = {
+      Seq("org.bytedeco" % "javacv" % JavaCVVersion)
+    }
+
+    def allPlatforms: Deps = {
+      Seq("org.bytedeco" % "javacv-platform" % JavaCVVersion)
+    }
+
+    def mainPlatforms: Deps = {
+      javaCvLibs(JavaCVVersion, Seq("windows", "linux"), Seq("x86", "x86_64"), "opencv" → OpenCVVersion, "ffmpeg" → FFMpegVersion) ++ javaCvLibs(JavaCVVersion, Seq("macosx"), Seq("x86_64"), "opencv" → OpenCVVersion, "ffmpeg" → FFMpegVersion)
+    }
+
+    def currentPlatform: Deps = {
+      val platform = sys.props("os.name").toLowerCase match {
+        case os if os.contains("win") ⇒ "windows"
+        case os if os.contains("mac") ⇒ "macosx"
+        case _ ⇒ "linux"
+      }
+
+      javaCvLibs(JavaCVVersion, Seq(platform), Seq("x86", "x86_64"), "opencv" → OpenCVVersion, "ffmpeg" → FFMpegVersion)
+    }
+
+    private def javaCvLibs(javaCvVersion: String, platforms: Seq[String], architectures: Seq[String], libs: (String, String)*): Seq[ModuleID] = {
+      // val platforms = Seq("windows", "linux")
+      //val architectures = Seq("x86", "x86_64")
+
+      (for {
+        (lib, ver) <- libs
+        os <- platforms
+        arch <- architectures
+      } yield Seq(
+        // Add both: dependency and its native binaries for the current `platform`
+        "org.bytedeco.javacpp-presets" % lib % s"$ver-$javaCvVersion",
+        "org.bytedeco.javacpp-presets" % lib % s"$ver-$javaCvVersion" classifier s"$os-$arch"
+      )).flatten
+    }
+  }
 
   def apacheCommonsIO: Deps = Seq(
     "commons-io" % "commons-io" % "2.6"

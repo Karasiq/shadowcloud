@@ -8,22 +8,22 @@ import scalaTags.all._
 import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 
-private[folder] object RichFileTable {
+private[folder] object PreviewsFileTable {
   def apply(files: Rx[Seq[File]], selectedFile: Var[Option[File]])
-           (implicit context: AppContext, fc: FolderContext): RichFileTable = {
-    new RichFileTable(files, selectedFile)
+           (implicit context: AppContext, fc: FolderContext): PreviewsFileTable = {
+    new PreviewsFileTable(files, selectedFile)
   }
 }
 
-private[folder] class RichFileTable(files: Rx[Seq[File]], selectedFile: Var[Option[File]])
-                                   (implicit context: AppContext, fc: FolderContext) extends BootstrapHtmlComponent {
+private[folder] class PreviewsFileTable(files: Rx[Seq[File]], selectedFile: Var[Option[File]])
+                                       (implicit context: AppContext, fc: FolderContext) extends BootstrapHtmlComponent {
 
   private[this] lazy val sortedFiles = Rx {
     val allFiles = files()
     val filtered = {
       val filterStr = filter()
       if (filterStr.isEmpty) allFiles
-      else allFiles.filter(_.toString.toLowerCase.contains(filterStr.toLowerCase))
+      else allFiles.filter(_.path.name.toLowerCase.contains(filterStr.toLowerCase))
     }
     val sorted = sortTypes(sortType()) match {
       case s if s == context.locale.name ⇒ filtered.sortBy(_.path.name)
@@ -43,12 +43,12 @@ private[folder] class RichFileTable(files: Rx[Seq[File]], selectedFile: Var[Opti
 
   lazy val pageSelector = PageSelector(pagesRx)
 
-  def renderTag(md: ModifierT*): TagT = {
-    val currentPageFiles = Rx {
-      val page = pageSelector.currentPage() min pagesRx()
-      sortedFiles().slice(rowsPerPage * (page - 1), rowsPerPage * (page - 1) + rowsPerPage)
-    }
+  lazy val currentPageFiles = Rx {
+    val page = pageSelector.currentPage() min pagesRx()
+    sortedFiles().slice(rowsPerPage * (page - 1), rowsPerPage * (page - 1) + rowsPerPage)
+  }
 
+  def renderTag(md: ModifierT*): TagT = {
     val filterField = Form(FormInput.text("", filter.reactiveInput))
 
     val sortLine = Rx {

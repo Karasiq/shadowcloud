@@ -62,6 +62,8 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
     table.createTable(filesSeqRx)
   }
 
+  lazy val previewsFileTable = PreviewsFileTable(filesSeqRx, selectedFile)
+
   def renderTag(md: ModifierT*): TagT = {
     val viewSelectButton = Button(ButtonStyle.info)(AppIcons.changeView, context.locale.changeView, onclick := Callback.onClick(_ ⇒ changeListView()))
     val uploadForm = UploadForm()(context, folderContext, fileController)
@@ -69,7 +71,7 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
       div(ButtonGroup(ButtonGroupSize.extraSmall, uploadForm.renderButton(), viewSelectButton)),
       Rx(div {
         if (selectedView() == "previews") {
-          RichFileTable(filesSeqRx, selectedFile).renderTag(md:_*)
+          previewsFileTable.renderTag(md:_*)
         } else {
           fileTable.renderTag(md:_*)
         }

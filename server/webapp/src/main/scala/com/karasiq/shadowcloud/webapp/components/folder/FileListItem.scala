@@ -47,7 +47,7 @@ class FileListItem(file: File, selectedFile: Var[Option[File]])(implicit context
       ),
       GridSystem.col(9).asDiv(
         GridSystem.row(
-          GridSystem.col(9).asDiv(Rx[Frag](if (selectedFile().contains(file)) b(file.path.name) else file.path.name)),
+          GridSystem.col(9).asDiv(Rx[Frag](if (selectedFile().contains(file)) b(file.path.name) else span(file.path.name, cursor.pointer))),
           GridSystem.col(3).asDiv(
             GridSystem.mkRow(MemorySize.toString(file.checksum.size)),
             GridSystem.mkRow(context.timeFormat.timestamp(file.timestamp.lastModified)),

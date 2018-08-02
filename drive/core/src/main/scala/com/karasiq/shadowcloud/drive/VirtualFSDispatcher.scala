@@ -217,6 +217,8 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
       if (regionId != regionId2)
         return Future.failed(StorageException.IOFailure(path, new IOException("Regions id should match")))
 
+      state.fileWrites.get(newPath).foreach(_ ! PoisonPill)
+
       if (state.fileWrites.contains(path)) {
         for {
           oldFile ← syncFile(path)

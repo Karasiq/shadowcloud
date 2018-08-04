@@ -66,7 +66,7 @@ private[folder] class PreviewsFileTable(files: Rx[Seq[File]], selectedFile: Var[
       div(textAlign.center, pageSelector, pagesRx.map(_ <= 1).reactiveHide),
       div(sortLine, sortedFiles.map(_.length <= 1).reactiveHide),
       // hr(files.map(_.isEmpty).reactiveHide),
-      Rx(div(currentPageFiles().map(FileListItem(_, selectedFile))))
+      Rx(div(currentPageFiles().map(PreviewsFileListItem(_, selectedFile))))
     )
   }
 

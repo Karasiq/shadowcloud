@@ -17,13 +17,13 @@ import com.karasiq.shadowcloud.webapp.components.file.FilePreview.PreviewVariant
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.utils.Blobs
 
-object FileListItem {
-  def apply(file: File, selectedFile: Var[Option[File]])(implicit context: AppContext, fc: FolderContext): FileListItem = {
-    new FileListItem(file, selectedFile)
+object PreviewsFileListItem {
+  def apply(file: File, selectedFile: Var[Option[File]])(implicit context: AppContext, fc: FolderContext): PreviewsFileListItem = {
+    new PreviewsFileListItem(file, selectedFile)
   }
 }
 
-class FileListItem(file: File, selectedFile: Var[Option[File]])(implicit context: AppContext, fc: FolderContext) extends BootstrapHtmlComponent {
+class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit context: AppContext, fc: FolderContext) extends BootstrapHtmlComponent {
   lazy val previews = {
     FilePreview.getPreviews(fc.regionId, file.id)
       .toRx(PreviewVariants.empty)

@@ -35,7 +35,8 @@ val packageSettings = Seq(
   jdkPackagerProperties := Map(
     "app.name" → "shadowcloud",
     "app.version" → version.value.replace("-SNAPSHOT", ""),
-    "file.encoding" → "UTF-8"
+    "file.encoding" → "UTF-8",
+    "java.net.preferIPv4Stack" → "true"
     // "jnrfuse.winfsp.path" → "C:\\Program Files (x86)\\WinFsp\\bin\\winfsp-x64.dll"
   ),
   // antPackagerTasks in JDKPackager := Some(file("/usr/lib/jvm/java-8-oracle/lib/ant-javafx.jar")),
@@ -63,8 +64,7 @@ lazy val modelJVM = model.jvm
 
 lazy val modelJS = model.js
 
-lazy val utils = crossProject
-  .crossType(CrossType.Pure)
+lazy val utils = crossProject.crossType(CrossType.Pure)
   .settings(commonSettings, name := "shadowcloud-utils")
   .jvmSettings(
     libraryDependencies ++=
@@ -89,7 +89,7 @@ lazy val testUtils = (crossProject.crossType(CrossType.Pure) in file("utils") / 
 
 lazy val testUtilsJVM = testUtils.jvm
 
-lazy val testUtilsJS = testUtils.js 
+lazy val testUtilsJS = testUtils.js
 
 lazy val serialization = crossProject.crossType(CrossType.Pure)
   .settings(commonSettings, name := "shadowcloud-serialization")
@@ -173,7 +173,7 @@ def cryptoPlugin(id: String): Project = {
 }
 
 lazy val cryptoParent = Project("crypto-parent", file("crypto") / "parent")
-  .settings(commonSettings)
+  .settings(commonSettings, name := "shadowcloud-crypto-parent")
   .dependsOn(modelJVM)
 
 lazy val bouncyCastleCrypto = cryptoPlugin("bouncycastle")
@@ -195,7 +195,7 @@ def storagePlugin(id: String): Project = {
 }
 
 lazy val storageParent = Project("storage-parent", file("storage") / "parent")
-  .settings(commonSettings, libraryDependencies ++= ProjectDeps.akka.streams)
+  .settings(commonSettings, name := "shadowcloud-storage-parent", libraryDependencies ++= ProjectDeps.akka.streams)
   .dependsOn(modelJVM, utilsJVM, testUtilsJVM % "test")
 
 lazy val googleDriveStorage = storagePlugin("gdrive")
@@ -212,17 +212,17 @@ lazy val webdavStorage = storagePlugin("webdav")
 
 // Metadata plugins
 def metadataPlugin(id: String): Project = {
-  val prefixedId = s"metadata-$id"
-  Project(prefixedId, file("metadata") / id)
-    .settings(
-      commonSettings,
-      name := s"shadowcloud-$prefixedId"
-    )
-    .dependsOn(metadataParent % "provided", testUtilsJVM % "test")
+val prefixedId = s"metadata-$id"
+Project(prefixedId, file("metadata") / id)
+  .settings(
+    commonSettings,
+    name := s"shadowcloud-$prefixedId"
+  )
+  .dependsOn(metadataParent % "provided", testUtilsJVM % "test")
 }
 
 lazy val metadataParent = Project("metadata-parent", file("metadata") / "parent")
-  .settings(commonSettings, libraryDependencies ++= ProjectDeps.akka.streams)
+  .settings(commonSettings, name := "shadowcloud-metadata-parent", libraryDependencies ++= ProjectDeps.akka.streams)
   .dependsOn(modelJVM, utilsJVM)
 
 lazy val tikaMetadata = metadataPlugin("tika")
@@ -242,7 +242,7 @@ lazy val markdownMetadata = metadataPlugin("markdown")
 // HTTP
 // -----------------------------------------------------------------------
 lazy val autowireApi = (crossProject.crossType(CrossType.Pure) in (file("server") / "autowire-api"))
-  .settings(commonSettings)
+  .settings(commonSettings, name := "shadowcloud-autowire-api")
   .jvmSettings(libraryDependencies ++= ProjectDeps.autowire ++ ProjectDeps.scalaTest.map(_ % "test"))
   .jsSettings(ScalaJSDeps.autowire, ScalaJSDeps.browserDom, ScalaJSDeps.scalaTest)
   .dependsOn(model, serialization)
@@ -291,8 +291,8 @@ lazy val `server-webzinc-routes` = (project in file("server") / "webzinc-routes"
   .dependsOn(`server-api-routes`)
 
 lazy val webapp = (project in file("server") / "webapp")
-  .settings(commonSettings)
   .settings(
+    commonSettings,
     name := "shadowcloud-webapp",
     scalaJSUseMainModuleInitializer := true,
     ScalaJSDeps.bootstrap,
@@ -336,9 +336,11 @@ lazy val javafx = (project in file("javafx"))
   .dependsOn(core)
 
 lazy val desktopApp = (project in file("desktop-app"))
-  .settings(commonSettings, packageSettings)
   .settings(
+    commonSettings,
+    packageSettings,
     name := "shadowcloud-desktop",
+    mainClass in Compile := Some("com.karasiq.shadowcloud.desktop.SCDesktopMain"),
     libraryDependencies ++= ProjectDeps.akka.slf4j ++ ProjectDeps.logback ++
       (if (ProjectDeps.javacv.isFullEnabled) ProjectDeps.javacv.mainPlatforms
       else if (ProjectDeps.javacv.isEnabled) ProjectDeps.javacv.currentPlatform

@@ -37,6 +37,7 @@ trait BlockingMetadataParser extends MetadataParser {
     })
 
     blockingFlow
+      .log("blocking-metadata-parse")
       .named("blockingParseMetadata")
       .mapMaterializedValue(_ ⇒ NotUsed)
   }

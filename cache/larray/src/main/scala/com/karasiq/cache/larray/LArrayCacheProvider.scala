@@ -1,4 +1,4 @@
-package com.github.karasiq.cache.larray
+package com.karasiq.cache.larray
 
 import akka.actor.ActorSystem
 

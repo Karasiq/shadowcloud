@@ -217,20 +217,21 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
       if (regionId != regionId2)
         return Future.failed(StorageException.IOFailure(path, new IOException("Regions id should match")))
 
-      state.fileWrites.get(newPath).foreach(_ ! PoisonPill)
+      // Close old file
+      closeFile(newPath)
 
       if (state.fileWrites.contains(path)) {
         for {
           oldFile ← syncFile(path)
           newFile ← sc.ops.region.createFile(regionId, oldFile.copy(path = newRegionPath))
-          _ ← sc.ops.region.deleteFiles(regionId, oldRegionPath)
+          _ ← DeleteFile.unwrapFuture(self ? DeleteFile(path))
         } yield newFile
       } else {
         for {
           oldFiles ← sc.ops.region.getFiles(regionId, oldRegionPath)
           oldFile = FileVersions.mostRecent(oldFiles)
           newFile ← sc.ops.region.createFile(regionId, oldFile.copy(path = newRegionPath))
-          _ ← sc.ops.region.deleteFiles(regionId, oldRegionPath)
+          _ ← DeleteFile.unwrapFuture(self ? DeleteFile(path))
         } yield newFile
       }
     }
@@ -252,6 +253,17 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
         newFolder ← sc.ops.region.getFolder(regionId, newRegionPath)
         _ ← sc.ops.region.deleteFolder(regionId, oldRegionPath)
       } yield newFolder
+    }
+
+    def closeFile(path: Path): Unit = {
+      state.fileWrites
+        .remove(path)
+        .foreach(_ ! PoisonPill)
+    }
+
+    def closeFile(path: Path, dispatcher: ActorRef): Unit = {
+      if (state.fileWrites.get(path).contains(dispatcher))
+        state.fileWrites -= path
     }
   }
 
@@ -287,7 +299,7 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
         .pipeTo(sender())
 
     case CloseFile(path, dispatcher) ⇒
-      if (state.fileWrites.get(path).contains(dispatcher)) state.fileWrites -= path
+      operations.closeFile(path, dispatcher)
 
     case RenameFile(path, newPath) ⇒
       RenameFile.wrapFuture(path, operations.renameFile(path, newPath)).pipeTo(sender())

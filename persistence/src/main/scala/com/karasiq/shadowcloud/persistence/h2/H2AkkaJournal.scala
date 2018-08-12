@@ -76,7 +76,8 @@ final class H2AkkaJournal extends AsyncWriteJournal {
     private[this] val serializer = SerializationExtension(context.system).serializerFor(classOf[PersistentRepr])
 
     def deserialize(message: ByteString): PersistentRepr = {
-      serializer.fromBinary(message.toArray, classOf[PersistentRepr]).asInstanceOf[PersistentRepr]
+      import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
+      serializer.fromBinary(message.toArrayUnsafe, classOf[PersistentRepr]).asInstanceOf[PersistentRepr]
     }
 
     def serialize(pr: PersistentRepr): ByteString = {

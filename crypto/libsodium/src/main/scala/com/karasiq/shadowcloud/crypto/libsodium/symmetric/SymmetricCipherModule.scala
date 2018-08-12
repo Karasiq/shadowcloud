@@ -5,6 +5,7 @@ import scala.language.postfixOps
 import akka.util.ByteString
 import org.abstractj.kalium.NaCl
 
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
 import com.karasiq.shadowcloud.model.crypto.{EncryptionParameters, SymmetricEncryptionParameters}
@@ -25,7 +26,7 @@ private[libsodium] trait SymmetricCipherModule extends EncryptionModule {
   def createParameters(): EncryptionParameters = {
     val key = secureRandom.randomBytes(keySize)
     val nonce = secureRandom.randomBytes(nonceSize)
-    SymmetricEncryptionParameters(method, ByteString(key), ByteString(nonce))
+    SymmetricEncryptionParameters(method, ByteString.fromArrayUnsafe(key), ByteString.fromArrayUnsafe(nonce))
   }
 
   def updateParameters(parameters: EncryptionParameters): EncryptionParameters = {
@@ -41,14 +42,14 @@ private[libsodium] trait SymmetricCipherAtomic extends SymmetricCipherModule {
   override def encrypt(data: ByteString, parameters: EncryptionParameters): ByteString = {
     val symmetricParameters = EncryptionParameters.symmetric(parameters)
     SymmetricCipherModule.requireValidParameters(this, symmetricParameters)
-    val outArray = encrypt(data.toArray, symmetricParameters.key.toArray, symmetricParameters.nonce.toArray)
+    val outArray = encrypt(data.toArrayUnsafe, symmetricParameters.key.toArrayUnsafe, symmetricParameters.nonce.toArrayUnsafe)
     ByteString.fromArrayUnsafe(outArray)
   }
 
   override def decrypt(data: ByteString, parameters: EncryptionParameters): ByteString = {
     val symmetricParameters = EncryptionParameters.symmetric(parameters)
     SymmetricCipherModule.requireValidParameters(this, symmetricParameters)
-    val outArray = decrypt(data.toArray, symmetricParameters.key.toArray, symmetricParameters.nonce.toArray)
+    val outArray = decrypt(data.toArrayUnsafe, symmetricParameters.key.toArrayUnsafe, symmetricParameters.nonce.toArrayUnsafe)
     ByteString.fromArrayUnsafe(outArray)
   }
 }
@@ -62,11 +63,11 @@ private[libsodium] trait SymmetricCipherStreaming extends EncryptionModuleStream
   def init(encrypt: Boolean, parameters: EncryptionParameters): Unit = {
     val symmetricParameters = EncryptionParameters.symmetric(parameters)
     SymmetricCipherModule.requireValidParameters(module, symmetricParameters)
-    init(encrypt, symmetricParameters.key.toArray, symmetricParameters.nonce.toArray)
+    init(encrypt, symmetricParameters.key.toArrayUnsafe, symmetricParameters.nonce.toArrayUnsafe)
   }
 
   def process(data: ByteString): ByteString = {
-    val outArray = process(data.toArray)
+    val outArray = process(data.toArrayUnsafe)
     ByteString.fromArrayUnsafe(outArray)
   }
 

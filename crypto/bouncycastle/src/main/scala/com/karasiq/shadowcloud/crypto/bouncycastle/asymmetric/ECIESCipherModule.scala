@@ -14,6 +14,7 @@ import org.bouncycastle.crypto.macs.HMac
 import org.bouncycastle.crypto.params.{AsymmetricKeyParameter, ECPublicKeyParameters, IESParameters, IESWithCipherParameters}
 import org.bouncycastle.crypto.parsers.ECIESPublicKeyParser
 
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.config.{ConfigProps, CryptoProps}
@@ -169,7 +170,7 @@ private[bouncycastle] final class ECIESCipherModule(val method: EncryptionMethod
 
     def process(data: ByteString): ByteString = {
       require(iesEngine ne null, "Not initialized")
-      val outArray = iesEngine.processBlock(data.toArray, 0, data.length)
+      val outArray = iesEngine.processBlock(data.toArrayUnsafe, 0, data.length)
       ByteString.fromArrayUnsafe(outArray)
     }
 

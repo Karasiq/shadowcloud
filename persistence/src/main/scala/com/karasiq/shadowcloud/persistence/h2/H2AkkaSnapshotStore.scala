@@ -58,7 +58,8 @@ final class H2AkkaSnapshotStore extends SnapshotStore {
     }
 
     private[this] def deserializeSnapshot(data: ByteString): Any = {
-      serializer.fromBinary(data.toArray, classOf[Snapshot]).asInstanceOf[Snapshot].data
+      import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
+      serializer.fromBinary(data.toArrayUnsafe, classOf[Snapshot]).asInstanceOf[Snapshot].data
     }
 
     def toSelectedSnapshot(snapshot: DBSnapshot): SelectedSnapshot = {

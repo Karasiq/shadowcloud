@@ -5,6 +5,7 @@ import akka.util.ByteString
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.{HashingModule, HashingModuleStreamer, OnlyStreamHashingModule}
 import com.karasiq.shadowcloud.model.crypto.HashingMethod
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe
 
 private[bouncycastle] object BCDigestModule extends ConfigImplicits {
   def apply(method: HashingMethod): BCDigestModule = {
@@ -29,7 +30,7 @@ private[bouncycastle] final class BCDigestModule(val method: HashingMethod) exte
     }
 
     def update(data: ByteString): Unit = {
-      digest.update(data.toArray, 0, data.length)
+      digest.update(ByteStringUnsafe.getArray(data), 0, data.length)
     }
 
     def finish(): ByteString = {

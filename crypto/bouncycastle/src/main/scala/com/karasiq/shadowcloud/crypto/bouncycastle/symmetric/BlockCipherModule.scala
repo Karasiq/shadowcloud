@@ -11,6 +11,7 @@ import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{BCSymmetricKeys, BCUtils}
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.BlockCipherModule.BlockCipherOptions
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters}
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 
 //noinspection RedundantDefaultArgument
 private[bouncycastle] object BlockCipherModule {
@@ -73,15 +74,17 @@ private[bouncycastle] class BlockCipherModule(defaultOptions: BlockCipherOptions
     def process(data: ByteString): ByteString = {
       requireInitialized()
       val outArray = new Array[Byte](cipher.getUpdateOutputSize(data.length))
-      val outLength = cipher.processBytes(data.toArray, 0, data.length, outArray, 0)
-      ByteString.fromArray(outArray, 0, outLength)
+      val outLength = cipher.processBytes(data.toArrayUnsafe, 0, data.length, outArray, 0)
+      if (outArray.length == outLength) ByteString.fromArrayUnsafe(outArray)
+      else ByteString.fromArray(outArray, 0, outLength)
     }
 
     def finish(): ByteString = {
       requireInitialized()
       val outArray = new Array[Byte](cipher.getOutputSize(0))
       val outLength = cipher.doFinal(outArray, 0)
-      ByteString.fromArray(outArray, 0, outLength)
+      if (outArray.length == outLength) ByteString.fromArrayUnsafe(outArray)
+      else ByteString.fromArray(outArray, 0, outLength)
     }
 
     private[this] def requireInitialized(): Unit = {

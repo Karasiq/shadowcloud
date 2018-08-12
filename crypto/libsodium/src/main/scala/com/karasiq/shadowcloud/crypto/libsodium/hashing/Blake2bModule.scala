@@ -6,11 +6,13 @@ import akka.util.ByteString
 import org.abstractj.kalium.NaCl
 import org.abstractj.kalium.crypto.Util
 
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto.{HashingModule, HashingModuleStreamer, StreamHashingModule}
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.Blake2bModule.DigestOptions
 import com.karasiq.shadowcloud.model.crypto.HashingMethod
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe
 
 private[libsodium] object Blake2bModule {
   def apply(method: HashingMethod = HashingMethod("Blake2b")): Blake2bModule = {
@@ -41,8 +43,8 @@ private[libsodium] final class Blake2bModule(options: DigestOptions) extends Str
     val outArray = new Array[Byte](outBytes)
     sodium.crypto_generichash(
       outArray, outArray.length,
-      data.toArray, data.length,
-      options.digestKey.toArray, options.digestKey.length
+      ByteStringUnsafe.getArray(data), data.length,
+      ByteStringUnsafe.getArray(options.digestKey), options.digestKey.length
     )
     ByteString.fromArrayUnsafe(outArray)
   }
@@ -62,7 +64,7 @@ private[libsodium] final class Blake2bModule(options: DigestOptions) extends Str
     }
 
     def update(data: ByteString): Unit = {
-      val array = data.toArray
+      val array = data.toArrayUnsafe
       sodium.crypto_generichash_update(state, array, array.length)
     }
 

@@ -6,6 +6,7 @@ import javax.crypto.spec.SecretKeySpec
 import akka.util.ByteString
 import com.typesafe.config.Config
 
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.model.{Chunk, ChunkId}
 import com.karasiq.shadowcloud.model.crypto.{AsymmetricEncryptionParameters, SymmetricEncryptionParameters}
@@ -25,9 +26,9 @@ private[shadowcloud] class HashNonceHMACKeyMapper(config: Config) extends ChunkK
       case ap: AsymmetricEncryptionParameters ⇒ ap.publicKey
     }
     val hmac = Mac.getInstance(settings.algorithm)
-    hmac.init(new SecretKeySpec(nonce.toArray, settings.algorithm))
+    hmac.init(new SecretKeySpec(nonce.toArrayUnsafe, settings.algorithm))
 
-    var result = chunk.checksum.hash.toArray
+    var result = chunk.checksum.hash.toArrayUnsafe
     for (_ ← 1 to settings.iterations) {
       hmac.reset()
       result = hmac.doFinal(result)

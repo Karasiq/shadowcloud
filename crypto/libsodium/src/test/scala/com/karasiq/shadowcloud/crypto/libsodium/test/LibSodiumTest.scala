@@ -22,7 +22,7 @@ class LibSodiumTest extends FlatSpec with Matchers {
 
   if (LSUtils.isLibraryAvailable) {
     // Encryption
-    testAsymmetricEncryption(SealedBoxModule.algorithm, SealedBoxModule())
+    testAsymmetricEncryption(SealedBoxModule.Algorithm, SealedBoxModule())
     testSymmetricEncryption("XSalsa20/Poly1305", SecretBoxModule(), SecretBoxModule.KeyBytes, SecretBoxModule.NonceBytes)
     testSymmetricEncryption("ChaCha20/Poly1305", AEADCipherModule.ChaCha20_Poly1305(), AEADCipherModule.KeyBytes, AEADCipherModule.NonceBytes)
     testSymmetricEncryption("Salsa20", Salsa20Module(), Salsa20Module.KeyBytes, Salsa20Module.NonceBytes)

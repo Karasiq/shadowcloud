@@ -4,6 +4,8 @@ import akka.util.ByteString
 import org.bouncycastle.crypto.params.AsymmetricKeyParameter
 import org.bouncycastle.crypto.util.{PrivateKeyFactory, PrivateKeyInfoFactory, PublicKeyFactory, SubjectPublicKeyInfoFactory}
 
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
+
 private[bouncycastle] object KeyUtils {
   def encodePublicKey(key: AsymmetricKeyParameter): ByteString = {
     ByteString.fromArrayUnsafe(SubjectPublicKeyInfoFactory.createSubjectPublicKeyInfo(key).getEncoded)
@@ -14,10 +16,10 @@ private[bouncycastle] object KeyUtils {
   }
 
   def decodePublicKey(bytes: ByteString): AsymmetricKeyParameter = {
-    PublicKeyFactory.createKey(bytes.toArray)
+    PublicKeyFactory.createKey(bytes.toArrayUnsafe)
   }
 
   def decodePrivateKey(bytes: ByteString): AsymmetricKeyParameter = {
-    PrivateKeyFactory.createKey(bytes.toArray)
+    PrivateKeyFactory.createKey(bytes.toArrayUnsafe)
   }
 }

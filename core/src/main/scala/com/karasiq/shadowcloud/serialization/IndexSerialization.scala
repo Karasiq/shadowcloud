@@ -3,6 +3,7 @@ package com.karasiq.shadowcloud.serialization
 import akka.util.ByteString
 import play.api.libs.json.Json
 
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.model.crypto.EncryptionParameters
@@ -51,7 +52,7 @@ private[shadowcloud] final class DefaultIndexSerialization(implicit sc: ShadowCl
 
     case "json" ⇒
       import SCJsonEncoders._
-      Json.parse(data.data.toArray).as[IndexData]
+      Json.parse(data.data.toArrayUnsafe).as[IndexData]
   }
 
   def wrapKey(parameters: EncryptionParameters): SerializedKeyData = {
@@ -78,7 +79,7 @@ private[shadowcloud] final class DefaultIndexSerialization(implicit sc: ShadowCl
 
       case "json" ⇒
         import SCJsonEncoders._
-        Json.parse(data.data.toArray).as[EncryptionParameters]
+        Json.parse(data.data.toArrayUnsafe).as[EncryptionParameters]
 
       case "boopickle" ⇒
         import SCBooPickleEncoders._

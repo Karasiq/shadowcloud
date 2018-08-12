@@ -4,13 +4,14 @@ import akka.util.ByteString
 import org.abstractj.kalium.crypto.SealedBox
 import org.abstractj.kalium.keys.KeyPair
 
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.shadowcloud.crypto.EncryptionModule
 import com.karasiq.shadowcloud.model.crypto.{AsymmetricEncryptionParameters, EncryptionMethod, EncryptionParameters}
 
 private[libsodium] object SealedBoxModule {
-  val algorithm = "X25519+XSalsa20/Poly1305"
+  val Algorithm = "X25519+XSalsa20/Poly1305"
 
-  def apply(method: EncryptionMethod = EncryptionMethod(algorithm)): SealedBoxModule = {
+  def apply(method: EncryptionMethod = EncryptionMethod(Algorithm)): SealedBoxModule = {
     new SealedBoxModule(method)
   }                                                             
 }
@@ -34,15 +35,15 @@ private[libsodium] final class SealedBoxModule(val method: EncryptionMethod) ext
 
   def encrypt(data: ByteString, parameters: EncryptionParameters) = {
     val asymmetricParameters = EncryptionParameters.asymmetric(parameters)
-    val sealedBox = new SealedBox(asymmetricParameters.publicKey.toArray)
-    val outArray = sealedBox.encrypt(data.toArray)
+    val sealedBox = new SealedBox(asymmetricParameters.publicKey.toArrayUnsafe)
+    val outArray = sealedBox.encrypt(data.toArrayUnsafe)
     ByteString.fromArrayUnsafe(outArray)
   }
 
   def decrypt(data: ByteString, parameters: EncryptionParameters) = {
     val asymmetricParameters = EncryptionParameters.asymmetric(parameters)
-    val sealedBox = new SealedBox(asymmetricParameters.publicKey.toArray, asymmetricParameters.privateKey.toArray)
-    val outArray = sealedBox.decrypt(data.toArray)
+    val sealedBox = new SealedBox(asymmetricParameters.publicKey.toArrayUnsafe, asymmetricParameters.privateKey.toArrayUnsafe)
+    val outArray = sealedBox.decrypt(data.toArrayUnsafe)
     ByteString.fromArrayUnsafe(outArray)
   }
 }

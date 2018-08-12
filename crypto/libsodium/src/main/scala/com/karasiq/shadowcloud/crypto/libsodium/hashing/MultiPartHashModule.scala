@@ -3,6 +3,7 @@ package com.karasiq.shadowcloud.crypto.libsodium.hashing
 import akka.util.ByteString
 import org.abstractj.kalium.crypto.Hash
 
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.model.crypto.HashingMethod
 
@@ -34,7 +35,7 @@ private[libsodium] final class MultiPartHashModule(val method: HashingMethod, ne
 
     def update(data: ByteString): Unit = {
       requireInitialized()
-      hasher.update(data.toArray)
+      hasher.update(data.toArrayUnsafe)
     }
 
     def finish(): ByteString = {

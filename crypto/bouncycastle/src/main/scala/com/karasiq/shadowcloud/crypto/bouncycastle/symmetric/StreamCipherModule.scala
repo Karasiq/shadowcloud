@@ -5,6 +5,7 @@ import scala.language.postfixOps
 import akka.util.ByteString
 import org.bouncycastle.crypto.StreamCipher
 
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{BCSymmetricKeys, BCUtils}
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters}
@@ -52,8 +53,9 @@ private[bouncycastle] final class StreamCipherModule(val method: EncryptionMetho
     def process(data: ByteString): ByteString = {
       require(cipher ne null, "Not initialized")
       val outArray = new Array[Byte](data.length)
-      val outLength = cipher.processBytes(data.toArray, 0, data.length, outArray, 0)
-      ByteString.fromArray(outArray, 0, outLength)
+      val outLength = cipher.processBytes(data.toArrayUnsafe, 0, data.length, outArray, 0)
+      if (outArray.length == outLength) ByteString.fromArrayUnsafe(outArray)
+      else ByteString.fromArray(outArray, 0, outLength)
     }
 
     def finish(): ByteString = {

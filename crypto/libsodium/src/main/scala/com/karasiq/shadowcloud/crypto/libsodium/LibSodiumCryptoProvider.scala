@@ -31,15 +31,15 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
   override def encryptionAlgorithms: Set[String] = ifLoaded(super.encryptionAlgorithms) {
     @inline def onlyIf(cond: Boolean)(algorithms: String*): Seq[String] = if (cond) algorithms else Nil
 
-    Set("ChaCha20/Poly1305", "Salsa20", "XSalsa20", "ChaCha20", SecretBoxModule.algorithm, SealedBoxModule.algorithm) ++
+    Set("ChaCha20/Poly1305", "Salsa20", "XSalsa20", "ChaCha20", SecretBoxModule.Algorithm, SealedBoxModule.Algorithm) ++
       onlyIf(aesAvailable)("AES/GCM")
   }
 
   override def encryption: EncryptionPF = ifLoaded(super.encryption) {
-    case method if method.algorithm == SealedBoxModule.algorithm ⇒
+    case method if method.algorithm == SealedBoxModule.Algorithm ⇒
       SealedBoxModule(method)
 
-    case method if method.algorithm == SecretBoxModule.algorithm ⇒
+    case method if method.algorithm == SecretBoxModule.Algorithm ⇒
       SecretBoxModule(method)
 
     case method if method.algorithm == "ChaCha20/Poly1305" || (method.algorithm == "AES/GCM" && method.keySize == 256 && aesAvailable) ⇒
@@ -56,11 +56,11 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
   }
 
   override def signingAlgorithms = ifLoaded(super.signingAlgorithms) {
-    Set(CryptoSignModule.algorithm)
+    Set(CryptoSignModule.Algorithm)
   }
 
   override def signing = ifLoaded(super.signing) {
-    case method if method.algorithm == CryptoSignModule.algorithm ⇒
+    case method if method.algorithm == CryptoSignModule.Algorithm ⇒
       CryptoSignModule(method)
   }
 

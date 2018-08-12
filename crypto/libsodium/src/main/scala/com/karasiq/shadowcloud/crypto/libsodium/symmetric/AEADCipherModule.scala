@@ -4,10 +4,12 @@ import akka.util.ByteString
 import org.abstractj.kalium.NaCl.Sodium
 import org.abstractj.kalium.crypto.Aead
 
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric.AEADCipherModule.AEADCipherOptions
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters}
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe
 
 private[libsodium] object AEADCipherModule extends SymmetricConstants {
   val AESKeyBytes: Int = Sodium.CRYPTO_AEAD_AES256GCM_KEYBYTES
@@ -47,11 +49,11 @@ private[libsodium] final class AEADCipherModule(defaultOptions: AEADCipherOption
     val symmetricParameters = EncryptionParameters.symmetric(parameters)
     val aeadOptions = AEADCipherOptions(symmetricParameters.method)
 
-    val cipher = new Aead(symmetricParameters.key.toArray)
+    val cipher = new Aead(symmetricParameters.key.toArrayUnsafe)
     if (aeadOptions.useAes) cipher.useAesGcm()
     val (nonce, additionalData) = splitNonce(aeadOptions, symmetricParameters.nonce)
 
-    val outArray = cipher.encrypt(nonce.toArray, data.toArray, additionalData.toArray)
+    val outArray = cipher.encrypt(ByteStringUnsafe.getArray(nonce), ByteStringUnsafe.getArray(data), ByteStringUnsafe.getArray(additionalData))
     ByteString.fromArrayUnsafe(outArray)
   }
 
@@ -59,11 +61,11 @@ private[libsodium] final class AEADCipherModule(defaultOptions: AEADCipherOption
     val symmetricParameters = EncryptionParameters.symmetric(parameters)
     val aeadOptions = AEADCipherOptions(symmetricParameters.method)
 
-    val cipher = new Aead(symmetricParameters.key.toArray)
+    val cipher = new Aead(symmetricParameters.key.toArrayUnsafe)
     if (aeadOptions.useAes) cipher.useAesGcm()
     val (nonce, additionalData) = splitNonce(aeadOptions, symmetricParameters.nonce)
 
-    val outArray = cipher.decrypt(nonce.toArray, data.toArray, additionalData.toArray)
+    val outArray = cipher.decrypt(ByteStringUnsafe.getArray(nonce), ByteStringUnsafe.getArray(data), ByteStringUnsafe.getArray(additionalData))
     ByteString.fromArrayUnsafe(outArray)
   }
 

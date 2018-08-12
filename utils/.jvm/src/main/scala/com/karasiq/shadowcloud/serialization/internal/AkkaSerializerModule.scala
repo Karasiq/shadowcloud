@@ -7,6 +7,7 @@ import akka.serialization.{Serializer ⇒ AkkaSerializer}
 import akka.util.ByteString
 
 import com.karasiq.shadowcloud.serialization.SerializationModule
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe
 
 private[serialization] final class AkkaSerializerModule(serializer: AkkaSerializer) extends SerializationModule {
   def toBytes[T <: AnyRef](value: T): ByteString = {
@@ -14,6 +15,6 @@ private[serialization] final class AkkaSerializerModule(serializer: AkkaSerializ
   }
 
   def fromBytes[T <: AnyRef : ClassTag](value: ByteString): T = {
-    serializer.fromBinary(value.toArray, Some(implicitly[ClassTag[T]].runtimeClass)).asInstanceOf[T]
+    serializer.fromBinary(ByteStringUnsafe.getArray(value), Some(implicitly[ClassTag[T]].runtimeClass)).asInstanceOf[T]
   }
 }

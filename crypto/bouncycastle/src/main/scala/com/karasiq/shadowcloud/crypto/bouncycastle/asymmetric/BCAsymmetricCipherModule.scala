@@ -6,6 +6,7 @@ import akka.util.ByteString
 import org.bouncycastle.crypto.AsymmetricBlockCipher
 
 import com.karasiq.shadowcloud.crypto.{EncryptionModuleStreamer, OnlyStreamEncryptionModule}
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe
 
 private[bouncycastle] trait BCAsymmetricCipherModule extends OnlyStreamEncryptionModule with BCAsymmetricCipherKeys
 
@@ -17,7 +18,7 @@ private[bouncycastle] trait BCAsymmetricBlockCipherStreamer extends EncryptionMo
     val blockSize = cipher.getInputBlockSize
     if (data.length <= blockSize) {
       // Single block
-      ByteString.fromArrayUnsafe(cipher.processBlock(data.toArray, 0, data.length))
+      ByteString.fromArrayUnsafe(cipher.processBlock(ByteStringUnsafe.getArray(data), 0, data.length))
     } else {
       // Split to blocks
       data.grouped(blockSize)

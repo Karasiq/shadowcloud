@@ -6,12 +6,12 @@ import org.abstractj.kalium.crypto.SecretBox
 import com.karasiq.shadowcloud.model.crypto.EncryptionMethod
 
 private[libsodium] object SecretBoxModule extends SymmetricConstants {
-  val algorithm = "XSalsa20/Poly1305"
+  val Algorithm = "XSalsa20/Poly1305"
 
   val KeyBytes: Int = Sodium.CRYPTO_SECRETBOX_KEYBYTES
   val NonceBytes: Int = Sodium.CRYPTO_SECRETBOX_NONCEBYTES
 
-  def apply(method: EncryptionMethod = EncryptionMethod(algorithm, 256)): SecretBoxModule = {
+  def apply(method: EncryptionMethod = EncryptionMethod(Algorithm, 256)): SecretBoxModule = {
     new SecretBoxModule(method)
   }
 }

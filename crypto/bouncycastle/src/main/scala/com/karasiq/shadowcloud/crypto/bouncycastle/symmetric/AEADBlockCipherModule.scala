@@ -6,12 +6,14 @@ import akka.util.ByteString
 import org.bouncycastle.crypto.modes.AEADBlockCipher
 import org.bouncycastle.crypto.params.{AEADParameters, KeyParameter}
 
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCSymmetricKeys
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.AEADBlockCipherModule.AEADCipherOptions
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters}
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe
 
 //noinspection RedundantDefaultArgument
 private[bouncycastle] object AEADBlockCipherModule {
@@ -54,9 +56,9 @@ private[bouncycastle] object AEADBlockCipherModule {
     val (nonce, additionalData) = splitNonce(symmetricParameters.nonce)
 
     new AEADParameters(
-      new KeyParameter(symmetricParameters.key.toArray),
-      options.macSize, nonce.toArray,
-      if (additionalData.nonEmpty) additionalData.toArray else null
+      new KeyParameter(symmetricParameters.key.toArrayUnsafe),
+      options.macSize, nonce.toArrayUnsafe,
+      if (additionalData.nonEmpty) additionalData.toArrayUnsafe else null
     )
   }
 
@@ -92,15 +94,16 @@ private[bouncycastle] class AEADBlockCipherModule(defaultOptions: AEADCipherOpti
     def process(data: ByteString): ByteString = {
       requireInitialized()
       val output = new Array[Byte](aeadCipher.getUpdateOutputSize(data.length))
-      val length = aeadCipher.processBytes(data.toArray, 0, data.length, output, 0)
-      ByteString.fromArray(output, 0, length)
+      val length = aeadCipher.processBytes(ByteStringUnsafe.getArray(data), 0, data.length, output, 0)
+      ByteString.fromArrayUnsafe(output, 0, length)
     }
 
     def finish(): ByteString = {
       requireInitialized()
       val output = new Array[Byte](aeadCipher.getOutputSize(0))
       val length = aeadCipher.doFinal(output, 0)
-      ByteString.fromArray(output, 0, length)
+      require(output.length == length)
+      ByteString.fromArrayUnsafe(output)
     }
 
     private[this] def requireInitialized(): Unit = {

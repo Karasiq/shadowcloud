@@ -4,9 +4,11 @@ import akka.util.ByteString
 import org.bouncycastle.crypto.{DSA, Signer}
 import org.bouncycastle.crypto.signers.DSADigestSigner
 
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.shadowcloud.crypto.{OnlyStreamSignModule, SignModuleStreamer}
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.BCDigests
 import com.karasiq.shadowcloud.model.crypto.SignParameters
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe
 
 private[bouncycastle] trait BCSignModule extends OnlyStreamSignModule with BCSignKeys
 
@@ -20,12 +22,12 @@ private[bouncycastle] trait BCSignerStreamer extends SignModuleStreamer {
 
   def update(data: ByteString): Unit = {
     requireInitialized()
-    signer.update(data.toArray, 0, data.length)
+    signer.update(data.toArrayUnsafe, 0, data.length)
   }
 
   def finishVerify(signature: ByteString): Boolean = {
     requireInitialized()
-    signer.verifySignature(signature.toArray)
+    signer.verifySignature(signature.toArrayUnsafe)
   }
 
   def finishSign(): ByteString = {

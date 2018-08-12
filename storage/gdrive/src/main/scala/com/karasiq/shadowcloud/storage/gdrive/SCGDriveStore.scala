@@ -82,7 +82,8 @@ class SCGDriveStore(storageId: StorageId, userId: String)(implicit sc: ShadowClo
     }
 
     private[this] def deserialize(data: ByteString) = {
-      IOUtils.deserialize[V](data.toArray)
+      import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
+      IOUtils.deserialize[V](data.toArrayUnsafe)
     }
   }
 }

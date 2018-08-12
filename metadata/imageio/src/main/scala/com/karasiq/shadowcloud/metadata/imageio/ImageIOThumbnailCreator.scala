@@ -17,6 +17,7 @@ import com.karasiq.shadowcloud.metadata.config.MetadataParserConfig
 import com.karasiq.shadowcloud.metadata.imageio.utils.ImageIOResizer
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.utils.ByteStringOutputStream
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 
 private[imageio] object ImageIOThumbnailCreator {
   val PluginId = "imageio"
@@ -47,7 +48,7 @@ private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataP
     val flowGraph = GraphDSL.create() { implicit builder ⇒
       import GraphDSL.Implicits._
       val loadImage = builder.add(Flow[ByteString].map { bytes ⇒
-        ImageIOResizer.loadImage(bytes.toArray)
+        ImageIOResizer.loadImage(bytes.toArrayUnsafe)
       })
 
       val createImageData = builder.add(Flow[BufferedImage].map { image ⇒

@@ -50,8 +50,9 @@ package object lz4 {
       }
 
       def onPush(): Unit = {
+        import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
         val element = grab(inlet)
-        lz4OutputStream.write(element.toArray)
+        lz4OutputStream.write(element.toArrayUnsafe)
 
         val output = bsOutputStream.toByteString
         if (output.nonEmpty) {

@@ -178,10 +178,11 @@ lazy val cryptoParent = Project("crypto-parent", file("crypto") / "parent")
 
 lazy val bouncyCastleCrypto = cryptoPlugin("bouncycastle")
   .settings(libraryDependencies ++= ProjectDeps.bouncyCastle)
-  .dependsOn(testUtilsJVM % "test")
+  .dependsOn(utilsJVM, testUtilsJVM % "test")
 
 lazy val libsodiumCrypto = cryptoPlugin("libsodium")
   .settings(libraryDependencies ++= ProjectDeps.libSodiumJni)
+  .dependsOn(utilsJVM)
 
 // Storage plugins
 def storagePlugin(id: String): Project = {

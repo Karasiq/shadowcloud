@@ -16,4 +16,10 @@ object ByteStringUnsafe {
       bs.toArray
     }
   }
+
+  object implicits {
+    implicit class ImplicitByteStringUnsafeOps(private val bs: ByteString) extends AnyVal {
+      def toArrayUnsafe: Array[Byte] = getArray(bs)
+    }
+  }
 }

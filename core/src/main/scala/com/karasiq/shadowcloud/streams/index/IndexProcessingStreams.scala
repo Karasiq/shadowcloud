@@ -10,6 +10,7 @@ import akka.stream.scaladsl.{Flow, Source}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
 
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.compression.StreamCompression
 import com.karasiq.shadowcloud.config.{CryptoConfig, StorageConfig}
@@ -67,7 +68,7 @@ final class IndexProcessingStreams(regionId: RegionId)(implicit sc: ShadowCloudE
     }
 
     val deserialize = Flow[ByteString].map { data ⇒
-      val frame = SerializedIndexData.parseFrom(data.toArray)
+      val frame = SerializedIndexData.parseFrom(data.toArrayUnsafe)
       serialization.unwrapIndexFrame(frame)
     }
 
@@ -111,7 +112,7 @@ final class IndexProcessingStreams(regionId: RegionId)(implicit sc: ShadowCloudE
 
     val readEncrypted = Flow[ByteString]
       .via(StreamSerialization.deframe(sc.config.serialization.frameLimit))
-      .map(bs ⇒ EncryptedIndexData.parseFrom(bs.toArray))
+      .map(bs ⇒ EncryptedIndexData.parseFrom(bs.toArrayUnsafe))
   }
 
   // -----------------------------------------------------------------------

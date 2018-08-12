@@ -5,11 +5,12 @@ import org.abstractj.kalium.keys.{SigningKey, VerifyKey}
 
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.model.crypto.{HashingMethod, SignMethod, SignParameters}
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 
 private[libsodium] object CryptoSignModule {
-  val algorithm = "Ed25519"
+  val Algorithm = "Ed25519"
 
-  def apply(method: SignMethod = SignMethod(algorithm, HashingMethod.default)): CryptoSignModule = {
+  def apply(method: SignMethod = SignMethod(Algorithm, HashingMethod.default)): CryptoSignModule = {
     new CryptoSignModule(method)
   }
 }
@@ -25,15 +26,15 @@ private[libsodium] final class CryptoSignModule(val method: SignMethod) extends 
   }
 
   def sign(data: ByteString, parameters: SignParameters): ByteString = {
-    val signingKey = new SigningKey(parameters.privateKey.toArray)
-    val signature = signingKey.sign(data.toArray)
+    val signingKey = new SigningKey(parameters.privateKey.toArrayUnsafe)
+    val signature = signingKey.sign(data.toArrayUnsafe)
     ByteString.fromArrayUnsafe(signature)
   }
 
   def verify(data: ByteString, signature: ByteString, parameters: SignParameters): Boolean = {
-    val verifyKey = new VerifyKey(parameters.publicKey.toArray)
+    val verifyKey = new VerifyKey(parameters.publicKey.toArrayUnsafe)
     try {
-      verifyKey.verify(data.toArray, signature.toArray)
+      verifyKey.verify(data.toArrayUnsafe, signature.toArrayUnsafe)
     } catch { case exc: RuntimeException if exc.getMessage.contains("signature was forged or corrupted") ⇒
       false
     }

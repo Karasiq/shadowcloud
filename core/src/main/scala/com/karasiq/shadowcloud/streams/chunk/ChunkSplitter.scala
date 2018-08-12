@@ -35,7 +35,7 @@ private[shadowcloud] final class ChunkSplitter(chunkSize: Int) extends GraphStag
       val (chunkBytes, nextChunkPart) = buffer.splitAt(chunkSize)
 
       // Create new chunk
-      val chunk = Chunk(data = Data(plain = chunkBytes/*.compact*/))
+      val chunk = Chunk(data = Data(plain = chunkBytes.compact))
 
       // Reset buffer
       buffer = nextChunkPart

@@ -7,6 +7,7 @@ import scala.language.postfixOps
 import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.shadowcloud.model.crypto.EncryptionParameters
 
 private[bouncycastle] object BCUtils {
@@ -32,8 +33,8 @@ private[bouncycastle] object BCUtils {
   def toParametersWithIV(parameters: EncryptionParameters): ParametersWithIV = {
     val symmetricParameters = EncryptionParameters.symmetric(parameters)
     new ParametersWithIV(
-      new KeyParameter(symmetricParameters.key.toArray),
-      symmetricParameters.nonce.toArray
+      new KeyParameter(symmetricParameters.key.toArrayUnsafe),
+      symmetricParameters.nonce.toArrayUnsafe
     )
   }
 }

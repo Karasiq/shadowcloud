@@ -8,6 +8,7 @@ import scala.util.hashing.MurmurHash3
 
 import akka.util.ByteString
 
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.common.encoding.UUIDEncoding
 import com.karasiq.shadowcloud.crypto.index.IndexEncryption.{CiphertextT, PlaintextT}
 import com.karasiq.shadowcloud.exceptions.CryptoException
@@ -121,7 +122,7 @@ private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoMod
     val keyEncParameters = IndexEncryption.updateNonce(keySet.encryption, header.nonce)
     val keyEncModule = cryptoModules.encryptionModule(keyEncParameters.method)
 
-    val decryptedKey = SerializedKeyData.parseFrom(keyEncModule.decrypt(header.data, keyEncParameters).toArray)
+    val decryptedKey = SerializedKeyData.parseFrom(keyEncModule.decrypt(header.data, keyEncParameters).toArrayUnsafe)
     val dataEncParameters = serialization.unwrapKey(decryptedKey)
     val dataEncModule = cryptoModules.encryptionModule(dataEncParameters.method)
 

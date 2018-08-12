@@ -20,7 +20,7 @@ class FolderTest extends FlatSpec with Matchers {
 
   it should "throw exception on invalid path" in {
     val testFile = CoreTestUtils.randomFile(folder.path / "test")
-    intercept[IllegalArgumentException](folder.addFiles(testFile))
+    intercept[AssertionError](folder.addFiles(testFile))
   }
 
   it should "remove file" in {

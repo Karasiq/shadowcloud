@@ -17,65 +17,69 @@ private[folder] object PreviewsFileTable {
 
 private[folder] class PreviewsFileTable(files: Rx[Seq[File]], selectedFile: Var[Option[File]])
                                        (implicit context: AppContext, fc: FolderContext) extends BootstrapHtmlComponent {
-
-  private[this] lazy val sortedFiles = Rx {
-    val allFiles = files()
-    val filtered = {
-      val filterStr = filter()
-      if (filterStr.isEmpty) allFiles
-      else allFiles.filter(_.path.name.toLowerCase.contains(filterStr.toLowerCase))
-    }
-    val sorted = sortTypes(sortType()) match {
-      case s if s == context.locale.name ⇒ filtered.sortBy(_.path.name)
-      case s if s == context.locale.size ⇒ filtered.sortBy(_.checksum.size)
-      case s if s == context.locale.modifiedDate ⇒ filtered.sortBy(_.timestamp.lastModified)
-      case _ ⇒ filtered
-    }
-    if (sortDesc()) sorted.reverse else sorted
-  }
-
-  private[this] val rowsPerPage = 10
-  private[this] lazy val pagesRx = sortedFiles.map(fs ⇒ (fs.length.toDouble / rowsPerPage).ceil.toInt)
-  private[this] val sortTypes = Seq(context.locale.name, context.locale.size, context.locale.modifiedDate)
-  private[this] val sortType = Var(0)
-  private[this] val sortDesc = Var(false)
-  private[this] val filter = Var("")
-
-  lazy val pageSelector = PageSelector(pagesRx)
-
-  lazy val currentPageFiles = Rx {
-    val page = pageSelector.currentPage() min pagesRx()
-    sortedFiles().slice(rowsPerPage * (page - 1), rowsPerPage * (page - 1) + rowsPerPage)
-  }
-
   def renderTag(md: ModifierT*): TagT = {
-    val filterField = Form(FormInput.text("", filter.reactiveInput))
+    val filterField = Form(FormInput.text("", sorting.filter.reactiveInput))
 
     val sortLine = Rx {
       span(
-        Icon(if (sortDesc()) "triangle-bottom" else "triangle-top"),
-        b(sortTypes(sortType())),
+        Icon(if (sorting.sortDesc()) "triangle-bottom" else "triangle-top"),
+        b(sorting.sortTypes(sorting.sortType())),
         cursor.pointer,
-        onclick := Callback.onClick(_ ⇒ changeSortType())
+        onclick := Callback.onClick(_ ⇒ sorting.changeSortType())
       )
     }
 
     div(
       div(filterField, files.map(_.isEmpty).reactiveHide),
       // hr(files.map(_.isEmpty).reactiveHide),
-      div(textAlign.center, pageSelector, pagesRx.map(_ <= 1).reactiveHide),
-      div(sortLine, sortedFiles.map(_.length <= 1).reactiveHide),
+      div(textAlign.center, pagination.pageSelector, pagination.pages.map(_ <= 1).reactiveHide),
+      div(sortLine, sorting.sortedFiles.map(_.length <= 1).reactiveHide),
       // hr(files.map(_.isEmpty).reactiveHide),
-      Rx(div(currentPageFiles().map(PreviewsFileListItem(_, selectedFile))))
+      Rx(div(pagination.currentPageFiles().map(PreviewsFileListItem(_, selectedFile)):_*))
     )
   }
 
-  def changeSortType(): Unit = {
-    if (!sortDesc.now) {
-      sortDesc() = true
-    } else {
-      sortType() = (sortType.now + 1) % sortTypes.length
-      sortDesc() = false
+  private[this] object sorting {
+    val sortTypes = Seq(context.locale.name, context.locale.size, context.locale.modifiedDate)
+    val sortType = Var(0)
+    val sortDesc = Var(false)
+    val filter = Var("")
+
+    lazy val sortedFiles = Rx {
+      val allFiles = files()
+      val filtered = {
+        val filterStr = filter()
+        if (filterStr.isEmpty) allFiles
+        else allFiles.filter(_.path.name.toLowerCase.contains(filterStr.toLowerCase))
+      }
+      val sorted = sortTypes(sortType()) match {
+        case s if s == context.locale.name ⇒ filtered.sortBy(_.path.name)
+        case s if s == context.locale.size ⇒ filtered.sortBy(_.checksum.size)
+        case s if s == context.locale.modifiedDate ⇒ filtered.sortBy(_.timestamp.lastModified)
+        case _ ⇒ filtered
+      }
+      if (sortDesc()) sorted.reverse else sorted
+    }
+
+    def changeSortType(): Unit = {
+      if (!sortDesc.now) {
+        sortDesc() = true
+      } else {
+        sortType() = (sortType.now + 1) % sortTypes.length
+        sortDesc() = false
+      }
+    }
+  }
+
+  private[this] object pagination {
+    val rowsPerPage = 10
+    lazy val pages = sorting.sortedFiles.map(fs ⇒ (fs.length.toDouble / rowsPerPage).ceil.toInt)
+
+    lazy val pageSelector = PageSelector(pages)
+
+    lazy val currentPageFiles = Rx {
+      val page = pageSelector.currentPage() min pages()
+      sorting.sortedFiles().slice(rowsPerPage * (page - 1), rowsPerPage * (page - 1) + rowsPerPage)
     }
   }
 }

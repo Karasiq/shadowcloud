@@ -35,7 +35,7 @@ private[folder] class PreviewsFileTable(files: Rx[Seq[File]], selectedFile: Var[
   }
 
   private[this] val rowsPerPage = 10
-  private[this] lazy val pagesRx = sortedFiles.map(_.length / rowsPerPage + 1)
+  private[this] lazy val pagesRx = sortedFiles.map(fs ⇒ (fs.length.toDouble / rowsPerPage).ceil.toInt)
   private[this] val sortTypes = Seq(context.locale.name, context.locale.size, context.locale.modifiedDate)
   private[this] val sortType = Var(0)
   private[this] val sortDesc = Var(false)

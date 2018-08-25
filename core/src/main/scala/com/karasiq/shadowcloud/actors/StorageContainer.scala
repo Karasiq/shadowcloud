@@ -1,5 +1,6 @@
 package com.karasiq.shadowcloud.actors
 
+import scala.concurrent.duration._
 import scala.language.postfixOps
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash}
@@ -56,8 +57,11 @@ private[actors] final class StorageContainer(instantiator: StorageInstantiator, 
           storage.forward(msg)
       }
     })
-    val actor = context.actorOf(props, Utils.uniqueActorName(storageId))
-    afterStart(actor)
+
+    val id = Utils.uniqueActorName(storageId)
+    val actor = context.actorOf(props, id)
+    val healthSupervisor = context.actorOf(StorageHealthSupervisor.props(actor, 5 minutes, 3), s"$id-health-sv")
+    afterStart(healthSupervisor)
   }
 
   override def afterStart(actor: ActorRef): Unit = {

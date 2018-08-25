@@ -79,7 +79,7 @@ object AkkaStreamUtils {
       }
       .async
       .viaMat(flatMapConcatMat { inputStream ⇒
-        val graph = f(inputStream)
+        val graph = concurrent.blocking(f(inputStream))
         Source.fromGraph(graph).mapMaterializedValue(Future.successful)
       })(Keep.right)
       .named("writeInputStream")

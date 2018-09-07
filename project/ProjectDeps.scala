@@ -110,7 +110,7 @@ object ProjectDeps {
   )
 
   def mailrucloud: Deps = Seq(
-    "com.github.karasiq" %% "mailrucloud-api" % "1.1.2"
+    "com.github.karasiq" %% "mailrucloud-api" % "1.1.3"
   )
 
   def dropbox: Deps = Seq(

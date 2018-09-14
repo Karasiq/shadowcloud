@@ -11,7 +11,6 @@ import com.karasiq.shadowcloud.test.utils.{ActorSpec, ActorSpecImplicits}
 
 
 class AkkaStreamUtilsTest extends ActorSpec with ActorSpecImplicits with FlatSpecLike {
-  // TODO: Fails on Akka 2.5.14
   "Input stream" should "be created" in {
     val probe = Source(List(ByteString(1, 2, 3, 4, 5), ByteString(6, 7, 8, 9, 10)))
       .via(AkkaStreamUtils.writeInputStream { inputStream ⇒ 

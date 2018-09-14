@@ -8,7 +8,7 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 import akka.NotUsed
-import akka.stream.{FlowShape, Graph, SourceShape}
+import akka.stream._
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source, StreamConverters}
 import akka.util.ByteString
 
@@ -71,17 +71,17 @@ object AkkaStreamUtils {
       .flatMapConcat { byteStream ⇒
         val promise = Promise[InputStream]
         byteStream
-          .alsoTo(Flow[ByteString].async
+          .async
+          .alsoTo(Flow[ByteString]
             .toMat(StreamConverters.asInputStream(15 seconds))(Keep.right)
             .mapMaterializedValue(promise.success))
           .alsoTo(failPromiseOnFailure(promise))
-          .via(dropUpstream(Source.fromFuture(promise.future)))
+          .via(Flow.fromSinkAndSource(Sink.ignore, Source.fromFuture(promise.future)))
       }
-      .async
-      .viaMat(flatMapConcatMat { inputStream ⇒
+      .viaMat(flatMapConcatMat[InputStream, T, M] { inputStream ⇒
         val graph = concurrent.blocking(f(inputStream))
         Source.fromGraph(graph).mapMaterializedValue(Future.successful)
-      })(Keep.right)
+      }.withAttributes(Attributes(ActorAttributes.IODispatcher)))(Keep.right)
       .named("writeInputStream")
   }
 }

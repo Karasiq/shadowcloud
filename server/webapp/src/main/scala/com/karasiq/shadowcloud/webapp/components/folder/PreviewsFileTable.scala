@@ -35,7 +35,7 @@ private[folder] class PreviewsFileTable(files: Rx[Seq[File]], selectedFile: Var[
       div(textAlign.center, pagination.pageSelector, pagination.pages.map(_ <= 1).reactiveHide),
       div(sortLine, sorting.sortedFiles.map(_.length <= 1).reactiveHide),
       // hr(files.map(_.isEmpty).reactiveHide),
-      Rx(div(pagination.currentPageFiles().map(PreviewsFileListItem(_, selectedFile)):_*))
+      Rx(GridSystem.containerFluid(pagination.currentPageFiles().map(PreviewsFileListItem(_, selectedFile)):_*))
     )
   }
 

@@ -47,8 +47,8 @@ class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit
       ),
       GridSystem.col(9)(
         GridSystem.row(
-          GridSystem.col(9).asDiv(Rx[Frag](if (selectedFile().contains(file)) b(file.path.name) else span(file.path.name, cursor.pointer))),
-          GridSystem.col(3).asDiv(
+          GridSystem.col(9)(Rx[Frag](if (selectedFile().contains(file)) b(file.path.name) else span(file.path.name, cursor.pointer))),
+          GridSystem.col(3)(
             GridSystem.mkRow(MemorySize.toString(file.checksum.size)),
             GridSystem.mkRow(context.timeFormat.timestamp(file.timestamp.lastModified)),
             color.gray,

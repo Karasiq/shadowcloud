@@ -30,9 +30,9 @@ class FoldersPanel(implicit context: AppContext,
 
   def renderTag(md: ModifierT*): TagT = {
     GridSystem.row(
-      GridSystem.col.responsive(12, 3, 3, 2).asDiv(folderTree),
-      GridSystem.col.responsive(12, 9, 5, 6).asDiv(folderFiles),
-      GridSystem.col.responsive(12, 12, 4, 4).asDiv(folderFiles.selectedFile.map[Frag] {
+      GridSystem.col.responsive(12, 3, 3, 2)(folderTree),
+      GridSystem.col.responsive(12, 9, 5, 6)(folderFiles),
+      GridSystem.col.responsive(12, 12, 4, 4)(folderFiles.selectedFile.map[Frag] {
         case Some(file) ⇒ FileView(file)(context, folderContext, folderFiles.fileController)
         case None ⇒ ()
       }),

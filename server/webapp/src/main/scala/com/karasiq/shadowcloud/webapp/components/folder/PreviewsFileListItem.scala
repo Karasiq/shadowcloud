@@ -31,7 +31,7 @@ class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit
 
   def renderTag(md: ModifierT*): TagT = {
     GridSystem.row(
-      GridSystem.col(3).asDiv(
+      GridSystem.col(3)(
         Rx[Frag](previews().image match {
           case Some(thumbnail) ⇒
             val blob = Blobs.fromBytes(thumbnail.data.toArray)
@@ -45,7 +45,7 @@ class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit
         verticalAlign.middle,
         lineHeight := 50.px
       ),
-      GridSystem.col(9).asDiv(
+      GridSystem.col(9)(
         GridSystem.row(
           GridSystem.col(9).asDiv(Rx[Frag](if (selectedFile().contains(file)) b(file.path.name) else span(file.path.name, cursor.pointer))),
           GridSystem.col(3).asDiv(

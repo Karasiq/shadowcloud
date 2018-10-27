@@ -29,7 +29,7 @@ object ScalaJSDeps {
   def bootstrap: Deps = {
     libraryDependencies ++= Seq(
       "com.lihaoyi" %%% "scalatags" % "0.6.7",
-      "com.github.karasiq" %%% "scalajs-bootstrap" % "2.2.3",
+      "com.github.karasiq" %%% "scalajs-bootstrap" % "2.3.4",
       "org.querki" %%% "bootstrap-datepicker-facade" % "0.9"
     )
   }

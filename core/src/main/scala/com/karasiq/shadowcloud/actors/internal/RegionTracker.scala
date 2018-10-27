@@ -155,7 +155,8 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   }
 
   private[this] def supervisorProps(props: Props): Props = {
-    BackoffSupervisor.propsWithSupervisorStrategy(props, "supervised-dispatcher", 100 millis, 1 minute, 0.2, OneForOneStrategy(5, 15 seconds) {
+    BackoffSupervisor.propsWithSupervisorStrategy(props, "backoff-supervised",
+      1 second, 5 minutes, 0.2, OneForOneStrategy(5, 15 seconds) {
       case _: IllegalArgumentException | _: SCException.NotFound | _: SCException.AlreadyExists ⇒
         SupervisorStrategy.Resume
 

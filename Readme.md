@@ -1,5 +1,7 @@
 # shadowcloud
 shadowcloud is an enhanced cloud storage client. [Download last release](https://github.com/Karasiq/shadowcloud/releases)
+
+Описание на русском: https://habr.com/post/428523/
 ![Files view](https://github.com/Karasiq/shadowcloud/raw/master/images/files%20view.png "Files view")
 
 # Features

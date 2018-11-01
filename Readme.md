@@ -1,5 +1,6 @@
 # shadowcloud
-shadowcloud is an enchanced cloud storage client. 
+shadowcloud is an enchanced cloud storage client. [Download last release](https://github.com/Karasiq/shadowcloud/releases)
+![Files view](https://github.com/Karasiq/shadowcloud/raw/master/images/files%20view.png "Files view")
 
 # Features
 * Allows to use different storages as one "drive" (virtual region)
@@ -37,6 +38,8 @@ shadowcloud is an enchanced cloud storage client.
   ```
 * Create a region and attach storages to it
 * Switch to Folders tab and upload your files
+
+![Regions view](https://github.com/Karasiq/shadowcloud/raw/master/images/regions%20view.png "Regions view")
 
 # Synchronization
 * Import previously generated key on the second device

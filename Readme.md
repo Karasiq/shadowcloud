@@ -1,5 +1,5 @@
 # shadowcloud
-shadowcloud is an enchanced cloud storage client. [Download last release](https://github.com/Karasiq/shadowcloud/releases)
+shadowcloud is an enhanced cloud storage client. [Download last release](https://github.com/Karasiq/shadowcloud/releases)
 ![Files view](https://github.com/Karasiq/shadowcloud/raw/master/images/files%20view.png "Files view")
 
 # Features

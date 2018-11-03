@@ -50,6 +50,7 @@ val packageSettings = Seq(
 )
 
 lazy val dockerSettings = Seq(
+  dockerBaseImage := "openjdk:8-jre-alpine",
   dockerExposedPorts := Seq(1911),
   dockerExposedVolumes := Seq("/mnt/sc", "/opt/docker/sc"),
   dockerUsername := Some("karasiq"),
@@ -62,7 +63,10 @@ lazy val dockerSettings = Seq(
   ),
   dockerCommands := {
     val cmds = dockerCommands.value
-    val injected = Seq(Cmd("RUN", "apt-get", "update", "&&", "apt-get", "install", "-y", "fuse"))
+    val injected = Seq(
+      Cmd("RUN", "apk", "add", "--no-cache", "fuse")
+      /* Cmd("RUN", "apt-get", "update", "&&", "apt-get", "install", "-y", "fuse")*/
+    )
     cmds.takeWhile(!_.makeContent.startsWith("USER")) ++ injected ++ cmds.dropWhile(!_.makeContent.startsWith("USER"))
   }
 )

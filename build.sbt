@@ -47,6 +47,13 @@ val packageSettings = Seq(
   )
 )
 
+lazy val dockerSettings = Seq(
+  dockerExposedPorts := Seq(1911),
+  dockerExposedVolumes := Seq("/mnt/sc"),
+  dockerUsername := Some("pistonkarasiq"),
+  dockerUpdateLatest := true
+)
+
 // -----------------------------------------------------------------------
 // Shared
 // -----------------------------------------------------------------------
@@ -361,6 +368,7 @@ lazy val consoleApp = (project in file("console-app"))
   .settings(
     commonSettings,
     packageSettings,
+    dockerSettings,
     name := "shadowcloud-console",
     mainClass in Compile := Some("com.karasiq.shadowcloud.console.SCConsoleMain"),
     libraryDependencies ++= ProjectDeps.akka.slf4j ++ ProjectDeps.logback ++
@@ -369,7 +377,7 @@ lazy val consoleApp = (project in file("console-app"))
       else Nil)
   )
   .dependsOn(coreAssembly, server, `drive-fuse`)
-  .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin)
+  .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin, DockerPlugin)
 
 // -----------------------------------------------------------------------
 // Misc

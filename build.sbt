@@ -49,7 +49,7 @@ val packageSettings = Seq(
 
 lazy val dockerSettings = Seq(
   dockerExposedPorts := Seq(1911),
-  dockerExposedVolumes := Seq("/mnt/sc"),
+  dockerExposedVolumes := Seq("/mnt/sc", "/home/daemon/.shadowcloud"),
   dockerUsername := Some("pistonkarasiq"),
   dockerUpdateLatest := true,
   packageName in Docker := "shadowcloud"

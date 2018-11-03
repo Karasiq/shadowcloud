@@ -51,7 +51,8 @@ lazy val dockerSettings = Seq(
   dockerExposedPorts := Seq(1911),
   dockerExposedVolumes := Seq("/mnt/sc"),
   dockerUsername := Some("pistonkarasiq"),
-  dockerUpdateLatest := true
+  dockerUpdateLatest := true,
+  packageName in Docker := "shadowcloud"
 )
 
 // -----------------------------------------------------------------------

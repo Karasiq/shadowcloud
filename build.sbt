@@ -40,7 +40,11 @@ val packageSettings = Seq(
     // "jnrfuse.winfsp.path" → "C:\\Program Files (x86)\\WinFsp\\bin\\winfsp-x64.dll"
   ),
   // antPackagerTasks in JDKPackager := Some(file("/usr/lib/jvm/java-8-oracle/lib/ant-javafx.jar")),
-  mappings in Universal += file("setup/shadowcloud_example.conf") → "shadowcloud_example.conf"
+  mappings in Universal += file("setup/shadowcloud_example.conf") → "shadowcloud_example.conf",
+  javaOptions in Universal ++= Seq(
+    "-Dfile.encoding=UTF-8",
+    "-Djava.net.preferIPv4Stack=true"
+  )
 )
 
 // -----------------------------------------------------------------------
@@ -348,6 +352,23 @@ lazy val desktopApp = (project in file("desktop-app"))
       else Nil)
   )
   .dependsOn(coreAssembly, server, javafx, `drive-fuse`)
+  .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin)
+
+// -----------------------------------------------------------------------
+// Console app
+// -----------------------------------------------------------------------
+lazy val consoleApp = (project in file("console-app"))
+  .settings(
+    commonSettings,
+    packageSettings,
+    name := "shadowcloud-console",
+    mainClass in Compile := Some("com.karasiq.shadowcloud.console.SCConsoleMain"),
+    libraryDependencies ++= ProjectDeps.akka.slf4j ++ ProjectDeps.logback ++
+      (if (ProjectDeps.javacv.isFullEnabled) ProjectDeps.javacv.mainPlatforms
+      else if (ProjectDeps.javacv.isEnabled) ProjectDeps.javacv.currentPlatform
+      else Nil)
+  )
+  .dependsOn(coreAssembly, server, `drive-fuse`)
   .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin)
 
 // -----------------------------------------------------------------------

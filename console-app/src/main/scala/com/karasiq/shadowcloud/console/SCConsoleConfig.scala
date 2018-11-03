@@ -22,7 +22,8 @@ object SCConsoleConfig {
 
     val serverAppConfig = {
       val fileConfig = {
-        val optionalConfFile = Paths.get("shadowcloud.conf")
+        val configFilePath = sys.props.getOrElse("shadowcloud.external-config", "shadowcloud.conf")
+        val optionalConfFile = Paths.get(configFilePath)
         if (Files.isRegularFile(optionalConfFile))
           ConfigFactory.parseFile(optionalConfFile.toFile)
         else

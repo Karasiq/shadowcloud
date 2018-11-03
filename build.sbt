@@ -1,3 +1,5 @@
+import com.typesafe.sbt.packager.docker.Cmd
+
 val commonSettings = Seq(
   organization := "com.github.karasiq",
   version := "1.0.0",
@@ -49,10 +51,20 @@ val packageSettings = Seq(
 
 lazy val dockerSettings = Seq(
   dockerExposedPorts := Seq(1911),
-  dockerExposedVolumes := Seq("/mnt/sc", "/home/daemon/.shadowcloud"),
+  dockerExposedVolumes := Seq("/mnt/sc", "/opt/docker/sc"),
   dockerUsername := Some("pistonkarasiq"),
   dockerUpdateLatest := true,
-  packageName in Docker := "shadowcloud"
+  packageName in Docker := "shadowcloud",
+  dockerEntrypoint ++= Seq(
+    "-Dshadowcloud.external-config=/opt/docker/sc/shadowcloud.conf",
+    "-Dshadowcloud.persistence.h2.path=/opt/docker/sc/shadowcloud",
+    "-Dshadowcloud.http-server.host=0.0.0.0"
+  ),
+  dockerCommands := {
+    val cmds = dockerCommands.value
+    val injected = Seq(Cmd("RUN", "apt-get", "update", "&&", "apt-get", "install", "-y", "fuse"))
+    cmds.takeWhile(!_.makeContent.startsWith("USER")) ++ injected ++ cmds.dropWhile(!_.makeContent.startsWith("USER"))
+  }
 )
 
 // -----------------------------------------------------------------------

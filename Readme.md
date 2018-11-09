@@ -55,3 +55,6 @@ Encryption: AES/CBC, AES/CCM, AES/CFB, AES/CTR, AES/EAX, AES/GCM, AES/OCB, AES/O
 Signatures: ECDSA, Ed25519, RSA
 Hashing: Blake2b, GOST3411, Keccak, MD2, MD4, MD5, RIPEMD128, RIPEMD160, RIPEMD256, RIPEMD320, SHA1, SHA224, SHA256, SHA3, SHA384, SHA512, SM3, Skein, Tiger, Whirlpool
 ```
+
+# Docker image
+Docker image is available at https://hub.docker.com/r/karasiq/shadowcloud/

@@ -64,7 +64,8 @@ lazy val dockerSettings = Seq(
   dockerCommands := {
     val cmds = dockerCommands.value
     val injected = Seq(
-      Cmd("RUN", "apk", "add", "--no-cache", "fuse")
+      Cmd("RUN", "apk", "add", "--no-cache", "bash", "fuse"),
+      Cmd("RUN", "echo 'user_allow_other' >> /etc/fuse.conf"),
       /* Cmd("RUN", "apt-get", "update", "&&", "apt-get", "install", "-y", "fuse")*/
     )
     cmds.takeWhile(!_.makeContent.startsWith("USER")) ++ injected ++ cmds.dropWhile(!_.makeContent.startsWith("USER"))
@@ -158,7 +159,7 @@ lazy val coreAssembly = (project in file("core/assembly"))
   )
   .dependsOn(
     Seq[ClasspathDep[ProjectReference]](javacvMetadata).filter(_ ⇒ ProjectDeps.javacv.isEnabled) ++
-    Seq[ClasspathDep[ProjectReference]](tikaMetadata).filter(_ ⇒ sys.props.getOrElse("enable-tika", "1") == "1"):_*
+      Seq[ClasspathDep[ProjectReference]](tikaMetadata).filter(_ ⇒ sys.props.getOrElse("enable-tika", "1") == "1"):_*
   )
   .aggregate(
     core, persistence,
@@ -241,13 +242,13 @@ lazy val webdavStorage = storagePlugin("webdav")
 
 // Metadata plugins
 def metadataPlugin(id: String): Project = {
-val prefixedId = s"metadata-$id"
-Project(prefixedId, file("metadata") / id)
-  .settings(
-    commonSettings,
-    name := s"shadowcloud-$prefixedId"
-  )
-  .dependsOn(metadataParent % "provided", testUtilsJVM % "test")
+  val prefixedId = s"metadata-$id"
+  Project(prefixedId, file("metadata") / id)
+    .settings(
+      commonSettings,
+      name := s"shadowcloud-$prefixedId"
+    )
+    .dependsOn(metadataParent % "provided", testUtilsJVM % "test")
 }
 
 lazy val metadataParent = Project("metadata-parent", file("metadata") / "parent")
@@ -394,7 +395,7 @@ lazy val consoleApp = (project in file("console-app"))
       else Nil)
   )
   .dependsOn(coreAssembly, server, `drive-fuse`)
-  .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin, DockerPlugin)
+  .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin, DockerPlugin /*, AshScriptPlugin*/)
 
 // -----------------------------------------------------------------------
 // Misc

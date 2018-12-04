@@ -57,7 +57,9 @@ Hashing: Blake2b, GOST3411, Keccak, MD2, MD4, MD5, RIPEMD128, RIPEMD160, RIPEMD2
 ```
 
 # Docker image
+[![Docker](http://dockeri.co/image/karasiq/shadowcloud)](https://hub.docker.com/r/karasiq/shadowcloud/)
 Docker image is available at https://hub.docker.com/r/karasiq/shadowcloud/
+
 Usage example:
 ```bash
 docker run -v ~/.shadowcloud:/opt/docker/sc -p 1911:1911 -i -t karasiq/shadowcloud:latest

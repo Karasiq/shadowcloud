@@ -6,6 +6,8 @@ jdk:
   - oraclejdk8
 script:
   - sbt ++$TRAVIS_SCALA_VERSION coverage test coverageReport
+before_install:
+  - sudo apt-get install -y libsodium-dev
 after_success:
   - bash <(curl -s https://codecov.io/bash)
 sudo: false

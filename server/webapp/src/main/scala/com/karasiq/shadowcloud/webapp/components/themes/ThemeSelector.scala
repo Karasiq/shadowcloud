@@ -2,11 +2,12 @@ package com.karasiq.shadowcloud.webapp.components.themes
 
 import scala.language.postfixOps
 
-import org.scalajs.dom
 import rx.{Rx, Var}
 
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
+
+import com.karasiq.shadowcloud.webapp.utils.LSBind
 
 object ThemeSelector {
   val Themes = Vector(
@@ -14,33 +15,24 @@ object ThemeSelector {
     "Sandstone", "Simplex", "Slate", "Spacelab", "Superhero", "United", "Yeti"
   )
 
+  lazy val CurrentTheme = LSBind("bootstrap-theme", Themes.head)
+
   def apply(): ThemeSelector = {
-    new ThemeSelector()
-  }
-
-  private def getSelectedTheme: String = {
-    Option(dom.window.localStorage.getItem("bootstrap-theme"))
-      .filter(_.nonEmpty)
-      .getOrElse(Themes.head)
-  }
-
-  private def setSelectedTheme(theme: String): Unit = {
-    dom.window.localStorage.setItem("bootstrap-theme", theme)
+    new ThemeSelector(Themes, CurrentTheme)
   }
 }
 
-class ThemeSelector extends BootstrapHtmlComponent {
-  val currentTheme = Var(ThemeSelector.getSelectedTheme)
+class ThemeSelector(themes: IndexedSeq[String], currentTheme: Var[String])
+  extends BootstrapHtmlComponent {
 
   def setTheme(theme: String): Unit = {
     currentTheme() = theme
-    ThemeSelector.setSelectedTheme(theme)
   }
 
   def nextTheme(): Unit = {
-    val currentIndex = ThemeSelector.Themes.indexOf(currentTheme.now)
-    val nextIndex = (currentIndex + 1) % ThemeSelector.Themes.length
-    setTheme(ThemeSelector.Themes(nextIndex))
+    val currentIndex = themes.indexOf(currentTheme.now)
+    val nextIndex = (currentIndex + 1) % themes.length
+    setTheme(themes(nextIndex))
   }
 
   lazy val linkModifier = Rx(href := s"themes/${currentTheme().toLowerCase}.css").auto

@@ -8,8 +8,8 @@ import com.karasiq.shadowcloud.model.crypto.EncryptionMethod
 private[libsodium] object SecretBoxModule extends SymmetricConstants {
   val Algorithm = "XSalsa20/Poly1305"
 
-  val KeyBytes: Int = Sodium.CRYPTO_SECRETBOX_KEYBYTES
-  val NonceBytes: Int = Sodium.CRYPTO_SECRETBOX_NONCEBYTES
+  val KeyBytes: Int = Sodium.CRYPTO_SECRETBOX_XSALSA20POLY1305_KEYBYTES
+  val NonceBytes: Int = Sodium.CRYPTO_SECRETBOX_XSALSA20POLY1305_NONCEBYTES
 
   def apply(method: EncryptionMethod = EncryptionMethod(Algorithm, 256)): SecretBoxModule = {
     new SecretBoxModule(method)

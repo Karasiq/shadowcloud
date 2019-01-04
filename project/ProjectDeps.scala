@@ -74,7 +74,8 @@ object ProjectDeps {
   )
 
   def libSodiumJni: Deps = Seq(
-    "com.github.karasiq" % "kalium-fork" % "0.6.2" % "compile"
+    // "com.github.karasiq" % "kalium-fork" % "0.6.2" % "compile"
+    "org.abstractj.kalium" % "kalium" % "0.8.0" % "compile"
   )
 
   // http://h2database.com/html/main.html

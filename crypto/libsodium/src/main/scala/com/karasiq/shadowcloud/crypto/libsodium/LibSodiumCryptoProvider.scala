@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.crypto.libsodium
 import scala.language.postfixOps
 
 import com.karasiq.shadowcloud.crypto.libsodium.asymmetric.SealedBoxModule
-import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
+import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule, StdHashModule}
 import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
 import com.karasiq.shadowcloud.crypto.libsodium.signing.CryptoSignModule
 import com.karasiq.shadowcloud.crypto.libsodium.symmetric._
@@ -21,11 +21,8 @@ final class LibSodiumCryptoProvider extends CryptoProvider {
     case method if method.algorithm == "Blake2b" ⇒
       Blake2bModule(method)
 
-    case method if method.algorithm == "SHA256" ⇒
-      MultiPartHashModule.SHA256(method)
-
-    case method if method.algorithm == "SHA512" ⇒
-      MultiPartHashModule.SHA512(method)
+    case method if StdHashModule.isAlgorithmSupported(method.algorithm) ⇒
+      StdHashModule(method)
   }
 
   override def encryptionAlgorithms: Set[String] = ifLoaded(super.encryptionAlgorithms) {

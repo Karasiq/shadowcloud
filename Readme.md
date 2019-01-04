@@ -1,4 +1,4 @@
-# shadowcloud
+# shadowcloud [![Build Status](https://travis-ci.org/Karasiq/shadowcloud.svg?branch=master)](https://travis-ci.org/Karasiq/shadowcloud) [![codecov.io](https://codecov.io/github/Karasiq/shadowcloud/coverage.svg?branch=master)](https://codecov.io/github/Karasiq/shadowcloud?branch=master)
 shadowcloud is an enhanced cloud storage client. [Download last release](https://github.com/Karasiq/shadowcloud/releases)
 
 Описание на русском: https://habr.com/post/428523/
@@ -57,4 +57,11 @@ Hashing: Blake2b, GOST3411, Keccak, MD2, MD4, MD5, RIPEMD128, RIPEMD160, RIPEMD2
 ```
 
 # Docker image
+[![Docker](http://dockeri.co/image/karasiq/shadowcloud)](https://hub.docker.com/r/karasiq/shadowcloud/)
+
 Docker image is available at https://hub.docker.com/r/karasiq/shadowcloud/
+
+Usage example:
+```bash
+docker run -v ~/.shadowcloud:/opt/docker/sc -p 1911:1911 -i -t karasiq/shadowcloud:latest
+```

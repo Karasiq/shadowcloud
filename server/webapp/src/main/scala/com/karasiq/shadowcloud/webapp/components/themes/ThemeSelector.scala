@@ -7,7 +7,7 @@ import rx.{Rx, Var}
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
 
-import com.karasiq.shadowcloud.webapp.utils.LSBind
+import com.karasiq.shadowcloud.webapp.utils.StorageBind
 
 object ThemeSelector {
   val Themes = Vector(
@@ -15,7 +15,7 @@ object ThemeSelector {
     "Sandstone", "Simplex", "Slate", "Spacelab", "Superhero", "United", "Yeti"
   )
 
-  lazy val CurrentTheme = LSBind("bootstrap-theme", Themes.head)
+  lazy val CurrentTheme = StorageBind.LS("bootstrap-theme", Themes.head)
 
   def apply(): ThemeSelector = {
     new ThemeSelector(Themes, CurrentTheme)

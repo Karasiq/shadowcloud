@@ -14,6 +14,9 @@ trait StorageBind {
   }
 }
 
-object LSBind extends StorageBind {
-  protected val storage = org.scalajs.dom.window.localStorage
+object StorageBind {
+  // Local storage
+  object LS extends StorageBind {
+    protected val storage = org.scalajs.dom.window.localStorage
+  }
 }

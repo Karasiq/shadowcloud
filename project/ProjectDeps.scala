@@ -70,7 +70,7 @@ object ProjectDeps {
   )
 
   def bouncyCastle: Deps = Seq(
-    "org.bouncycastle" % "bcprov-jdk15on" % "1.58"
+    "org.bouncycastle" % "bcprov-jdk15on" % "1.60"
   )
 
   def libSodiumJni: Deps = Seq(

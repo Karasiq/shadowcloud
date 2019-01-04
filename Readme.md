@@ -1,4 +1,4 @@
-# shadowcloud [![Build Status](https://travis-ci.org/Karasiq/shadowcloud.svg?branch=master)](https://travis-ci.org/Karasiq/shadowcloud) [![codecov.io](https://codecov.io/github/Karasiq/shadowcloud/coverage.svg?branch=master)](https://codecov.io/github/Karasiq/shadowcloud?branch=master)
+# [shadowcloud](https://karasiq.github.io/shadowcloud) [![Build Status](https://travis-ci.org/Karasiq/shadowcloud.svg?branch=master)](https://travis-ci.org/Karasiq/shadowcloud) [![codecov.io](https://codecov.io/github/Karasiq/shadowcloud/coverage.svg?branch=master)](https://codecov.io/github/Karasiq/shadowcloud?branch=master)
 shadowcloud is an enhanced cloud storage client. [Download last release](https://github.com/Karasiq/shadowcloud/releases)
 
 Описание на русском: https://habr.com/post/428523/

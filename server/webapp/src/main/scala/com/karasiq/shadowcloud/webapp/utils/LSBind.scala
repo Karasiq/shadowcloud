@@ -1,14 +1,19 @@
 package com.karasiq.shadowcloud.webapp.utils
 
+import org.scalajs.dom.Storage
 import rx.{Ctx, Var}
 
-object LSBind {
-  private[this] val LS = org.scalajs.dom.window.localStorage
+trait StorageBind {
+  protected def storage: Storage
 
   def apply[T](name: String, default: T)(implicit ctx: Ctx.Owner, toString: T ⇒ String, fromString: String ⇒ T): Var[T] = {
-    val initialValue = Option(LS.getItem(name))
+    val initialValue = Option(storage.getItem(name))
     val value = Var[T](initialValue.fold(default)(fromString))
-    value.triggerLater(LS.setItem(name, value.now))
+    value.triggerLater(storage.setItem(name, value.now))
     value
   }
+}
+
+object LSBind extends StorageBind {
+  protected val storage = org.scalajs.dom.window.localStorage
 }

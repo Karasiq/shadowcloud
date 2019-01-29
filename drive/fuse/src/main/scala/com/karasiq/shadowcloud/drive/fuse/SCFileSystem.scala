@@ -37,6 +37,7 @@ object SCFileSystem {
     Try(config.getString("mount-path")).getOrElse {
       Platform.getNativePlatform.getOS match {
         case OS.WINDOWS ⇒ "S:\\"
+        case OS.DARWIN ⇒ "/Drives/shadowcloud"
         case _ ⇒ "/mnt/sc"
       }
     }

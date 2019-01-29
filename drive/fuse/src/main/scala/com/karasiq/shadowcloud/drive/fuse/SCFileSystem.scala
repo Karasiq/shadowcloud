@@ -92,6 +92,10 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
 
   def mount(blocking: Boolean = false): Unit = {
     import settings._
+    if (Platform.getNativePlatform.getOS != OS.WINDOWS) {
+      import java.nio.file.Files
+      Try(Files.createDirectory(Paths.get(mountPath)))
+    }
     mount(Paths.get(mountPath), blocking, debug, options.toArray)
   }
 

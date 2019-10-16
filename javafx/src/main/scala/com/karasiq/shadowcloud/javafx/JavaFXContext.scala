@@ -1,16 +1,17 @@
 package com.karasiq.shadowcloud.javafx
 
-import scala.concurrent.{Await, Promise}
-import scala.concurrent.duration._
-import scala.language.postfixOps
-import scala.util.control.NonFatal
-import scalafx.application.{JFXApp, Platform}
+import akka.actor.{ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
+import javafx.stage.WindowEvent
 import scalafx.application.JFXApp.PrimaryStage
+import scalafx.application.{JFXApp, Platform}
 import scalafx.scene.Scene
 import scalafx.scene.image.Image
 import scalafx.stage.StageStyle
 
-import akka.actor.{ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Promise}
+import scala.language.postfixOps
+import scala.util.control.NonFatal
 
 object JavaFXContext extends ExtensionId[JavaFXContextExtension] with ExtensionIdProvider {
   def createExtension(system: ExtendedActorSystem): JavaFXContextExtension = {
@@ -24,10 +25,10 @@ object JavaFXContext extends ExtensionId[JavaFXContextExtension] with ExtensionI
 
 final class JavaFXContextExtension(system: ExtendedActorSystem) extends Extension {
   private[this] val initPromise = Promise[Boolean]
-  val initFuture = initPromise.future
+  val initFuture                = initPromise.future
 
   object app extends JFXApp {
-    stage = new PrimaryStage {
+    stage = new PrimaryStage { stage =>
       initStyle(StageStyle.Transparent)
       icons.add(new Image(JFXUtils.getResourcePath("sc-javafx/sc-icon.png")))
       scene = new Scene {
@@ -38,6 +39,15 @@ final class JavaFXContextExtension(system: ExtendedActorSystem) extends Extensio
           }
         }
       }
+
+      addEventHandler(
+        WindowEvent.WINDOW_SHOWN, { e: WindowEvent =>
+          import javafx.stage.Screen
+          val screenBounds = Screen.getPrimary.getVisualBounds
+          stage.x = (screenBounds.getWidth - stage.width()) / 2
+          stage.y = (screenBounds.getHeight - stage.height()) / 2
+        }
+      )
     }
   }
 
@@ -48,8 +58,9 @@ final class JavaFXContextExtension(system: ExtendedActorSystem) extends Extensio
         try {
           Platform.implicitExit = false
           app.main(Array.empty)
-        } catch { case NonFatal(ex) ⇒
-          initPromise.tryFailure(ex)
+        } catch {
+          case NonFatal(ex) ⇒
+            initPromise.tryFailure(ex)
         }
       }
     })
@@ -60,6 +71,10 @@ final class JavaFXContextExtension(system: ExtendedActorSystem) extends Extensio
     }
 
     thread.start()
+    assertInitialized()
+  }
+
+  def assertInitialized(): Unit = {
     Await.result(initFuture, 1 minute)
   }
 

@@ -1,4 +1,6 @@
-package com.karasiq.shadowcloud.config.passwords
+package com.karasiq.shadowcloud.ui.passwords.console
+
+import com.karasiq.shadowcloud.ui.passwords.PasswordProvider
 
 /** Uses [[java.io.Console#readPassword(java.lang.String, java.lang.Object...) readPassword]] function */
 class ConsolePasswordProvider extends PasswordProvider {

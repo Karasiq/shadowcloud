@@ -1,10 +1,9 @@
 package com.karasiq.shadowcloud.persistence.h2
 
 import akka.actor.{ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
-import com.typesafe.config.Config
-
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.persistence.h2.H2Context.ContextT
+import com.typesafe.config.Config
 
 object H2DB extends ExtensionId[H2DBExtension] with ExtensionIdProvider {
   def createExtension(system: ExtendedActorSystem): H2DBExtension = {
@@ -19,13 +18,14 @@ object H2DB extends ExtensionId[H2DBExtension] with ExtensionIdProvider {
 final class H2DBExtension(system: ExtendedActorSystem) extends Extension {
   object settings {
     private[this] val sc = ShadowCloud(system)
-    val config: Config = sc.config.rootConfig.getConfig("persistence.h2")
+    val config: Config   = sc.config.rootConfig.getConfig("persistence.h2")
 
-    val dispatcherId = config.getString("dispatcher")
+    val dispatcherId                   = config.getString("dispatcher")
     implicit lazy val executionContext = system.dispatchers.lookup(dispatcherId)
 
     private[H2DBExtension] def getDbPassword(): String = {
-      sc.passwords.getOrAsk("persistence.h2.password")
+      sc.ui
+        .askPassword("persistence.h2.password")
         .replace(' ', '_')
     }
   }

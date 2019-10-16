@@ -1,4 +1,6 @@
-package com.karasiq.shadowcloud.config.passwords
+package com.karasiq.shadowcloud.ui.passwords.console
+
+import com.karasiq.shadowcloud.ui.passwords.PasswordProvider
 
 import scala.io.StdIn
 

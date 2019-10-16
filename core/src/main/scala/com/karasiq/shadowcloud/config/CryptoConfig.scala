@@ -1,14 +1,17 @@
 package com.karasiq.shadowcloud.config
 
+import com.karasiq.common.configs.ConfigImplicits
+import com.karasiq.shadowcloud.providers.{CryptoProvider, KeyProvider}
 import com.typesafe.config.Config
 
-import com.karasiq.common.configs.ConfigImplicits
-import com.karasiq.shadowcloud.config.passwords.PasswordProvider
-import com.karasiq.shadowcloud.providers.{CryptoProvider, KeyProvider}
-
-private[shadowcloud] case class CryptoConfig(rootConfig: Config, hashing: HashingConfig, encryption: EncryptionConfig,
-                                             signing: SigningConfig, providers: ProvidersConfig[CryptoProvider],
-                                             keyProvider: Class[KeyProvider], passwordProvider: Class[PasswordProvider]) extends WrappedConfig
+private[shadowcloud] case class CryptoConfig(
+    rootConfig: Config,
+    hashing: HashingConfig,
+    encryption: EncryptionConfig,
+    signing: SigningConfig,
+    providers: ProvidersConfig[CryptoProvider],
+    keyProvider: Class[KeyProvider]
+) extends WrappedConfig
 
 private[shadowcloud] object CryptoConfig extends WrappedConfigFactory[CryptoConfig] with ConfigImplicits {
   def apply(config: Config): CryptoConfig = {
@@ -18,8 +21,7 @@ private[shadowcloud] object CryptoConfig extends WrappedConfigFactory[CryptoConf
       EncryptionConfig(config.getConfig("encryption")),
       SigningConfig(config.getConfig("signing")),
       ProvidersConfig.withType[CryptoProvider](config.getConfig("providers")),
-      config.getClass("key-provider"),
-      config.getClass("password-provider")
+      config.getClass("key-provider")
     )
   }
 }

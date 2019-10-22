@@ -4,14 +4,14 @@ import java.io.InputStream
 
 import scala.concurrent.duration._
 import scala.language.postfixOps
-
 import akka.NotUsed
 import akka.stream.{ActorAttributes, FlowShape}
 import akka.stream.scaladsl.{Flow, GraphDSL, Sink, Source, StreamConverters}
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.actors.SCDispatchers
 import com.karasiq.shadowcloud.metadata.{Metadata, MetadataParser}
+
+import scala.util.Try
 
 /**
   * Blocking InputStream API wrapper
@@ -20,11 +20,11 @@ trait BlockingMetadataParser extends MetadataParser {
   protected def parseMetadata(name: String, mime: String, inputStream: InputStream): Source[Metadata, NotUsed]
 
   def parseMetadata(name: String, mime: String): Flow[ByteString, Metadata, NotUsed] = {
-    val createInputStream = StreamConverters.asInputStream(5 seconds)
+    val createInputStream = StreamConverters.asInputStream(10 seconds)
     val parseInputStream = Flow[InputStream]
       .flatMapConcat { inputStream ⇒
         parseMetadata(name, mime, inputStream)
-          .alsoTo(Sink.onComplete(_ ⇒ inputStream.close()))
+          .alsoTo(Sink.onComplete(_ ⇒ Try(inputStream.close())))
       }
       .named("parseMetadataInputStream")
       .withAttributes(ActorAttributes.dispatcher(SCDispatchers.metadataBlocking))

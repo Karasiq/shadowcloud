@@ -1,21 +1,21 @@
 package com.karasiq.shadowcloud.metadata.tika
 
 import java.io.{InputStream, OutputStream}
+import java.nio.charset.Charset
 
-import scala.collection.JavaConverters._
-import scala.collection.mutable.ArrayBuffer
-import scala.util.control.NonFatal
-
+import com.karasiq.common.configs.ConfigImplicits
+import com.karasiq.shadowcloud.metadata.Metadata
+import com.karasiq.shadowcloud.metadata.tika.utils.TikaConversions
+import com.karasiq.shadowcloud.metadata.tika.utils.TikaUtils.ContentWrapper
 import com.typesafe.config.Config
 import org.apache.tika.Tika
 import org.apache.tika.parser.{ParseContext, RecursiveParserWrapper}
 import org.apache.tika.sax._
 import org.xml.sax.ContentHandler
 
-import com.karasiq.common.configs.ConfigImplicits
-import com.karasiq.shadowcloud.metadata.Metadata
-import com.karasiq.shadowcloud.metadata.tika.utils.TikaConversions
-import com.karasiq.shadowcloud.metadata.tika.utils.TikaUtils.ContentWrapper
+import scala.collection.JavaConverters._
+import scala.collection.mutable.ArrayBuffer
+import scala.util.control.NonFatal
 
 private[tika] object TikaAutoParser {
   val ParserId = "auto"
@@ -27,21 +27,23 @@ private[tika] object TikaAutoParser {
 
 /**
   * Parses file with default Tika parser
+ *
   * @param config Parser config
-  */
+ */
+//noinspection ScalaDeprecation
 private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends TikaMetadataParser {
   // -----------------------------------------------------------------------
   // Settings
   // -----------------------------------------------------------------------
   private[this] object autoParserSettings extends ConfigImplicits {
     // Parser
-    val recursive = config.getBoolean("recursive")
-    val fb2Fix = config.getBoolean("fb2-fix")
+    val recursive           = config.getBoolean("recursive")
+    val fb2Fix              = config.getBoolean("fb2-fix")
     val fileListPreviewSize = config.getInt("file-list-preview-size")
 
     // Text handler
-    val textEnabled = config.getBoolean("text.enabled")
-    val textLimit = config.getBytesInt("text.limit")
+    val textEnabled     = config.getBoolean("text.enabled")
+    val textLimit       = config.getBytesInt("text.limit")
     val textPreviewSize = config.getBytesInt("text.preview-size")
     val textMaxPreviews = config.getInt("text.max-previews")
 
@@ -53,7 +55,7 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
   // Context
   // -----------------------------------------------------------------------
   private[this] val conversions = TikaConversions(TikaAutoParser.ParserId)
-  override val parser = tika.getParser
+  override val parser           = tika.getParser
 
   // -----------------------------------------------------------------------
   // Parsing
@@ -70,8 +72,8 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
     val mainMetadata = rawMetadatas.headOption.flatMap(conversions.toMetadataTable)
 
     val subRawMetadatas = rawMetadatas.drop(1)
-    val subContents = contentWrappers.drop(1).map(_.extractContents())
-    val subMetadatas = subRawMetadatas.map(conversions.toMetadataTable(_).toSeq) ++ subContents
+    val subContents     = contentWrappers.drop(1).map(_.extractContents())
+    val subMetadatas    = subRawMetadatas.map(conversions.toMetadataTable(_).toSeq) ++ subContents
 
     mainMetadata.toVector ++
       mainMetadata.flatMap(conversions.toImageData) ++
@@ -82,8 +84,11 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
       conversions.toEmbeddedResources(subMetadatas)
   }
 
-  private[this] def parseMetadataTablesAndContents(metadata: TikaMetadata, inputStream: InputStream,
-                                                   recursive: Boolean): (Vector[TikaMetadata], Vector[ContentWrapper]) = {
+  private[this] def parseMetadataTablesAndContents(
+      metadata: TikaMetadata,
+      inputStream: InputStream,
+      recursive: Boolean
+  ): (Vector[TikaMetadata], Vector[ContentWrapper]) = {
     if (recursive) {
       // Recursive parser
       val handlers = new ArrayBuffer[ContentWrapper]()
@@ -93,17 +98,15 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
           handlers += contentWrapper
           contentWrapper.toContentHandler
         }
-
-        def getNewContentHandler(os: OutputStream, encoding: String): ContentHandler = {
-          getNewContentHandler
-          // throw new IllegalArgumentException("Not supported")
-        }
+        def getNewContentHandler(os: OutputStream, encoding: String): ContentHandler = this.getNewContentHandler
+        def getNewContentHandler(os: OutputStream, charset: Charset): ContentHandler = this.getNewContentHandler
       }
 
       val parser = new RecursiveParserWrapper(this.parser, contentHandlerFactory)
       try {
         parser.parse(inputStream, null, metadata, new ParseContext)
-      } catch { case NonFatal(_) ⇒
+      } catch {
+        case NonFatal(_) ⇒
         // Ignore
       }
 
@@ -114,7 +117,8 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
 
       try {
         this.parser.parse(inputStream, contentWrapper.toContentHandler, metadata, new ParseContext)
-      } catch { case NonFatal(_) ⇒
+      } catch {
+        case NonFatal(_) ⇒
         // Ignore
       }
 

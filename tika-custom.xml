@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Example of custom Tika configuration
+    Set shadowcloud.metadata.tika.xml-config-file=tika-custom.xml to use
+-->
+<properties>
+    <parsers>
+        <parser class="org.apache.tika.parser.DefaultParser">
+            <!--  Uncomment to disable Tesseract OCR-->
+            <!--  <parser-exclude class="org.apache.tika.parser.ocr.TesseractOCRParser"/> -->
+        </parser>
+        <parser class="org.apache.tika.parser.ocr.TesseractOCRParser">
+            <params>
+                <param name="language" type="string">rus</param>
+            </params>
+        </parser>
+    </parsers>
+</properties>

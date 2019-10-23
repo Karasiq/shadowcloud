@@ -11,6 +11,8 @@
         </parser>
         <parser class="org.apache.tika.parser.ocr.TesseractOCRParser">
             <params>
+                <param name="timeout" type="int">3000</param>
+                <param name="maxFileSizeToOcr" type="int">512000</param>
                 <param name="language" type="string">rus</param>
             </params>
         </parser>

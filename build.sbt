@@ -305,7 +305,7 @@ lazy val `server-static-routes` = (project in file("server") / "static-routes")
       import com.karasiq.scalajsbundler.dsl._
       Bundle(
         "index",
-        WebDeps.indexHtml, WebDeps.bootstrap, WebDeps.videoJS, WebDeps.markedJS,
+        WebDeps.indexHtml, WebDeps.bootstrap, WebDeps.videoJS, WebDeps.markedJS, WebDeps.dropzoneJS,
         scalaJsApplication(webapp, fastOpt = false, launcher = false).value
       )
     },

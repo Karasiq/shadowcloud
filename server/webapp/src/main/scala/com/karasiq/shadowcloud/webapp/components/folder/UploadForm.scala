@@ -2,17 +2,14 @@ package com.karasiq.shadowcloud.webapp.components.folder
 
 import scala.annotation.tailrec
 import scala.concurrent.Future
-
 import org.scalajs.dom
 import rx.{Rx, Var}
-
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
-
 import com.karasiq.common.memory.SizeUnit
 import com.karasiq.shadowcloud.model.{File, Path, RegionId}
 import com.karasiq.shadowcloud.utils.Utils
-import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons, TextEditor}
+import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons, Dropzone, TextEditor}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
 import com.karasiq.shadowcloud.webapp.controllers.FileController
@@ -53,14 +50,10 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
   uploading.triggerLater(processQueue())
 
   def renderTag(md: ModifierT*): TagT = {
-    val uploadInput = FormInput.file(appContext.locale.file, multiple, md, onchange := Callback.onInput { input ⇒
-      // Preserve context at click time
-      val newFiles = input.files.toList
-        .map(file ⇒ UploadRequest(folderContext.regionId, folderContext.selected.now, file))
-
-      uploadQueue() = uploadQueue.now ++ newFiles
-      input.form.reset()
-    })
+//    val uploadInput = FormInput.file(appContext.locale.file, multiple, md, onchange := Callback.onInput { input ⇒
+//
+//      input.form.reset()
+//    })
 
     val editor = TextEditor { editor ⇒
       editor.submitting() = true
@@ -75,7 +68,10 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
     }
 
     val navigation = Navigation.pills(
-      NavigationTab(appContext.locale.uploadFiles, "upload-files", NoIcon, Form(uploadInput)),
+      NavigationTab(appContext.locale.uploadFiles, "upload-files", NoIcon, Form(action := "/", `class` := "dropzone", Dropzone { file =>
+        // Preserve context at click time
+        uploadQueue() = uploadQueue.now :+ UploadRequest(folderContext.regionId, folderContext.selected.now, file)
+      })),
       NavigationTab(appContext.locale.pasteText, "paste-text", NoIcon, editor)
     )
 

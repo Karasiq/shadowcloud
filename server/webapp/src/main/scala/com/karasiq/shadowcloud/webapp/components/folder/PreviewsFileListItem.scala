@@ -2,17 +2,14 @@ package com.karasiq.shadowcloud.webapp.components.folder
 
 import scala.language.postfixOps
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-
 import rx._
 import rx.async._
-
 import com.karasiq.bootstrap.Bootstrap.default._
 import scalaTags.all._
-
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.webapp.components.common.AppIcons
-import com.karasiq.shadowcloud.webapp.components.file.FilePreview
+import com.karasiq.shadowcloud.webapp.components.file.{FileDownloadLink, FilePreview}
 import com.karasiq.shadowcloud.webapp.components.file.FilePreview.PreviewVariants
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.utils.Blobs
@@ -30,6 +27,8 @@ class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit
   }
 
   def renderTag(md: ModifierT*): TagT = {
+    val fileLink = FileDownloadLink(file)(file.path.name)
+
     GridSystem.row(
       GridSystem.col(3)(
         Rx[Frag](previews().image match {
@@ -47,7 +46,7 @@ class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit
       ),
       GridSystem.col(9)(
         GridSystem.row(
-          GridSystem.col(9)(Rx[Frag](if (selectedFile().contains(file)) b(file.path.name) else span(file.path.name, cursor.pointer))),
+          GridSystem.col(9)(Rx[Frag](if (selectedFile().contains(file)) b(fileLink) else span(fileLink, cursor.pointer))),
           GridSystem.col(3)(
             GridSystem.mkRow(MemorySize.toString(file.checksum.size)),
             GridSystem.mkRow(context.timeFormat.timestamp(file.timestamp.lastModified)),

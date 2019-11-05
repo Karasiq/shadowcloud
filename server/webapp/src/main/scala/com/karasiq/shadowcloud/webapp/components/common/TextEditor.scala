@@ -1,11 +1,10 @@
 package com.karasiq.shadowcloud.webapp.components.common
 
-import rx.Var
-
 import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import com.karasiq.shadowcloud.webapp.context.AppContext
+import com.karasiq.shadowcloud.webapp.utils.LocalStorage
+import rx.Var
+import scalaTags.all._
 
 object TextEditor {
   def apply(_onSubmit: TextEditor ⇒ Unit)(implicit context: AppContext): TextEditor = {
@@ -13,10 +12,17 @@ object TextEditor {
       def onSubmit(): Unit = _onSubmit(this)
     }
   }
+
+  def memoized(key: String)(_onSubmit: TextEditor ⇒ Unit)(implicit context: AppContext): TextEditor = {
+    new TextEditor {
+      override val value: Var[String] = LocalStorage.memoize(key)
+      def onSubmit(): Unit            = _onSubmit(this)
+    }
+  }
 }
 
-abstract class TextEditor(implicit context: AppContext) extends BootstrapHtmlComponent {
-  val value = Var("")
+sealed abstract class TextEditor(implicit context: AppContext) extends BootstrapHtmlComponent {
+  val value      = Var("")
   val submitting = Var(false)
 
   def onSubmit(): Unit
@@ -29,4 +35,3 @@ abstract class TextEditor(implicit context: AppContext) extends BootstrapHtmlCom
     )
   }
 }
-

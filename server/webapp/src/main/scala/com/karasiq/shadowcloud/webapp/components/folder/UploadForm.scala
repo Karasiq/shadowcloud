@@ -54,7 +54,7 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
   uploading.triggerLater(processQueue())
 
   def renderTag(md: ModifierT*): TagT = {
-    val editor = TextEditor { editor ⇒
+    val editor = TextEditor.memoized("sc-text-upload") { editor ⇒
       editor.submitting() = true
       val future = UploadForm.uploadNoteOrPage(folderContext.regionId, folderContext.selected.now, editor.value.now)
       future.onComplete { result ⇒

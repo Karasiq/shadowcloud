@@ -374,7 +374,8 @@ lazy val desktopApp = (project in file("desktop-app"))
     libraryDependencies ++= ProjectDeps.akka.slf4j ++ ProjectDeps.logback ++
       (if (ProjectDeps.javacv.isFullEnabled) ProjectDeps.javacv.mainPlatforms
       else if (ProjectDeps.javacv.isEnabled) ProjectDeps.javacv.currentPlatform
-      else Nil)
+      else Nil),
+    fork in run := true
   )
   .dependsOn(coreAssembly, server, javafx, `drive-fuse`)
   .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin)
@@ -392,7 +393,8 @@ lazy val consoleApp = (project in file("console-app"))
     libraryDependencies ++= ProjectDeps.akka.slf4j ++ ProjectDeps.logback ++
       (if (ProjectDeps.javacv.isFullEnabled) ProjectDeps.javacv.mainPlatforms
       else if (ProjectDeps.javacv.isEnabled) ProjectDeps.javacv.currentPlatform
-      else Nil)
+      else Nil),
+    fork in run := true
   )
   .dependsOn(coreAssembly, server, `drive-fuse`)
   .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin, DockerPlugin /*, AshScriptPlugin*/)

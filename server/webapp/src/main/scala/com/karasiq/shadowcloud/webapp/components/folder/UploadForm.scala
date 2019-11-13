@@ -71,14 +71,13 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
         appContext.locale.uploadFiles,
         "upload-files",
         NoIcon,
-        Form(
-          action := "/",
-          `class` := "dropzone",
-          Dropzone { file =>
-            // Preserve context at click time
-            uploadQueue() = uploadQueue.now :+ UploadRequest(folderContext.regionId, folderContext.selected.now, file)
-          }
-        )
+        folderContext.selected.map { path =>
+          Form(
+            action := "/",
+            `class` := "dropzone",
+            Dropzone(folderContext.regionId, path, _ => folderContext.update(path))
+          )
+        }
       ),
       NavigationTab(appContext.locale.pasteText, "paste-text", NoIcon, editor)
     )

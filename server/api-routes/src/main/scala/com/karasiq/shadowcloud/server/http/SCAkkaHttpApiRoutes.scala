@@ -3,14 +3,13 @@ package com.karasiq.shadowcloud.server.http
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 import scala.language.postfixOps
-
 import akka.http.scaladsl.marshalling.Marshaller
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{ByteRange, Range}
 import akka.http.scaladsl.server._
 import akka.http.scaladsl.unmarshalling.Unmarshaller
+import akka.util.ByteString
 import autowire.Core.Request
-
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.api.{SCApiUtils, ShadowCloudApi}
 import com.karasiq.shadowcloud.api.jvm.SCDefaultApiServer
@@ -31,7 +30,7 @@ private[server] trait SCAkkaHttpApiRoutes { self: Directives ⇒
     type RequestT = apiServer.Request
 
     val apiMediaType = {
-      MediaType.parse(apiServer.payloadContentType).right
+      MediaType.parse(apiServer.payloadContentType)
         .getOrElse(sys.error(s"Invalid content type: ${apiServer.payloadContentType}"))
     }
 
@@ -42,15 +41,15 @@ private[server] trait SCAkkaHttpApiRoutes { self: Directives ⇒
   import apiEncoding.implicits._
 
   private[http] object SCApiMarshallers {
-    implicit def implicitSCEntityMarshaller[T: apiEncoding.Encoder] =
+    implicit def implicitSCEntityMarshaller[T: apiEncoding.Encoder]: Marshaller[T, ByteString] =
       Marshaller.withFixedContentType(apiContentType)(apiEncoding.encode[T])
 
-    implicit def implicitSCEntityUnmarshaller[T: apiEncoding.Decoder] =
+    implicit def implicitSCEntityUnmarshaller[T: apiEncoding.Decoder]: Unmarshaller[ByteString, T] =
       Unmarshaller.strict(apiEncoding.decode[T])
   }
 
   private[http] object SCApiDirectives {
-    def extractChunkRanges(fullSize: Long) = headerValueByType[Range](()).map { range ⇒
+    def extractChunkRanges(fullSize: Long): Directive1[ChunkRanges.RangeList] = headerValueByType[Range](()).map { range ⇒
       ChunkRanges.RangeList(range.ranges.map {
         case ByteRange.FromOffset(offset) ⇒
           ChunkRanges.Range(math.min(fullSize, offset), fullSize)
@@ -72,9 +71,7 @@ private[server] trait SCAkkaHttpApiRoutes { self: Directives ⇒
       headerValueByName(name).require(func, MalformedHeaderRejection(name, "Invalid header value"))
     }
 
-    val validateRequestedWith = {
-      validateHeader("X-Requested-With", _ == SCApiUtils.RequestedWith)
-    }
+    val validateRequestedWith: Directive0 = validateHeader("X-Requested-With", _ == SCApiUtils.RequestedWith)
 
     val extractApiRequest: Directive1[RequestT] = {
       def extractAutowireRequest(timeout: FiniteDuration = 5 seconds): Directive1[RequestT] = {

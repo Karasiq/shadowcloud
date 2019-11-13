@@ -2,46 +2,60 @@ package com.karasiq.shadowcloud.server.http
 
 import java.util.UUID
 
-import scala.util.control.NonFatal
-
 import akka.NotUsed
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{`Content-Range`, `Last-Modified`}
-import akka.http.scaladsl.server._
 import akka.http.scaladsl.server.PathMatcher.{Matched, Unmatched}
-import akka.stream.scaladsl.Source
+import akka.http.scaladsl.server._
+import akka.stream.scaladsl.{Sink, Source}
 import akka.util.ByteString
-
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.api.SCApiEncoding
 import com.karasiq.shadowcloud.index.files.FileVersions
-import com.karasiq.shadowcloud.model.{Chunk, File, Path, RegionId}
 import com.karasiq.shadowcloud.model.utils.IndexScope
+import com.karasiq.shadowcloud.model.{Chunk, File, Path, RegionId}
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges.RangeList
 import com.karasiq.shadowcloud.utils.Utils
+
+import scala.util.control.NonFatal
 
 trait SCAkkaHttpFileRoutes { self: SCAkkaHttpApiRoutes with SCHttpServerSettings with Directives ⇒
   // -----------------------------------------------------------------------
   // Route
   // -----------------------------------------------------------------------
   def scFileRoute: Route = {
-    (post & SCApiDirectives.validateRequestedWith) {
+    post {
       (path("upload" / Segment / SCPath) & extractRequestEntity) { (regionId, path, entity) ⇒
-        val dataStream = entity.withoutSizeLimit()
+        val dataStream = entity
+          .withoutSizeLimit()
           .dataBytes
           .mapMaterializedValue(_ ⇒ NotUsed)
 
         SCFileDirectives.writeFile(regionId, path, dataStream)
-      }
+      } ~
+        (pathPrefix("upload_form") & extractMaterializer) { implicit m =>
+          (path(Segment / SCPath) & entity(as[Multipart.FormData])) { (regionId, path, entity) ⇒
+            val fileEntity = entity.parts
+              .filter(_.name == "file")
+              .map(p => (p.filename.getOrElse("default"), p.entity.dataBytes.mapMaterializedValue(_ => NotUsed)))
+              .mapMaterializedValue(_ ⇒ NotUsed)
+              .runWith(Sink.head)
+
+            onSuccess(fileEntity) {
+              case (name, bytes) =>
+                SCFileDirectives.writeFile(regionId, path / name, bytes)
+            }
+          }
+        }
     } ~
-    get {
-      path("download" / Segment / SCPath / Segment) { (regionId, path, _) ⇒
-        SCFileDirectives.findFile(regionId, path) { file ⇒
-          SCFileDirectives.provideTimestamp(file)(SCFileDirectives.readFile(regionId, file))
+      get {
+        path("download" / Segment / SCPath / Segment) { (regionId, path, _) ⇒
+          SCFileDirectives.findFile(regionId, path) { file ⇒
+            SCFileDirectives.provideTimestamp(file)(SCFileDirectives.readFile(regionId, file))
+          }
         }
       }
-    }
   }
 
   // -----------------------------------------------------------------------
@@ -53,8 +67,9 @@ trait SCAkkaHttpFileRoutes { self: SCAkkaHttpApiRoutes with SCHttpServerSettings
         try {
           val path = SCApiInternals.apiEncoding.decodePath(SCApiEncoding.toBinary(segment))
           Matched(tail, Tuple1(path))
-        } catch { case NonFatal(_) ⇒
-          Unmatched
+        } catch {
+          case NonFatal(_) ⇒
+            Unmatched
         }
 
       case _ ⇒
@@ -82,21 +97,43 @@ trait SCAkkaHttpFileRoutes { self: SCAkkaHttpApiRoutes with SCHttpServerSettings
       respondWithHeader(`Last-Modified`(DateTime(file.timestamp.lastModified)))
     }
 
-    def writeFile(regionId: RegionId, path: Path, stream: Source[ByteString, NotUsed]): Route = {
+    def writeFiles(regionId: RegionId, path: Path, stream: Source[(String, Source[ByteString, NotUsed]), NotUsed]): Route =
+      extractMaterializer { implicit m =>
+        val resultStream = stream
+          .flatMapConcat {
+            case (name, bytes) =>
+              bytes
+                .via(sc.streams.metadata.writeFileAndMetadata(regionId, path / name))
+                .log("uploaded-files")
+                .map(_._1)
+          }
+          .fold(Vector.empty[File])(_ :+ _)
+          .map(SCApiInternals.apiEncoding.encodeFiles(_))
+          .runWith(Sink.head)
+
+        onSuccess(resultStream) { result =>
+          complete(StatusCodes.OK, HttpEntity(SCApiInternals.apiContentType, result))
+        }
+      }
+
+    def writeFile(regionId: RegionId, path: Path, stream: Source[ByteString, NotUsed]): Route = extractMaterializer{ implicit m =>
       val resultStream = stream
         .via(sc.streams.metadata.writeFileAndMetadata(regionId, path))
         .log("uploaded-files")
         .map(_._1)
-        .map(SCApiInternals.apiEncoding.encodeFile)
+        .runWith(Sink.head)
 
-      complete(StatusCodes.OK, HttpEntity(SCApiInternals.apiContentType, resultStream))
+      onSuccess(resultStream) { file =>
+        complete(StatusCodes.OK, HttpEntity(SCApiInternals.apiContentType, SCApiInternals.apiEncoding.encodeFile(file)))
+      }
     }
 
     def readChunkStream(regionId: RegionId, chunks: Seq[Chunk], fileName: String = ""): Route = {
       val contentType = try {
         ContentType(MediaTypes.forExtension(Utils.getFileExtensionLowerCase(fileName)), () ⇒ HttpCharsets.`UTF-8`)
-      } catch { case NonFatal(_) ⇒
-        ContentTypes.NoContentType
+      } catch {
+        case NonFatal(_) ⇒
+          ContentTypes.NoContentType
         // ContentTypes.`application/octet-stream`
       }
 
@@ -112,8 +149,8 @@ trait SCAkkaHttpFileRoutes { self: SCAkkaHttpApiRoutes with SCHttpServerSettings
 
       def toContentRange(range: ChunkRanges.Range) = {
         val maxIndex = math.max(0L, chunkStreamSize - 1)
-        val start = math.min(maxIndex, math.max(0L, range.start))
-        val end = math.min(maxIndex, math.max(start, range.end - 1))
+        val start    = math.min(maxIndex, math.max(0L, range.start))
+        val end      = math.min(maxIndex, math.max(start, range.end - 1))
         ContentRange(start, end, Some(chunkStreamSize).filter(_ > end))
       }
 

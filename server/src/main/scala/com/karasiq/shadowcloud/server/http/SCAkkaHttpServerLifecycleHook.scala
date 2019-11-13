@@ -19,7 +19,8 @@ private[http] final class SCAkkaHttpServerLifecycleHook(sc: ShadowCloudExtension
     val bindFuture = Http().bindAndHandle(httpServer.scWebAppRoutes, httpServer.httpServerConfig.host, httpServer.httpServerConfig.port)
     bindFuture.foreach { binding ⇒
       serverBinding = binding
-      actorSystem.log.info("shadowcloud server running on {}", binding.localAddress)
+      actorSystem.log.info("SC HTTP server running on {}", binding.localAddress)
+      if (httpServer.httpServerConfig.passwordHash.nonEmpty) actorSystem.log.info("SC HTTP server was configured to require authentication")
     }
   }
 

@@ -22,7 +22,10 @@ object UploadForm {
 
   private def uploadNoteOrPage(regionId: RegionId, path: Path, text: String)(implicit appContext: AppContext): Future[File] = {
     def newNoteName(text: String): String = {
-      val firstLine = text.lines.toStream.headOption.getOrElse("")
+      val firstLine = text.lines
+        .map(_.trim)
+        .find(_.nonEmpty)
+        .getOrElse("")
 
       val conciseName = Utils
         .takeWords(firstLine, 50)

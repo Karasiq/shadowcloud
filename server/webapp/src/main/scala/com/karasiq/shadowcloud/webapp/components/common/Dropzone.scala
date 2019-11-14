@@ -25,7 +25,7 @@ object Dropzone {
       element,
       js.Dynamic.literal(url = url.toString, headers = js.Dynamic.literal("X-Requested-With" -> SCApiUtils.RequestedWith, "Accept" -> AjaxApi.payloadContentType)).asInstanceOf[js.Object]
     )
-    dz.on("success", onSuccess _)
+    dz.on("success", onSuccess)
   }
 
   def dynamic(process: dom.File => Unit): Modifier = { element: dom.Element =>

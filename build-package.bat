@@ -1,4 +1,4 @@
 @echo off
-SET "VERSION=1.0.1"
+SET "VERSION=1.0.2"
 
 SET "SBT_OPTS=-Xmx8G -Denable-tika=0 -Denable-javacv=0" && sbt desktopApp/universal:packageBin desktopApp/jdkPackager:packageBin && move /y "%~dp0desktop-app\target\universal\shadowcloud-desktop-%VERSION%.zip" "%~dp0desktop-app\target\universal\shadowcloud-%VERSION%-light.zip" && move /y "%~dp0desktop-app\target\universal\jdkpackager\bundles\shadowcloud-%VERSION%.exe" "%~dp0desktop-app\target\universal\jdkpackager\bundles\shadowcloud-%VERSION%-light.exe" && SET "SBT_OPTS=-Xmx8G -Denable-tika=1 -Denable-javacv=1" && sbt desktopApp/jdkPackager:packageBin && SET "SBT_OPTS=-Xmx8G -Denable-tika=1 -Denable-javacv-all=1" && sbt desktopApp/universal:packageBin && move /y "%~dp0desktop-app\target\universal\shadowcloud-desktop-%VERSION%.zip" "%~dp0desktop-app\target\universal\shadowcloud-%VERSION%-full.zip" && move /y "%~dp0desktop-app\target\universal\jdkpackager\bundles\shadowcloud-%VERSION%.exe" "%~dp0desktop-app\target\universal\jdkpackager\bundles\shadowcloud-%VERSION%-full.exe"

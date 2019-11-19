@@ -1,11 +1,7 @@
 package com.karasiq.shadowcloud.storage.props
 
 import java.net.URI
-import java.nio.file.{Path ⇒ FSPath}
-
-import scala.language.postfixOps
-
-import com.typesafe.config.Config
+import java.nio.file.{Path => FSPath}
 
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.common.memory.MemorySize
@@ -14,11 +10,19 @@ import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.props.StorageProps.{Address, Credentials, Quota}
 import com.karasiq.shadowcloud.utils.Utils
+import com.typesafe.config.Config
+
+import scala.language.postfixOps
 
 @SerialVersionUID(0L)
-final case class StorageProps(rootConfig: Config, storageType: String, address: Address = Address.empty,
-                              credentials: Credentials = Credentials.empty, quota: Quota = Quota.empty,
-                              provider: String = "") extends WrappedConfig {
+final case class StorageProps(
+    rootConfig: Config,
+    storageType: String,
+    address: Address = Address.empty,
+    credentials: Credentials = Credentials.empty,
+    quota: Quota = Quota.empty,
+    provider: String = ""
+) extends WrappedConfig {
 
   require(storageType.nonEmpty, "Storage type should not be empty")
 
@@ -32,10 +36,7 @@ object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplic
   // Sub-properties
   // -----------------------------------------------------------------------
   @SerialVersionUID(0L)
-  final case class Address(rootConfig: Config,
-                           namespace: String,
-                           uri: Option[URI],
-                           path: Path) extends WrappedConfig {
+  final case class Address(rootConfig: Config, namespace: String, uri: Option[URI], path: Path) extends WrappedConfig {
 
     override def toString: String = {
       s"Address($namespace, ${uri.fold(path)(path + " at " + _)})"
@@ -83,7 +84,7 @@ object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplic
   }
 
   @SerialVersionUID(0L)
-  final case class Quota(rootConfig: Config, limitSpace: Option[Long], useSpacePercent: Int) extends WrappedConfig with HasEmpty {
+  final case class Quota(rootConfig: Config, limitSpace: Option[Long], useSpacePercent: Int, readOnly: Boolean) extends WrappedConfig with HasEmpty {
     require(limitSpace.forall(_ >= 0), "Limit space should be >= 0")
     require(useSpacePercent >= 0 && useSpacePercent <= 100, "Space percent should be between 0 and 100")
 
@@ -101,7 +102,8 @@ object StorageProps extends WrappedConfigFactory[StorageProps] with ConfigImplic
       Quota(
         config,
         config.optional(_.getBytes("limit-space")),
-        config.withDefault(100, _.getInt("use-space-percent"))
+        config.withDefault(100, _.getInt("use-space-percent")),
+        config.withDefault(false, _.getBoolean("read-only"))
       )
     }
 

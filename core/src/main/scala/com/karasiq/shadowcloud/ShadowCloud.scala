@@ -156,12 +156,18 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     }
 
     def showErrorMessage(error: Throwable): Unit = {
-      uiProvider.showErrorMessage(error)
+      actorSystem.log.error(error, "Unhandled application error")
+      try {
+        uiProvider.showErrorMessage(error)
+      } catch {
+        case NonFatal(e1) =>
+          actorSystem.log.error(e1, "Error when reporting")
+      }
     }
 
-    def withShowError[T](f: => T): Option[T] =
-      try Some(f)
-      catch { case NonFatal(err) => err.printStackTrace(); None }
+    def withShowError[T](f: => T): Either[Throwable, T] =
+      try Right(f)
+      catch { case NonFatal(err) => showErrorMessage(err); Left(err) }
   }
 
   // -----------------------------------------------------------------------
@@ -226,7 +232,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
 
     def initialize(): Unit = instances.foreach { hook =>
       actorSystem.log.debug("Executing init hook: {}", hook)
-      ui.withShowError(hook.initialize())
+      ui.withShowError(hook.initialize()).left.foreach(_ => System.exit(-1))
     }
 
     def shutdown(): Unit = instances.foreach { hook =>

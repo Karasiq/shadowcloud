@@ -3,11 +3,17 @@ package com.karasiq.shadowcloud.persistence.h2
 import com.typesafe.config.{Config, ConfigFactory}
 import io.getquill.{H2JdbcContext, SnakeCase}
 
+import scala.util.control.NonFatal
+
 object H2Context {
   type ContextT = H2JdbcContext[SnakeCase]
 
   def apply(config: Config, password: String): ContextT = {
-    new ContextT(createJdbcConfig(config, password))
+    try {
+      new ContextT(createJdbcConfig(config, password))
+    } catch { case NonFatal(err) =>
+      throw new RuntimeException("Failed to open DB", err)
+    }
   }
 
   private[this] def createJdbcConfig(config: Config, password: String): Config = {

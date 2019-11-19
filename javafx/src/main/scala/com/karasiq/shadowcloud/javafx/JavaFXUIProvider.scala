@@ -10,14 +10,12 @@ private[javafx] final class JavaFXUIProvider(actorSystem: ActorSystem) extends U
 
   override def showErrorMessage(error: Throwable): Unit = {
     context.assertInitialized()
-    JFXUtils.runNow {
-      val message = {
-        val stream = new ByteArrayOutputStream()
-        val pw     = new PrintStream(stream)
-        error.printStackTrace(pw)
-        new String(stream.toByteArray)
-      }
-      ErrorAlert.show(context.app.stage, message)
+    val message = {
+      val stream = new ByteArrayOutputStream()
+      val pw     = new PrintStream(stream)
+      error.printStackTrace(pw)
+      new String(stream.toByteArray)
     }
+    ErrorAlert.show(context.app.stage, message)
   }
 }

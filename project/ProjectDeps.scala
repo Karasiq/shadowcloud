@@ -4,7 +4,7 @@ object ProjectDeps {
   type Deps = Seq[ModuleID]
 
   object akka {
-    val version = "2.5.14"
+    val version     = "2.5.14"
     val httpVersion = "10.1.3"
 
     def actors: Deps = Seq(
@@ -24,9 +24,9 @@ object ProjectDeps {
     )
 
     def testKit: Deps = Seq(
-      "com.typesafe.akka" %% "akka-testkit" % version,
+      "com.typesafe.akka" %% "akka-testkit"        % version,
       "com.typesafe.akka" %% "akka-stream-testkit" % version,
-      "com.typesafe.akka" %% "akka-http-testkit" % httpVersion
+      "com.typesafe.akka" %% "akka-http-testkit"   % httpVersion
     )
 
     def slf4j: Deps = Seq(
@@ -44,7 +44,7 @@ object ProjectDeps {
 
   def kryo: Deps = Seq(
     // "com.esotericsoftware" % "kryo" % "4.0.0",
-    "com.twitter" %% "chill" % "0.9.2",
+    "com.twitter" %% "chill"      % "0.9.2",
     "com.twitter" %% "chill-akka" % "0.9.2"
   )
 
@@ -79,8 +79,8 @@ object ProjectDeps {
 
   // http://h2database.com/html/main.html
   def h2: Deps = Seq(
-    "com.h2database" % "h2" % "1.4.192",
-    "io.getquill" %% "quill-jdbc" % "1.2.1"
+    "com.h2database" % "h2"          % "1.4.192",
+    "io.getquill"    %% "quill-jdbc" % "1.2.1"
   )
 
   // https://tika.apache.org/
@@ -88,7 +88,7 @@ object ProjectDeps {
     val version = "1.22"
     Seq(
       "org.apache.tika" % "tika-parsers" % version,
-      "org.apache.tika" % "tika-core" % version
+      "org.apache.tika" % "tika-core"    % version
     )
   }
 
@@ -148,17 +148,29 @@ object ProjectDeps {
     }
 
     def mainPlatforms: Deps = {
-      javaCvLibs(JavaCVVersion, Seq("windows", "linux"), Seq("x86", "x86_64"), "opencv" → OpenCVVersion, "ffmpeg" → FFMpegVersion) ++ javaCvLibs(JavaCVVersion, Seq("macosx"), Seq("x86_64"), "opencv" → OpenCVVersion, "ffmpeg" → FFMpegVersion)
+      javaCvLibs(JavaCVVersion, Seq("windows", "linux"), Seq("x86", "x86_64"), "opencv" → OpenCVVersion, "ffmpeg" → FFMpegVersion) ++ javaCvLibs(
+        JavaCVVersion,
+        Seq("macosx"),
+        Seq("x86_64"),
+        "opencv" → OpenCVVersion,
+        "ffmpeg" → FFMpegVersion
+      )
     }
 
     def currentPlatform: Deps = {
       val platform = sys.props("os.name").toLowerCase match {
         case os if os.contains("win") ⇒ "windows"
         case os if os.contains("mac") ⇒ "macosx"
-        case _ ⇒ "linux"
+        case _                        ⇒ "linux"
       }
 
-      javaCvLibs(JavaCVVersion, Seq(platform), Seq("x86", "x86_64"), "opencv" → OpenCVVersion, "ffmpeg" → FFMpegVersion)
+      javaCvLibs(
+        JavaCVVersion,
+        Seq(platform),
+        if (platform == "macosx") Seq("x86_64") else Seq("x86", "x86_64"),
+        "opencv" → OpenCVVersion,
+        "ffmpeg" → FFMpegVersion
+      )
     }
 
     private def javaCvLibs(javaCvVersion: String, platforms: Seq[String], architectures: Seq[String], libs: (String, String)*): Seq[ModuleID] = {
@@ -167,8 +179,8 @@ object ProjectDeps {
 
       (for {
         (lib, ver) <- libs
-        os <- platforms
-        arch <- architectures
+        os         <- platforms
+        arch       <- architectures
       } yield Seq(
         // Add both: dependency and its native binaries for the current `platform`
         "org.bytedeco.javacpp-presets" % lib % s"$ver-$javaCvVersion",
@@ -190,10 +202,10 @@ object ProjectDeps {
   def webzinc: Deps = {
     val version = "1.0.8"
     Seq(
-      "net.sourceforge.htmlunit" % "htmlunit" % "2.32",
-      "com.github.karasiq" %% "commons-network" % "1.0.10",
-      "com.github.karasiq" %% "webzinc" % version,
-      "com.github.karasiq" %% "webzinc-htmlunit" % version
+      "net.sourceforge.htmlunit" % "htmlunit"          % "2.32",
+      "com.github.karasiq"       %% "commons-network"  % "1.0.10",
+      "com.github.karasiq"       %% "webzinc"          % version,
+      "com.github.karasiq"       %% "webzinc-htmlunit" % version
     )
   }
 

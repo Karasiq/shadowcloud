@@ -157,6 +157,10 @@ object ProjectDeps {
       )
     }
 
+    def dockerPlatforms: Deps = {
+      javaCvLibs(JavaCVVersion, Seq("linux"), Seq("x86_64"), "opencv" → OpenCVVersion, "ffmpeg" → FFMpegVersion)
+    }
+
     def currentPlatform: Deps = {
       val platform = sys.props("os.name").toLowerCase match {
         case os if os.contains("win") ⇒ "windows"

@@ -69,7 +69,8 @@ lazy val dockerSettings = Seq(
       /* Cmd("RUN", "apt-get", "update", "&&", "apt-get", "install", "-y", "fuse")*/
     )
     cmds.takeWhile(!_.makeContent.startsWith("USER")) ++ injected ++ cmds.dropWhile(!_.makeContent.startsWith("USER"))
-  }
+  },
+  libraryDependencies in Docker ++= if (ProjectDeps.javacv.isEnabled) ProjectDeps.javacv.dockerPlatforms else Nil
 )
 
 // -----------------------------------------------------------------------

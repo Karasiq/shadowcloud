@@ -70,7 +70,7 @@ lazy val dockerSettings = Seq(
     )
     cmds.takeWhile(!_.makeContent.startsWith("USER")) ++ injected ++ cmds.dropWhile(!_.makeContent.startsWith("USER"))
   },
-  libraryDependencies in Docker ++= if (ProjectDeps.javacv.isEnabled) ProjectDeps.javacv.dockerPlatforms else Nil
+  libraryDependencies in Docker ++= (if (ProjectDeps.javacv.isEnabled) ProjectDeps.javacv.dockerPlatforms else Nil)
 )
 
 // -----------------------------------------------------------------------

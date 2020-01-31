@@ -350,7 +350,7 @@ lazy val `drive-fuse` = (project in file("drive") / "fuse")
   .settings(
     commonSettings,
     name := "shadowcloud-drive-fuse",
-    resolvers += "jcenter" at "http://jcenter.bintray.com",
+    resolvers += "jcenter" at "https://jcenter.bintray.com",
     libraryDependencies ++= ProjectDeps.`jnr-fuse`
   )
   .dependsOn(`drive-core`)

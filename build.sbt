@@ -416,6 +416,7 @@ lazy val javafx = (project in file("javafx"))
   .dependsOn(core)
 
 lazy val desktopApp = (project in file("desktop-app"))
+  .dependsOn(`larray-bytestring`, coreAssembly, server, javafx, `drive-fuse`)
   .settings(
     commonSettings,
     packageSettings,
@@ -427,7 +428,6 @@ lazy val desktopApp = (project in file("desktop-app"))
        else Nil),
     fork in run := true
   )
-  .dependsOn(coreAssembly, server, javafx, `drive-fuse`)
   .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin)
 
 // -----------------------------------------------------------------------
@@ -485,3 +485,11 @@ lazy val shadowcloud = (project in file("."))
   )
   //.enablePlugins(com.github.sbtliquibase.SbtLiquibase)
   .aggregate(coreAssembly, `server-api-routes`)
+
+
+lazy val `larray-bytestring` = project
+  .settings(
+    commonSettings,
+    name := "larray-bytestring",
+    libraryDependencies ++= ProjectDeps.larray
+  )

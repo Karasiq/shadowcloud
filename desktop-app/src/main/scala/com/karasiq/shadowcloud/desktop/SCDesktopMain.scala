@@ -23,7 +23,9 @@ object SCDesktopMain extends App {
   implicit val actorSystem = ActorSystem("shadowcloud", config)
 
   val sc = ShadowCloud(actorSystem)
+
   import sc.implicits.executionContext
+
   sc.init()
 
   val httpServer = SCAkkaHttpServer(sc)

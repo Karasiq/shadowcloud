@@ -5,20 +5,18 @@
 package akka.util
 
 import java.io.{ObjectInputStream, ObjectOutputStream}
-import java.nio.{ByteBuffer, ByteOrder}
 import java.lang.{Iterable => JIterable}
+import java.nio.charset.{Charset, StandardCharsets}
+import java.nio.{ByteBuffer, ByteOrder}
+
+import xerial.larray.LArray
 
 import scala.annotation.{tailrec, varargs}
-import scala.collection.IndexedSeqOptimized
-import scala.collection.mutable.{Builder, WrappedArray}
-import scala.collection.immutable
-import scala.collection.immutable.{IndexedSeq, VectorBuilder, VectorIterator}
 import scala.collection.generic.CanBuildFrom
+import scala.collection.immutable.{IndexedSeq, VectorBuilder}
+import scala.collection.mutable.{Builder, WrappedArray}
+import scala.collection.{IndexedSeqOptimized, immutable}
 import scala.reflect.ClassTag
-import java.nio.charset.{Charset, StandardCharsets}
-
-import akka.util.ByteString.ByteString1C
-import xerial.larray.{LArray, LByteArray}
 
 object ByteString {
 
@@ -115,13 +113,17 @@ object ByteString {
   implicit val canBuildFrom: CanBuildFrom[TraversableOnce[Byte], Byte, ByteString] =
     new CanBuildFrom[TraversableOnce[Byte], Byte, ByteString] {
       def apply(ignore: TraversableOnce[Byte]): ByteStringBuilder = newBuilder
+
       def apply(): ByteStringBuilder = newBuilder
     }
 
   private[akka] object ByteString1C extends Companion {
     def fromString(s: String): ByteString1C = apply(s.getBytes)
+
     def apply(bytes: Array[Byte]): ByteString1C = apply(BSLArray.toLArray(bytes))
+
     def apply(bytes: LArray[Byte]): ByteString1C = new ByteString1C(bytes)
+
     val SerializationIdentity = 1.toByte
 
     def readFromInputStream(is: ObjectInputStream): ByteString1C = {
@@ -136,7 +138,7 @@ object ByteString {
    * A compact (unsliced) and unfragmented ByteString, implementation of ByteString1C.
    */
   @SerialVersionUID(3956956327691936932L)
-  final class ByteString1C private (private val bytes: LArray[Byte]) extends CompactByteString {
+  final class ByteString1C private(private val bytes: LArray[Byte]) extends CompactByteString {
     def apply(idx: Int): Byte = bytes(idx)
 
     override def length: Int = Math.min(bytes.length, Int.MaxValue).toInt
@@ -179,6 +181,7 @@ object ByteString {
       else toByteString1.drop(n)
 
     override def indexOf[B >: Byte](elem: B): Int = indexOf(elem, 0)
+
     override def indexOf[B >: Byte](elem: B, from: Int): Int = {
       if (from >= length) -1
       else {
@@ -220,14 +223,17 @@ object ByteString {
   /** INTERNAL API: ByteString backed by exactly one array, with start / end markers */
   private[akka] object ByteString1 extends Companion {
     val empty: ByteString1 = new ByteString1(LArray.emptyByteArray)
+
     def fromString(s: String): ByteString1 = apply(s.getBytes)
 
     def apply(bytes: Array[Byte]): ByteString1 = apply(bytes, 0, bytes.length)
+
     def apply(bytes: Array[Byte], startIndex: Int, length: Int): ByteString1 =
       if (length == 0) empty
       else new ByteString1(BSLArray.toLArray(bytes), Math.max(0, startIndex), Math.max(0, length))
 
     def apply(bytes: LArray[Byte]): ByteString1 = apply(bytes, 0, bytes.length)
+
     def apply(bytes: LArray[Byte], startIndex: Long, length: Long): ByteString1 =
       if (length == 0) empty
       else new ByteString1(bytes, Math.max(0L, startIndex), Math.max(0L, length))
@@ -241,7 +247,7 @@ object ByteString {
   /**
    * An unfragmented ByteString.
    */
-  final class ByteString1 private (private val bytes: LArray[Byte], private val startIndex: Long, val longLength: Long) extends ByteString with Serializable {
+  final class ByteString1 private(private val bytes: LArray[Byte], private val startIndex: Long, val longLength: Long) extends ByteString with Serializable {
     def length: Int = longLength.toInt
 
     private def this(bytes: LArray[Byte]) = this(bytes, 0, bytes.length)
@@ -313,8 +319,11 @@ object ByteString {
     def compact: CompactByteString =
       if (isCompact) ByteString1C(bytes) else ByteString1C(toArray)
 
-    def asByteBuffer: ByteBuffer =
-      bytes.toDirectByteBuffer.head.asReadOnlyBuffer()
+    def asByteBuffer: ByteBuffer = {
+      val b = bytes.toDirectByteBuffer.head.asReadOnlyBuffer()
+      b.position(startIndex.toInt).limit(length)
+      b
+    }
 
     def asByteBuffers: scala.collection.immutable.Iterable[ByteBuffer] = List(asByteBuffer)
 
@@ -338,6 +347,7 @@ object ByteString {
     }
 
     override def indexOf[B >: Byte](elem: B): Int = indexOf(elem, 0)
+
     override def indexOf[B >: Byte](elem: B, from: Int): Int = {
       if (from >= length) -1
       else {
@@ -355,7 +365,7 @@ object ByteString {
   }
 
   private[akka] object ByteStrings extends Companion {
-    def apply(bytestrings: Vector[ByteString1]): ByteString = new ByteStrings(bytestrings, (0 /: bytestrings)(_ + _.length))
+    def apply(bytestrings: Vector[ByteString1]): ByteString = new ByteStrings(bytestrings, (0 /: bytestrings) (_ + _.length))
 
     def apply(bytestrings: Vector[ByteString1], length: Int): ByteString = new ByteStrings(bytestrings, length)
 
@@ -416,7 +426,7 @@ object ByteString {
   /**
    * A ByteString with 2 or more fragments.
    */
-  final class ByteStrings private (private[akka] val bytestrings: Vector[ByteString1], val length: Int) extends ByteString with Serializable {
+  final class ByteStrings private(private[akka] val bytestrings: Vector[ByteString1], val length: Int) extends ByteString with Serializable {
     if (bytestrings.isEmpty) throw new IllegalArgumentException("bytestrings must not be empty")
     if (bytestrings.head.isEmpty) throw new IllegalArgumentException("bytestrings.head must not be empty")
 
@@ -434,14 +444,16 @@ object ByteString {
 
     /** Avoid `iterator` in performance sensitive code, call ops directly on ByteString instead */
     override def iterator: ByteIterator.MultiByteArrayIterator =
-      ByteIterator.MultiByteArrayIterator(bytestrings.toStream map { _.iterator })
+      ByteIterator.MultiByteArrayIterator(bytestrings.toStream map {
+        _.iterator
+      })
 
     def ++(that: ByteString): ByteString = {
       if (that.isEmpty) this
       else if (this.isEmpty) that
       else that match {
         case b: ByteString1C ⇒ ByteStrings(this, b.toByteString1)
-        case b: ByteString1  ⇒ ByteStrings(this, b)
+        case b: ByteString1 ⇒ ByteStrings(this, b)
         case bs: ByteStrings ⇒ ByteStrings(this, bs)
       }
     }
@@ -473,7 +485,9 @@ object ByteString {
 
     def asByteBuffer: ByteBuffer = compact.asByteBuffer
 
-    def asByteBuffers: scala.collection.immutable.Iterable[ByteBuffer] = bytestrings map { _.asByteBuffer }
+    def asByteBuffers: scala.collection.immutable.Iterable[ByteBuffer] = bytestrings map {
+      _.asByteBuffer
+    }
 
     def decodeString(charset: String): String = compact.decodeString(charset)
 
@@ -510,6 +524,7 @@ object ByteString {
 
     private def dropRight0(n: Int): ByteString = {
       val byteStringsSize = bytestrings.length
+
       @tailrec def dropRightWithFullDropsAndRemainig(fullDrops: Int, remainingToDrop: Int): ByteString = {
         val bs = bytestrings(byteStringsSize - fullDrops - 1)
         if (bs.length > remainingToDrop) {
@@ -559,6 +574,7 @@ object ByteString {
     }
 
     override def indexOf[B >: Byte](elem: B): Int = indexOf(elem, 0)
+
     override def indexOf[B >: Byte](elem: B, from: Int): Int = {
       if (from >= length) -1
       else {
@@ -615,8 +631,10 @@ object ByteString {
 
   private[akka] sealed trait Companion {
     def SerializationIdentity: Byte
+
     def readFromInputStream(is: ObjectInputStream): ByteString
   }
+
 }
 
 /**
@@ -629,7 +647,9 @@ object ByteString {
  */
 sealed abstract class ByteString extends IndexedSeq[Byte] with IndexedSeqOptimized[Byte, ByteString] {
   def apply(idx: Int): Byte
+
   private[akka] def byteStringCompanion: ByteString.Companion
+
   // override so that toString will also be `ByteString(...)` for the concrete subclasses
   // of ByteString which changed for Scala 2.12, see https://github.com/akka/akka/issues/21774
   override final def stringPrefix: String = "ByteString"
@@ -639,17 +659,21 @@ sealed abstract class ByteString extends IndexedSeq[Byte] with IndexedSeqOptimiz
   // *must* be overridden by derived classes. This construction is necessary
   // to specialize the return type, as the method is already implemented in
   // a parent trait.
-  // 
+  //
   // Avoid `iterator` in performance sensitive code, call ops directly on ByteString instead
   override def iterator: ByteIterator = throw new UnsupportedOperationException("Method iterator is not implemented in ByteString")
 
   override def head: Byte = apply(0)
+
   override def tail: ByteString = drop(1)
+
   override def last: Byte = apply(length - 1)
+
   override def init: ByteString = dropRight(1)
 
   // *must* be overridden by derived classes.
   override def take(n: Int): ByteString = throw new UnsupportedOperationException("Method take is not implemented in ByteString")
+
   override def takeRight(n: Int): ByteString = slice(length - n, length)
 
   // these methods are optimized in derived classes utilising the maximum knowlage about data layout available to them:
@@ -663,9 +687,13 @@ sealed abstract class ByteString extends IndexedSeq[Byte] with IndexedSeqOptimiz
   override def dropRight(n: Int): ByteString = throw new UnsupportedOperationException("Method dropRight is not implemented in ByteString")
 
   override def takeWhile(p: Byte ⇒ Boolean): ByteString = iterator.takeWhile(p).toByteString
+
   override def dropWhile(p: Byte ⇒ Boolean): ByteString = iterator.dropWhile(p).toByteString
-  override def span(p: Byte ⇒ Boolean): (ByteString, ByteString) =
-    { val (a, b) = iterator.span(p); (a.toByteString, b.toByteString) }
+
+  override def span(p: Byte ⇒ Boolean): (ByteString, ByteString) = {
+    val (a, b) = iterator.span(p);
+    (a.toByteString, b.toByteString)
+  }
 
   override def splitAt(n: Int): (ByteString, ByteString) = (take(n), drop(n))
 
@@ -690,6 +718,7 @@ sealed abstract class ByteString extends IndexedSeq[Byte] with IndexedSeqOptimiz
   protected[ByteString] def toArray: Array[Byte] = toArray[Byte]
 
   override def toArray[B >: Byte](implicit arg0: ClassTag[B]): Array[B] = iterator.toArray
+
   override def copyToArray[B >: Byte](xs: Array[B], start: Int, len: Int): Unit =
     iterator.copyToArray(xs, start, len)
 
@@ -714,7 +743,7 @@ sealed abstract class ByteString extends IndexedSeq[Byte] with IndexedSeqOptimiz
    * @param buffer a ByteBuffer to copy bytes to
    * @return the number of bytes actually copied
    */
-  // *must* be overridden by derived classes. 
+  // *must* be overridden by derived classes.
   def copyToBuffer(buffer: ByteBuffer): Int = throw new UnsupportedOperationException("Method copyToBuffer is not implemented in ByteString")
 
   /**
@@ -865,6 +894,7 @@ object CompactByteString {
  */
 sealed abstract class CompactByteString extends ByteString with Serializable {
   def isCompact: Boolean = true
+
   def compact: this.type = this
 }
 
@@ -876,7 +906,8 @@ sealed abstract class CompactByteString extends ByteString with Serializable {
 final class ByteStringBuilder extends Builder[Byte, ByteString] {
   builder ⇒
 
-  import ByteString.{ ByteString1C, ByteString1, ByteStrings }
+  import ByteString.{ByteString1, ByteString1C, ByteStrings}
+
   private var _length: Int = 0
   private val _builder: VectorBuilder[ByteString1] = new VectorBuilder[ByteString1]()
   private var _temp: Array[Byte] = _
@@ -1104,7 +1135,9 @@ final class ByteStringBuilder extends Builder[Byte, ByteString] {
    * Add a number of Shorts from an array to this builder.
    */
   def putShorts(array: Array[Short], start: Int, len: Int)(implicit byteOrder: ByteOrder): this.type =
-    fillByteBuffer(len * 2, byteOrder) { _.asShortBuffer.put(array, start, len) }
+    fillByteBuffer(len * 2, byteOrder) {
+      _.asShortBuffer.put(array, start, len)
+    }
 
   /**
    * Add a number of Ints from an array to this builder.
@@ -1116,7 +1149,9 @@ final class ByteStringBuilder extends Builder[Byte, ByteString] {
    * Add a number of Ints from an array to this builder.
    */
   def putInts(array: Array[Int], start: Int, len: Int)(implicit byteOrder: ByteOrder): this.type =
-    fillByteBuffer(len * 4, byteOrder) { _.asIntBuffer.put(array, start, len) }
+    fillByteBuffer(len * 4, byteOrder) {
+      _.asIntBuffer.put(array, start, len)
+    }
 
   /**
    * Add a number of Longs from an array to this builder.
@@ -1128,7 +1163,9 @@ final class ByteStringBuilder extends Builder[Byte, ByteString] {
    * Add a number of Longs from an array to this builder.
    */
   def putLongs(array: Array[Long], start: Int, len: Int)(implicit byteOrder: ByteOrder): this.type =
-    fillByteBuffer(len * 8, byteOrder) { _.asLongBuffer.put(array, start, len) }
+    fillByteBuffer(len * 8, byteOrder) {
+      _.asLongBuffer.put(array, start, len)
+    }
 
   /**
    * Add a number of Floats from an array to this builder.
@@ -1140,7 +1177,9 @@ final class ByteStringBuilder extends Builder[Byte, ByteString] {
    * Add a number of Floats from an array to this builder.
    */
   def putFloats(array: Array[Float], start: Int, len: Int)(implicit byteOrder: ByteOrder): this.type =
-    fillByteBuffer(len * 4, byteOrder) { _.asFloatBuffer.put(array, start, len) }
+    fillByteBuffer(len * 4, byteOrder) {
+      _.asFloatBuffer.put(array, start, len)
+    }
 
   /**
    * Add a number of Doubles from an array to this builder.
@@ -1152,7 +1191,9 @@ final class ByteStringBuilder extends Builder[Byte, ByteString] {
    * Add a number of Doubles from an array to this builder.
    */
   def putDoubles(array: Array[Double], start: Int, len: Int)(implicit byteOrder: ByteOrder): this.type =
-    fillByteBuffer(len * 8, byteOrder) { _.asDoubleBuffer.put(array, start, len) }
+    fillByteBuffer(len * 8, byteOrder) {
+      _.asDoubleBuffer.put(array, start, len)
+    }
 
   def clear(): Unit = {
     _builder.clear()
@@ -1178,7 +1219,9 @@ final class ByteStringBuilder extends Builder[Byte, ByteString] {
   def asOutputStream: java.io.OutputStream = new java.io.OutputStream {
     def write(b: Int): Unit = builder += b.toByte
 
-    override def write(b: Array[Byte], off: Int, len: Int): Unit = { builder.putBytes(b, off, len) }
+    override def write(b: Array[Byte], off: Int, len: Int): Unit = {
+      builder.putBytes(b, off, len)
+    }
   }
 
   /**

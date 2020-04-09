@@ -2,31 +2,30 @@ package com.karasiq.shadowcloud.drive.fuse
 
 import java.nio.file.Paths
 
-import scala.collection.concurrent.TrieMap
-import scala.concurrent.{Await, ExecutionContext, Future, Promise}
-import scala.language.implicitConversions
-import scala.util.{Failure, Success, Try}
-import scala.util.control.NonFatal
-
 import akka.Done
 import akka.actor.ActorRef
 import akka.event.LoggingAdapter
 import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
-import com.typesafe.config.Config
-import jnr.ffi.{Platform, Pointer}
-import jnr.ffi.Platform.OS
-import ru.serce.jnrfuse.{ErrorCodes, FuseFillDir, FuseStubFS}
-import ru.serce.jnrfuse.struct.{FileStat, FuseFileInfo, Statvfs}
-
-import com.karasiq.common.configs.ConfigUtils
 import com.karasiq.common.configs.ConfigImplicits._
+import com.karasiq.common.configs.ConfigUtils
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.drive.FileIOScheduler
 import com.karasiq.shadowcloud.drive.config.SCDriveConfig
 import com.karasiq.shadowcloud.exceptions.SCException
 import com.karasiq.shadowcloud.model.{File, Folder, Path}
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
+import com.typesafe.config.Config
+import jnr.ffi.Platform.OS
+import jnr.ffi.{Platform, Pointer}
+import ru.serce.jnrfuse.struct.{FileStat, FuseFileInfo, Statvfs}
+import ru.serce.jnrfuse.{ErrorCodes, FuseFillDir, FuseStubFS}
+
+import scala.collection.concurrent.TrieMap
+import scala.concurrent.{Await, ExecutionContext, Future, Promise}
+import scala.language.implicitConversions
+import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 object SCFileSystem {
   def apply(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAdapter)(implicit ec: ExecutionContext): SCFileSystem = {
@@ -37,8 +36,8 @@ object SCFileSystem {
     Try(config.getString("mount-path")).getOrElse {
       Platform.getNativePlatform.getOS match {
         case OS.WINDOWS ⇒ "S:\\"
-        case OS.DARWIN ⇒ "/Volumes/shadowcloud"
-        case _ ⇒ "/mnt/sc"
+        case OS.DARWIN  ⇒ "/Volumes/shadowcloud"
+        case _          ⇒ "/mnt/sc"
       }
     }
   }
@@ -50,8 +49,9 @@ object SCFileSystem {
         try {
           fs.mount()
           promise.success(Done)
-        } catch { case NonFatal(exc) ⇒
-          promise.failure(exc)
+        } catch {
+          case NonFatal(exc) ⇒
+            promise.failure(exc)
         }
       }
     })
@@ -61,11 +61,11 @@ object SCFileSystem {
 
   private implicit def implicitStrToPath(path: String): Path = {
     def normalizePath(path: Path): Path = path.nodes match {
-      case nodes :+ "." ⇒ normalizePath(Path(nodes))
-      case nodes :+ "" ⇒ normalizePath(Path(nodes))
+      case nodes :+ "."  ⇒ normalizePath(Path(nodes))
+      case nodes :+ ""   ⇒ normalizePath(Path(nodes))
       case nodes :+ ".." ⇒ normalizePath(Path(nodes.dropRight(1)))
       case nodes :+ last ⇒ normalizePath(Path(nodes)) / last
-      case Nil ⇒ Path.root 
+      case Nil           ⇒ Path.root
     }
     normalizePath(Path(path.split(":?[/\\\\]+")))
   }
@@ -78,14 +78,14 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
   import com.karasiq.shadowcloud.drive.VirtualFSDispatcher._
 
   protected implicit val timeout = Timeout(config.fileIO.timeout)
-
   protected object settings {
-    val fuseConfig = config.rootConfig.getConfigIfExists("fuse")
-    val mountPath = SCFileSystem.getMountPath(fuseConfig)
-    val debug = fuseConfig.withDefault(false, _.getBoolean("debug"))
-    val options = fuseConfig.withDefault(Nil, _.getStrings("options"))
-    val synchronizedMode = fuseConfig.withDefault(true, _.getBoolean("synchronized"))
+    val fuseConfig             = config.rootConfig.getConfigIfExists("fuse")
+    val mountPath              = SCFileSystem.getMountPath(fuseConfig)
+    val debug                  = fuseConfig.withDefault(false, _.getBoolean("debug"))
+    val options                = fuseConfig.withDefault(Nil, _.getStrings("options"))
+    val synchronizedMode       = fuseConfig.withDefault(true, _.getBoolean("synchronized"))
     val persistRevisionOnFSync = fuseConfig.withDefault(false, _.getBoolean("persist-revision-on-fsync"))
+    val flushOnFSync           = fuseConfig.withDefault(false, _.getBoolean("flush-on-fsync"))
   }
 
   protected val fileHandles = TrieMap.empty[Long, FileHandle]
@@ -96,10 +96,12 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
       import java.nio.file.Files
       Try(Files.createDirectory(Paths.get(mountPath)))
     }
-    mount(Paths.get(mountPath), blocking, debug, options.toArray)
+    mount(Paths.get(mountPath), blocking, debug, Array("-o", options.mkString(",")))
   }
 
   protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T], critical: Boolean = false, handle: Long = 0): T = {
+    if (critical) log.info(s"IO operation requested: $message")
+
     def getResult() = Await.result(status.unwrapFuture(fsDispatcher ? message), timeout.duration)
     val result = try {
       if (critical && settings.synchronizedMode) {
@@ -109,14 +111,14 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
       } else {
         getResult()
       }
-    } catch { case NonFatal(error) ⇒
-      if (critical || log.isDebugEnabled) log.error(error, "IO operation failed: {}", message)
-      throw error
+    } catch {
+      case NonFatal(error) ⇒
+        if (critical || settings.debug) log.error(error, "IO operation failed: {}", message)
+        throw error
     }
-    if (critical) log.debug("IO operation: {} -> {}", message, result)
+    if (critical) log.info("IO operation: {} -> {}", message, result)
     result
   }
-
 
   override def getattr(path: String, stat: FileStat): Int = {
     def returnFolderAttrs(folder: Folder): Unit = {
@@ -147,40 +149,43 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
       stat.st_atim.tv_nsec.set((file.timestamp.lastModified % 1000) * 1000)
     }
 
-    val folder = Try(dispatch(GetFolder(path), GetFolder))
-    lazy val file = Try(dispatch(GetFile(path), GetFile))
-    if (folder.isSuccess) {
+    lazy val folder = Try(dispatch(GetFolder(path), GetFolder))
+    lazy val file   = Try(dispatch(GetFile(path), GetFile))
+
+    if (isTrashFile(path)) {
+      -ErrorCodes.ENOENT()
+    } else if (folder.isSuccess) {
       returnFolderAttrs(folder.get)
       0
     } else if (file.isSuccess) {
       returnFileAttrs(file.get)
       0
-    } else {
-      -ErrorCodes.ENOENT()
-    }
+    } else -ErrorCodes.ENOENT()
   }
 
   override def mkdir(path: String, mode: Long): Int = {
+    if (isTrashFile(path)) return 0
+
     Try(dispatch(CreateFolder(path), CreateFolder, critical = true)) match {
-      case Success(_) ⇒ 0
+      case Success(_)                                       ⇒ 0
       case Failure(exc) if SCException.isAlreadyExists(exc) ⇒ -ErrorCodes.EEXIST()
-      case Failure(_) ⇒ -ErrorCodes.ENOENT()
+      case Failure(_)                                       ⇒ -ErrorCodes.ENOENT()
     }
   }
 
   override def unlink(path: String): Int = {
     Try(dispatch(DeleteFile(path), DeleteFile, critical = true)) match {
-      case Success(_) ⇒ 0
+      case Success(_)                                  ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-      case Failure(_) ⇒ -ErrorCodes.EIO()
+      case Failure(_)                                  ⇒ -ErrorCodes.EIO()
     }
   }
 
   override def rmdir(path: String): Int = {
     Try(dispatch(DeleteFolder(path), DeleteFolder, critical = true)) match {
-      case Success(_) ⇒ 0
+      case Success(_)                                  ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-      case Failure(_) ⇒ -ErrorCodes.EIO()
+      case Failure(_)                                  ⇒ -ErrorCodes.EIO()
     }
   }
 
@@ -189,19 +194,19 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
       .orElse(Try(dispatch(RenameFolder(oldpath, newpath), RenameFolder, critical = true)))
 
     file match {
-      case Success(_) ⇒ 0
-      case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
+      case Success(_)                                       ⇒ 0
+      case Failure(exc) if SCException.isNotFound(exc)      ⇒ -ErrorCodes.ENOENT()
       case Failure(exc) if SCException.isAlreadyExists(exc) ⇒ -ErrorCodes.EEXIST()
-      case Failure(_) ⇒ -ErrorCodes.EIO()
+      case Failure(_)                                       ⇒ -ErrorCodes.EIO()
     }
   }
 
   override def truncate(path: String, size: Long): Int = {
     Try(dispatch(DispatchIOOperation(path, FileIOScheduler.CutFile(size)), DispatchIOOperation, critical = true)) match {
-      case Success(_) ⇒ 0
-      case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
+      case Success(_)                                       ⇒ 0
+      case Failure(exc) if SCException.isNotFound(exc)      ⇒ -ErrorCodes.ENOENT()
       case Failure(exc) if SCException.isAlreadyExists(exc) ⇒ -ErrorCodes.EEXIST()
-      case Failure(_) ⇒ -ErrorCodes.EIO()
+      case Failure(_)                                       ⇒ -ErrorCodes.EIO()
     }
   }
 
@@ -214,19 +219,26 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
         0
 
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-      case Failure(_) ⇒ -ErrorCodes.EIO()
+      case Failure(_)                                  ⇒ -ErrorCodes.EIO()
     }
   }
 
   override def read(path: String, buf: Pointer, size: Long, offset: Long, fi: FuseFileInfo): Int = {
     def tryRead() = {
-      Try(dispatch(DispatchIOOperation(path, FileIOScheduler.ReadData(ChunkRanges.Range(offset, offset + size))), DispatchIOOperation, critical = true, handle = fi.fh.longValue()))
+      Try(
+        dispatch(
+          DispatchIOOperation(path, FileIOScheduler.ReadData(ChunkRanges.Range(offset, offset + size))),
+          DispatchIOOperation,
+          critical = true,
+          handle = fi.fh.longValue()
+        )
+      )
     }
 
     var result: Try[Any] = tryRead()
-    var tries = 3
+    var tries            = 3
     while (result.isFailure && tries > 0) {
-      Thread.sleep(5000)
+      // Thread.sleep(5000)
       result = tryRead()
       tries -= 1
     }
@@ -237,7 +249,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
         data.length
 
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-      case _ ⇒ -ErrorCodes.EIO()
+      case _                                           ⇒ -ErrorCodes.EIO()
     }
   }
 
@@ -248,35 +260,48 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
       ByteString.fromArrayUnsafe(array)
     }
 
-    def tryWrite() = Try(dispatch(DispatchIOOperation(path, FileIOScheduler.WriteData(offset, bytes)), DispatchIOOperation, critical = true, handle = fi.fh.longValue()))
+    def tryWrite() =
+      Try(
+        dispatch(
+          DispatchIOOperation(path, FileIOScheduler.WriteData(offset, bytes)),
+          DispatchIOOperation,
+          critical = true,
+          handle = fi.fh.longValue()
+        )
+      )
 
     var result: Try[Any] = tryWrite()
-    var tries = 3
+    var tries            = 3
     while (result.isFailure && tries > 0) {
-      Thread.sleep(5000)
+      // Thread.sleep(5000)
       result = tryWrite()
       tries -= 1
     }
 
     result match {
       case Success(FileIOScheduler.WriteData.Success(data, _)) ⇒ data.data.length
-      case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-      case _ ⇒ -ErrorCodes.EIO()
+      case Failure(exc) if SCException.isNotFound(exc)         ⇒ -ErrorCodes.ENOENT()
+      case _                                                   ⇒ -ErrorCodes.EIO()
     }
   }
 
   override def statfs(path: String, stbuf: Statvfs): Int = {
     Try(dispatch(GetHealth(path), GetHealth)) match {
       case Success(health) ⇒
-        stbuf.f_frsize.set(512) // fs block size
-        stbuf.f_blocks.set(health.totalSpace / 512) // total data blocks in file system
-        stbuf.f_bfree.set(health.writableSpace / 512) // free blocks in fs
+        // MacOS limits this to 4.5 PB
+        stbuf.f_bsize.set(config.blockSize)                      // fs block size
+        stbuf.f_frsize.set(config.blockSize)                     // fs block size
+        stbuf.f_blocks.set(health.totalSpace / config.blockSize) // total data blocks in file system
+        stbuf.f_bfree.set(health.freeSpace / config.blockSize)   // free blocks in fs
+        stbuf.f_bavail.set(health.freeSpace / config.blockSize)  // free blocks in fs
+        stbuf.f_ffree.set(Int.MaxValue)
+        stbuf.f_favail.set(Int.MaxValue)
         0
 
       case Failure(_) ⇒
-        stbuf.f_frsize.set(512) // fs block size
         stbuf.f_blocks.set(0) // total data blocks in file system
-        stbuf.f_bfree.set(0) // free blocks in fs
+        stbuf.f_bfree.set(0)  // free blocks in fs
+        stbuf.f_bavail.set(0) // free blocks in fs
         0
 
       // case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
@@ -291,12 +316,15 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
         0
 
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-      case Failure(_) ⇒ -ErrorCodes.EIO()
+      case Failure(_)                                  ⇒ -ErrorCodes.EIO()
     }
   }
 
   override def fsync(path: String, isdatasync: Int, fi: FuseFileInfo): Int = {
-    val flushResult = Try(dispatch(DispatchIOOperation(path, FileIOScheduler.Flush), DispatchIOOperation, critical = true, handle = fi.fh.longValue()))
+    if (!settings.flushOnFSync) return 0
+
+    val flushResult =
+        Try(dispatch(DispatchIOOperation(path, FileIOScheduler.Flush), DispatchIOOperation, critical = true, handle = fi.fh.longValue()))
 
     if (settings.persistRevisionOnFSync) {
       val persistResult = Try {
@@ -306,14 +334,14 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
 
       persistResult match {
         case Success(FileIOScheduler.PersistRevision.Success(_, _)) ⇒ 0
-        case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-        case _ ⇒ -ErrorCodes.EIO()
+        case Failure(exc) if SCException.isNotFound(exc)            ⇒ -ErrorCodes.ENOENT()
+        case _                                                      ⇒ -ErrorCodes.EIO()
       }
     } else {
       flushResult match {
         case Success(FileIOScheduler.Flush.Success(_, _)) ⇒ 0
-        case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-        case _ ⇒ -ErrorCodes.EIO()
+        case Failure(exc) if SCException.isNotFound(exc)  ⇒ -ErrorCodes.ENOENT()
+        case _                                            ⇒ -ErrorCodes.EIO()
       }
     }
   }
@@ -330,16 +358,31 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
         0
 
       case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-      case _ ⇒ -ErrorCodes.EIO()
+      case _                                           ⇒ -ErrorCodes.EIO()
     }
   }
 
   override def create(path: String, mode: Long, fi: FuseFileInfo): Int = {
+    if (isTrashFile(path)) {
+      log.warning(s"Trash file not created: $path")
+      -ErrorCodes.EACCES()
+    }
+
     Try(dispatch(CreateFile(path), CreateFile, critical = true)) match {
-      case Success(_) ⇒ 0
+      case Success(_)                                       ⇒ 0
       case Failure(exc) if SCException.isAlreadyExists(exc) ⇒ -ErrorCodes.EEXIST()
-      case Failure(exc) if SCException.isNotFound(exc) ⇒ -ErrorCodes.ENOENT()
-      case _ ⇒ -ErrorCodes.EIO()
+      case Failure(exc) if SCException.isNotFound(exc)      ⇒ -ErrorCodes.ENOENT()
+      case _                                                ⇒ -ErrorCodes.EIO()
+    }
+  }
+
+  private[this] def isTrashFile(path: Path): Boolean = {
+    if (path.isRoot) return false
+
+    Platform.getNativePlatform.getOS match {
+      case OS.DARWIN  => path.name.startsWith("._") || path.name == ".DS_Store"
+      case OS.WINDOWS => path.name == "$Recycle.bin"
+      case _          => false
     }
   }
 }

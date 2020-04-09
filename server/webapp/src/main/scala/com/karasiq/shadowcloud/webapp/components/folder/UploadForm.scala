@@ -53,8 +53,11 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
   private[this] val uploadQueue        = Var(List.empty[UploadRequest])
   private[this] val uploading          = Var(List.empty[UploadRequest])
 
-  uploadQueue.triggerLater(processQueue())
-  uploading.triggerLater(processQueue())
+  private[this] lazy val renderedForm = Form(
+    action := "/",
+    `class` := "dropzone",
+    Dropzone(folderContext.regionId, () => folderContext.selected.now, _ => folderContext.update(folderContext.selected.now))
+  ).render
 
   def renderTag(md: ModifierT*): TagT = {
     val editor = TextEditor.memoized("sc-text-upload") { editor ⇒
@@ -74,13 +77,7 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
         appContext.locale.uploadFiles,
         "upload-files",
         NoIcon,
-        folderContext.selected.map { path =>
-          Form(
-            action := "/",
-            `class` := "dropzone",
-            Dropzone(folderContext.regionId, path, _ => folderContext.update(path))
-          )
-        }
+        renderedForm
       ),
       NavigationTab(appContext.locale.pasteText, "paste-text", NoIcon, editor)
     )
@@ -99,59 +96,5 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
     Button(ButtonStyle.info)(AppIcons.upload, appContext.locale.uploadFiles, md, onclick := Callback.onClick { _ ⇒
       renderModal().show()
     })
-  }
-
-  private[this] def renderProgressBar(fileName: String, progress: Rx[Int]): TagT = {
-    val styles = Seq(ProgressBarStyle.success, ProgressBarStyle.striped, ProgressBarStyle.animated)
-    div(
-      div(b(fileName)),
-      ProgressBar.withLabel(progress).renderTag(styles: _*),
-      hr
-    )
-  }
-
-  private[this] def processQueue(): Unit = {
-    val (toUpload, rest) = {
-      @tailrec def limitUploads(list: Seq[UploadRequest], maxSize: Long, currentCount: Int = 0): Seq[UploadRequest] = {
-        val newListSize = list
-          .take(currentCount + 1)
-          .map(_.file.size.toLong)
-          .sum
-
-        if (newListSize > maxSize || currentCount >= list.length)
-          list.take(currentCount)
-        else
-          limitUploads(list, newListSize, currentCount + 1)
-      }
-
-      val nextUploadsLimit: Long = maxUploadsSize - uploading.now.map(_.file.size.toLong).sum
-
-      val nextDownloads = uploadQueue.now
-        .filterNot(uploading.now.contains)
-
-      val toUpload = limitUploads(nextDownloads, nextUploadsLimit, if (uploading.now.isEmpty) 1 else 0)
-        .take(maxUploads - uploading.now.length)
-
-      (toUpload, nextDownloads.drop(toUpload.length))
-    }
-
-    if (toUpload.nonEmpty) {
-      toUpload.foreach { request ⇒
-        val (progressRx, fileFuture) = appContext.api.uploadFile(request.regionId, request.path / request.file.name, request.file)
-        val progressBar              = renderProgressBar(request.file.name, progressRx).render
-
-        uploadProgressBars.appendChild(progressBar)
-        fileFuture.onComplete { _ ⇒
-          uploading() = uploading.now.filterNot(_ == request)
-          uploadProgressBars.removeChild(progressBar)
-          progressRx.kill()
-        }
-
-        fileFuture.foreach(fileController.addFile)
-      }
-
-      uploading() = uploading.now ++ toUpload
-      uploadQueue() = rest
-    }
   }
 }

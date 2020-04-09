@@ -1,15 +1,9 @@
 package com.karasiq.shadowcloud.actors
 
-import scala.concurrent.Future
-import scala.concurrent.duration._
-import scala.language.postfixOps
-import scala.util.{Failure, Success}
-
 import akka.actor.{Actor, ActorLogging, ActorRef, Kill, PossiblyHarmful, Props, Status, Terminated}
 import akka.pattern.{ask, pipe}
 import akka.stream._
 import akka.stream.scaladsl.{Sink, Source}
-
 import com.karasiq.common.memory.SizeUnit
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
@@ -20,69 +14,74 @@ import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.exceptions.{RegionException, StorageException}
-import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.utils._
 import com.karasiq.shadowcloud.storage.props.StorageProps
-import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
+import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.streams.utils.AkkaStreamUtils
 import com.karasiq.shadowcloud.utils.Utils
 
+import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.language.postfixOps
+import scala.util.{Failure, Success}
+
 object RegionDispatcher {
   // Messages
   sealed trait Message
-  case class AttachStorage(storageId: StorageId, storageProps: StorageProps,
-                           dispatcher: ActorRef, health: StorageHealth = StorageHealth.empty) extends Message
+  case class AttachStorage(storageId: StorageId, storageProps: StorageProps, dispatcher: ActorRef, health: StorageHealth = StorageHealth.empty)
+      extends Message
   final case class DetachStorage(storageId: StorageId) extends Message
-  case object GetStorages extends Message with MessageStatus[String, Seq[RegionStorage]]
-  final case class GetChunkStatus(chunk: Chunk) extends Message
-  object GetChunkStatus extends MessageStatus[Chunk, ChunkStatus]
-  case object GetHealth extends Message with MessageStatus[RegionId, RegionHealth]
+  case object GetStorages                              extends Message with MessageStatus[String, Seq[RegionStorage]]
+  final case class GetChunkStatus(chunk: Chunk)        extends Message
+  object GetChunkStatus                                extends MessageStatus[Chunk, ChunkStatus]
+  case object GetHealth                                extends Message with MessageStatus[RegionId, RegionHealth]
 
-  final case class WriteIndex(diff: FolderIndexDiff) extends Message
-  object WriteIndex extends MessageStatus[FolderIndexDiff, IndexDiff]
-  final case class GetChunkIndex(scope: IndexScope = IndexScope.default) extends Message
-  object GetChunkIndex extends MessageStatus[RegionId, ChunkIndex]
-  final case class GetFolderIndex(scope: IndexScope = IndexScope.default) extends Message
-  object GetFolderIndex extends MessageStatus[RegionId, FolderIndex]
+  final case class WriteIndex(diff: FolderIndexDiff)                        extends Message
+  object WriteIndex                                                         extends MessageStatus[FolderIndexDiff, IndexDiff]
+  final case class GetChunkIndex(scope: IndexScope = IndexScope.default)    extends Message
+  object GetChunkIndex                                                      extends MessageStatus[RegionId, ChunkIndex]
+  final case class GetFolderIndex(scope: IndexScope = IndexScope.default)   extends Message
+  object GetFolderIndex                                                     extends MessageStatus[RegionId, FolderIndex]
   final case class GetIndexSnapshot(scope: IndexScope = IndexScope.default) extends Message
-  object GetIndexSnapshot extends MessageStatus[RegionId, IndexMerger.State[RegionKey]]
+  object GetIndexSnapshot                                                   extends MessageStatus[RegionId, IndexMerger.State[RegionKey]]
 
-  case object Synchronize extends Message with MessageStatus[RegionId, Map[StorageId, SyncReport]]
+  case object Synchronize  extends Message with MessageStatus[RegionId, Map[StorageId, SyncReport]]
   case object CompactIndex extends Message
 
-  final case class GetFiles(path: Path, scope: IndexScope = IndexScope.default) extends Message
-  object GetFiles extends MessageStatus[Path, Set[File]]
+  final case class GetFiles(path: Path, scope: IndexScope = IndexScope.default)  extends Message
+  object GetFiles                                                                extends MessageStatus[Path, Set[File]]
   final case class GetFolder(path: Path, scope: IndexScope = IndexScope.default) extends Message
-  object GetFolder extends MessageStatus[Path, Folder]
-  final case class GetFileAvailability(file: File) extends Message
-  object GetFileAvailability extends MessageStatus[File, FileAvailability]
+  object GetFolder                                                               extends MessageStatus[Path, Folder]
+  final case class GetFileAvailability(file: File)                               extends Message
+  object GetFileAvailability                                                     extends MessageStatus[File, FileAvailability]
 
-  final case class WriteChunk(chunk: Chunk) extends Message
-  case object WriteChunk extends MessageStatus[Chunk, Chunk]
-  final case class ReadChunk(chunk: Chunk) extends Message
-  case object ReadChunk extends MessageStatus[Chunk, Chunk]
+  final case class WriteChunk(chunk: Chunk)                                            extends Message
+  case object WriteChunk                                                               extends MessageStatus[Chunk, Chunk]
+  final case class ReadChunk(chunk: Chunk)                                             extends Message
+  case object ReadChunk                                                                extends MessageStatus[Chunk, Chunk]
   final case class RewriteChunk(chunk: Chunk, newAffinity: Option[ChunkWriteAffinity]) extends Message
 
   // Internal messages
-  private[actors] sealed trait InternalMessage extends Message with PossiblyHarmful
+  private[actors] sealed trait InternalMessage                                                                              extends Message with PossiblyHarmful
   private[actors] final case class PushDiffs(storageId: StorageId, diffs: Seq[(SequenceNr, IndexDiff)], pending: IndexDiff) extends InternalMessage
-  private[actors] final case class PullStorageIndex(storageId: StorageId) extends InternalMessage
+  private[actors] final case class PullStorageIndex(storageId: StorageId)                                                   extends InternalMessage
 
-  private[actors] final case class ChunkReadSuccess(storageId: Option[String], chunk: Chunk) extends InternalMessage
+  private[actors] final case class ChunkReadSuccess(storageId: Option[String], chunk: Chunk)                  extends InternalMessage
   private[actors] final case class ChunkReadFailed(storageId: Option[String], chunk: Chunk, error: Throwable) extends InternalMessage
-  private[actors] final case class ChunkWriteSuccess(storageId: StorageId, chunk: Chunk) extends InternalMessage
-  private[actors] final case class ChunkWriteFailed(storageId: StorageId, chunk: Chunk, error: Throwable) extends InternalMessage
-  private[actors] final case object RetryPendingChunks extends InternalMessage
+  private[actors] final case class ChunkWriteSuccess(storageId: StorageId, chunk: Chunk)                      extends InternalMessage
+  private[actors] final case class ChunkWriteFailed(storageId: StorageId, chunk: Chunk, error: Throwable)     extends InternalMessage
+  private[actors] final case object RetryPendingChunks                                                        extends InternalMessage
 
   private[actors] final case class EnqueueIndexDiff(diff: IndexDiff) extends InternalMessage
-  private[actors] final case class MarkAsPending(diff: IndexDiff) extends InternalMessage
-  private[actors] final case class WriteIndexDiff(diff: IndexDiff) extends InternalMessage
+  private[actors] final case class MarkAsPending(diff: IndexDiff)    extends InternalMessage
+  private[actors] final case class WriteIndexDiff(diff: IndexDiff)   extends InternalMessage
 
   // Props
   def props(regionId: RegionId, regionProps: RegionConfig): Props = {
@@ -98,17 +97,17 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
-  private[this] implicit val sc = ShadowCloud()
+  private[this] implicit val sc           = ShadowCloud()
   private[this] implicit val materializer = ActorMaterializer()
   import context.dispatcher
   import sc.implicits.defaultTimeout
 
   val storageTracker = StorageTracker()
-  val chunksTracker = ChunksTracker(regionId, regionConfig, storageTracker)
-  val indexTracker = RegionIndexTracker(regionId, chunksTracker)
+  val chunksTracker  = ChunksTracker(regionId, regionConfig, storageTracker)
+  val indexTracker   = RegionIndexTracker(regionId, chunksTracker)
 
-  private[this] implicit val regionContext = RegionContext(regionId, regionConfig, self,
-    storageTracker, chunksTracker.chunks, indexTracker.globalIndex)
+  private[this] implicit val regionContext =
+    RegionContext(regionId, regionConfig, self, storageTracker, chunksTracker.chunks, indexTracker.globalIndex)
 
   private[this] implicit val storageSelector = StorageSelector.fromClass(regionConfig.storageSelector)
 
@@ -120,7 +119,8 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
   // -----------------------------------------------------------------------
   // Streams
   // -----------------------------------------------------------------------
-  private[this] val pendingIndexQueue = Source.queue[IndexDiff](sc.config.queues.regionDiffs, OverflowStrategy.dropNew)
+  private[this] val pendingIndexQueue = Source
+    .queue[IndexDiff](sc.config.queues.regionDiffs, OverflowStrategy.dropNew)
     .via(AkkaStreamUtils.groupedOrInstant(sc.config.queues.regionDiffs, sc.config.queues.regionDiffsTime))
     .map(_.fold(IndexDiff.empty)((d1, d2) ⇒ d1.merge(d2)))
     .filter(_.nonEmpty)
@@ -230,9 +230,11 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
       chunksTracker.chunkIO.readChunk(chunk, sender())
 
     case WriteChunk(chunk) ⇒
+      gcActor ! RegionGC.Reserve(Set(chunk.withoutData))
       chunksTracker.chunkIO.writeChunk(chunk, sender())
 
     case RewriteChunk(chunk, newAffinity) ⇒
+      gcActor ! RegionGC.Reserve(Set(chunk.withoutData))
       chunksTracker.chunkIO.repairChunk(chunk, newAffinity, sender())
 
     case ChunkReadSuccess(storageId, chunk) ⇒
@@ -295,8 +297,9 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
       storage.dispatcher ! StorageIndex.OpenIndex(regionId)
       storage.dispatcher ! StorageDispatcher.GetHealth(true)
 
-      val indexFuture = RegionIndex.GetIndex.unwrapFuture(storage.dispatcher ?
-        StorageIndex.Envelope(regionId, RegionIndex.GetIndex))
+      val indexFuture = indexTracker.storages.io
+        .synchronize(storage)
+        .flatMap(_ => indexTracker.storages.io.getIndex(storage))
 
       indexFuture.onComplete {
         case Success(IndexMerger.State(Nil, IndexDiff.empty)) | Failure(StorageException.NotFound(_)) ⇒
@@ -304,7 +307,10 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
           val newDiff = indexTracker.indexes.toMergedDiff
             .copy(chunks = ChunkIndexDiff.empty)
             .creates
-          if (newDiff.nonEmpty) indexTracker.storages.io.writeIndex(storage, newDiff)
+          if (newDiff.nonEmpty) {
+            indexTracker.storages.io.writeIndex(storage, newDiff)
+            indexTracker.storages.io.synchronize(storage)
+          }
 
         case Success(IndexMerger.State(diffs, pending)) ⇒
           log.debug("Storage {} index fetched: {} ({})", storageId, diffs, pending)
@@ -319,52 +325,54 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
       indexTracker.indexes.markAsPending(pending)
       indexTracker.storages.state.addStorageDiffs(storageId, diffs)
 
-    case StorageEnvelope(storageId, event: StorageEvents.Event) if storageTracker.contains(storageId) ⇒ event match {
-      case StorageEvents.IndexLoaded(`regionId`, state) ⇒
-        log.info("Storage [{}] index loaded: {} diffs", storageId, state.diffs.length)
-        indexTracker.storages.state.dropStorageDiffs(storageId)
-        indexTracker.storages.state.addStorageDiffs(storageId, state.diffs)
-        val deletedChunks = {
-          val oldIndex = indexTracker.storages.state.extractIndex(storageId)
-          val newIndex = IndexMerger.restore(state)
-          newIndex.chunks.diff(oldIndex.chunks).deletedChunks
-        }
-        deletedChunks.foreach(chunksTracker.storages.state.unregisterChunk(storageId, _))
-        schedules.deferGC()
+    case StorageEnvelope(storageId, event: StorageEvents.Event) if storageTracker.contains(storageId) ⇒
+      event match {
+        case StorageEvents.IndexLoaded(`regionId`, state) ⇒
+          log.info("Storage [{}] index loaded: {} diffs", storageId, state.diffs.length)
+          indexTracker.storages.state.dropStorageDiffs(storageId)
+          indexTracker.storages.state.addStorageDiffs(storageId, state.diffs)
+          val deletedChunks = {
+            val oldIndex = indexTracker.storages.state.extractIndex(storageId)
+            val newIndex = IndexMerger.restore(state)
+            newIndex.chunks.diff(oldIndex.chunks).deletedChunks
+          }
+          deletedChunks.foreach(chunksTracker.storages.state.unregisterChunk(storageId, _))
+          schedules.deferGC()
 
-      case StorageEvents.IndexUpdated(`regionId`, sequenceNr, diff, _) ⇒
-        log.debug("Storage [{}] index updated: {}", storageId, diff)
-        indexTracker.storages.state.addStorageDiff(storageId, sequenceNr, diff)
-        schedules.deferGC()
+        case StorageEvents.IndexUpdated(`regionId`, sequenceNr, diff, _) ⇒
+          log.debug("Storage [{}] index updated: {}", storageId, diff)
+          indexTracker.storages.state.addStorageDiff(storageId, sequenceNr, diff)
+          schedules.deferGC()
+          gcActor ! RegionGC.UnReserve(diff.folders.folders.flatMap(_.newFiles).flatMap(_.chunks).toSet)
 
-      case StorageEvents.PendingIndexUpdated(`regionId`, diff) ⇒
-        log.debug("Storage [{}] pending index updated: {}", storageId, diff)
-        // globalIndex.addPending(diff)
+        case StorageEvents.PendingIndexUpdated(`regionId`, diff) ⇒
+          log.debug("Storage [{}] pending index updated: {}", storageId, diff)
+          // globalIndex.addPending(diff)
 
-      case StorageEvents.IndexDeleted(`regionId`, sequenceNrs) ⇒
-        log.debug("Diffs deleted from storage [{}]: {}", storageId, sequenceNrs)
-        indexTracker.storages.state.dropStorageDiffs(storageId, sequenceNrs)
+        case StorageEvents.IndexDeleted(`regionId`, sequenceNrs) ⇒
+          log.debug("Diffs deleted from storage [{}]: {}", storageId, sequenceNrs)
+          indexTracker.storages.state.dropStorageDiffs(storageId, sequenceNrs)
 
-      case StorageEvents.ChunkWritten(ChunkPath(`regionId`, _), chunk) ⇒
-        log.debug("Chunk written: {}", chunk)
-        // chunks.onWriteSuccess(chunk, storageId)
-        indexTracker.indexes.registerChunk(chunk)
-        sc.eventStreams.publishRegionEvent(regionId, RegionEvents.ChunkWritten(storageId, chunk))
-        schedules.deferGC()
+        case StorageEvents.ChunkWritten(ChunkPath(`regionId`, _), chunk) ⇒
+          log.info("Chunk written: {}", chunk)
+          // chunks.onWriteSuccess(chunk, storageId)
+          indexTracker.indexes.registerChunk(chunk)
+          sc.eventStreams.publishRegionEvent(regionId, RegionEvents.ChunkWritten(storageId, chunk))
+          schedules.deferGC()
 
-      case StorageEvents.HealthUpdated(health) ⇒
-        log.debug("Storage [{}] health report: {}", storageId, health)
-        val wasOffline = {
-          val oldHealth = storageTracker.getStorage(storageId).health
-          (!oldHealth.online || oldHealth.writableSpace < SizeUnit.MB) &&
+        case StorageEvents.HealthUpdated(health) ⇒
+          log.debug("Storage [{}] health report: {}", storageId, health)
+          val wasOffline = {
+            val oldHealth = storageTracker.getStorage(storageId).health
+            (!oldHealth.online || oldHealth.writableSpace < SizeUnit.MB) &&
             (health.online && health.writableSpace > SizeUnit.MB)
-        }
-        storageTracker.updateHealth(storageId, health)
-        if (wasOffline) schedules.scheduleRetry()
+          }
+          storageTracker.updateHealth(storageId, health)
+          if (wasOffline) schedules.scheduleRetry()
 
-      case _ ⇒
+        case _ ⇒
         // Ignore
-    }
+      }
 
     case Terminated(dispatcher) ⇒
       log.debug("Watched actor terminated: {}", dispatcher)
@@ -389,7 +397,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
   // -----------------------------------------------------------------------
   object schedules {
     private[this] val scheduler = context.system.scheduler
-    var shouldRetry = false
+    var shouldRetry             = false
 
     def pullIndex(storageId: StorageId): Unit = {
       scheduler.scheduleOnce(5 seconds, self, PullStorageIndex(storageId))

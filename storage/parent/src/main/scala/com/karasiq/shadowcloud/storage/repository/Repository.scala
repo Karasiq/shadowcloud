@@ -67,4 +67,10 @@ object Repository {
                                       (implicit ec: ExecutionContext, mat: Materializer): CategorizedRepository[CatKey, Key] = {
     new SubRepositoriesWrapper(pathString, subRepositories)
   }
+
+  implicit class RepositoryExt[Key](private val r: Repository[Key]) extends AnyVal {
+    def delete(key: Key)(implicit mat: Materializer): Future[StorageIOResult] = {
+      Source.single(key).runWith(r.delete)
+    }
+  }
 }

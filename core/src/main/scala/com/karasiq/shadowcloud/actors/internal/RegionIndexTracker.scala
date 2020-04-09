@@ -89,6 +89,11 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
         RegionIndex.Synchronize.unwrapFuture(future)
       }
 
+      def getIndex(storage: RegionStorage): Future[IndexMerger.State[SequenceNr]] = {
+        RegionIndex.GetIndex.unwrapFuture(storage.dispatcher ?
+          StorageIndex.Envelope(regionId, RegionIndex.GetIndex))
+      }
+
       def writeIndex(storage: RegionStorage, diff: IndexDiff): Unit = {
         log.debug("Writing index to {}: {}", storage.id, diff)
         storage.dispatcher ! StorageIndex.Envelope(regionId, WriteDiff(diff))

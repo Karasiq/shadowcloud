@@ -1,16 +1,20 @@
 package com.karasiq.shadowcloud.config
 
-import scala.concurrent.duration.FiniteDuration
-
+import com.karasiq.common.configs.ConfigImplicits
 import com.typesafe.config.Config
 
-import com.karasiq.common.configs.ConfigImplicits
+import scala.concurrent.duration.FiniteDuration
 
 @SerialVersionUID(0L)
-final case class StorageChunkIOConfig(rootConfig: Config,
-                                      readParallelism: Int, writeParallelism: Int,
-                                      readQueueSize: Int, writeQueueSize: Int,
-                                      readTimeout: FiniteDuration, writeTimeout: FiniteDuration) extends WrappedConfig
+final case class StorageChunkIOConfig(
+    rootConfig: Config,
+    readParallelism: Int,
+    writeParallelism: Int,
+    readQueueSize: Int,
+    writeQueueSize: Int,
+    readTimeout: FiniteDuration,
+    writeTimeout: FiniteDuration
+) extends WrappedConfig
 
 object StorageChunkIOConfig extends WrappedConfigFactory[StorageChunkIOConfig] with ConfigImplicits {
   def apply(config: Config): StorageChunkIOConfig = {

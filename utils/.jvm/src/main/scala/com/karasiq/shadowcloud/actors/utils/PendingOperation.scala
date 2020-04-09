@@ -1,9 +1,9 @@
 package com.karasiq.shadowcloud.actors.utils
 
+import akka.actor.ActorRef
+
 import scala.collection.mutable
 import scala.language.postfixOps
-
-import akka.actor.ActorRef
 
 object PendingOperation {
   def apply[Key <: AnyRef]: PendingOperation[Key] = {
@@ -26,10 +26,12 @@ class PendingOperation[Key <: AnyRef] {
   }
 
   def removeWaiter(actor: ActorRef): Unit = {
-    subscribers.withFilter(_._2.contains(actor))
-      .foreach { case (key, actors) ⇒
-        actors -= actor
-        if (actors.isEmpty) subscribers -= key
+    subscribers
+      .withFilter(_._2.contains(actor))
+      .foreach {
+        case (key, actors) ⇒
+          actors -= actor
+          if (actors.isEmpty) subscribers -= key
       }
   }
 
@@ -39,5 +41,14 @@ class PendingOperation[Key <: AnyRef] {
 
   def finish(key: Key, result: AnyRef)(implicit sender: ActorRef = ActorRef.noSender): Unit = {
     subscribers.remove(key).foreach(_.foreach(_ ! result))
+  }
+
+  def finishAll(f: Key => AnyRef)(implicit sender: ActorRef = ActorRef.noSender): Unit = {
+    subscribers.foreach {
+      case (key, actors) =>
+        val result = f(key)
+        actors.foreach(_ ! result)
+    }
+    subscribers.clear()
   }
 }

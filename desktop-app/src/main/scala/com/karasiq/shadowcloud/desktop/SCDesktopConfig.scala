@@ -16,8 +16,7 @@ object SCDesktopConfig {
 
     val substitutionsConfig = ConfigFactory.parseResourcesAnySyntax("sc-substitutions")
 
-    val defaultConfig = ConfigFactory.defaultOverrides()
-      .withFallback(ConfigFactory.defaultApplication())
+    val defaultConfig = ConfigFactory.defaultApplication()
       .withFallback(ConfigFactory.defaultReference())
     /* .withFallback {
       // reference.conf without ".resolve()" workaround
@@ -46,7 +45,8 @@ object SCDesktopConfig {
 
       val desktopConfig = ConfigFactory.parseResourcesAnySyntax("sc-desktop")
 
-      fileConfig
+      ConfigFactory.defaultOverrides()
+        .withFallback(fileConfig)
         .withFallback(substitutionsConfig)
         .withFallback(autoParallelismConfig)
         .withFallback(desktopConfig)

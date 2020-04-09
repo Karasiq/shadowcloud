@@ -1,21 +1,20 @@
 package com.karasiq.shadowcloud.webapp.components.region
 
-import scala.concurrent.Future
-
 import akka.util.ByteString
-import rx._
-import rx.async._
-
 import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import com.karasiq.shadowcloud.config.SerializedProps
-import com.karasiq.shadowcloud.model.{RegionId, StorageId}
-import com.karasiq.shadowcloud.model.utils.{GCReport, RegionHealth, SyncReport}
 import com.karasiq.shadowcloud.model.utils.RegionStateReport.RegionStatus
+import com.karasiq.shadowcloud.model.utils.{GCReport, RegionHealth, SyncReport}
+import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
 import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
+import rx._
+import rx.async._
+import scalaTags.all._
+import scalatags.JsDom
+
+import scala.concurrent.Future
 
 object RegionConfigView {
   def apply(regionId: RegionId)(implicit context: AppContext, regionContext: RegionContext): RegionConfigView = {
@@ -34,9 +33,11 @@ object RegionConfigView {
 class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionContext: RegionContext) extends BootstrapHtmlComponent {
   private[this] lazy val regionStatus = regionContext.region(regionId)
 
-  private[this] lazy val compactStarted = Var(false)
-  private[this] lazy val gcStarted = Var(false)
-  private[this] lazy val repairStarted = Var(false)
+  private[this] val compactStarted = Var(false)
+  private[this] val gcStarted      = Var(false)
+  private[this] val gcAnalysed     = Var(false)
+  private[this] val gcReport       = Var(None: Option[GCReport])
+  private[this] val repairStarted  = Var(false)
 
   def renderTag(md: ModifierT*): TagT = {
     div(regionStatus.map { regionStatus ⇒
@@ -64,9 +65,6 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
   }
 
   private[this] def renderGCButton() = {
-    val gcAnalysed = Var(false)
-    val gcReport = Var(None: Option[GCReport])
-
     def startGC(delete: Boolean) = {
       gcStarted() = true
       val future = context.api.collectGarbage(regionId, delete)
@@ -82,12 +80,21 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
       Rx {
         val buttonStyle = if (gcAnalysed()) ButtonStyle.danger else ButtonStyle.warning
         Button(buttonStyle, ButtonSize.extraSmall)(
-          AppIcons.delete, context.locale.collectGarbage, "disabled".classIf(gcBlocked),
+          AppIcons.delete,
+          context.locale.collectGarbage,
+          "disabled".classIf(gcBlocked),
           onclick := Callback.onClick(_ ⇒ if (!gcBlocked.now) startGC(delete = gcAnalysed.now))
         )
       },
       div(gcReport.map[Frag] {
-        case Some(report) ⇒ div(Alert(AlertStyle.warning, report.toString))
+        case Some(report) ⇒
+          div(new UniversalAlert(AlertStyle.warning) {
+            override def closeButton: JsDom.all.Tag =
+              super.closeButton(onclick := Callback.onClick { _ =>
+                gcReport() = None
+              })
+          }.renderTag(report.toString))
+
         case None ⇒ Bootstrap.noContent
       })
     )
@@ -111,8 +118,12 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
     }
 
     div(
-      Button(ButtonStyle.danger, ButtonSize.extraSmall)(AppIcons.compress, context.locale.compactIndex, "disabled".classIf(compactStarted),
-        onclick := Callback.onClick(_ ⇒ if (!compactStarted.now) startCompact())),
+      Button(ButtonStyle.danger, ButtonSize.extraSmall)(
+        AppIcons.compress,
+        context.locale.compactIndex,
+        "disabled".classIf(compactStarted),
+        onclick := Callback.onClick(_ ⇒ if (!compactStarted.now) startCompact())
+      ),
       div(compactReport.map(renderReports))
     )
   }
@@ -128,7 +139,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
       }
 
       context.api.getRegion(regionId).foreach { status ⇒
-        val storagesSelector = FormInput.simpleMultipleSelect(context.locale.storages, status.storages.toSeq:_*)
+        val storagesSelector = FormInput.simpleMultipleSelect(context.locale.storages, status.storages.toSeq: _*)
         Modal(context.locale.repairFile)
           .withBody(Form(storagesSelector))
           .withButtons(
@@ -139,21 +150,27 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
       }
     }
 
-    Button(ButtonStyle.success, ButtonSize.extraSmall)(AppIcons.repair, context.locale.repairRegion, "disabled".classIf(repairStarted),
-      onclick := Callback.onClick(_ ⇒ if (!repairStarted.now) showDialog()))
+    Button(ButtonStyle.success, ButtonSize.extraSmall)(
+      AppIcons.repair,
+      context.locale.repairRegion,
+      "disabled".classIf(repairStarted),
+      onclick := Callback.onClick(_ ⇒ if (!repairStarted.now) showDialog())
+    )
   }
 
   private[this] def renderStateButtons(regionStatus: RegionStatus) = {
     def doSuspend() = context.api.suspendRegion(regionId).foreach(_ ⇒ regionContext.updateRegion(regionId))
-    def doResume() = context.api.resumeRegion(regionId).foreach(_ ⇒ regionContext.updateRegion(regionId))
-    def doDelete() = context.api.deleteRegion(regionId).foreach(_ ⇒ regionContext.updateAll())
+    def doResume()  = context.api.resumeRegion(regionId).foreach(_ ⇒ regionContext.updateRegion(regionId))
+    def doDelete()  = context.api.deleteRegion(regionId).foreach(_ ⇒ regionContext.updateAll())
 
-    val suspendResumeButton = if (regionStatus.suspended)
-      Button(ButtonStyle.success, ButtonSize.extraSmall)(AppIcons.resume, context.locale.resume, onclick := Callback.onClick(_ ⇒ doResume()))
-    else
-      Button(ButtonStyle.warning, ButtonSize.extraSmall)(AppIcons.suspend, context.locale.suspend, onclick := Callback.onClick(_ ⇒ doSuspend()))
+    val suspendResumeButton =
+      if (regionStatus.suspended)
+        Button(ButtonStyle.success, ButtonSize.extraSmall)(AppIcons.resume, context.locale.resume, onclick := Callback.onClick(_ ⇒ doResume()))
+      else
+        Button(ButtonStyle.warning, ButtonSize.extraSmall)(AppIcons.suspend, context.locale.suspend, onclick := Callback.onClick(_ ⇒ doSuspend()))
 
-    val deleteButton = Button(ButtonStyle.danger, ButtonSize.extraSmall)(AppIcons.delete, context.locale.delete, onclick := Callback.onClick(_ ⇒ doDelete()))
+    val deleteButton =
+      Button(ButtonStyle.danger, ButtonSize.extraSmall)(AppIcons.delete, context.locale.delete, onclick := Callback.onClick(_ ⇒ doDelete()))
 
     ButtonGroup(ButtonGroupSize.extraSmall, suspendResumeButton, deleteButton)
   }
@@ -172,10 +189,10 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
       """.stripMargin
 
     def renderConfigForm() = {
-      val changed = Var(false)
+      val changed     = Var(false)
       val newConfigRx = Var(regionStatus.regionConfig.data.utf8String)
       newConfigRx.triggerLater(changed() = true)
-      
+
       Form(
         FormInput.textArea((), rows := 10, newConfigRx.reactiveInput, placeholder := defaultConfig, AppComponents.tabOverride),
         Form.submit(context.locale.submit, changed.reactiveShow),
@@ -192,7 +209,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
   private[this] def renderStoragesRegistration(regionStatus: RegionStatus) = {
     def updateStorageList(newIdSet: Set[StorageId]) = {
       val currentIdSet = regionStatus.storages
-      val toRegister = newIdSet -- currentIdSet
+      val toRegister   = newIdSet -- currentIdSet
       val toUnregister = currentIdSet -- newIdSet
       for {
         _ ← Future.sequence(toUnregister.map(context.api.unregisterStorage(regionId, _)))
@@ -202,7 +219,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
 
     def renderAddButton() = {
       def showAddDialog(): Unit = {
-        val allIds = regionContext.regions.now.storages.keys.toSeq.sorted
+        val allIds   = regionContext.regions.now.storages.keys.toSeq.sorted
         val idSelect = FormInput.multipleSelect(context.locale.storages, allIds.map(id ⇒ FormSelectOption(id, id)))
         idSelect.selected() = regionStatus.storages.toSeq
         Modal()
@@ -215,7 +232,11 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
           .show()
       }
 
-      Button(ButtonStyle.primary, ButtonSize.extraSmall)(AppIcons.register, context.locale.registerStorage, onclick := Callback.onClick(_ ⇒ showAddDialog()))
+      Button(ButtonStyle.primary, ButtonSize.extraSmall)(
+        AppIcons.register,
+        context.locale.registerStorage,
+        onclick := Callback.onClick(_ ⇒ showAddDialog())
+      )
     }
 
     def renderStorage(storageId: StorageId) = {
@@ -232,4 +253,3 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
     )
   }
 }
-

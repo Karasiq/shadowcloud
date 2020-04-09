@@ -10,7 +10,8 @@ import com.karasiq.shadowcloud.drive.fuse.SCFuseHelper
 import com.karasiq.shadowcloud.server.http.SCAkkaHttpServer
 import com.typesafe.config.impl.ConfigImpl
 
-import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 object SCDesktopMain extends App {
   private[this] val config = {
@@ -28,8 +29,18 @@ object SCDesktopMain extends App {
   val httpServer = SCAkkaHttpServer(sc)
 
   new SCTrayIcon {
-    def onOpen(): Unit          = if (Desktop.isDesktopSupported) Desktop.getDesktop.browse(new URI(s"http://localhost:${httpServer.httpServerConfig.port}"))
-    def onMount(): Future[Done] = SCFuseHelper.mount()
-    def onExit(): Unit          = System.exit(0)
+    def onOpen(): Unit =
+      if (Desktop.isDesktopSupported)
+        Desktop.getDesktop.browse(new URI(s"http://localhost:${httpServer.httpServerConfig.port}"))
+
+    def onMount(): Future[Done] =
+      SCFuseHelper.mount()
+
+    def onExit(): Unit =
+      new Thread(() => {
+        Await.result(actorSystem.terminate(), 15 seconds)
+        sys.exit(0)
+      }, "app-shutdown").start()
+
   }.addToTray()
 }

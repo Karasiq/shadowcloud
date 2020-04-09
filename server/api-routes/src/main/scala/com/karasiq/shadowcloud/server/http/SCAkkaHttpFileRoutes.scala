@@ -38,7 +38,7 @@ trait SCAkkaHttpFileRoutes { self: SCAkkaHttpApiRoutes with SCHttpServerSettings
           (path(Segment / SCPath) & entity(as[Multipart.FormData])) { (regionId, path, entity) ⇒
             val fileEntity = entity.parts
               .filter(_.name == "file")
-              .map(p => (p.filename.getOrElse("default"), p.entity.dataBytes.mapMaterializedValue(_ => NotUsed)))
+              .map(p => (p.filename.getOrElse("default"), p.entity.withoutSizeLimit().dataBytes.mapMaterializedValue(_ => NotUsed)))
               .mapMaterializedValue(_ ⇒ NotUsed)
               .runWith(Sink.head)
 

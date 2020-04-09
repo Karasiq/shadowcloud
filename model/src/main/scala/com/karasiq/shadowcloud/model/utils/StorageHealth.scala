@@ -11,7 +11,17 @@ final case class StorageHealth(writableSpace: Long, totalSpace: Long, usedSpace:
   }
 
   def +(h1: StorageHealth): StorageHealth = {
-    copy(writableSpace + h1.writableSpace, totalSpace + h1.totalSpace, usedSpace + h1.usedSpace, online && h1.online)
+    @inline
+    def safeSum(l1: Long, l2: Long): Long = {
+      val bigInt = BigInt(l1) + BigInt(l2)
+      if (bigInt.isValidLong) bigInt.longValue() else Long.MaxValue
+    }
+    copy(
+      writableSpace = safeSum(writableSpace, h1.writableSpace),
+      totalSpace = safeSum(totalSpace, h1.totalSpace),
+      usedSpace = safeSum(usedSpace, h1.usedSpace),
+      online = online && h1.online
+    )
   }
 
   def -(bytes: Long): StorageHealth = {
@@ -24,12 +34,12 @@ final case class StorageHealth(writableSpace: Long, totalSpace: Long, usedSpace:
 }
 
 object StorageHealth {
-  val empty = StorageHealth(0, 0, 0)
+  val empty     = StorageHealth(0, 0, 0)
   val unlimited = StorageHealth(Long.MaxValue, Long.MaxValue, 0)
 
   def normalized(writableSpace: Long, totalSpace: Long, usedSpace: Long = 0L, online: Boolean = true): StorageHealth = {
-    val totalSpaceN = if (totalSpace >= 0) totalSpace else Long.MaxValue
-    val usedSpaceN = if (usedSpace >= 0) math.min(totalSpaceN, usedSpace) else totalSpaceN
+    val totalSpaceN    = if (totalSpace >= 0) totalSpace else Long.MaxValue
+    val usedSpaceN     = if (usedSpace >= 0) math.min(totalSpaceN, usedSpace) else totalSpaceN
     val writableSpaceN = math.max(0L, math.min(totalSpaceN - usedSpaceN, writableSpace))
 
     new StorageHealth(

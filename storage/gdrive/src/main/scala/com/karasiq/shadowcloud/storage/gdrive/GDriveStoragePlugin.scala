@@ -1,10 +1,15 @@
 package com.karasiq.shadowcloud.storage.gdrive
 
-import akka.actor.{Actor, ActorContext, ActorRef, Props}
+import java.util
 
+import akka.actor.{Actor, ActorContext, ActorRef, Props}
+import com.google.api.client.extensions.java6.auth.oauth2.VerificationCodeReceiver
+import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
+import com.google.api.services.drive.DriveScopes
 import com.karasiq.common.configs.ConfigImplicits._
 import com.karasiq.gdrive.context.GDriveContext
 import com.karasiq.gdrive.files.GDriveService
+import com.karasiq.gdrive.files.GDriveService.TeamDriveId
 import com.karasiq.gdrive.oauth.GDriveOAuth
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.model.StorageId
@@ -22,18 +27,20 @@ private[gdrive] class GDriveStoragePlugin(implicit sc: ShadowCloudExtension) ext
   private[this] def defaultConfig = sc.config.rootConfig.getConfigIfExists("storage.gdrive")
 
   def createStorage(storageId: StorageId, props: StorageProps)(implicit context: ActorContext) = {
-    val config = sc.configs.storageConfig(storageId, props).rootConfig
+    val config = sc.configs
+      .storageConfig(storageId, props)
+      .rootConfig
       .getConfigIfExists("gdrive")
       .withFallback(defaultConfig)
 
     val proxyProps = Props(new Actor {
-      import context.{dispatcher ⇒ executionContext} // API dispatcher
+      import context.{dispatcher => executionContext} // API dispatcher
 
       def receiveAuthorized(storageDispatcher: ActorRef): Receive = {
         case message if sender() == storageDispatcher ⇒
           context.parent ! message
 
-        case message ⇒ 
+        case message ⇒
           storageDispatcher.forward(message)
       }
 
@@ -44,12 +51,26 @@ private[gdrive] class GDriveStoragePlugin(implicit sc: ShadowCloudExtension) ext
             GDriveContext(config, dataStore)
           }
 
-          val oauth = GDriveOAuth()
+          val oauth            = GDriveOAuth()
           implicit val session = oauth.authorize(props.credentials.login)
 
           val service = {
             val applicationName = config.withDefault("shadowcloud", _.getString("application-name"))
             GDriveService(applicationName)
+          }
+
+          implicit val teamDriveId: TeamDriveId = {
+            val driveId = props.rootConfig
+              .optional(_.getString("team-drive"))
+              .filter(_.nonEmpty)
+              .map { name =>
+                val drives = service.teamDrives()
+                drives
+                  .find(_.getName == name)
+                  .map(_.getId)
+                  .getOrElse(throw new IllegalArgumentException(s"Team drive not found: $name, available: $drives"))
+              }
+            TeamDriveId(driveId.orNull)
           }
 
           val dispatcher = StoragePluginBuilder(storageId, props)

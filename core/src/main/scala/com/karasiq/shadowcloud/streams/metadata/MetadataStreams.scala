@@ -85,7 +85,7 @@ private[shadowcloud] final class MetadataStreams(regionOps: RegionOps, regionStr
           if (metadataModules.canParse(fileName, contentType)) {
             bytes.via(metadataModules.parseMetadata(fileName, contentType))
           } else {
-            bytes.via(AkkaStreamUtils.dropUpstream(Source.empty)) // Bytes stream should be cancelled
+            bytes.via(AkkaStreamUtils.cancelUpstream(Source.empty)) // Bytes stream should be cancelled
           }
         }
       )

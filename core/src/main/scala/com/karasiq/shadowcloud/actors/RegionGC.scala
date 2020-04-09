@@ -1,32 +1,31 @@
 package com.karasiq.shadowcloud.actors
 
-import scala.concurrent.{Future, TimeoutException}
-import scala.concurrent.duration._
-import scala.language.postfixOps
-import scala.util.{Failure, Success}
-
 import akka.Done
 import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, NotInfluenceReceiveTimeout, PossiblyHarmful, Props, ReceiveTimeout, Status}
 import akka.pattern.{ask, pipe}
 import akka.util.{ByteString, Timeout}
-
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.actors.internal.GarbageCollectUtil
-import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, DeleteChunks ⇒ SDeleteChunks}
-import com.karasiq.shadowcloud.actors.utils.MessageStatus
+import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, DeleteChunks => SDeleteChunks}
 import com.karasiq.shadowcloud.actors.RegionIndex.WriteDiff
+import com.karasiq.shadowcloud.actors.internal.GarbageCollectUtil
+import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.config.{RegionConfig, StorageConfig}
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.metadata.MetadataUtils
-import com.karasiq.shadowcloud.model.{Chunk, RegionId}
 import com.karasiq.shadowcloud.model.utils.GCReport
 import com.karasiq.shadowcloud.model.utils.GCReport.{RegionGCState, StorageGCState}
+import com.karasiq.shadowcloud.model.{Chunk, RegionId}
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
-import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
+import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}
 import com.karasiq.shadowcloud.utils.{ChunkUtils, Utils}
+
+import scala.concurrent.duration._
+import scala.concurrent.{Future, TimeoutException}
+import scala.language.postfixOps
+import scala.util.{Failure, Success}
 
 object RegionGC {
   // Types
@@ -34,17 +33,19 @@ object RegionGC {
   object GCStrategy {
     case object Default extends GCStrategy
     case object Preview extends GCStrategy
-    case object Delete extends GCStrategy
+    case object Delete  extends GCStrategy
   }
 
   // Messages
   sealed trait Message
   final case class CollectGarbage(strategy: GCStrategy = GCStrategy.Default) extends Message with NotInfluenceReceiveTimeout
-  object CollectGarbage extends MessageStatus[RegionId, GCReport]
-  final case class Defer(time: FiniteDuration) extends Message with NotInfluenceReceiveTimeout
+  object CollectGarbage                                                      extends MessageStatus[RegionId, GCReport]
+  final case class Defer(time: FiniteDuration)                               extends Message with NotInfluenceReceiveTimeout
+  final case class Reserve(chunks: Set[Chunk])                               extends Message with NotInfluenceReceiveTimeout
+  final case class UnReserve(chunks: Set[Chunk])                             extends Message with NotInfluenceReceiveTimeout
 
-  private sealed trait InternalMessage extends Message with PossiblyHarmful
-  private final case class StartGCNow(strategy: GCStrategy = GCStrategy.Default) extends InternalMessage
+  private sealed trait InternalMessage                                                                                    extends Message with PossiblyHarmful
+  private final case class StartGCNow(strategy: GCStrategy = GCStrategy.Default)                                          extends InternalMessage
   private final case class DeleteGarbage(regionState: RegionGCState, storageStates: Seq[(RegionStorage, StorageGCState)]) extends InternalMessage
 
   // Props
@@ -54,19 +55,19 @@ object RegionGC {
 }
 
 private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionConfig) extends Actor with ActorLogging {
-  import context.dispatcher
-
   import RegionGC._
+  import context.dispatcher
 
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
-  private[this] implicit val timeout: Timeout = Timeout(30 seconds)
-  private[this] implicit val sc = ShadowCloud()
-  private[this] val gcConfig = regionConfig.garbageCollector
-  private[this] val gcSchedule = context.system.scheduler.schedule(5 minutes, 5 minutes, self, CollectGarbage())(dispatcher, self)
-  private[this] var gcDeadline = Deadline.now
+  private[this] implicit val timeout: Timeout            = Timeout(30 seconds)
+  private[this] implicit val sc                          = ShadowCloud()
+  private[this] val gcConfig                             = regionConfig.garbageCollector
+  private[this] val gcSchedule                           = context.system.scheduler.schedule(5 minutes, 5 minutes, self, CollectGarbage())(dispatcher, self)
+  private[this] var gcDeadline                           = Deadline.now
   private[this] var timeoutSchedule: Option[Cancellable] = None
+  private[this] var reserved                             = Set.empty[Chunk]
 
   // -----------------------------------------------------------------------
   // Receive
@@ -74,7 +75,7 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
   def receiveIdle: Receive = {
     case CollectGarbage(gcStrategy) ⇒
       if (sender() != self || (gcConfig.autoDelete && gcConfig.runOnLowSpace.isEmpty && gcDeadline.isOverdue())) {
-        log.debug("Starting garbage collection")
+        log.info("Starting garbage collection on {}", regionId)
         self.tell(StartGCNow(gcStrategy), sender())
       } else if (gcConfig.autoDelete && gcConfig.runOnLowSpace.nonEmpty && gcDeadline.isOverdue()) {
         val healthFuture = sc.ops.region.getHealth(regionId)
@@ -99,12 +100,11 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
       timeoutSchedule = Some(context.system.scheduler.scheduleOnce(10 minute, self, ReceiveTimeout))
       context.become(receiveCollecting(Set(sender()), gcStrategy))
 
-      sc.ops.region.synchronize(regionId).foreach { reports ⇒
+      val result = sc.ops.region.synchronize(regionId).flatMap { reports =>
         if (reports.exists(_._2.nonEmpty)) log.warning("Pre-GC sync reports: {}", reports)
-        collectGarbage()
-          .map(DeleteGarbage.tupled)
-          .pipeTo(self)
+        collectGarbage().map(DeleteGarbage.tupled)
       }
+      result.pipeTo(self)
 
     case Defer(time) ⇒
       if (gcDeadline.timeLeft < time) {
@@ -113,10 +113,15 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
       }
   }
 
-  private[this] def finishCollecting(receivers: Set[ActorRef],
-                                     statesFuture: Future[(RegionGCState, Seq[(RegionStorage, StorageGCState)])]): Unit = {
-    val futureGcResult = statesFuture.map { case (regionState, storageStates) ⇒
-      GCReport(regionId, regionState, storageStates.filter(_._2.nonEmpty).map(kv ⇒ kv._1.id → kv._2).toMap)
+  def receiveReserve: Receive = {
+    case Reserve(chunks)   => reserved ++= chunks.map(_.withoutData)
+    case UnReserve(chunks) => reserved --= chunks
+  }
+
+  private[this] def finishCollecting(receivers: Set[ActorRef], statesFuture: Future[(RegionGCState, Seq[(RegionStorage, StorageGCState)])]): Unit = {
+    val futureGcResult = statesFuture.map {
+      case (regionState, storageStates) ⇒
+        GCReport(regionId, regionState, storageStates.filter(_._2.nonEmpty).map(kv ⇒ kv._1.id → kv._2).toMap)
     }
 
     CollectGarbage.wrapFuture(regionId, futureGcResult).foreach { status ⇒
@@ -127,7 +132,7 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
 
     timeoutSchedule.foreach(_.cancel())
     timeoutSchedule = None
-    context.become(receiveIdle)
+    context.become(receiveIdle.orElse(receiveReserve))
     self ! Defer(30 minutes)
   }
 
@@ -141,17 +146,23 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
         case GCStrategy.Delete ⇒
           GCStrategy.Delete
       }
-      context.become(receiveCollecting(receivers + newReceiver, newStrategy))
+      context.become(receiveCollecting(receivers + newReceiver, newStrategy).orElse(receiveReserve))
 
     case DeleteGarbage(regionState, storageStates) ⇒
       log.warning("Region GC states: {}, {}", regionState, storageStates)
       val delete = gcStrategy match {
         case GCStrategy.Default ⇒ gcConfig.autoDelete
         case GCStrategy.Preview ⇒ false
-        case GCStrategy.Delete ⇒ true
+        case GCStrategy.Delete  ⇒ true
       }
-      val future = deleteGarbage(regionState, storageStates, delete)
-        .map(_ ⇒ (regionState, storageStates))
+      val patchedRegionState = regionState.copy(orphanedChunks = regionState.orphanedChunks -- reserved)
+      val patchedStorageStates = storageStates.map {
+        case (st, ss) =>
+          val chunkKey = ChunkUtils.getChunkKeyMapper(regionConfig, st.config)
+          st -> ss.copy(ss.notIndexed -- reserved.map(chunkKey), ss.notExisting -- reserved)
+      }
+      val future = deleteGarbage(patchedRegionState, patchedStorageStates, delete)
+        .map(_ ⇒ (patchedRegionState, patchedStorageStates))
       finishCollecting(receivers, future)
 
     case Status.Failure(error) ⇒
@@ -162,7 +173,7 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
       finishCollecting(receivers, Future.failed(new TimeoutException("GC timeout")))
   }
 
-  override def receive: Receive = receiveIdle
+  override def receive: Receive = receiveIdle.orElse(receiveReserve)
 
   override def postStop(): Unit = {
     gcSchedule.cancel()
@@ -180,7 +191,7 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
         val relevantDiffs = regionIndex.diffs.filterKeys(_.storageId == storage.id)
         IndexMerger.restore(IndexMerger.State(relevantDiffs.toSeq, regionIndex.pending))
       }
-      
+
       sc.ops.storage.getChunkKeys(storage.id, regionId).map { chunkIds ⇒
         (storage, gcUtil.checkStorage(subIndex, storage.config, chunkIds))
       }
@@ -192,21 +203,24 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
 
     for {
       regionIndex ← sc.ops.region.getIndexSnapshot(regionId).map(IndexMerger.restore(_))
-      storages ← sc.ops.region.getStorages(regionId)
+      storages    ← sc.ops.region.getStorages(regionId)
       regionState = createRegionState(regionIndex)
       storageStates ← Future.sequence(storages.map(createStorageState(regionIndex, _)))
     } yield (regionState, storageStates)
   }
 
-  private[this] def deleteGarbage(regionState: RegionGCState,
-                                  storageStates: Seq[(RegionStorage, StorageGCState)],
-                                  delete: Boolean): Future[(Set[ByteString], StorageIOResult)] = {
+  private[this] def deleteGarbage(
+      regionState: RegionGCState,
+      storageStates: Seq[(RegionStorage, StorageGCState)],
+      delete: Boolean
+  ): Future[(Set[ByteString], StorageIOResult)] = {
     // Global
     def pushRegionDiff(): Future[FolderIndexDiff] = {
       val folderDiff = {
         val metadataFolders = regionState.expiredMetadata.map(MetadataUtils.getFolderPath)
-        FolderIndexDiff.deleteFolderPaths(metadataFolders.toSeq:_*)
-          .merge(FolderIndexDiff.deleteFiles(regionState.oldFiles.toSeq:_*))
+        FolderIndexDiff
+          .deleteFolderPaths(metadataFolders.toSeq: _*)
+          .merge(FolderIndexDiff.deleteFiles(regionState.oldFiles.toSeq: _*))
       }
 
       if (folderDiff.nonEmpty) {
@@ -218,7 +232,7 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
 
     // Per-storage
     def toDeleteFromStorage(config: StorageConfig, state: StorageGCState): Set[ByteString] = {
-      val chunkKey = ChunkUtils.getChunkKeyMapper(regionConfig, config)
+      val chunkKey                                                 = ChunkUtils.getChunkKeyMapper(regionConfig, config)
       @inline def extractKeys(chunks: Set[Chunk]): Set[ByteString] = chunks.map(chunkKey)
       extractKeys(regionState.orphanedChunks) ++ state.notIndexed
     }
@@ -228,10 +242,11 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
     }
 
     def deleteFromStorages(chunks: Seq[(RegionStorage, Set[ByteString])]): Future[(Set[ByteString], StorageIOResult)] = {
-      val futures = chunks.map { case (storage, chunks) ⇒
-        val paths = chunks.map(ChunkPath(regionId, _))
-        if (log.isDebugEnabled) log.debug("Deleting chunks from storage {}: [{}]", storage.id, Utils.printHashes(chunks))
-        SDeleteChunks.unwrapFuture((storage.dispatcher ? SDeleteChunks(paths))(sc.config.timeouts.chunksDelete))
+      val futures = chunks.map {
+        case (storage, chunks) ⇒
+          val paths = chunks.map(ChunkPath(regionId, _))
+          if (log.isDebugEnabled) log.debug("Deleting chunks from storage {}: [{}]", storage.id, Utils.printHashes(chunks))
+          SDeleteChunks.unwrapFuture((storage.dispatcher ? SDeleteChunks(paths))(sc.config.timeouts.chunksDelete))
       }
 
       Future.foldLeft(futures.toVector)((Set.empty[ByteString], StorageIOResult.empty)) {
@@ -241,10 +256,13 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
     }
 
     def deleteFromIndexes(chunks: Seq[(RegionStorage, Set[Chunk])]): Future[Done] = {
-      val futures = chunks.map { case (storage, chunks) ⇒
-        if (log.isDebugEnabled) log.debug("Deleting chunks from index {}: [{}]", storage.id, Utils.printChunkHashes(chunks))
-        WriteDiff.unwrapFuture(storage.dispatcher ?
-          StorageIndex.Envelope(regionId, WriteDiff(IndexDiff.deleteChunks(chunks.toSeq: _*))))
+      val futures = chunks.map {
+        case (storage, chunks) ⇒
+          if (log.isDebugEnabled) log.debug("Deleting chunks from index {}: [{}]", storage.id, Utils.printChunkHashes(chunks))
+          WriteDiff.unwrapFuture(
+            storage.dispatcher ?
+              StorageIndex.Envelope(regionId, WriteDiff(IndexDiff.deleteChunks(chunks.toSeq: _*)))
+          )
       }
       Future.foldLeft(futures.toList)(Done)((_, _) ⇒ Done)
     }
@@ -269,9 +287,9 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
       log.warning("Deleting orphaned chunks: [{}]", Utils.printHashes(hashes))
 
       val future = for {
-        _ ← pushRegionDiff()
+        _       ← pushRegionDiff()
         deleted ← deleteFromStorages(toDelete)
-        _ ← deleteFromIndexes(toUnIndex)
+        _       ← deleteFromIndexes(toUnIndex)
       } yield deleted
 
       future.onComplete {

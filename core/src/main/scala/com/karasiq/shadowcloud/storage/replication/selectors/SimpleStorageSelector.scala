@@ -1,26 +1,27 @@
 package com.karasiq.shadowcloud.storage.replication.selectors
 
-import scala.util.Random
-
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.common.memory.SizeUnit
 import com.karasiq.shadowcloud.actors.context.RegionContext
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.model.StorageId
-import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.{ChunkStatus, WriteStatus}
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
+import com.karasiq.shadowcloud.storage.replication.{ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.utils.Utils
+
+import scala.util.Random
 
 class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
   protected object settings extends ConfigImplicits {
-    val selectorConfig = region.config.rootConfig.getConfigIfExists("simple-selector")
-    val indexRF = region.config.indexReplicationFactor
-    val dataRF = region.config.dataReplicationFactor
-    val randomize = selectorConfig.withDefault(false, _.getBoolean("randomize"))
-    val indexWriteMinSize = selectorConfig.withDefault[Long](SizeUnit.MB * 10, _.getBytes("index-write-min-size"))
-    val priority = selectorConfig.withDefault(Nil, _.getStrings("priority"))
-    val writeExclude = selectorConfig.withDefault(Set.empty[String], _.getStringSet("write-exclude"))
+    val selectorConfig    = region.config.rootConfig.getConfigIfExists("simple-selector")
+    val indexRF           = region.config.indexReplicationFactor
+    val dataRF            = region.config.dataReplicationFactor
+    val randomize         = selectorConfig.withDefault(false, _.getBoolean("randomize"))
+    val indexWriteMinSize = selectorConfig.withDefault[Long](SizeUnit.KB * 100, _.getBytes("index-write-min-size"))
+    val priority          = selectorConfig.withDefault(Nil, _.getStrings("priority"))
+    val writeExclude      = selectorConfig.withDefault(Set.empty[String], _.getStringSet("write-exclude"))
+    val writeInclude      = selectorConfig.withDefault(Set.empty[String], _.getStringSet("write-include"))
   }
 
   def available(toWrite: Long = 0): Seq[RegionStorage] = {
@@ -29,7 +30,7 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
 
   def forIndexWrite(diff: IndexDiff): Seq[RegionStorage] = {
     val writable = available(settings.indexWriteMinSize)
-    Utils.takeOrAll(writable, settings.indexRF)
+    (Utils.takeOrAll(writable, settings.indexRF) ++ writable.filter(s => settings.writeInclude(s.id))).distinct
   }
 
   def forRead(status: ChunkStatus): Option[RegionStorage] = {
@@ -41,8 +42,8 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
     def generateList(): Seq[String] = {
       def canWriteChunk(storage: RegionStorage): Boolean = {
         !settings.writeExclude.contains(storage.id) &&
-          !chunk.availability.isWriting(storage.id) &&
-          !chunk.waitingChunk.contains(storage.dispatcher)
+        !chunk.availability.isWriting(storage.id) &&
+        !chunk.waitingChunk.contains(storage.dispatcher)
       }
 
       val writeSize = chunk.chunk.checksum.encSize
@@ -56,7 +57,7 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
     chunk.writeStatus match {
       case WriteStatus.Pending(affinity) ⇒
         val newList = affinity.mandatory.filterNot(chunk.availability.isFailed) ++ generatedList
-        affinity.copy(mandatory = selectStoragesToWrite(newList))
+        affinity.copy(mandatory = (selectStoragesToWrite(newList) ++ settings.writeInclude).distinct)
 
       case _ ⇒
         ChunkWriteAffinity(selectStoragesToWrite(generatedList))
@@ -68,13 +69,12 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
   }
 
   protected def sortStorages(storages: Seq[StorageId]): Seq[StorageId] = {
-    if (settings.priority.isEmpty) storages else storages.sortBy { storageId ⇒
-      val index = settings.priority.indexOf(storageId)
-      if (index == -1) Int.MaxValue else index
-    }
+    val hasIndex           = settings.priority.toSet
+    val (sorted, unsorted) = storages.distinct.partition(hasIndex)
+    sorted.sortBy(settings.priority.indexOf) ++ tryRandomize(unsorted)
   }
 
   protected def selectStoragesToWrite(storages: Seq[StorageId]): Seq[StorageId] = {
-    Utils.takeOrAll(tryRandomize(sortStorages(storages.distinct)), settings.dataRF)
+    Utils.takeOrAll(sortStorages(storages.distinct), settings.dataRF)
   }
 }

@@ -1,27 +1,24 @@
 package com.karasiq.shadowcloud.webapp.components.folder
 
-import scala.language.postfixOps
-
-import org.scalajs.dom.DragEvent
-import org.scalajs.dom.raw.DragEffect
-import rx._
-
-import com.karasiq.shadowcloud.webapp.context.AppContext.BootstrapContext._
-import scalaTags.all._
-
-import com.karasiq.shadowcloud.model.{File, Path}
 import com.karasiq.shadowcloud.model.utils.IndexScope
+import com.karasiq.shadowcloud.model.{File, Path}
 import com.karasiq.shadowcloud.webapp.components.common.AppIcons
-import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
-import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
+import com.karasiq.shadowcloud.webapp.context.AppContext.BootstrapContext._
 import com.karasiq.shadowcloud.webapp.context.AppContext.Implicits._
+import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
+import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.controllers.FolderController
 import com.karasiq.shadowcloud.webapp.styles.FolderTreeStyles
 import com.karasiq.shadowcloud.webapp.utils.RxUtils
+import org.scalajs.dom.DragEvent
+import org.scalajs.dom.raw.DragEffect
+import rx._
+import scalaTags.all._
+
+import scala.language.postfixOps
 
 object FolderTree {
-  def apply(path: Path)(implicit context: AppContext, folderContext: FolderContext,
-                        folderController: FolderController): FolderTree = {
+  def apply(path: Path)(implicit context: AppContext, folderContext: FolderContext, folderController: FolderController): FolderTree = {
     new FolderTree(path)
   }
 
@@ -41,15 +38,15 @@ object FolderTree {
   }
 }
 
-class FolderTree(val path: Path)(implicit context: AppContext, folderContext: FolderContext,
-                                 _folderController: FolderController) extends BootstrapHtmlComponent {
+class FolderTree(val path: Path)(implicit context: AppContext, folderContext: FolderContext, _folderController: FolderController)
+    extends BootstrapHtmlComponent {
 
   import folderContext.regionId
 
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
-  val opened = Var(FolderTree.isOpened(path))
+  val opened                = Var(FolderTree.isOpened(path))
   private[this] val deleted = Var(false)
 
   // -----------------------------------------------------------------------
@@ -64,7 +61,7 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
   }
 
   private[this] lazy val subFolderMapRx = subFolderNamesRx.fold(Map.empty[Path, FolderTree]) { (trees, paths) ⇒
-    val newTrees = (paths -- trees.keySet).map(path ⇒ (path, FolderTree(path)))
+    val newTrees     = (paths -- trees.keySet).map(path ⇒ (path, FolderTree(path)))
     val deletedPaths = trees.keySet -- paths
     trees -- deletedPaths ++ newTrees
   }
@@ -76,10 +73,11 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
   // -----------------------------------------------------------------------
   implicit val folderController = FolderController.inherit(
     onAddFolder = folder ⇒ if (folder.path.parent == path) opened() = true,
-    onDeleteFolder = folder ⇒ if (folder.path.parent == path) {
-      deleted() = true
-      folderRx.kill()
-    }
+    onDeleteFolder = folder ⇒
+      if (folder.path.parent == path) {
+        deleted() = true
+        folderRx.kill()
+      }
   )(_folderController)
 
   def renderTag(md: ModifierT*): TagT = {
@@ -157,7 +155,7 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
 
     Rx {
       val isSelected = folderContext.selected() == path
-      val isOpened = opened()
+      val isOpened   = opened()
 
       val icon = if (isOpened) {
         AppIcons.folderOpen
@@ -180,7 +178,10 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
 
       span(
         a(href := "#", icon, styles, marginRight := 2.px, onclick := Callback.onClick(_ ⇒ opened() = !opened.now)),
-        a(href := "#", FolderTree.toPathString(path), styles, dragAndDropHandlers, onclick := Callback.onClick(_ ⇒ folderContext.selected() = path)),
+        a(href := "#", FolderTree.toPathString(path), styles, dragAndDropHandlers, onclick := Callback.onClick { _ ⇒
+          folderContext.selected() = path
+          opened() = true
+        }),
         actions
       )
     }
@@ -196,5 +197,3 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
     }
   }
 }
-
-

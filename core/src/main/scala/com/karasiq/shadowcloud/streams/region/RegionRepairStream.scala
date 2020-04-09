@@ -1,23 +1,22 @@
 package com.karasiq.shadowcloud.streams.region
 
-import scala.concurrent.Promise
-
 import akka.NotUsed
-import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.scaladsl.{Flow, Sink, Source}
-
+import akka.stream.{ActorAttributes, Supervision}
 import com.karasiq.shadowcloud.config.ParallelismConfig
 import com.karasiq.shadowcloud.model.{Chunk, RegionId}
 import com.karasiq.shadowcloud.ops.region.RegionOps
-import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
-import RegionRepairStream.Strategy.{AutoAffinity, SetAffinity, TransformAffinity}
+import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
+import com.karasiq.shadowcloud.streams.region.RegionRepairStream.Strategy.{AutoAffinity, SetAffinity, TransformAffinity}
+
+import scala.concurrent.Promise
 
 object RegionRepairStream {
   sealed trait Strategy
   object Strategy {
-    case object AutoAffinity extends Strategy
-    final case class SetAffinity(newAffinity: ChunkWriteAffinity) extends Strategy
+    case object AutoAffinity                                                                  extends Strategy
+    final case class SetAffinity(newAffinity: ChunkWriteAffinity)                             extends Strategy
     final case class TransformAffinity(newAffinity: ChunkStatus ⇒ Option[ChunkWriteAffinity]) extends Strategy
   }
 
@@ -50,11 +49,14 @@ object RegionRepairStream {
           .mapAsyncUnordered(parallelism.read)(regionOps.getChunkStatus(request.regionId, _))
           .flatMapConcat { status ⇒
             val newAffinity = createNewAffinity(status, request.strategy)
-            Source.single(status)
+            val readAndWrite: Source[Chunk, NotUsed] = Source
+              .single(status)
               .filterNot(status ⇒ newAffinity.exists(_.isFinished(status)))
               .mapAsyncUnordered(parallelism.read)(status ⇒ regionOps.readChunkEncrypted(request.regionId, status.chunk))
               .mapAsyncUnordered(parallelism.write)(chunk ⇒ regionOps.rewriteChunk(request.regionId, chunk, newAffinity))
               .map(_.withoutData)
+
+            readAndWrite.recoverWithRetries(30, { case _ => readAndWrite })
           }
           .log("region-repair-chunk", chunk ⇒ s"$chunk at ${request.regionId}")
           .fold(Nil: Seq[Chunk])(_ :+ _)

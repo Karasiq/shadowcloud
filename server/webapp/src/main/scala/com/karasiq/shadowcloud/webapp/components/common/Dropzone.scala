@@ -19,20 +19,20 @@ class Dropzone(element: js.Any, options: js.Object) extends js.Object {
 }
 
 object Dropzone {
-  def apply(regionId: RegionId, path: Path, onSuccess: dom.File => Unit): Modifier = { element: dom.Element =>
-    val url = URLPath(Path.root / "upload_form" / regionId / SCApiEncoding.toUrlSafe(AjaxApi.encoding.encodePath(path))).toString
+  def apply(regionId: RegionId, path: () => Path, onSuccess: dom.File => Unit): Modifier = { element: dom.Element =>
     val dz = new Dropzone(
       element,
-      js.Dynamic.literal(url = url.toString, headers = js.Dynamic.literal("X-Requested-With" -> SCApiUtils.RequestedWith, "Accept" -> AjaxApi.payloadContentType)).asInstanceOf[js.Object]
+      js.Dynamic
+        .literal(
+          url = { _: js.Any =>
+            URLPath(Path.root / "upload_form" / regionId / SCApiEncoding.toUrlSafe(AjaxApi.encoding.encodePath(path()))).toString
+          },
+          headers = js.Dynamic.literal("X-Requested-With" -> SCApiUtils.RequestedWith, "Accept" -> AjaxApi.payloadContentType),
+          maxFilesize = null,
+          timeout = -1
+        )
+        .asInstanceOf[js.Object]
     )
     dz.on("success", onSuccess)
-  }
-
-  def dynamic(process: dom.File => Unit): Modifier = { element: dom.Element =>
-    val dropzone = new Dropzone(element, js.Dynamic.literal(url = "/", autoProcessQueue = false).asInstanceOf[js.Object])
-    dropzone.on("addedfile", { f: dom.File =>
-      process(f)
-      dropzone.removeAllFiles()
-    })
   }
 }

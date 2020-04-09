@@ -2,7 +2,7 @@ import com.typesafe.sbt.packager.docker.Cmd
 
 val commonSettings = Seq(
   organization := "com.github.karasiq",
-  version := "1.0.2",
+  version := "1.0.3",
   isSnapshot := version.value.endsWith("SNAPSHOT"),
   scalaVersion := "2.12.4",
   // crossScalaVersions := Seq("2.11.11", "2.12.4"),
@@ -12,9 +12,23 @@ val commonSettings = Seq(
   //parallelExecution in test := false,
   //fork in test := false,
   scalacOptions ++= (if (sys.props.get("disable-assertions").exists(_ == "1"))
-    Seq("-Xelide-below", "OFF", "-Xdisable-assertions")
-  else
-    Nil)
+                       Seq("-Xelide-below", "OFF", "-Xdisable-assertions")
+                     else
+                       Nil),
+  updateOptions := updateOptions.value.withLatestSnapshots(false),
+  scalacOptions ++= Seq(
+    "-feature",
+    "-deprecation",
+    "-unchecked",
+    "-language:higherKinds",
+    "-language:implicitConversions",
+    "-language:postfixOps",
+    "-Ywarn-unused:-implicits",
+    "-Xlint",
+    "-Ypartial-unification",
+//    "-opt:l:inline",
+//    "-opt-inline-from:**"
+  )
 )
 
 val packageSettings = Seq(
@@ -28,16 +42,16 @@ val packageSettings = Seq(
     lazy val iconExt = sys.props("os.name").toLowerCase match {
       case os if os.contains("mac") ⇒ "icns"
       case os if os.contains("win") ⇒ "ico"
-      case _ ⇒ "png"
+      case _                        ⇒ "png"
     }
     Some(file(s"setup/icon.$iconExt"))
   },
   jdkPackagerType := "installer",
   jdkPackagerJVMArgs := Seq("-Xmx2G", "-XX:+UseG1GC"),
   jdkPackagerProperties := Map(
-    "app.name" → "shadowcloud",
-    "app.version" → version.value.replace("-SNAPSHOT", ""),
-    "file.encoding" → "UTF-8",
+    "app.name"                 → "shadowcloud",
+    "app.version"              → version.value.replace("-SNAPSHOT", ""),
+    "file.encoding"            → "UTF-8",
     "java.net.preferIPv4Stack" → "true"
     // "jnrfuse.winfsp.path" → "C:\\Program Files (x86)\\WinFsp\\bin\\winfsp-x64.dll"
   ),
@@ -65,7 +79,7 @@ lazy val dockerSettings = Seq(
     val cmds = dockerCommands.value
     val injected = Seq(
       Cmd("RUN", "apk", "add", "--no-cache", "bash", "fuse"),
-      Cmd("RUN", "echo 'user_allow_other' >> /etc/fuse.conf"),
+      Cmd("RUN", "echo 'user_allow_other' >> /etc/fuse.conf")
       /* Cmd("RUN", "apt-get", "update", "&&", "apt-get", "install", "-y", "fuse")*/
     )
     cmds.takeWhile(!_.makeContent.startsWith("USER")) ++ injected ++ cmds.dropWhile(!_.makeContent.startsWith("USER"))
@@ -94,13 +108,14 @@ lazy val modelJVM = model.jvm
 
 lazy val modelJS = model.js
 
-lazy val utils = crossProject.crossType(CrossType.Pure)
+lazy val utils = crossProject
+  .crossType(CrossType.Pure)
   .settings(commonSettings, name := "shadowcloud-utils")
   .jvmSettings(
     libraryDependencies ++=
       ProjectDeps.akka.streams ++
-      ProjectDeps.lz4 ++
-      Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
+        ProjectDeps.lz4 ++
+        Seq("org.scala-lang" % "scala-reflect" % scalaVersion.value)
   )
   .dependsOn(model)
 
@@ -113,7 +128,7 @@ lazy val testUtils = (crossProject.crossType(CrossType.Pure) in file("utils") / 
   .jvmSettings(
     libraryDependencies ++=
       ProjectDeps.scalaTest ++
-      ProjectDeps.akka.testKit
+        ProjectDeps.akka.testKit
   )
   .dependsOn(utils)
 
@@ -121,7 +136,8 @@ lazy val testUtilsJVM = testUtils.jvm
 
 lazy val testUtilsJS = testUtils.js
 
-lazy val serialization = crossProject.crossType(CrossType.Pure)
+lazy val serialization = crossProject
+  .crossType(CrossType.Pure)
   .settings(commonSettings, name := "shadowcloud-serialization")
   .jvmSettings(libraryDependencies ++= ProjectDeps.playJson ++ ProjectDeps.boopickle ++ ProjectDeps.kryo)
   .jsSettings(ScalaJSDeps.playJson, ScalaJSDeps.boopickle)
@@ -153,20 +169,35 @@ lazy val persistence = project
 lazy val coreAssembly = (project in file("core/assembly"))
   .settings(commonSettings, name := "shadowcloud-core-assembly")
   .dependsOn(
-    core % "compile->compile;test->test", persistence, `cache-larray`,
-    bouncyCastleCrypto, libsodiumCrypto,
-    imageioMetadata, markdownMetadata,
-    googleDriveStorage, mailruCloudStorage, dropboxStorage, webdavStorage
+    core % "compile->compile;test->test",
+    persistence,
+    `cache-larray`,
+    bouncyCastleCrypto,
+    libsodiumCrypto,
+    imageioMetadata,
+    markdownMetadata,
+    googleDriveStorage,
+    mailruCloudStorage,
+    dropboxStorage,
+    webdavStorage
   )
   .dependsOn(
     Seq[ClasspathDep[ProjectReference]](javacvMetadata).filter(_ ⇒ ProjectDeps.javacv.isEnabled) ++
-      Seq[ClasspathDep[ProjectReference]](tikaMetadata).filter(_ ⇒ sys.props.getOrElse("enable-tika", "1") == "1"):_*
+      Seq[ClasspathDep[ProjectReference]](tikaMetadata).filter(_ ⇒ sys.props.getOrElse("enable-tika", "1") == "1"): _*
   )
   .aggregate(
-    core, persistence,
-    bouncyCastleCrypto, libsodiumCrypto,
-    tikaMetadata, imageioMetadata, markdownMetadata, javacvMetadata,
-    googleDriveStorage, mailruCloudStorage, dropboxStorage, webdavStorage
+    core,
+    persistence,
+    bouncyCastleCrypto,
+    libsodiumCrypto,
+    tikaMetadata,
+    imageioMetadata,
+    markdownMetadata,
+    javacvMetadata,
+    googleDriveStorage,
+    mailruCloudStorage,
+    dropboxStorage,
+    webdavStorage
   )
 
 // -----------------------------------------------------------------------
@@ -293,8 +324,8 @@ lazy val `server-api-routes` = (project in file("server") / "api-routes")
     name := "shadowcloud-server-api",
     libraryDependencies ++=
       ProjectDeps.akka.streams ++
-      ProjectDeps.akka.http ++
-      ProjectDeps.akka.testKit.map(_ % "test")
+        ProjectDeps.akka.http ++
+        ProjectDeps.akka.testKit.map(_ % "test")
   )
   .dependsOn(core % "compile->compile;test->test", autowireApiJVM, coreAssembly % "test")
 
@@ -306,7 +337,11 @@ lazy val `server-static-routes` = (project in file("server") / "static-routes")
       import com.karasiq.scalajsbundler.dsl._
       Bundle(
         "index",
-        WebDeps.indexHtml, WebDeps.bootstrap, WebDeps.videoJS, WebDeps.markedJS, WebDeps.dropzoneJS,
+        WebDeps.indexHtml,
+        WebDeps.bootstrap,
+        WebDeps.videoJS,
+        WebDeps.markedJS,
+        WebDeps.dropzoneJS,
         scalaJsApplication(webapp, fastOpt = false, launcher = false).value
       )
     },
@@ -374,8 +409,8 @@ lazy val desktopApp = (project in file("desktop-app"))
     mainClass in Compile := Some("com.karasiq.shadowcloud.desktop.SCDesktopMain"),
     libraryDependencies ++= ProjectDeps.akka.slf4j ++ ProjectDeps.logback ++
       (if (ProjectDeps.javacv.isFullEnabled) ProjectDeps.javacv.mainPlatforms
-      else if (ProjectDeps.javacv.isEnabled) ProjectDeps.javacv.currentPlatform
-      else Nil),
+       else if (ProjectDeps.javacv.isEnabled) ProjectDeps.javacv.currentPlatform
+       else Nil),
     fork in run := true
   )
   .dependsOn(coreAssembly, server, javafx, `drive-fuse`)
@@ -393,12 +428,12 @@ lazy val consoleApp = (project in file("console-app"))
     mainClass in Compile := Some("com.karasiq.shadowcloud.console.SCConsoleMain"),
     libraryDependencies ++= ProjectDeps.akka.slf4j ++ ProjectDeps.logback ++
       (if (ProjectDeps.javacv.isFullEnabled) ProjectDeps.javacv.mainPlatforms
-      else if (ProjectDeps.javacv.isEnabled) ProjectDeps.javacv.currentPlatform
-      else Nil),
+       else if (ProjectDeps.javacv.isEnabled) ProjectDeps.javacv.currentPlatform
+       else Nil),
     fork in run := true
   )
   .dependsOn(coreAssembly, server, `drive-fuse`)
-  .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin, DockerPlugin /*, AshScriptPlugin*/)
+  .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin, DockerPlugin /*, AshScriptPlugin*/ )
 
 // -----------------------------------------------------------------------
 // Misc
@@ -422,7 +457,7 @@ lazy val shell = project
 lazy val shadowcloud = (project in file("."))
   .settings(
     commonSettings,
-    name := "shadowcloud-root"/*,
+    name := "shadowcloud-root" /*,
     liquibaseUsername := "sa",
     liquibasePassword := s"${sys.props("shadowcloud.persistence.h2.password").ensuring(_.ne(null), "No password").replace(' ', '_')} sa",
     liquibaseDriver := "org.h2.Driver",

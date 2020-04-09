@@ -4,8 +4,8 @@ object ProjectDeps {
   type Deps = Seq[ModuleID]
 
   object akka {
-    val version     = "2.5.14"
-    val httpVersion = "10.1.3"
+    val version     = "2.6.4"
+    val httpVersion = "10.1.11"
 
     def actors: Deps = Seq(
       "com.typesafe.akka" %% "akka-actor" % version
@@ -106,7 +106,7 @@ object ProjectDeps {
   )
 
   def gdrive: Deps = Seq(
-    "com.github.karasiq" %% "gdrive-api" % "1.0.12"
+    "com.github.karasiq" %% "gdrive-api" % "1.1.1-SNAPSHOT"
   )
 
   def mailrucloud: Deps = Seq(
@@ -215,7 +215,7 @@ object ProjectDeps {
 
   // https://github.com/SerCeMan/jnr-fuse
   def `jnr-fuse`: Deps = Seq(
-    "com.github.serceman" % "jnr-fuse" % "0.5.3"
+    "com.github.serceman" % "jnr-fuse" % "0.5.4"
   )
 
   // https://github.com/xerial/larray

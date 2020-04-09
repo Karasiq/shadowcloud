@@ -22,7 +22,10 @@ final case class RegionHealth(usedSpace: Long, storages: Map[StorageId, StorageH
   }
 
   private[this] def createSum(getValue: StorageHealth ⇒ Long): Long = {
-    math.max(0L, storages.values.filter(_.online).map(getValue).sum)
+    val result = storages.values.filter(_.online).map(h => BigInt(getValue(h))).sum
+    if (!result.isValidLong) Long.MaxValue
+    else if (result < 0) 0L
+    else result.longValue()
   }
 }
 

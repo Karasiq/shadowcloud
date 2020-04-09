@@ -1,24 +1,17 @@
 package com.karasiq.shadowcloud.drive
 
-import scala.collection.mutable
-import scala.concurrent.Future
-import scala.concurrent.duration._
-import scala.language.{implicitConversions, postfixOps}
-import scala.util.control.NonFatal
-
-import akka.{Done, NotUsed}
 import akka.actor.{Actor, ActorLogging, PoisonPill, Props, ReceiveTimeout}
 import akka.pattern.{ask, pipe}
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.{ByteString, Timeout}
-
+import akka.{Done, NotUsed}
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperation}
-import com.karasiq.shadowcloud.drive.utils.ChunkPatchList._
 import com.karasiq.shadowcloud.drive.FileIOScheduler._
 import com.karasiq.shadowcloud.drive.config.SCDriveConfig
+import com.karasiq.shadowcloud.drive.utils.ChunkPatchList._
 import com.karasiq.shadowcloud.drive.utils.{ChunkPatch, PendingChunkIO, WritesOptimizeStage}
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.crypto.HashingMethod
@@ -26,13 +19,19 @@ import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.utils.Utils
 
+import scala.collection.mutable
+import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.language.{implicitConversions, postfixOps}
+import scala.util.control.NonFatal
+
 object FileIOScheduler {
   // -----------------------------------------------------------------------
   // Messages
   // -----------------------------------------------------------------------
   sealed trait Message
   final case class ReadData(range: ChunkRanges.Range) extends Message
-  object ReadData extends MessageStatus[ChunkRanges.Range, ByteString]
+  object ReadData                                     extends MessageStatus[ChunkRanges.Range, ByteString]
 
   final case class WriteData(offset: Long, data: ByteString) extends Message {
     override def toString: String = s"WriteData($offset, ${data.length} bytes)"
@@ -42,19 +41,19 @@ object FileIOScheduler {
   }
 
   final case class CutFile(size: Long) extends Message
-  object CutFile extends MessageStatus[File, Long]
+  object CutFile                       extends MessageStatus[File, Long]
 
-  final case object Flush extends Message with MessageStatus[File, FlushResult]
-  final case object PersistRevision extends Message with MessageStatus[File, File]
+  final case object Flush              extends Message with MessageStatus[File, FlushResult]
+  final case object PersistRevision    extends Message with MessageStatus[File, File]
   final case object GetCurrentRevision extends Message with MessageStatus[File, File]
-  final case object ReleaseFile extends Message with MessageStatus[File, File]
+  final case object ReleaseFile        extends Message with MessageStatus[File, File]
 
   // -----------------------------------------------------------------------
   // Internal Messages
   // -----------------------------------------------------------------------
-  private sealed trait InternalMessage extends Message
+  private sealed trait InternalMessage            extends Message
   private final case class DropChunks(size: Long) extends InternalMessage
-  private object DropChunks extends MessageStatus[File, Long]
+  private object DropChunks                       extends MessageStatus[File, Long]
 
   private final case class RevisionUpdated(newFile: File) extends InternalMessage
 
@@ -67,7 +66,7 @@ object FileIOScheduler {
   }
   object ChunkIOOperation {
     final case class ChunkRewritten(range: ChunkRanges.Range, oldChunk: Chunk, chunk: Chunk) extends ChunkIOOperation
-    final case class ChunkAppended(range: ChunkRanges.Range, chunk: Chunk) extends ChunkIOOperation
+    final case class ChunkAppended(range: ChunkRanges.Range, chunk: Chunk)                   extends ChunkIOOperation
   }
 
   final case class FlushResult(writes: Seq[ChunkPatch], ops: Seq[ChunkIOOperation])
@@ -86,15 +85,15 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   // -----------------------------------------------------------------------
   import context.dispatcher
   private[this] implicit val materializer = ActorMaterializer()
-  private[this] implicit val timeout = Timeout(config.fileIO.timeout)
-  private[this] val sc = ShadowCloud()
+  private[this] implicit val timeout      = Timeout(config.fileIO.timeout)
+  private[this] val sc                    = ShadowCloud()
 
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
   object actorState {
     val pendingFlush = PendingOperation[NotUsed]
-    var lastFlush = 0L
+    var lastFlush    = 0L
 
     def finishFlush(result: Flush.Status): Unit = {
       pendingFlush.finish(NotUsed, result)
@@ -103,15 +102,19 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   }
 
   object dataState {
-    var currentChunks = mutable.TreeMap(ChunkRanges.RangeList.zipWithRange(file.chunks).map(_.swap):_*)
+    var currentChunks = mutable.TreeMap(ChunkRanges.RangeList.zipWithRange(file.chunks).map(_.swap): _*)
     var pendingWrites = Seq.empty[ChunkPatch]
-    var lastRevision = file
-    var lastSetSize = file.checksum.size
-    var lastModified = file.timestamp.lastModified
+    var lastRevision  = file
+    var lastSetSize   = file.checksum.size
+    var lastModified  = file.timestamp.lastModified
 
     def isFlushRequired: Boolean = {
+      val flushLimit =
+        if (config.fileIO.flushLimit > 0) config.fileIO.flushLimit
+        else sc.config.chunks.chunkSize * sc.config.parallelism.write
+
       (System.nanoTime() - actorState.lastFlush).nanos > config.fileIO.flushInterval ||
-        pendingWrites.map(_.range.size).sum >= config.fileIO.flushLimit
+      pendingWrites.map(_.range.size).sum >= flushLimit
     }
 
     def isChunksModified: Boolean = {
@@ -123,9 +126,9 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     }
 
     def buildNewRevision(): File = {
-      val newChunks = currentChunks.values.toVector
-      val newSize = newChunks.map(_.checksum.size).sum
-      val newEncSize = newChunks.map(_.checksum.encSize).sum
+      val newChunks   = currentChunks.values.toVector
+      val newSize     = newChunks.map(_.checksum.size).sum
+      val newEncSize  = newChunks.map(_.checksum.encSize).sum
       val newChecksum = Checksum(HashingMethod.none, HashingMethod.none, newSize, ByteString.empty, newEncSize, ByteString.empty)
       File.modified(lastRevision, newChecksum, newChunks)
     }
@@ -134,7 +137,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       val maxChunkEnd = if (currentChunks.isEmpty) 0 else currentChunks.keys.maxBy(_.end).end
       val maxPatchEnd = if (pendingWrites.isEmpty) 0 else pendingWrites.maxBy(_.range.end).range.end
 
-      val newSize = math.max(lastSetSize, math.max(maxChunkEnd, maxPatchEnd))
+      val newSize     = math.max(lastSetSize, math.max(maxChunkEnd, maxPatchEnd))
       val newChecksum = Checksum(HashingMethod.none, HashingMethod.none, newSize, ByteString.empty, newSize, ByteString.empty)
       lastRevision.copy(checksum = newChecksum, chunks = Nil, timestamp = lastRevision.timestamp.modified(lastModified))
     }
@@ -149,16 +152,17 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     // -----------------------------------------------------------------------
     def readStream(range: ChunkRanges.Range): Source[ByteString, NotUsed] = {
       val currentWrites = dataState.pendingWrites
-      val patches = currentWrites.filter(wr ⇒ range.contains(wr.range))
+      val patches       = currentWrites.filter(wr ⇒ range.contains(wr.range))
 
       def chunksStream = {
-        sc.streams.file.readChunkStreamRanged(regionId, dataState.currentChunks.values.toVector, range)
+        sc.streams.file
+          .readChunkStreamRanged(regionId, dataState.currentChunks.values.toVector, range)
           .statefulMapConcat { () ⇒
             var position = range.start
             bytes ⇒ {
-              val range = ChunkRanges.Range(position, position + bytes.length)
+              val range          = ChunkRanges.Range(position, position + bytes.length)
               val relatedPatches = patches.filter(wr ⇒ range.contains(wr.range))
-              val patched = relatedPatches.patchChunk(range, bytes)
+              val patched        = relatedPatches.patchChunk(range, bytes)
 
               position += bytes.length
               patched +: Nil
@@ -172,13 +176,14 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
         if (currentWrites.forall(_.range.end <= chunksEnd)) {
           Source.empty[ByteString]
         } else {
-          val fileEnd = math.max(chunksEnd, math.min(range.end, currentWrites.map(_.range.end).max))
+          val fileEnd      = math.max(chunksEnd, math.min(range.end, currentWrites.map(_.range.end).max))
           val appendsRange = ChunkRanges.Range(chunksEnd, fileEnd)
           Source
             .fromIterator(() ⇒ dataUtils.pendingAppends(currentWrites, chunksEnd))
-            .map { case (range, chunk) ⇒
-              val selectedRange = range.relativeTo(appendsRange)
-              selectedRange.slice(chunk.data.plain)
+            .map {
+              case (range, chunk) ⇒
+                val selectedRange = range.relativeTo(appendsRange)
+                selectedRange.slice(chunk.data.plain)
             }
             // .via(ByteStreams.limit(appendsRange.size))
             .named("scDriveReadAppends")
@@ -194,7 +199,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     def createWritesStream(pendingWrites: Seq[ChunkPatch]): Source[PendingChunkIO, NotUsed] = {
       def rewrites = {
         val patchesByChunk = (for {
-          write ← pendingWrites
+          write          ← pendingWrites
           (range, chunk) ← dataState.currentChunks if range.contains(write.range)
         } yield ((chunk, range), write)).groupBy(_._1).mapValues(_.map(_._2))
 
@@ -209,7 +214,8 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
 
       def appends = {
         val chunksEnd = dataState.currentChunks.lastOption.fold(0L)(_._1.end)
-        Source.fromIterator(() ⇒ dataUtils.pendingAppends(pendingWrites, chunksEnd))
+        Source
+          .fromIterator(() ⇒ dataUtils.pendingAppends(pendingWrites, chunksEnd))
           .map { case (range, chunk) ⇒ PendingChunkIO.Append(range, chunk.data.plain) }
           .named("scDriveAppends")
       }
@@ -220,20 +226,23 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     def finishWrite(writeStream: Source[PendingChunkIO, NotUsed]): Source[ChunkIOOperation, NotUsed] = {
       val streams = writeStream.collect {
         case PendingChunkIO.Append(range, newData) ⇒
-          Source.single(Chunk(data = Data(newData)))
+          Source
+            .single(Chunk(data = Data(newData)))
             .via(sc.streams.chunk.beforeWrite())
             .map((regionId, _))
             .via(sc.streams.region.writeChunks)
             .map(chunk ⇒ ChunkIOOperation.ChunkAppended(range, chunk.withoutData))
 
         case PendingChunkIO.Rewrite(range, chunk, patches) ⇒
-          Source.single((regionId, chunk))
+          Source
+            .single((regionId, chunk))
             .via(sc.streams.region.readChunks)
             // .via(sc.streams.chunk.afterRead)
             .flatMapConcat { oldChunk ⇒
               val oldData = oldChunk.data.plain
               val newData = patches.patchChunk(range, oldData)
-              Source.single(oldChunk.copy(data = Data(newData)))
+              Source
+                .single(oldChunk.copy(data = Data(newData)))
                 .via(sc.streams.chunk.beforeWrite())
                 .map((regionId, _))
                 .via(sc.streams.region.writeChunks)
@@ -263,12 +272,13 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       val lastChunk = dataState.currentChunks.find(rc ⇒ rc._1.start < newSize && rc._1.end > newSize)
       val writesStream = lastChunk match {
         case Some((range, chunk)) ⇒
-          Source.single((regionId, chunk))
+          Source
+            .single((regionId, chunk))
             .via(sc.streams.region.readChunks)
             // .via(sc.streams.chunk.afterRead)
             .map { chunk ⇒
               val newRange = range.fitToSize(newSize)
-              val newData = chunk.data.plain.take(newRange.size.toInt)
+              val newData  = chunk.data.plain.take(newRange.size.toInt)
               WriteData(newRange.start, newData)
             }
 
@@ -304,8 +314,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       dataState.pendingWrites = dataState.pendingWrites.filterNot(writeSet.contains)
 
       val rewrittenRanges = ops.map(_.range)
-      dataState.currentChunks
-        .keys
+      dataState.currentChunks.keys
         .filter(cr ⇒ rewrittenRanges.exists(_.contains(cr)))
         .foreach(dataState.currentChunks -= _)
       ops.foreach(op ⇒ dataState.currentChunks(op.range) = op.chunk)
@@ -349,11 +358,11 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
         if (restSize <= 0) {
           Iterator.empty
         } else {
-          val bytes = padding(restSize)
-          val chunkRange = ChunkRanges.Range(offset, offset + bytes.length)
-          val patches = appends.filter(a ⇒ chunkRange.contains(a.range))
+          val bytes        = padding(restSize)
+          val chunkRange   = ChunkRanges.Range(offset, offset + bytes.length)
+          val patches      = appends.filter(a ⇒ chunkRange.contains(a.range))
           val patchedBytes = patches.patchChunk(chunkRange, bytes)
-          val chunk = Chunk(data = Data(patchedBytes))
+          val chunk        = Chunk(data = Data(patchedBytes))
           Iterator.single((chunkRange, chunk)) ++ appendsIterator(offset + bytes.length, restSize - bytes.length)
         }
       }
@@ -367,7 +376,8 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   // -----------------------------------------------------------------------
   def receive: Receive = {
     case ReadData(range) ⇒
-      val future = dataIO.readStream(range)
+      val future = dataIO
+        .readStream(range)
         .via(ByteStreams.concat)
         .runWith(Sink.head)
       ReadData.wrapFuture(range, future).pipeTo(sender())
@@ -400,7 +410,8 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
         val future = dataIO.saveNewRevision()
         future.flatMap { newFile ⇒
           if (config.fileIO.createMetadata) {
-            sc.streams.file.read(regionId, newFile)
+            sc.streams.file
+              .read(regionId, newFile)
               .via(sc.streams.metadata.create(newFile.path.name))
               .via(sc.streams.metadata.writeAll(regionId, newFile.id))
               .log("drive-metadata-files")
@@ -422,8 +433,9 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       try {
         val currentRevision = dataState.fixRevisionBounds()
         sender() ! GetCurrentRevision.Success(file, currentRevision)
-      } catch { case NonFatal(exc) ⇒
-        sender() ! GetCurrentRevision.Failure(file, exc)
+      } catch {
+        case NonFatal(exc) ⇒
+          sender() ! GetCurrentRevision.Failure(file, exc)
       }
 
     case result: Flush.Status ⇒
@@ -444,7 +456,8 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     case ReleaseFile ⇒
       if (dataState.isChunksModified) {
         log.debug("Releasing file")
-        val future = Flush.unwrapFuture(self ? Flush)
+        val future = Flush
+          .unwrapFuture(self ? Flush)
           .flatMap(_ ⇒ PersistRevision.unwrapFuture(self ? PersistRevision))
         ReleaseFile.wrapFuture(file, future).pipeTo(sender())
       } else {
@@ -453,7 +466,8 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
 
     case ReceiveTimeout ⇒
       if (dataState.isChunksModified) {
-        ReleaseFile.unwrapFuture(self ? ReleaseFile)
+        ReleaseFile
+          .unwrapFuture(self ? ReleaseFile)
           .onComplete(_.foreach(_ ⇒ self ! PoisonPill))
       } else {
         context.stop(self)

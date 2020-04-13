@@ -12,6 +12,7 @@ import com.typesafe.config.impl.ConfigImpl
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
+import scala.util.Try
 
 object SCDesktopMain extends App {
   private[this] val config = {
@@ -38,7 +39,7 @@ object SCDesktopMain extends App {
 
     def onExit(): Unit =
       new Thread(() => {
-        Await.result(actorSystem.terminate(), 15 seconds)
+        Try(Await.result(actorSystem.terminate(), 10 seconds))
         sys.exit(0)
       }, "app-shutdown").start()
 

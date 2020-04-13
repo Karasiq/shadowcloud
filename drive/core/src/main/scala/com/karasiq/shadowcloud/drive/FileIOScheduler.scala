@@ -481,4 +481,9 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     super.preStart()
     context.setReceiveTimeout(timeout.duration)
   }
+
+  override def postStop(): Unit = {
+    actorState.pendingFlush.finishAll(_ => Flush.Failure(file, new RuntimeException("IO scheduler stopped")))
+    super.postStop()
+  }
 }

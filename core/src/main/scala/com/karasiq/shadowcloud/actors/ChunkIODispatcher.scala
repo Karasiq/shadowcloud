@@ -201,6 +201,9 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
     chunksWrite.finishAll(
       key => WriteChunk.Failure(key, StorageException.IOFailure(key._1.toStoragePath, new RuntimeException("Chunk IO dispatcher stopped")))
     )
+    chunksRead.finishAll(
+      key => ReadChunk.Failure(key, StorageException.IOFailure(key._1.toStoragePath, new RuntimeException("Chunk IO dispatcher stopped")))
+    )
     writeQueue.complete()
     readQueue.complete()
     super.postStop()

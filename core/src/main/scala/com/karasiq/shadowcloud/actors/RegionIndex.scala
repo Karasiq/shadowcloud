@@ -456,6 +456,12 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
     }
   }
 
+
+  override def postStop(): Unit = {
+    state.pendingSync.finishAll(indexId => Synchronize.Failure(indexId, new RuntimeException("Index dispatcher stopped")))
+    super.postStop()
+  }
+
   // -----------------------------------------------------------------------
   // Utils
   // -----------------------------------------------------------------------

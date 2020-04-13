@@ -1,22 +1,22 @@
 package com.karasiq.shadowcloud.desktop
 
-import java.nio.file.{Files, Paths}
-
-import com.typesafe.config.{Config, ConfigFactory}
+import java.io.File
 
 import com.karasiq.common.configs.ConfigUtils
+import com.typesafe.config.{Config, ConfigFactory}
 
 object SCDesktopConfig {
   def load(): Config = {
     val autoParallelismConfig = {
       val cpuAvailable = Runtime.getRuntime.availableProcessors()
-      val parallelism = math.max(8, math.min(1, cpuAvailable / 2))
+      val parallelism  = math.max(8, math.min(1, cpuAvailable / 2))
       ConfigFactory.parseString(s"shadowcloud.parallelism.default = $parallelism")
     }
 
     val substitutionsConfig = ConfigFactory.parseResourcesAnySyntax("sc-substitutions")
 
-    val defaultConfig = ConfigFactory.defaultApplication()
+    val defaultConfig = ConfigFactory
+      .defaultApplication()
       .withFallback(ConfigFactory.defaultReference())
     /* .withFallback {
       // reference.conf without ".resolve()" workaround
@@ -34,18 +34,19 @@ object SCDesktopConfig {
     } */
 
     val serverAppConfig = {
-      val fileConfig = {
-        val configFilePath = sys.props.getOrElse("shadowcloud.external-config", "shadowcloud.conf")
-        val optionalConfFile = Paths.get(configFilePath)
-        if (Files.isRegularFile(optionalConfFile))
-          ConfigFactory.parseFile(optionalConfFile.toFile)
-        else
-          ConfigUtils.emptyConfig
+      val files = (Seq(
+        sys.props("user.home") + "/.shadowcloud/shadowcloud.conf",
+        "shadowcloud.conf"
+      ) ++ sys.props.get("shadowcloud.external-config")).map(new File(_)).filter(_.isFile)
+
+      val fileConfig = files.foldLeft(ConfigUtils.emptyConfig) { (conf, f) =>
+        ConfigFactory.parseFile(f).withFallback(conf)
       }
 
       val desktopConfig = ConfigFactory.parseResourcesAnySyntax("sc-desktop")
 
-      ConfigFactory.defaultOverrides()
+      ConfigFactory
+        .defaultOverrides()
         .withFallback(fileConfig)
         .withFallback(substitutionsConfig)
         .withFallback(autoParallelismConfig)

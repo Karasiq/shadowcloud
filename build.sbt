@@ -2,7 +2,7 @@ import com.typesafe.sbt.packager.docker.Cmd
 
 val commonSettings = Seq(
   organization := "com.github.karasiq",
-  version := "1.0.3",
+  version := "1.1.0",
   isSnapshot := version.value.endsWith("SNAPSHOT"),
   scalaVersion := "2.12.4",
   // crossScalaVersions := Seq("2.11.11", "2.12.4"),

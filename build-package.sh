@@ -1,4 +1,4 @@
-export VERSION=1.0.3
+export VERSION=1.1.0
 
 sbt -J-Xmx4G -J-Denable-tika=1 -J-Denable-javacv=1 desktopApp/jdkPackager:packageBin && \
   sbt -J-Xmx4G -J-Denable-tika=0 -J-Denable-javacv=0 desktopApp/universal:packageBin && \

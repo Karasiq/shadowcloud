@@ -106,7 +106,7 @@ object ProjectDeps {
   )
 
   def gdrive: Deps = Seq(
-    "com.github.karasiq" %% "gdrive-api" % "1.1.1-SNAPSHOT"
+    "com.github.karasiq" %% "gdrive-api" % "1.1.1"
   )
 
   def mailrucloud: Deps = Seq(

@@ -53,7 +53,7 @@ class RegionsView(implicit context: AppContext, regionContext: RegionContext) ex
       val defaultConfig = {
         // Security patch
         val cfg = """
-                    |chunk-key = encrypted-hash
+                    |chunk-key = com.karasiq.shadowcloud.storage.utils.mappers.HashNonceHMACKeyMapper
                     |""".stripMargin
 
         SerializedProps(SerializedProps.DefaultFormat, ByteString(cfg))

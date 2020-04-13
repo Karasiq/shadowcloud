@@ -30,6 +30,8 @@ import scala.util.{Failure, Success}
 object ChunkIODispatcher {
   @SerialVersionUID(0L)
   final case class ChunkPath(regionId: RegionId, chunkId: ChunkId) {
+    require(chunkId.nonEmpty, "Chunk id is empty")
+
     override def toString: String = {
       val sb = new StringBuilder(regionId.length + 1 + (chunkId.length * 2))
       (sb ++= regionId += '/' ++= HexString.encode(chunkId)).result()

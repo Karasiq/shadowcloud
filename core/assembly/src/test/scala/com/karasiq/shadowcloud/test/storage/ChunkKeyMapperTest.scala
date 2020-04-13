@@ -1,9 +1,7 @@
 package com.karasiq.shadowcloud.test.storage
 
 import scala.collection.JavaConverters._
-
 import org.scalatest.{FlatSpec, Matchers}
-
 import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.storage.utils.ChunkKeyMapper

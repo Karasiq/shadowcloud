@@ -57,7 +57,7 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
     chunk.writeStatus match {
       case WriteStatus.Pending(affinity) ⇒
         val newList = affinity.mandatory.filterNot(chunk.availability.isFailed) ++ generatedList
-        affinity.copy(mandatory = (selectStoragesToWrite(newList) ++ settings.writeInclude).distinct)
+        affinity.copy(mandatory = (selectStoragesToWrite(newList)).distinct)
 
       case _ ⇒
         ChunkWriteAffinity(selectStoragesToWrite(generatedList))
@@ -75,6 +75,6 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
   }
 
   protected def selectStoragesToWrite(storages: Seq[StorageId]): Seq[StorageId] = {
-    Utils.takeOrAll(sortStorages(storages.distinct), settings.dataRF)
+    Utils.takeOrAll(sortStorages(storages.filterNot(settings.writeInclude).distinct), settings.dataRF) ++ settings.writeInclude
   }
 }

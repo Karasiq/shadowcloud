@@ -2,15 +2,13 @@ package com.karasiq.shadowcloud.storage.inmem
 
 import java.io.IOException
 
-import scala.collection.concurrent.{Map ⇒ CMap}
-import scala.concurrent.Future
-import scala.language.postfixOps
-
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
-
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
+
+import scala.collection.concurrent.{Map => CMap}
+import scala.concurrent.Future
 
 private[inmem] final class ConcurrentMapStreams[K, V](map: CMap[K, V], length: V ⇒ Int) {
   def keys: Source[K, Future[StorageIOResult]] = {

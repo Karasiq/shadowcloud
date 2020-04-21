@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.index.utils
 
-import scala.language.postfixOps
+
 
 import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.utils.MergeUtil.SplitDecider

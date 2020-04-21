@@ -2,10 +2,9 @@ package com.karasiq.shadowcloud.actors.utils
 
 import java.util.concurrent.TimeoutException
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 import akka.actor.{Actor, ActorRef, ReceiveTimeout, Stash, Terminated}
+
+import scala.concurrent.duration._
 
 private[actors] object ContainerActor {
   sealed trait Message

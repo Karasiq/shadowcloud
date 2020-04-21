@@ -1,16 +1,13 @@
 package com.karasiq.shadowcloud.webapp.components.common
 
-import scala.language.postfixOps
-import scalatags.JsDom.all.{a, href, onclick}
 
 import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
-import org.scalajs.dom
-import rx.{Rx, Var}
-
 import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.taboverridejs.TabOverride
+import org.scalajs.dom
+import rx.{Rx, Var}
+import scalaTags.all._
+import scalatags.JsDom.all.{a, href, onclick}
 
 object AppComponents {
   def iconLink(title: Modifier, icon: Modifier, md: Modifier*): ConcreteHtmlTag[dom.html.Anchor] = a(

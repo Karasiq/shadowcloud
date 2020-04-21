@@ -1,20 +1,17 @@
 package com.karasiq.shadowcloud.webapp.components.file
 
-import scala.concurrent.Future
-import scala.language.postfixOps
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-
-import rx.Rx
-import rx.async._
-
 import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.model.{File, FileId, RegionId}
 import com.karasiq.shadowcloud.webapp.components.file.FilePreview.PreviewVariants
 import com.karasiq.shadowcloud.webapp.components.metadata.MetadataView
 import com.karasiq.shadowcloud.webapp.context.AppContext
+import rx.Rx
+import rx.async._
+import scalaTags.all._
+
+import scala.concurrent.Future
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 object FilePreview {
   case class PreviewVariants(image: Option[Metadata.Thumbnail] = None,

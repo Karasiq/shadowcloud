@@ -2,23 +2,21 @@ package com.karasiq.shadowcloud.drive
 
 import java.io.IOException
 
-import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
-import scala.util.{Failure, Success}
-
 import akka.actor.{Actor, ActorLogging, ActorRef, PoisonPill, PossiblyHarmful, Props}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
-
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.utils.{ActorState, MessageStatus}
 import com.karasiq.shadowcloud.drive.config.SCDriveConfig
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.index.diffs.FolderIndexDiff
 import com.karasiq.shadowcloud.index.files.FileVersions
-import com.karasiq.shadowcloud.model.{File, Folder, Path, RegionId}
 import com.karasiq.shadowcloud.model.utils.StorageHealth
+import com.karasiq.shadowcloud.model.{File, Folder, Path, RegionId}
+
+import scala.collection.mutable
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 object VirtualFSDispatcher {
   // Messages

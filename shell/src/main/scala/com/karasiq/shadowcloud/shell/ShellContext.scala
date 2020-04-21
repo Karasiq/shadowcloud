@@ -1,9 +1,8 @@
 package com.karasiq.shadowcloud.shell
 
-import scala.language.postfixOps
+
 
 import akka.actor.ActorSystem
-
 import com.karasiq.shadowcloud.ShadowCloud
 
 private[shell] object ShellContext {

@@ -1,16 +1,14 @@
 package com.karasiq.shadowcloud.test.actors
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
-import org.scalatest.{FlatSpecLike, Matchers}
-
 import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.actors.internal.RegionTracker
 import com.karasiq.shadowcloud.actors.internal.RegionTracker.{RegionStatus, StorageStatus}
 import com.karasiq.shadowcloud.actors.utils.ActorState
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, SCExtensionSpec}
+import org.scalatest.{FlatSpecLike, Matchers}
+
+import scala.concurrent.duration._
 
 class RegionSupervisorTest extends SCExtensionSpec with FlatSpecLike with Matchers {
   import RegionSupervisor._

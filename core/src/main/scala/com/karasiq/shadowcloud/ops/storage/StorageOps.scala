@@ -1,22 +1,20 @@
 package com.karasiq.shadowcloud.ops.storage
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
-
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.util.Timeout
-
-import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, RegionIndex, StorageDispatcher, StorageIndex}
+import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
-import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
+import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, RegionIndex, StorageDispatcher, StorageIndex}
 import com.karasiq.shadowcloud.config.TimeoutsConfig
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.model.{Chunk, ChunkId, RegionId, StorageId}
 import com.karasiq.shadowcloud.model.utils.{StorageHealth, SyncReport}
+import com.karasiq.shadowcloud.model.{Chunk, ChunkId, RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
+
+import scala.concurrent.{ExecutionContext, Future}
 
 object StorageOps {
   def apply(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(implicit ec: ExecutionContext): StorageOps = {

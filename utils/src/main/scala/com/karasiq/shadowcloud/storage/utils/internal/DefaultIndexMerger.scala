@@ -1,14 +1,13 @@
 package com.karasiq.shadowcloud.storage.utils.internal
 
-import scala.collection.{mutable, SortedMap}
-import scala.language.postfixOps
-
 import com.karasiq.shadowcloud.exceptions.SCExceptions
-import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.index.utils.{FolderDecider, FolderDiffDecider}
+import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.utils.MergeUtil.Decider
+
+import scala.collection.{SortedMap, mutable}
 
 private[storage] final class DefaultIndexMerger[@specialized(Long) T](firstKey: T)(implicit ord: Ordering[T]) extends IndexMerger[T] {
   private[this] var _diffs = mutable.SortedMap.empty[T, IndexDiff]

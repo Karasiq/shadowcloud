@@ -1,21 +1,19 @@
 package com.karasiq.shadowcloud.storage.files
 
 import java.io.FileNotFoundException
-import java.nio.file.{Files, StandardOpenOption, Path ⇒ FSPath}
-
-import scala.collection.JavaConverters._
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
+import java.nio.file.{Files, StandardOpenOption, Path => FSPath}
 
 import akka.NotUsed
-import akka.stream.{ActorAttributes, Attributes, Materializer}
 import akka.stream.scaladsl.{FileIO, Flow, Keep, Sink, Source}
-
+import akka.stream.{ActorAttributes, Attributes, Materializer}
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.utils.FileSystemUtils
+
+import scala.collection.JavaConverters._
+import scala.concurrent.{ExecutionContext, Future}
 
 private[storage] object FileRepository {
   def apply(folder: FSPath)(implicit ec: ExecutionContext, mat: Materializer): FileRepository = {

@@ -1,10 +1,8 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.symmetric
 
-import scala.language.postfixOps
+
 
 import akka.util.ByteString
-import org.bouncycastle.crypto.paddings.PaddedBufferedBlockCipher
-
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto._
@@ -12,6 +10,7 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{BCSymmetricKeys, BC
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.BlockCipherModule.BlockCipherOptions
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters}
 import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
+import org.bouncycastle.crypto.paddings.PaddedBufferedBlockCipher
 
 //noinspection RedundantDefaultArgument
 private[bouncycastle] object BlockCipherModule {

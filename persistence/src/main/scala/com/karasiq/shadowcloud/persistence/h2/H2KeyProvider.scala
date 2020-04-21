@@ -2,19 +2,17 @@ package com.karasiq.shadowcloud.persistence.h2
 
 import java.util.UUID
 
-import scala.concurrent.Future
-import scala.language.postfixOps
-import scala.util.Try
-
 import akka.Done
 import akka.actor.ActorSystem
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyId, KeyProps, KeySet}
 import com.karasiq.shadowcloud.model.keys.KeyProps.RegionSet
+import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyId, KeyProps, KeySet}
 import com.karasiq.shadowcloud.persistence.utils.SCQuillEncoders
 import com.karasiq.shadowcloud.providers.KeyProvider
+
+import scala.concurrent.Future
+import scala.util.Try
 
 final class H2KeyProvider(actorSystem: ActorSystem) extends KeyProvider {
   private[this] val h2 = H2DB(actorSystem)

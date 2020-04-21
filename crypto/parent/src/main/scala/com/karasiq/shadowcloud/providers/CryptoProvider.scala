@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.providers
 
-import scala.language.postfixOps
+
 
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, HashingMethod, SignMethod}

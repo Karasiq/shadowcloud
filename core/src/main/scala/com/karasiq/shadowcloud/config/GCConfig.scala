@@ -1,11 +1,9 @@
 package com.karasiq.shadowcloud.config
 
-import scala.concurrent.duration.{FiniteDuration, _}
-import scala.language.postfixOps
-
+import com.karasiq.common.configs.ConfigImplicits
 import com.typesafe.config.Config
 
-import com.karasiq.common.configs.ConfigImplicits
+import scala.concurrent.duration.{FiniteDuration, _}
 
 case class GCConfig(rootConfig: Config, runOnLowSpace: Option[Long], autoDelete: Boolean,
                     keepFileRevisions: Int, keepRecentFiles: FiniteDuration) extends WrappedConfig

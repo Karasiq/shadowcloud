@@ -1,12 +1,11 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric
 
-import scala.language.postfixOps
+
 
 import akka.util.ByteString
-import org.bouncycastle.crypto.AsymmetricBlockCipher
-
 import com.karasiq.shadowcloud.crypto.{EncryptionModuleStreamer, OnlyStreamEncryptionModule}
 import com.karasiq.shadowcloud.utils.ByteStringUnsafe
+import org.bouncycastle.crypto.AsymmetricBlockCipher
 
 private[bouncycastle] trait BCAsymmetricCipherModule extends OnlyStreamEncryptionModule with BCAsymmetricCipherKeys
 

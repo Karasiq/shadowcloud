@@ -1,11 +1,10 @@
 package com.karasiq.shadowcloud.test.index
 
-import scala.language.postfixOps
 
-import org.scalatest.{FlatSpec, Matchers}
 
 import com.karasiq.shadowcloud.model.{Folder, Timestamp}
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, TestUtils}
+import org.scalatest.{FlatSpec, Matchers}
 
 class FolderTest extends FlatSpec with Matchers {
   val folder = Folder(TestUtils.randomString, Timestamp(System.currentTimeMillis() - 1, System.currentTimeMillis() - 1))

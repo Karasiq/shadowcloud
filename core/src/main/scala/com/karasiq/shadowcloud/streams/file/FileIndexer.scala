@@ -2,20 +2,18 @@ package com.karasiq.shadowcloud.streams.file
 
 import java.io.IOException
 
-import scala.concurrent.{Future, Promise}
-import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
-
 import akka.Done
 import akka.stream._
 import akka.stream.scaladsl.Sink
 import akka.stream.stage._
 import akka.util.ByteString
-
-import com.karasiq.shadowcloud.model.{Checksum, Chunk}
 import com.karasiq.shadowcloud.model.crypto.HashingMethod
+import com.karasiq.shadowcloud.model.{Checksum, Chunk}
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 import com.karasiq.shadowcloud.utils.ChunkUtils
+
+import scala.concurrent.{Future, Promise}
+import scala.util.{Failure, Success, Try}
 
 private[shadowcloud] object FileIndexer {
   case class Result(checksum: Checksum, chunks: Seq[Chunk], ioResult: IOResult)

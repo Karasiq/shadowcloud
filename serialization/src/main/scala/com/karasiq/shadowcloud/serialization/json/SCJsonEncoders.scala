@@ -2,19 +2,18 @@ package com.karasiq.shadowcloud.serialization.json
 
 import akka.Done
 import akka.util.ByteString
-import com.trueaccord.scalapb.{GeneratedEnum, GeneratedEnumCompanion, GeneratedMessage, GeneratedMessageCompanion}
-import play.api.libs.json._
-
 import com.karasiq.common.encoding.{Base64, HexString}
 import com.karasiq.shadowcloud.config.SerializedProps
-import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex, IndexData}
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderDiff, FolderIndexDiff, IndexDiff}
+import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex, IndexData}
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.crypto._
 import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyProps, KeySet}
-import com.karasiq.shadowcloud.model.utils._
 import com.karasiq.shadowcloud.model.utils.GCReport.{RegionGCState, StorageGCState}
 import com.karasiq.shadowcloud.model.utils.RegionStateReport.{RegionStatus, StorageStatus}
+import com.karasiq.shadowcloud.model.utils._
+import play.api.libs.json._
+import scalapb.{GeneratedEnum, GeneratedEnumCompanion, GeneratedMessage, GeneratedMessageCompanion}
 
 //noinspection ConvertExpressionToSAM
 trait SCJsonEncoders {
@@ -28,30 +27,33 @@ trait SCJsonEncoders {
     Writes(_ ⇒ JsString("Done"))
   )
 
-  implicit val pathFormat = Json.format[Path]
-  implicit val serializedPropsFormat = Json.format[SerializedProps]
-  implicit val encryptionMethodFormat = Json.format[EncryptionMethod]
-  implicit val hashingMethodFormat = Json.format[HashingMethod]
-  implicit val symmetricEncryptionParametersFormat = Json.format[SymmetricEncryptionParameters]
+  implicit val pathFormat                           = Json.format[Path]
+  implicit val serializedPropsFormat                = Json.format[SerializedProps]
+  implicit val encryptionMethodFormat               = Json.format[EncryptionMethod]
+  implicit val hashingMethodFormat                  = Json.format[HashingMethod]
+  implicit val symmetricEncryptionParametersFormat  = Json.format[SymmetricEncryptionParameters]
   implicit val asymmetricEncryptionParametersFormat = Json.format[AsymmetricEncryptionParameters]
   implicit val encryptionParametersFormat = Format[EncryptionParameters](
-    Reads(value ⇒ (value \ "_key_type").as[String] match {
-      case "symmetric" ⇒ symmetricEncryptionParametersFormat.reads(value)
-      case "asymmetric" ⇒ asymmetricEncryptionParametersFormat.reads(value)
-    }),
+    Reads(
+      value ⇒
+        (value \ "_key_type").as[String] match {
+          case "symmetric"  ⇒ symmetricEncryptionParametersFormat.reads(value)
+          case "asymmetric" ⇒ asymmetricEncryptionParametersFormat.reads(value)
+        }
+    ),
     Writes {
-      case s: SymmetricEncryptionParameters ⇒ symmetricEncryptionParametersFormat.writes(s) + ("_key_type" → JsString("symmetric"))
+      case s: SymmetricEncryptionParameters   ⇒ symmetricEncryptionParametersFormat.writes(s) + ("_key_type"   → JsString("symmetric"))
       case as: AsymmetricEncryptionParameters ⇒ asymmetricEncryptionParametersFormat.writes(as) + ("_key_type" → JsString("asymmetric"))
     }
   )
-  implicit val signMethodFormat = Json.format[SignMethod]
+  implicit val signMethodFormat     = Json.format[SignMethod]
   implicit val signParametersFormat = Json.format[SignParameters]
-  implicit val timestampFormat = Json.format[Timestamp]
-  implicit val dataFormat = Json.format[Data]
-  implicit val checksumFormat = Json.format[Checksum]
-  implicit val chunkFormat = Json.format[Chunk]
-  implicit val fileFormat = Json.format[File]
-  implicit val folderFormat = Json.format[Folder]
+  implicit val timestampFormat      = Json.format[Timestamp]
+  implicit val dataFormat           = Json.format[Data]
+  implicit val checksumFormat       = Json.format[Checksum]
+  implicit val chunkFormat          = Json.format[Chunk]
+  implicit val fileFormat           = Json.format[File]
+  implicit val folderFormat         = Json.format[Folder]
 
   implicit def pathMapFormat[V: Format]: Format[Map[Path, V]] = {
     def pathToString(path: Path) = {
@@ -69,25 +71,25 @@ trait SCJsonEncoders {
     jsonMapFormat(_.toString, _.toLong)
   }
 
-  implicit val chunkIndexFormat = Json.format[ChunkIndex]
-  implicit val folderIndexFormat = Json.format[FolderIndex]
-  implicit val folderDiffFormat = Json.format[FolderDiff]
-  implicit val folderIndexDiffFormat = Json.format[FolderIndexDiff]
-  implicit val chunkIndexDiffFormat = Json.format[ChunkIndexDiff]
-  implicit val indexDiffFormat = Json.format[IndexDiff]
-  implicit val indexDataFormat = Json.format[IndexData]
-  implicit val fileAvailabilityFormat = Json.format[FileAvailability]
-  implicit val storageGCStateFormat = Json.format[StorageGCState]
-  implicit val regionGCStateFormat = Json.format[RegionGCState]
-  implicit val gcReportFormat = Json.format[GCReport]
-  implicit val syncReportFormat = Json.format[SyncReport]
-  implicit val storageStatusFormat = Json.format[StorageStatus]
-  implicit val regionStatusFormat = Json.format[RegionStatus]
+  implicit val chunkIndexFormat        = Json.format[ChunkIndex]
+  implicit val folderIndexFormat       = Json.format[FolderIndex]
+  implicit val folderDiffFormat        = Json.format[FolderDiff]
+  implicit val folderIndexDiffFormat   = Json.format[FolderIndexDiff]
+  implicit val chunkIndexDiffFormat    = Json.format[ChunkIndexDiff]
+  implicit val indexDiffFormat         = Json.format[IndexDiff]
+  implicit val indexDataFormat         = Json.format[IndexData]
+  implicit val fileAvailabilityFormat  = Json.format[FileAvailability]
+  implicit val storageGCStateFormat    = Json.format[StorageGCState]
+  implicit val regionGCStateFormat     = Json.format[RegionGCState]
+  implicit val gcReportFormat          = Json.format[GCReport]
+  implicit val syncReportFormat        = Json.format[SyncReport]
+  implicit val storageStatusFormat     = Json.format[StorageStatus]
+  implicit val regionStatusFormat      = Json.format[RegionStatus]
   implicit val regionStateReportFormat = Json.format[RegionStateReport]
-  implicit val storageHealthFormat = Json.format[StorageHealth]
-  implicit val regionHealthFormat = Json.format[RegionHealth]
+  implicit val storageHealthFormat     = Json.format[StorageHealth]
+  implicit val regionHealthFormat      = Json.format[RegionHealth]
 
-  implicit val keySetFormat = Json.format[KeySet]
+  implicit val keySetFormat   = Json.format[KeySet]
   implicit val keyPropsFormat = Json.format[KeyProps]
   implicit val keyChainFormat = Json.format[KeyChain]
 
@@ -136,21 +138,22 @@ trait SCJsonEncoders {
     }
   }
 
-  implicit def generatedMessageReadWrites[T <: GeneratedMessage with com.trueaccord.scalapb.Message[T] : GeneratedMessageCompanion]: Reads[T] with Writes[T] = new Reads[T] with Writes[T] {
-    def reads(json: JsValue): JsResult[T] = {
-      val bytes = Base64.decode(json.as[String])
-      JsSuccess(implicitly[GeneratedMessageCompanion[T]].parseFrom(bytes.toArray))
+  implicit def generatedMessageReadWrites[T <: GeneratedMessage with scalapb.Message[T]: GeneratedMessageCompanion]: Reads[T] with Writes[T] =
+    new Reads[T] with Writes[T] {
+      def reads(json: JsValue): JsResult[T] = {
+        val bytes = Base64.decode(json.as[String])
+        JsSuccess(implicitly[GeneratedMessageCompanion[T]].parseFrom(bytes.toArray))
+      }
+
+      def writes(o: T): JsValue = {
+        JsString(Base64.encode(ByteString.fromArrayUnsafe(o.toByteArray)))
+      }
     }
 
-    def writes(o: T): JsValue = {
-      JsString(Base64.encode(ByteString.fromArrayUnsafe(o.toByteArray)))
-    }
-  }
-
-  implicit def generatedEnumReadWrites[T <: GeneratedEnum : GeneratedEnumCompanion]: Reads[T] with Writes[T] = new Reads[T] with Writes[T] {
+  implicit def generatedEnumReadWrites[T <: GeneratedEnum: GeneratedEnumCompanion]: Reads[T] with Writes[T] = new Reads[T] with Writes[T] {
     def reads(json: JsValue): JsResult[T] = {
       val stringValue = json.as[String]
-      val value = implicitly[GeneratedEnumCompanion[T]].fromName(stringValue)
+      val value       = implicitly[GeneratedEnumCompanion[T]].fromName(stringValue)
       value match {
         case Some(value) ⇒
           JsSuccess(value)

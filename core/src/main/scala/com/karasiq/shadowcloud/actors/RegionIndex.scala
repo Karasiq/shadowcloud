@@ -19,7 +19,7 @@ import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexR
 import com.karasiq.shadowcloud.utils.DiffStats
 
 import scala.concurrent.duration._
-import scala.language.postfixOps
+
 
 object RegionIndex {
   // Types

@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.webapp.styles
 
-import scala.language.postfixOps
+
 
 import com.karasiq.shadowcloud.webapp.context.AppContext.CssSettings._
 

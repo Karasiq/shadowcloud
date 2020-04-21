@@ -15,7 +15,7 @@ import org.scalajs.dom.raw.DragEffect
 import rx._
 import scalaTags.all._
 
-import scala.language.postfixOps
+
 
 object FolderTree {
   def apply(path: Path)(implicit context: AppContext, folderContext: FolderContext, folderController: FolderController): FolderTree = {

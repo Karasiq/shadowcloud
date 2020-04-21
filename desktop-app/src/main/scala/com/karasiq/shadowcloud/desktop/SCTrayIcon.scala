@@ -1,15 +1,15 @@
 package com.karasiq.shadowcloud.desktop
 
-import javax.imageio.ImageIO
 import java.awt._
-import java.awt.event.{ActionEvent, ActionListener, ItemEvent}
-
-import scala.concurrent.Future
-import scala.language.{implicitConversions, postfixOps}
-import scala.util.control.NonFatal
+import java.awt.event.ActionEvent
+import java.awt.image.BufferedImage
 
 import akka.Done
 import akka.actor.ActorSystem
+import javax.imageio.ImageIO
+
+import scala.concurrent.Future
+import scala.util.control.NonFatal
 
 abstract class SCTrayIcon(implicit actorSystem: ActorSystem) {
   import actorSystem.dispatcher
@@ -21,7 +21,7 @@ abstract class SCTrayIcon(implicit actorSystem: ActorSystem) {
   def addToTray(): Unit = {
     if (SystemTray.isSupported) {
       val systemTray = SystemTray.getSystemTray
-      val popup = new PopupMenu("shadowcloud")
+      val popup      = new PopupMenu("shadowcloud")
 
       val openItem = new MenuItem("Open interface")
       openItem.addActionListener((_: ActionEvent) ⇒ onOpen())
@@ -31,7 +31,7 @@ abstract class SCTrayIcon(implicit actorSystem: ActorSystem) {
         if (mountItem.isEnabled)
           onMount().foreach(_ ⇒ mountItem.setEnabled(false))
       }
-      
+
       val exitItem = new MenuItem("Exit")
       exitItem.addActionListener((_: ActionEvent) ⇒ onExit())
 
@@ -41,22 +41,18 @@ abstract class SCTrayIcon(implicit actorSystem: ActorSystem) {
       popup.add(mountItem)
       popup.add(exitItem)
 
-      val trayIcon = new TrayIcon(getTrayIcon(), "shadowcloud", popup)
+      val trayIcon = new TrayIcon(loadTrayIcon(), "shadowcloud", popup)
       try {
         systemTray.add(trayIcon)
-      } catch { case NonFatal(error) ⇒
-        System.err.println(error)
+      } catch {
+        case NonFatal(error) ⇒
+          System.err.println(error)
       }
     }
   }
 
-  private[this] def getTrayIcon() = {
+  private[this] def loadTrayIcon(): BufferedImage = {
     val inputStream = getClass.getClassLoader.getResourceAsStream("sc-tray-icon.png")
     ImageIO.read(inputStream)
-  }
-
-  //noinspection ConvertExpressionToSAM
-  private implicit def implicitFunctionToActionListener(f: ActionEvent ⇒ Unit): ActionListener = new ActionListener {
-    def actionPerformed(e: ActionEvent): Unit = f(e)
   }
 }

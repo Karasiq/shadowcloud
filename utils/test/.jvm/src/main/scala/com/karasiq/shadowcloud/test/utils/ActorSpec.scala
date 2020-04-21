@@ -1,12 +1,11 @@
 package com.karasiq.shadowcloud.test.utils
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 import akka.actor.ActorSystem
 import akka.testkit.{ImplicitSender, TestKit}
-import org.scalatest.{BeforeAndAfterAll, Matchers, Suite}
 import org.scalatest.concurrent.ScalaFutures
+import org.scalatest.{BeforeAndAfterAll, Matchers, Suite}
+
+import scala.concurrent.duration._
 
 abstract class ActorSpec extends TestKit(ActorSystem("test")) with ImplicitSender
   with Suite with Matchers with ScalaFutures with BeforeAndAfterAll {

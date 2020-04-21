@@ -1,13 +1,12 @@
 package com.karasiq.shadowcloud.index
 
-import scala.annotation.tailrec
-import scala.collection.{mutable, GenTraversableOnce}
-import scala.language.postfixOps
-
 import com.karasiq.shadowcloud.index.diffs.{FolderDiff, FolderIndexDiff}
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData, Mergeable}
 import com.karasiq.shadowcloud.model.{File, Folder, Path, SCEntity}
 import com.karasiq.shadowcloud.utils.Utils
+
+import scala.annotation.tailrec
+import scala.collection.{GenTraversableOnce, mutable}
 
 @SerialVersionUID(0L)
 final case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Path.root)))

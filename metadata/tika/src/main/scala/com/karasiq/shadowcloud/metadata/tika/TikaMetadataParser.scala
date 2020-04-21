@@ -2,19 +2,17 @@ package com.karasiq.shadowcloud.metadata.tika
 
 import java.io.InputStream
 
-import scala.collection.JavaConverters._
-import scala.language.postfixOps
-
 import akka.NotUsed
 import akka.stream.scaladsl.Source
-import com.typesafe.config.Config
-import org.apache.tika.metadata.TikaCoreProperties
-import org.apache.tika.parser.{ParseContext, Parser}
-
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.metadata.config.MetadataParserConfig
 import com.karasiq.shadowcloud.metadata.utils.BlockingMetadataParser
+import com.typesafe.config.Config
+import org.apache.tika.metadata.TikaCoreProperties
+import org.apache.tika.parser.{ParseContext, Parser}
+
+import scala.collection.JavaConverters._
 
 /**
   * Abstract metadata parser

@@ -1,12 +1,11 @@
 package com.karasiq.shadowcloud.config
 
 
-import scala.language.postfixOps
 
-import com.typesafe.config.Config
 
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.providers.StorageProvider
+import com.typesafe.config.Config
 
 private[shadowcloud] case class StoragesConfig(rootConfig: Config,
                                                providers: ProvidersConfig[StorageProvider]) extends WrappedConfig

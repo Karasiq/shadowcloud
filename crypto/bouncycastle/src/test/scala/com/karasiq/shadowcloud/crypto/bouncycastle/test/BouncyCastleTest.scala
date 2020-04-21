@@ -2,11 +2,7 @@ package com.karasiq.shadowcloud.crypto.bouncycastle.test
 
 import java.security.NoSuchAlgorithmException
 
-import scala.language.postfixOps
-
 import akka.util.ByteString
-import org.scalatest.{FlatSpec, Matchers}
-
 import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto._
@@ -17,6 +13,7 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.sign.{ECDSASignModule, RSASig
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.{AEADBlockCipherModule, BCBlockCiphers, BlockCipherModule, StreamCipherModule}
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod, SignMethod}
 import com.karasiq.shadowcloud.test.crypto.utils.CryptoTestVectors
+import org.scalatest.{FlatSpec, Matchers}
 
 //noinspection RedundantDefaultArgument
 class BouncyCastleTest extends FlatSpec with Matchers {

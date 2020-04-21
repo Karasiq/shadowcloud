@@ -1,25 +1,23 @@
 package com.karasiq.shadowcloud.actors
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
-import scala.util.Success
-
 import akka.actor.{Actor, ActorLogging, ActorRef, Kill, NotInfluenceReceiveTimeout, PossiblyHarmful, Props}
 import akka.pattern.pipe
 import akka.stream._
 import akka.stream.scaladsl.{Sink, Source}
-
 import com.karasiq.shadowcloud.ShadowCloud
+import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
-import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.model.{Chunk, StorageId}
 import com.karasiq.shadowcloud.model.utils.StorageHealth
+import com.karasiq.shadowcloud.model.{Chunk, StorageId}
 import com.karasiq.shadowcloud.storage.StorageHealthProvider
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams.utils.AkkaStreamUtils
+
+import scala.concurrent.duration._
+import scala.util.Success
 
 object StorageDispatcher {
   // Messages

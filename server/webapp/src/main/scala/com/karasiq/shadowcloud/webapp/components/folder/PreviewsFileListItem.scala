@@ -1,18 +1,19 @@
 package com.karasiq.shadowcloud.webapp.components.folder
 
-import scala.language.postfixOps
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-import rx._
-import rx.async._
+
 import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.webapp.components.common.AppIcons
-import com.karasiq.shadowcloud.webapp.components.file.{FileDownloadLink, FilePreview}
 import com.karasiq.shadowcloud.webapp.components.file.FilePreview.PreviewVariants
+import com.karasiq.shadowcloud.webapp.components.file.{FileDownloadLink, FilePreview}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.utils.Blobs
+import rx._
+import rx.async._
+import scalaTags.all._
+
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 object PreviewsFileListItem {
   def apply(file: File, selectedFile: Var[Option[File]])(implicit context: AppContext, fc: FolderContext): PreviewsFileListItem = {

@@ -2,16 +2,14 @@ package com.karasiq.shadowcloud.storage
 
 import java.nio.file.Path
 
-import scala.collection.concurrent.{TrieMap, Map ⇒ CMap}
-import scala.concurrent.ExecutionContext
-import scala.language.postfixOps
-
 import akka.stream.Materializer
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.storage.files.FileRepository
 import com.karasiq.shadowcloud.storage.inmem.ConcurrentMapRepository
 import com.karasiq.shadowcloud.storage.repository.{PathTreeRepository, Repository}
+
+import scala.collection.concurrent.{TrieMap, Map => CMap}
+import scala.concurrent.ExecutionContext
 
 /**
   * Standard repositories

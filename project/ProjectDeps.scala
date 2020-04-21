@@ -49,11 +49,11 @@ object ProjectDeps {
   )
 
   def protobuf: Deps = {
-    val version = com.trueaccord.scalapb.compiler.Version.scalapbVersion
+    val version = scalapb.compiler.Version.scalapbVersion
     Seq(
       // "com.google.protobuf" % "protobuf-java" % "3.4.0",
-      "com.trueaccord.scalapb" %% "scalapb-runtime" % version,
-      "com.trueaccord.scalapb" %% "scalapb-runtime" % version % "protobuf"
+      "com.thesamet.scalapb" %% "scalapb-runtime" % version,
+      "com.thesamet.scalapb" %% "scalapb-runtime" % version % "protobuf"
     )
   }
 

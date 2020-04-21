@@ -2,19 +2,7 @@ package com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric
 
 import java.security.SecureRandom
 
-import scala.language.postfixOps
-
 import akka.util.ByteString
-import com.typesafe.config.ConfigValueFactory
-import org.bouncycastle.crypto._
-import org.bouncycastle.crypto.agreement.ECDHBasicAgreement
-import org.bouncycastle.crypto.engines.IESEngine
-import org.bouncycastle.crypto.generators.{EphemeralKeyPairGenerator, KDF2BytesGenerator}
-import org.bouncycastle.crypto.macs.HMac
-import org.bouncycastle.crypto.params.{AsymmetricKeyParameter, ECPublicKeyParameters, IESParameters, IESWithCipherParameters}
-import org.bouncycastle.crypto.parsers.ECIESPublicKeyParser
-
-import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.config.{ConfigProps, CryptoProps}
@@ -25,6 +13,15 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{BCUtils, ECUtils}
 import com.karasiq.shadowcloud.crypto.bouncycastle.sign.BCECKeys
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.BlockCipherModule
 import com.karasiq.shadowcloud.model.crypto.{AsymmetricEncryptionParameters, EncryptionMethod, EncryptionParameters, HashingMethod}
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
+import com.typesafe.config.ConfigValueFactory
+import org.bouncycastle.crypto._
+import org.bouncycastle.crypto.agreement.ECDHBasicAgreement
+import org.bouncycastle.crypto.engines.IESEngine
+import org.bouncycastle.crypto.generators.{EphemeralKeyPairGenerator, KDF2BytesGenerator}
+import org.bouncycastle.crypto.macs.HMac
+import org.bouncycastle.crypto.params.{AsymmetricKeyParameter, ECPublicKeyParameters, IESParameters, IESWithCipherParameters}
+import org.bouncycastle.crypto.parsers.ECIESPublicKeyParser
 
 private[bouncycastle] object ECIESCipherModule {
   import ConfigImplicits._

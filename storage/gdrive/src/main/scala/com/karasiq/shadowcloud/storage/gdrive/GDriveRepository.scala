@@ -18,7 +18,6 @@ import com.karasiq.shadowcloud.streams.utils.AkkaStreamUtils
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.language.postfixOps
 import scala.util.Try
 
 private[gdrive] object GDriveRepository {

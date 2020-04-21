@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.model.crypto
 
-import scala.language.postfixOps
+
 
 import com.karasiq.shadowcloud.config.SerializedProps
 

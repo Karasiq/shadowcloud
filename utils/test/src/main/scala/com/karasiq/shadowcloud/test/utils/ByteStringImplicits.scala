@@ -1,9 +1,8 @@
 package com.karasiq.shadowcloud.test.utils
 
-import scala.language.postfixOps
+
 
 import akka.util.ByteString
-
 import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.model.Chunk
 

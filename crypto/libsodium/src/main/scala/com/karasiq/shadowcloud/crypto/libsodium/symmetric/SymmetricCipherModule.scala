@@ -1,14 +1,13 @@
 package com.karasiq.shadowcloud.crypto.libsodium.symmetric
 
-import scala.language.postfixOps
+
 
 import akka.util.ByteString
-import org.abstractj.kalium.NaCl
-
-import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
 import com.karasiq.shadowcloud.model.crypto.{EncryptionParameters, SymmetricEncryptionParameters}
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
+import org.abstractj.kalium.NaCl
 
 private[libsodium] object SymmetricCipherModule {
   def requireValidParameters(module: SymmetricCipherModule, parameters: SymmetricEncryptionParameters): Unit = {

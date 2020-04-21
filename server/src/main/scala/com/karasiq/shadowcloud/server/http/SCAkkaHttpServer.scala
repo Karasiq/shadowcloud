@@ -10,7 +10,7 @@ import com.karasiq.shadowcloud.server.http.static.SCAkkaHttpStaticRoutes
 import com.karasiq.shadowcloud.server.http.webzinc.SCAkkaHttpWebZincRoutes
 import org.apache.commons.codec.binary.Hex
 
-import scala.language.postfixOps
+
 
 object SCAkkaHttpServer {
   def apply(sc: ShadowCloudExtension): SCAkkaHttpServer = {

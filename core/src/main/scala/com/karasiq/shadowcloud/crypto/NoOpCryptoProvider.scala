@@ -1,13 +1,12 @@
 package com.karasiq.shadowcloud.crypto
 
-import scala.language.postfixOps
 
-import com.typesafe.config.Config
 
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.internal.{NoOpEncryptionModule, NoOpHashingModule, NoOpSignModule}
 import com.karasiq.shadowcloud.model.crypto.CryptoMethod
 import com.karasiq.shadowcloud.providers.CryptoProvider
+import com.typesafe.config.Config
 
 private[crypto] final class NoOpCryptoProvider(config: Config) extends CryptoProvider {
   private[this] object settings extends ConfigImplicits {

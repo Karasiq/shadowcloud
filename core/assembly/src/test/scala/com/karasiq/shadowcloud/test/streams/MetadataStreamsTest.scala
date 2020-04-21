@@ -1,13 +1,7 @@
 package com.karasiq.shadowcloud.test.streams
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 import akka.stream.scaladsl.{Keep, Sink}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
-import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
-import org.scalatest.concurrent.PatienceConfiguration.Timeout
-
 import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.model.{FileId, Path}
@@ -15,6 +9,10 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams.metadata.MimeDetectorStream
 import com.karasiq.shadowcloud.test.utils.{ResourceUtils, SCExtensionSpec, TestUtils}
 import com.karasiq.shadowcloud.utils.Utils
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
+import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
+
+import scala.concurrent.duration._
 
 object MetadataStreamsTest {
   def testJpegStream() = ResourceUtils.toStream("14935431092820.jpg")

@@ -2,34 +2,32 @@ package com.karasiq.shadowcloud.test.actors
 
 import java.nio.file.Files
 
-import scala.collection.concurrent.TrieMap
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 import akka.actor.PoisonPill
 import akka.pattern.ask
 import akka.stream.scaladsl.{Keep, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
-import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
-
 import com.karasiq.common.encoding.{Base64, HexString}
-import com.karasiq.shadowcloud.actors._
+import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.actors.RegionDispatcher.{GetFileAvailability, ReadChunk, WriteChunk}
+import com.karasiq.shadowcloud.actors._
 import com.karasiq.shadowcloud.actors.events.StorageEvents
 import com.karasiq.shadowcloud.actors.messages.StorageEnvelope
-import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.props.StorageProps.Quota
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
-import com.karasiq.shadowcloud.storage.repository.{PathTreeRepository, Repository}
 import com.karasiq.shadowcloud.storage.repository.wrappers.PathNodesMapper
-import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
+import com.karasiq.shadowcloud.storage.repository.{PathTreeRepository, Repository}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
+import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, SCExtensionSpec, TestUtils}
+import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
+
+import scala.collection.concurrent.TrieMap
+import scala.concurrent.duration._
 
 // Uses local filesystem
 class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike with SequentialNestedSuiteExecution {

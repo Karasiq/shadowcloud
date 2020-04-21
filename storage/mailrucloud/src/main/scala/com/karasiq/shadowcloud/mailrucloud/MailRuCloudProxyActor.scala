@@ -1,10 +1,6 @@
 package com.karasiq.shadowcloud.mailrucloud
 
-import scala.concurrent.Future
-import scala.language.postfixOps
-
 import akka.actor.Props
-
 import com.karasiq.mailrucloud.api.MailCloudClient
 import com.karasiq.mailrucloud.api.MailCloudTypes.{CsrfToken, Nodes, Session}
 import com.karasiq.shadowcloud.ShadowCloud
@@ -13,6 +9,8 @@ import com.karasiq.shadowcloud.actors.utils.SessionAuthenticator
 import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.utils.StoragePluginBuilder
+
+import scala.concurrent.Future
 
 private[mailrucloud] object MailRuCloudProxyActor {
   final case class MailCloudSession(session: Session, token: CsrfToken, nodes: Nodes)

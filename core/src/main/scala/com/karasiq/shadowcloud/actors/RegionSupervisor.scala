@@ -1,14 +1,9 @@
 package com.karasiq.shadowcloud.actors
 
-import scala.collection.mutable
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 import akka.NotUsed
 import akka.actor.{ActorLogging, OneForOneStrategy, Props, Status, SupervisorStrategy}
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import akka.util.Timeout
-
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.events.SupervisorEvents._
 import com.karasiq.shadowcloud.actors.internal.RegionTracker
@@ -18,6 +13,9 @@ import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.exceptions.SupervisorException
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.props.StorageProps
+
+import scala.collection.mutable
+import scala.concurrent.duration._
 
 object RegionSupervisor {
   // Messages

@@ -1,15 +1,13 @@
 package com.karasiq.shadowcloud.webapp.components.file
 
-import scala.language.postfixOps
+
 
 import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
-import rx.Rx
-
 import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.utils.RxUtils
+import rx.Rx
+import scalaTags.all._
 
 object FileDownloadLink {
   def apply(file: File, useId: Boolean = false)(title: Modifier*)

@@ -1,12 +1,11 @@
 package com.karasiq.shadowcloud.index
 
-import scala.collection.GenTraversableOnce
-import scala.language.postfixOps
-
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData, Mergeable}
 import com.karasiq.shadowcloud.model.{Chunk, SCEntity}
 import com.karasiq.shadowcloud.utils.Utils
+
+import scala.collection.GenTraversableOnce
 
 @SerialVersionUID(0L)
 final case class ChunkIndex(chunks: Set[Chunk] = Set.empty)

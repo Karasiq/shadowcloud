@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.actors.events
 
-import scala.language.postfixOps
-
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.model.{Chunk, StorageId}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey

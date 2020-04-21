@@ -1,7 +1,6 @@
 package com.karasiq.shadowcloud.actors
 
 import scala.concurrent.duration._
-import scala.language.postfixOps
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Kill, PossiblyHarmful, Props, Terminated}
 import akka.pattern.{ask, pipe}
@@ -71,7 +70,7 @@ class StorageHealthSupervisor(actor: ActorRef, interval: FiniteDuration, maxFail
   override def preStart(): Unit = {
     super.preStart()
     context.watch(actor)
-    schedule = context.system.scheduler.schedule(interval, interval, self, Check)
+    schedule = context.system.scheduler.scheduleWithFixedDelay(interval, interval, self, Check)
   }
 
   override def postStop(): Unit = {

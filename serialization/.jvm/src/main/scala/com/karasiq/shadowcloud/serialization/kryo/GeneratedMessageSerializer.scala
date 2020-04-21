@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.serialization.kryo
 
 import com.esotericsoftware.kryo.Kryo
 import com.esotericsoftware.kryo.io.{Input, Output}
-import com.trueaccord.scalapb.{GeneratedMessage, GeneratedMessageCompanion}
+import scalapb.{GeneratedMessage, GeneratedMessageCompanion}
 import com.twitter.chill
 
 import com.karasiq.shadowcloud.serialization.internal.CompanionReflectSerializer

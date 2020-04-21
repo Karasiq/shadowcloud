@@ -11,7 +11,6 @@ import akka.{Done, NotUsed}
 import scala.annotation.unchecked.uncheckedVariance
 import scala.concurrent.duration.{Duration, FiniteDuration, _}
 import scala.concurrent.{Future, Promise}
-import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 object AkkaStreamUtils {

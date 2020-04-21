@@ -1,11 +1,10 @@
 package com.karasiq.shadowcloud.shell
 
+import com.karasiq.shadowcloud.model.utils.SyncReport
+import com.karasiq.shadowcloud.model.{RegionId, StorageId}
+
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.language.postfixOps
-
-import com.karasiq.shadowcloud.model.{RegionId, StorageId}
-import com.karasiq.shadowcloud.model.utils.SyncReport
 
 private[shell] object StorageContext {
   def apply(storageId: StorageId)(implicit context: ShellContext): StorageContext = {

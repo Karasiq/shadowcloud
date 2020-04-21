@@ -1,23 +1,21 @@
 package com.karasiq.shadowcloud.persistence.h2
 
-import scala.concurrent.Future
-import scala.language.postfixOps
-import scala.util.Try
-
 import akka.persistence._
 import akka.persistence.serialization.Snapshot
 import akka.persistence.snapshot.SnapshotStore
 import akka.serialization.SerializationExtension
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.persistence.utils.SCQuillEncoders
+
+import scala.concurrent.Future
+import scala.util.Try
 
 final class H2AkkaSnapshotStore extends SnapshotStore {
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
   private[this] val h2db = H2DB(context.system)
-  import h2db.context.{run ⇒ runQuery, _}
+  import h2db.context.{run => runQuery, _}
 
   // -----------------------------------------------------------------------
   // Schema

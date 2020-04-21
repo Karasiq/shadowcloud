@@ -1,12 +1,8 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.symmetric
 
-import scala.language.postfixOps
+
 
 import akka.util.ByteString
-import org.bouncycastle.crypto.modes.AEADBlockCipher
-import org.bouncycastle.crypto.params.{AEADParameters, KeyParameter}
-
-import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto._
@@ -14,6 +10,9 @@ import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCSymmetricKeys
 import com.karasiq.shadowcloud.crypto.bouncycastle.symmetric.AEADBlockCipherModule.AEADCipherOptions
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters}
 import com.karasiq.shadowcloud.utils.ByteStringUnsafe
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
+import org.bouncycastle.crypto.modes.AEADBlockCipher
+import org.bouncycastle.crypto.params.{AEADParameters, KeyParameter}
 
 //noinspection RedundantDefaultArgument
 private[bouncycastle] object AEADBlockCipherModule {

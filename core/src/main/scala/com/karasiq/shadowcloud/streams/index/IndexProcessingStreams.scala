@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.streams.index
 
-import scala.language.postfixOps
-import scala.util.control.NonFatal
 
 import akka.NotUsed
 import akka.event.Logging
@@ -9,8 +7,6 @@ import akka.stream._
 import akka.stream.scaladsl.{Flow, Source}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import akka.util.ByteString
-
-import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.compression.StreamCompression
 import com.karasiq.shadowcloud.config.{CryptoConfig, StorageConfig}
@@ -20,9 +16,12 @@ import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.model.RegionId
 import com.karasiq.shadowcloud.model.keys.KeyChain
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
-import com.karasiq.shadowcloud.serialization.{IndexSerialization, StreamSerialization}
 import com.karasiq.shadowcloud.serialization.protobuf.index.{EncryptedIndexData, SerializedIndexData}
+import com.karasiq.shadowcloud.serialization.{IndexSerialization, StreamSerialization}
 import com.karasiq.shadowcloud.streams.utils.{AkkaStreamUtils, ByteStreams}
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
+
+import scala.util.control.NonFatal
 
 object IndexProcessingStreams {
   def apply(regionId: RegionId)(implicit sc: ShadowCloudExtension): IndexProcessingStreams = {

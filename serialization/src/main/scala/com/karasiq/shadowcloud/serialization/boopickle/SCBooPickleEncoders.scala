@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.serialization.boopickle
 import akka.Done
 import akka.util.ByteString
 import boopickle._
-import com.trueaccord.scalapb.{GeneratedEnum, GeneratedEnumCompanion, GeneratedMessage, GeneratedMessageCompanion}
+import scalapb.{GeneratedEnum, GeneratedEnumCompanion, GeneratedMessage, GeneratedMessageCompanion}
 
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex, IndexData}
@@ -15,6 +15,7 @@ import com.karasiq.shadowcloud.model.utils._
 import com.karasiq.shadowcloud.model.utils.GCReport.{RegionGCState, StorageGCState}
 import com.karasiq.shadowcloud.model.utils.RegionStateReport.{RegionStatus, StorageStatus}
 
+//noinspection TypeAnnotation
 trait SCBooPickleEncoders extends Base with BasicImplicitPicklers with TransformPicklers with TuplePicklers {
   protected object MacroPicklers extends MaterializePicklerFallback
   import MacroPicklers.generatePickler
@@ -85,7 +86,7 @@ trait SCBooPickleEncoders extends Base with BasicImplicitPicklers with Transform
   implicit val keyPropsFormat = generatePickler[KeyProps]
   implicit val keyChainFormat = generatePickler[KeyChain]
 
-  implicit def generatedMessagePickler[T <: GeneratedMessage with com.trueaccord.scalapb.Message[T] : GeneratedMessageCompanion]: Pickler[T] = new Pickler[T] {
+  implicit def generatedMessagePickler[T <: GeneratedMessage with scalapb.Message[T] : GeneratedMessageCompanion]: Pickler[T] = new Pickler[T] {
     def pickle(obj: T)(implicit state: PickleState): Unit = {
       state.enc.writeByteArray(obj.toByteArray)
     }

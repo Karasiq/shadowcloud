@@ -24,7 +24,6 @@ import com.karasiq.shadowcloud.utils.{ChunkUtils, Utils}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Future, TimeoutException}
-import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 object RegionGC {

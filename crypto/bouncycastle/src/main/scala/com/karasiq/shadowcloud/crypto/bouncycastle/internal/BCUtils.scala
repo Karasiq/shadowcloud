@@ -2,13 +2,10 @@ package com.karasiq.shadowcloud.crypto.bouncycastle.internal
 
 import java.security.SecureRandom
 
-import scala.language.postfixOps
-
+import com.karasiq.shadowcloud.model.crypto.EncryptionParameters
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import org.bouncycastle.crypto.params.{KeyParameter, ParametersWithIV}
 import org.bouncycastle.jce.provider.BouncyCastleProvider
-
-import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
-import com.karasiq.shadowcloud.model.crypto.EncryptionParameters
 
 private[bouncycastle] object BCUtils {
   val provider = new BouncyCastleProvider

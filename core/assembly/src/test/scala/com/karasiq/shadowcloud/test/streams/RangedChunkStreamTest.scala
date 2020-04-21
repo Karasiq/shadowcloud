@@ -1,16 +1,14 @@
 package com.karasiq.shadowcloud.test.streams
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 import akka.stream.scaladsl.{Sink, Source}
-import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
-import org.scalatest.concurrent.PatienceConfiguration.Timeout
-
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.test.utils.{SCExtensionSpec, TestUtils}
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
+import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
+
+import scala.concurrent.duration._
 
 class RangedChunkStreamTest extends SCExtensionSpec with FlatSpecLike with SequentialNestedSuiteExecution {
   val testRegion = "testRegion"

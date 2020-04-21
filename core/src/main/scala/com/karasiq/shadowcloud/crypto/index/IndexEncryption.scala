@@ -3,12 +3,7 @@ package com.karasiq.shadowcloud.crypto.index
 import java.security.SecureRandom
 import java.util.UUID
 
-import scala.language.postfixOps
-import scala.util.hashing.MurmurHash3
-
 import akka.util.ByteString
-
-import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.common.encoding.UUIDEncoding
 import com.karasiq.shadowcloud.crypto.index.IndexEncryption.{CiphertextT, PlaintextT}
 import com.karasiq.shadowcloud.exceptions.CryptoException
@@ -17,6 +12,9 @@ import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyId, KeySet}
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 import com.karasiq.shadowcloud.serialization.IndexSerialization
 import com.karasiq.shadowcloud.serialization.protobuf.index.{EncryptedIndexData, SerializedKeyData}
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
+
+import scala.util.hashing.MurmurHash3
 
 private[shadowcloud] trait IndexEncryption {
   def encrypt(plaintext: PlaintextT, dataEncMethod: EncryptionMethod, keys: KeyChain): CiphertextT

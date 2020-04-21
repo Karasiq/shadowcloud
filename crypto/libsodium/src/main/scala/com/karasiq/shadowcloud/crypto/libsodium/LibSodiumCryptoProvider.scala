@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.crypto.libsodium
 
-import scala.language.postfixOps
+
 
 import com.karasiq.shadowcloud.crypto.libsodium.asymmetric.SealedBoxModule
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}

@@ -1,18 +1,16 @@
 package com.karasiq.shadowcloud.actors
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash}
-
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.actors.utils.ContainerActor
+import com.karasiq.shadowcloud.actors.RegionSupervisor.RenewStorageSubscriptions
 import com.karasiq.shadowcloud.actors.StorageContainer.SetProps
 import com.karasiq.shadowcloud.actors.internal.StorageInstantiator
-import com.karasiq.shadowcloud.actors.RegionSupervisor.RenewStorageSubscriptions
+import com.karasiq.shadowcloud.actors.utils.ContainerActor
 import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.utils.Utils
+
+import scala.concurrent.duration._
 
 private[actors] object StorageContainer {
   sealed trait Message

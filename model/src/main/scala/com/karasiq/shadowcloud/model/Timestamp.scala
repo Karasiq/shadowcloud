@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.model
 
-import scala.language.postfixOps
+
 
 import com.karasiq.shadowcloud.utils.Utils
 

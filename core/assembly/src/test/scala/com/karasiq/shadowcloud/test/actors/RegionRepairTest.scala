@@ -1,12 +1,7 @@
 package com.karasiq.shadowcloud.test.actors
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 import akka.stream.scaladsl.Keep
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
-import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
-
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.storage.props.StorageProps
@@ -14,6 +9,9 @@ import com.karasiq.shadowcloud.storage.props.StorageProps.Quota
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.streams.region.RegionRepairStream
 import com.karasiq.shadowcloud.test.utils.{SCExtensionSpec, TestUtils}
+import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
+
+import scala.concurrent.duration._
 
 class RegionRepairTest extends SCExtensionSpec with FlatSpecLike with SequentialNestedSuiteExecution {
   val testRegionId = "repairTestRegion"

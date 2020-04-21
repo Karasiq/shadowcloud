@@ -1,17 +1,15 @@
 package com.karasiq.shadowcloud.storage.internal
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
-
 import akka.NotUsed
-import akka.stream.{FlowShape, SourceShape}
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Source, ZipWith}
+import akka.stream.{FlowShape, SourceShape}
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.repository.Repository
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams, StorageUtils}
+
+import scala.concurrent.{ExecutionContext, Future}
 
 private[storage] final class DefaultIndexRepositoryStreams(breadth: Int, writeFlow: Flow[IndexData, ByteString, _],
                                                            readFlow: Flow[ByteString, IndexData, _])

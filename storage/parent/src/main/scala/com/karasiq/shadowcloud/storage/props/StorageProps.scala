@@ -12,7 +12,7 @@ import com.karasiq.shadowcloud.storage.props.StorageProps.{Address, Credentials,
 import com.karasiq.shadowcloud.utils.Utils
 import com.typesafe.config.Config
 
-import scala.language.postfixOps
+
 
 @SerialVersionUID(0L)
 final case class StorageProps(

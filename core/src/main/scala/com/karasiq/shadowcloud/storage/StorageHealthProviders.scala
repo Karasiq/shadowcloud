@@ -2,15 +2,13 @@ package com.karasiq.shadowcloud.storage
 
 import java.nio.file.Path
 
-import scala.collection.mutable
-import scala.concurrent.ExecutionContext
-import scala.language.postfixOps
-
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.storage.files.{FileStorageEstimateHealthProvider, FileStorageTraverseHealthProvider}
 import com.karasiq.shadowcloud.storage.inmem.JVMHeapHealthProvider
 import com.karasiq.shadowcloud.storage.props.StorageProps
+
+import scala.collection.mutable
+import scala.concurrent.ExecutionContext
 
 private[shadowcloud] object StorageHealthProviders {
   def fromDirectory(directory: Path, quota: StorageProps.Quota = StorageProps.Quota.empty)

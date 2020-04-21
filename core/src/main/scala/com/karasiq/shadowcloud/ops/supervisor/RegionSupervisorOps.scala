@@ -1,16 +1,14 @@
 package com.karasiq.shadowcloud.ops.supervisor
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
-
 import akka.actor.ActorRef
 import akka.pattern.ask
-
 import com.karasiq.shadowcloud.actors.RegionSupervisor._
 import com.karasiq.shadowcloud.actors.internal.RegionTracker
 import com.karasiq.shadowcloud.config.{RegionConfig, TimeoutsConfig}
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.props.StorageProps
+
+import scala.concurrent.{ExecutionContext, Future}
 
 object RegionSupervisorOps {
   def apply(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(implicit ec: ExecutionContext): RegionSupervisorOps = {

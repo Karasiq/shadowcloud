@@ -24,7 +24,6 @@ import com.karasiq.shadowcloud.streams.utils.{AkkaStreamUtils, ByteStreams}
 import com.karasiq.shadowcloud.utils.{ChunkUtils, Utils}
 
 import scala.concurrent.{Future, Promise}
-import scala.language.postfixOps
 import scala.util.{Failure, Success}
 
 object ChunkIODispatcher {

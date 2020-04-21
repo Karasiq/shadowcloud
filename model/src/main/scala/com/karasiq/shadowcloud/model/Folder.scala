@@ -1,11 +1,10 @@
 package com.karasiq.shadowcloud.model
 
-import scala.collection.GenTraversableOnce
-import scala.language.postfixOps
-
 import com.karasiq.shadowcloud.index.diffs.FolderDiff
 import com.karasiq.shadowcloud.index.utils._
 import com.karasiq.shadowcloud.utils.Utils
+
+import scala.collection.GenTraversableOnce
 
 @SerialVersionUID(0L)
 final case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,

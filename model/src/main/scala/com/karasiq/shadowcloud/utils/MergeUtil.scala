@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.utils
 
 import scala.collection.mutable
-import scala.language.postfixOps
+
 
 object MergeUtil {
   // -----------------------------------------------------------------------

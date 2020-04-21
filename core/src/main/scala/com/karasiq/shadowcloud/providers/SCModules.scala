@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.providers
 
-import scala.language.postfixOps
+
 
 import com.karasiq.shadowcloud.config.{ProvidersConfig, SCConfig}
 import com.karasiq.shadowcloud.metadata.MetadataProvider

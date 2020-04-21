@@ -1,18 +1,16 @@
 package com.karasiq.shadowcloud.shell
 
-import java.nio.file.{OpenOption, StandardOpenOption, Path ⇒ FSPath}
-
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration.Duration
-import scala.language.postfixOps
+import java.nio.file.{OpenOption, StandardOpenOption, Path => FSPath}
 
 import akka.stream.IOResult
 import akka.stream.scaladsl.{FileIO, Sink}
-
 import com.karasiq.shadowcloud.actors.RegionGC.GCStrategy
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.model.{File, Folder, Path, RegionId}
 import com.karasiq.shadowcloud.model.utils.GCReport
+import com.karasiq.shadowcloud.model.{File, Folder, Path, RegionId}
+
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 
 private[shell] object RegionContext {
   def apply(regionId: RegionId)(implicit context: ShellContext): RegionContext = {

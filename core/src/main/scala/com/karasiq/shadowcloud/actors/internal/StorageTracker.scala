@@ -1,16 +1,14 @@
 package com.karasiq.shadowcloud.actors.internal
 
-import scala.collection.mutable
-import scala.language.postfixOps
-
 import akka.actor.{ActorContext, ActorRef}
-
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.model.utils.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
+
+import scala.collection.mutable
 
 private[actors] object StorageTracker {
   def apply()(implicit context: ActorContext): StorageTracker = {

@@ -10,7 +10,6 @@ import scalafx.stage.StageStyle
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Promise}
-import scala.language.postfixOps
 import scala.util.control.NonFatal
 
 object JavaFXContext extends ExtensionId[JavaFXContextExtension] with ExtensionIdProvider {

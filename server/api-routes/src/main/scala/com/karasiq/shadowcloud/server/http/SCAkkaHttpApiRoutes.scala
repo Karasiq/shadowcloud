@@ -1,8 +1,5 @@
 package com.karasiq.shadowcloud.server.http
 
-import scala.concurrent.ExecutionContext
-import scala.concurrent.duration._
-import scala.language.postfixOps
 import akka.http.scaladsl.marshalling.Marshaller
 import akka.http.scaladsl.model._
 import akka.http.scaladsl.model.headers.{ByteRange, Range}
@@ -11,10 +8,13 @@ import akka.http.scaladsl.unmarshalling.Unmarshaller
 import akka.util.ByteString
 import autowire.Core.Request
 import com.karasiq.shadowcloud.ShadowCloudExtension
-import com.karasiq.shadowcloud.api.{SCApiUtils, ShadowCloudApi}
 import com.karasiq.shadowcloud.api.jvm.SCDefaultApiServer
+import com.karasiq.shadowcloud.api.{SCApiUtils, ShadowCloudApi}
 import com.karasiq.shadowcloud.server.http.api.ShadowCloudApiImpl
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
+
+import scala.concurrent.ExecutionContext
+import scala.concurrent.duration._
 
 private[server] trait SCAkkaHttpApiRoutes { self: Directives ⇒
   protected val sc: ShadowCloudExtension
@@ -38,7 +38,6 @@ private[server] trait SCAkkaHttpApiRoutes { self: Directives ⇒
   }
 
   import SCApiInternals._
-  import apiEncoding.implicits._
 
   private[http] object SCApiMarshallers {
     implicit def implicitSCEntityMarshaller[T: apiEncoding.Encoder]: Marshaller[T, ByteString] =

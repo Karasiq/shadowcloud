@@ -1,9 +1,8 @@
 package com.karasiq.shadowcloud.actors.utils
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
-
 import akka.actor.{DeadLetterSuppression, Status}
+
+import scala.concurrent.{ExecutionContext, Future}
 
 trait MessageStatus[Key, Value] {
   sealed abstract class Status extends DeadLetterSuppression {

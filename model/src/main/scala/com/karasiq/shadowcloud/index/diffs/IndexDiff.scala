@@ -1,11 +1,11 @@
 package com.karasiq.shadowcloud.index.diffs
 
-import scala.language.postfixOps
+
 
 import com.karasiq.shadowcloud.index.utils._
 import com.karasiq.shadowcloud.model.{Chunk, Folder, Path, SCEntity}
-import com.karasiq.shadowcloud.utils.Utils
 import com.karasiq.shadowcloud.utils.MergeUtil.{Decider, SplitDecider}
+import com.karasiq.shadowcloud.utils.Utils
 
 @SerialVersionUID(0L)
 final case class IndexDiff(time: Long = Utils.timestamp,

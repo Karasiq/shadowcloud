@@ -2,13 +2,11 @@ package com.karasiq.shadowcloud.actors
 
 import java.util.concurrent.TimeoutException
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 import akka.actor.{Actor, ActorContext, Props, ReceiveTimeout, Stash, Status}
 import akka.pattern.pipe
-
 import com.karasiq.shadowcloud.actors.utils.SessionAuthenticator
+
+import scala.concurrent.duration._
 
 private[shadowcloud] object SessionProxyActor {
   def props[Session](createAuthenticator: ActorContext ⇒ SessionAuthenticator[Session]): Props = {

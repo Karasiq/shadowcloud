@@ -1,11 +1,11 @@
 package com.karasiq.shadowcloud.serialization
 
-import scala.language.postfixOps
-import scala.reflect.ClassTag
 
 import akka.NotUsed
 import akka.stream.scaladsl.{Flow, Framing}
 import akka.util.ByteString
+
+import scala.reflect.ClassTag
 
 object StreamSerialization {
   def apply(module: SerializationModule): StreamSerialization = {

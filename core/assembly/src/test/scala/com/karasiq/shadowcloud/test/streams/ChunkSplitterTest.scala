@@ -1,15 +1,14 @@
 package com.karasiq.shadowcloud.test.streams
 
-import scala.language.postfixOps
+
 
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
 import akka.util.ByteString
-import org.scalatest.FlatSpecLike
-
 import com.karasiq.shadowcloud.model.{Checksum, Chunk, Data}
 import com.karasiq.shadowcloud.streams.chunk.ChunkSplitter
 import com.karasiq.shadowcloud.test.utils.{SCExtensionSpec, TestUtils}
+import org.scalatest.FlatSpecLike
 
 //noinspection ZeroIndexToHead
 class ChunkSplitterTest extends SCExtensionSpec with FlatSpecLike {

@@ -1,12 +1,11 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric
 
-import scala.language.postfixOps
 
-import org.bouncycastle.crypto.params.AsymmetricKeyParameter
 
 import com.karasiq.shadowcloud.crypto.EncryptionModule
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{BCAsymmetricKeys, KeyUtils}
 import com.karasiq.shadowcloud.model.crypto.{AsymmetricEncryptionParameters, EncryptionParameters}
+import org.bouncycastle.crypto.params.AsymmetricKeyParameter
 
 private[bouncycastle] object BCAsymmetricCipherKeys {
   def getCipherKey(parameters: EncryptionParameters, encrypt: Boolean): AsymmetricKeyParameter = {

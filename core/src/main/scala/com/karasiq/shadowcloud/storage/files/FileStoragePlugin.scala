@@ -2,16 +2,14 @@ package com.karasiq.shadowcloud.storage.files
 
 import java.nio.file.Paths
 
-import scala.concurrent.ExecutionContext
-import scala.language.postfixOps
-
 import akka.actor.{ActorContext, ActorRef, ActorSystem}
 import akka.stream.{ActorMaterializer, Materializer}
-
 import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.utils.StoragePluginBuilder
+
+import scala.concurrent.ExecutionContext
 
 private[storage] object FileStoragePlugin {
   def getBlockingDispatcher(actorSystem: ActorSystem): ExecutionContext = {

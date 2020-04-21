@@ -1,9 +1,8 @@
 package com.karasiq.shadowcloud.model
 
-import scala.language.postfixOps
+
 
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData}
 
 @SerialVersionUID(0L)

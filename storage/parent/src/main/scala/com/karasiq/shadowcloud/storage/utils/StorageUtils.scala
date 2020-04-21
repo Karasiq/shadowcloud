@@ -3,19 +3,17 @@ package com.karasiq.shadowcloud.storage.utils
 import java.io.FileNotFoundException
 import java.nio.file.FileAlreadyExistsException
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
-import scala.util.{Failure, Success}
-
-import akka.{Done, NotUsed}
-import akka.stream.{IOResult ⇒ AkkaIOResult}
 import akka.stream.scaladsl.Flow
+import akka.stream.{IOResult => AkkaIOResult}
 import akka.util.ByteString
-
+import akka.{Done, NotUsed}
 import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.StorageIOResult
+
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 object StorageUtils {
   def toStoragePath(key: Any, root: Path = Path.root): Path = {

@@ -1,12 +1,10 @@
 package com.karasiq.shadowcloud.config
 
-import scala.collection.JavaConverters._
-import scala.language.postfixOps
-
 import akka.util.ByteString
+import com.karasiq.shadowcloud.utils.Utils
 import com.typesafe.config.{Config, ConfigFactory, ConfigRenderOptions}
 
-import com.karasiq.shadowcloud.utils.Utils
+import scala.collection.JavaConverters._
 
 private[shadowcloud] object ConfigProps {
   private[this] val SupportedFormats = Set(SerializedProps.DefaultFormat, SerializedProps.JsonFormat)

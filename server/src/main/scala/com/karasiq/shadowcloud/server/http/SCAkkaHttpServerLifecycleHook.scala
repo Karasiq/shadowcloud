@@ -5,7 +5,7 @@ import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.providers.LifecycleHook
 
 import scala.concurrent.Await
-import scala.language.postfixOps
+
 
 private[http] final class SCAkkaHttpServerLifecycleHook(sc: ShadowCloudExtension) extends LifecycleHook {
   @volatile

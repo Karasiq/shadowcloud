@@ -1,20 +1,18 @@
 package com.karasiq.shadowcloud.test
 
-import scala.concurrent.{Await, Promise}
-import scala.concurrent.duration._
-import scala.language.postfixOps
-import scala.util.{Failure, Random, Success}
-import scala.util.control.NonFatal
-
-import akka.{Done, NotUsed}
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.{ByteString, Timeout}
-
+import akka.{Done, NotUsed}
 import com.karasiq.common.memory.{MemorySize, SizeUnit}
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.streams.chunk.ChunkSplitter
+
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Promise}
+import scala.util.control.NonFatal
+import scala.util.{Failure, Random, Success}
 
 private object Benchmark extends App {
   implicit val actorSystem = ActorSystem("shadowcloud-benchmark")

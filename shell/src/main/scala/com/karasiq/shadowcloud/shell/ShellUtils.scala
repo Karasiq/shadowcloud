@@ -1,14 +1,12 @@
 package com.karasiq.shadowcloud.shell
 
-import scala.collection.GenTraversableOnce
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
-import scala.util.{Failure, Success}
-
 import akka.stream.IOResult
-
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.model.{File, Folder}
+
+import scala.collection.GenTraversableOnce
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
 private[shell] object ShellUtils {
   def toString(f: File): String = {

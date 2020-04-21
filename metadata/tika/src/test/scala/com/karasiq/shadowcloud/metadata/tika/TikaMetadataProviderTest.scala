@@ -2,18 +2,16 @@ package com.karasiq.shadowcloud.metadata.tika
 
 import java.io.File
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 import akka.stream.scaladsl.{FileIO, Keep}
 import akka.stream.testkit.scaladsl.TestSink
 import akka.util.ByteString
+import com.karasiq.shadowcloud.metadata.Metadata
+import com.karasiq.shadowcloud.test.utils.{ActorSpec, ActorSpecImplicits}
 import org.apache.commons.io.FileUtils
 import org.apache.tika.Tika
 import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
 
-import com.karasiq.shadowcloud.metadata.Metadata
-import com.karasiq.shadowcloud.test.utils.{ActorSpec, ActorSpecImplicits}
+import scala.concurrent.duration._
 
 class TikaMetadataProviderTest extends ActorSpec with ActorSpecImplicits with FlatSpecLike with SequentialNestedSuiteExecution {
   val testPdfName = "TypeClasses.pdf"

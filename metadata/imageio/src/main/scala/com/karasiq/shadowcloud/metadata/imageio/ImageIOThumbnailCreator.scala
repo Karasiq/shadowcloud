@@ -2,22 +2,19 @@ package com.karasiq.shadowcloud.metadata.imageio
 
 import java.awt.image.BufferedImage
 
-import scala.language.postfixOps
-
 import akka.NotUsed
 import akka.stream.FlowShape
 import akka.stream.scaladsl.{Broadcast, Concat, Flow, GraphDSL}
 import akka.util.ByteString
-import com.typesafe.config.Config
-
 import com.karasiq.common.configs.ConfigImplicits
-import com.karasiq.shadowcloud.metadata.{Metadata, MetadataParser}
-import Metadata.Tag.Disposition
+import com.karasiq.shadowcloud.metadata.Metadata.Tag.Disposition
 import com.karasiq.shadowcloud.metadata.config.MetadataParserConfig
 import com.karasiq.shadowcloud.metadata.imageio.utils.ImageIOResizer
+import com.karasiq.shadowcloud.metadata.{Metadata, MetadataParser}
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.utils.ByteStringOutputStream
 import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
+import com.typesafe.config.Config
 
 private[imageio] object ImageIOThumbnailCreator {
   val PluginId = "imageio"

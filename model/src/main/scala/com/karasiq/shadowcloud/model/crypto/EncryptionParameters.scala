@@ -1,9 +1,8 @@
 package com.karasiq.shadowcloud.model.crypto
 
-import scala.language.postfixOps
+
 
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.index.utils.HasWithoutKeys
 
 sealed trait EncryptionParameters extends CryptoParameters with HasWithoutKeys {

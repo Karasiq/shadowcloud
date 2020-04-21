@@ -1,12 +1,11 @@
 package com.karasiq.shadowcloud.test.crypto
 
-import scala.language.postfixOps
+
 
 import akka.util.ByteString
-import org.scalatest.{FlatSpec, Matchers}
-
 import com.karasiq.shadowcloud.model.crypto.HashingMethod
 import com.karasiq.shadowcloud.test.utils.{ByteStringImplicits, CoreTestUtils}
+import org.scalatest.{FlatSpec, Matchers}
 
 class HashingModuleTest extends FlatSpec with Matchers with ByteStringImplicits {
   val testData = ByteString("The testing facilities described up to this point were aiming at formulating assertions about a system’s behavior. If a test fails, it is usually your job to find the cause, fix it and verify the test again. This process is supported by debuggers as well as logging, where the Akka toolkit offers the following options:")

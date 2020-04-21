@@ -1,12 +1,11 @@
 package com.karasiq.shadowcloud.webapp.components.metadata
 
-import scala.language.postfixOps
+
 
 import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.webapp.context.AppContext
+import scalaTags.all._
 
 object MetadataView {
   def thumbnail(preview: Metadata.Thumbnail): ThumbnailImage = {

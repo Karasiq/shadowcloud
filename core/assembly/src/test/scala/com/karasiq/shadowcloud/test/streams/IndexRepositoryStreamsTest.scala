@@ -2,14 +2,8 @@ package com.karasiq.shadowcloud.test.streams
 
 import java.nio.file.Files
 
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 import akka.stream.scaladsl.{Keep, Sink, Source}
 import akka.stream.testkit.scaladsl.{TestSink, TestSource}
-import org.scalatest.FlatSpecLike
-
 import com.karasiq.shadowcloud.index.IndexData
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.model.crypto.EncryptionMethod
@@ -17,6 +11,10 @@ import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.repository.{KeyValueRepository, PathTreeRepository, RepositoryKeys}
 import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexRepositoryStreams}
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, SCExtensionSpec, TestUtils}
+import org.scalatest.FlatSpecLike
+
+import scala.concurrent.Await
+import scala.concurrent.duration._
 
 class IndexRepositoryStreamsTest extends SCExtensionSpec with FlatSpecLike {
   "In-memory repository" should "store diff" in {

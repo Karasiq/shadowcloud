@@ -1,11 +1,11 @@
 package com.karasiq.shadowcloud.actors.events
 
-import scala.language.postfixOps
+
 
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
-import com.karasiq.shadowcloud.model.{Chunk, RegionId, SequenceNr}
 import com.karasiq.shadowcloud.model.utils.StorageHealth
+import com.karasiq.shadowcloud.model.{Chunk, RegionId, SequenceNr}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 
 object StorageEvents {

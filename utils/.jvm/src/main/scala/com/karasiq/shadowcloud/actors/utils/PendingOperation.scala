@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.actors.utils
 import akka.actor.ActorRef
 
 import scala.collection.mutable
-import scala.language.postfixOps
+
 
 object PendingOperation {
   def apply[Key <: AnyRef]: PendingOperation[Key] = {

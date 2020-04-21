@@ -1,9 +1,9 @@
 package com.karasiq.shadowcloud.crypto.libsodium.internal
 
-import scala.language.postfixOps
-import scala.util.control.{Exception ⇒ ExcControl}
 
 import org.abstractj.kalium.NaCl
+
+import scala.util.control.{Exception => ExcControl}
 
 private[libsodium] object LSUtils {
   type LSRandom = org.abstractj.kalium.crypto.Random

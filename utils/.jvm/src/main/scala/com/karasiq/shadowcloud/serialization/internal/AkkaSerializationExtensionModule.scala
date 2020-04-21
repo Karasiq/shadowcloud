@@ -1,13 +1,12 @@
 package com.karasiq.shadowcloud.serialization.internal
 
-import scala.language.postfixOps
-import scala.reflect.ClassTag
 
-import akka.serialization.{Serialization ⇒ AkkaSerialization}
+import akka.serialization.{Serialization => AkkaSerialization}
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.serialization.SerializationModule
 import com.karasiq.shadowcloud.utils.ByteStringUnsafe
+
+import scala.reflect.ClassTag
 
 private[serialization] final class AkkaSerializationExtensionModule(extension: AkkaSerialization) extends SerializationModule {
   def toBytes[T <: AnyRef](value: T): ByteString = {

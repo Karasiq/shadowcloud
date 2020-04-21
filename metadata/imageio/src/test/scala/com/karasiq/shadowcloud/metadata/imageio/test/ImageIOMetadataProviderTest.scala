@@ -2,20 +2,18 @@ package com.karasiq.shadowcloud.metadata.imageio.test
 
 import java.awt.image.BufferedImage
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 import akka.NotUsed
 import akka.stream.scaladsl.{Source, StreamConverters}
 import akka.stream.testkit.scaladsl.TestSink
 import akka.testkit.TestKit
 import akka.util.ByteString
-import org.scalatest.FlatSpecLike
-
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.metadata.imageio.ImageIOThumbnailCreator
 import com.karasiq.shadowcloud.metadata.imageio.utils.ImageIOResizer
 import com.karasiq.shadowcloud.test.utils.{ActorSpec, ActorSpecImplicits}
+import org.scalatest.FlatSpecLike
+
+import scala.concurrent.duration._
 
 class ImageIOMetadataProviderTest extends ActorSpec with ActorSpecImplicits with FlatSpecLike {
   val thumbnailCreator = ImageIOThumbnailCreator(system.settings.config.getConfig("shadowcloud.metadata.imageio.thumbnails"))

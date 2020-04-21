@@ -1,11 +1,10 @@
 package com.karasiq.shadowcloud.webapp
 
-import scala.language.postfixOps
 
-import org.scalajs.jquery._
 
 import com.karasiq.shadowcloud.webapp.components.SCFrontend
 import com.karasiq.shadowcloud.webapp.context.AppContext
+import org.scalajs.jquery._
 
 object SCFrontendMain {
   def main(args: Array[String]): Unit = {

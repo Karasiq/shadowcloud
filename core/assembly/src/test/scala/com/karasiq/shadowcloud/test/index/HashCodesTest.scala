@@ -1,13 +1,12 @@
 package com.karasiq.shadowcloud.test.index
 
-import scala.language.postfixOps
+
 
 import akka.util.ByteString
-import org.scalatest.{FlatSpec, Matchers}
-
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, TestUtils}
 import com.karasiq.shadowcloud.utils.Utils
+import org.scalatest.{FlatSpec, Matchers}
 
 //noinspection RedundantDefaultArgument
 class HashCodesTest extends FlatSpec with Matchers {

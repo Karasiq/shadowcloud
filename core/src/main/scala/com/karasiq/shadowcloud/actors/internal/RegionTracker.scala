@@ -1,21 +1,19 @@
 package com.karasiq.shadowcloud.actors.internal
 
-import scala.collection.mutable
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 import akka.actor.{ActorContext, OneForOneStrategy, Props, SupervisorStrategy}
 import akka.pattern.BackoffSupervisor
-
 import com.karasiq.shadowcloud.ShadowCloud
+import com.karasiq.shadowcloud.actors.utils.{ActorState => State}
 import com.karasiq.shadowcloud.actors.{RegionContainer, RegionDispatcher, StorageContainer, StorageIndex}
-import com.karasiq.shadowcloud.actors.utils.{ActorState ⇒ State}
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.exceptions.SCException
-import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.model.utils.StorageHealth
+import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.utils.Utils
+
+import scala.collection.mutable
+import scala.concurrent.duration._
 
 object RegionTracker {
   final case class RegionStatus(regionId: RegionId, regionConfig: RegionConfig, actorState: State, storages: Set[String] = Set.empty)

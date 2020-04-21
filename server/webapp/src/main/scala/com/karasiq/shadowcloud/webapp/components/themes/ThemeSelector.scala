@@ -1,13 +1,11 @@
 package com.karasiq.shadowcloud.webapp.components.themes
 
-import scala.language.postfixOps
 
-import rx.{Rx, Var}
 
 import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import com.karasiq.shadowcloud.webapp.utils.StorageBind
+import rx.{Rx, Var}
+import scalaTags.all._
 
 object ThemeSelector {
   val Themes = Vector(

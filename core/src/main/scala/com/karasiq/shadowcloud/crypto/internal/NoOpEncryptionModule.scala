@@ -1,9 +1,8 @@
 package com.karasiq.shadowcloud.crypto.internal
 
-import scala.language.postfixOps
+
 
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters}
 

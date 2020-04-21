@@ -1,10 +1,9 @@
 package com.karasiq.shadowcloud.storage
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
-
 import com.karasiq.shadowcloud.model.utils.StorageHealth
 import com.karasiq.shadowcloud.storage.props.StorageProps.Quota
+
+import scala.concurrent.{ExecutionContext, Future}
 
 trait StorageHealthProvider {
   def health: Future[StorageHealth]

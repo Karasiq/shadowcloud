@@ -4,13 +4,12 @@ import java.io.IOException
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
 
-import scala.collection.mutable.{Set ⇒ MSet}
-import scala.collection.JavaConverters._
-import scala.language.postfixOps
-
 import akka.NotUsed
-import akka.stream.{ActorAttributes, Attributes}
 import akka.stream.scaladsl.Source
+import akka.stream.{ActorAttributes, Attributes}
+
+import scala.collection.JavaConverters._
+import scala.collection.mutable.{Set => MSet}
 
 private[shadowcloud] object FileSystemUtils {
   private[this] val forbiddenChars = """[<>:"/\\|?*]""".r

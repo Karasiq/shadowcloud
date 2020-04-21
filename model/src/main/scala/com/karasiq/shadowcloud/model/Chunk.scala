@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.model
 
-import scala.language.postfixOps
+
 
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData, HasWithoutKeys}

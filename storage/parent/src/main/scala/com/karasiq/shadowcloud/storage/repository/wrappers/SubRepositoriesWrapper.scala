@@ -1,16 +1,14 @@
 package com.karasiq.shadowcloud.storage.repository.wrappers
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.language.postfixOps
-import scala.util.{Failure, Success}
-
 import akka.NotUsed
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
-
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.repository.{CategorizedRepository, Repository}
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.streams.utils.AkkaStreamUtils
+
+import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.util.{Failure, Success}
 
 private[repository] final class SubRepositoriesWrapper[CatKey, Key](pathString: String,
                                                                     subRepositories: () ⇒ Source[(CatKey, Repository[Key]), NotUsed])

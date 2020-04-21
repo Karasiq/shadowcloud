@@ -1,11 +1,10 @@
 package com.karasiq.shadowcloud.storage.repository.wrappers
 
-import scala.language.postfixOps
-import scala.util.Try
 
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
-
 import com.karasiq.shadowcloud.storage.repository.Repository
+
+import scala.util.Try
 
 private[repository] class RepositoryKeyMapper[OldKey, NewKey](repository: Repository[OldKey], toNew: OldKey ⇒ NewKey,
                                                               toOld: NewKey ⇒ OldKey) extends Repository[NewKey] {

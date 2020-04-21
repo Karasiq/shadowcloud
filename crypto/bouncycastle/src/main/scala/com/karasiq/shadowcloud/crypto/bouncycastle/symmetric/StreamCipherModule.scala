@@ -1,14 +1,13 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.symmetric
 
-import scala.language.postfixOps
+
 
 import akka.util.ByteString
-import org.bouncycastle.crypto.StreamCipher
-
-import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{BCSymmetricKeys, BCUtils}
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters}
+import com.karasiq.shadowcloud.utils.ByteStringUnsafe.implicits._
+import org.bouncycastle.crypto.StreamCipher
 
 //noinspection RedundantDefaultArgument
 private[bouncycastle] object StreamCipherModule {

@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.providers
 
-import scala.language.postfixOps
+
 
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.storage.StoragePlugin

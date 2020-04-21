@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.actors
 
-import scala.language.postfixOps
-
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash}
 
 import com.karasiq.shadowcloud.ShadowCloud

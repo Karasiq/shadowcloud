@@ -1,23 +1,21 @@
 package com.karasiq.shadowcloud.server.http.test
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
-import scala.reflect.ClassTag
-
 import akka.http.scaladsl.model.HttpEntity
 import akka.http.scaladsl.model.headers.{ByteRange, Range, RawHeader}
 import akka.http.scaladsl.server.{Directives, Route}
 import akka.http.scaladsl.testkit.{RouteTestTimeout, ScalatestRouteTest}
 import akka.http.scaladsl.unmarshalling.FromEntityUnmarshaller
 import akka.util.ByteString
-import org.scalatest.{FlatSpec, Matchers, SequentialNestedSuiteExecution}
-
 import com.karasiq.common.encoding.HexString
-import com.karasiq.shadowcloud.{ShadowCloud, ShadowCloudExtension}
 import com.karasiq.shadowcloud.api.{SCApiEncoding, SCApiUtils}
 import com.karasiq.shadowcloud.server.http.SCAkkaHttpRoutes
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.test.utils.TestUtils
+import com.karasiq.shadowcloud.{ShadowCloud, ShadowCloudExtension}
+import org.scalatest.{FlatSpec, Matchers, SequentialNestedSuiteExecution}
+
+import scala.concurrent.duration._
+import scala.reflect.ClassTag
 
 class SCHttpServerTest extends FlatSpec with Matchers with ScalatestRouteTest with SequentialNestedSuiteExecution {
   implicit val sc = ShadowCloud(system)
@@ -26,9 +24,9 @@ class SCHttpServerTest extends FlatSpec with Matchers with ScalatestRouteTest wi
     protected val sc: ShadowCloudExtension = SCHttpServerTest.this.sc
   }
 
-  import akka.http.scaladsl.unmarshalling.Unmarshaller._
   import TestServer._
   import SCApiInternals.apiEncoding
+  import akka.http.scaladsl.unmarshalling.Unmarshaller._
 
   implicit val routeTimeout = RouteTestTimeout(30 seconds)
 

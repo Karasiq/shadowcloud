@@ -1,11 +1,10 @@
 package com.karasiq.shadowcloud.test.index
 
-import scala.language.postfixOps
 
-import org.scalatest.{FlatSpec, Matchers}
 
 import com.karasiq.shadowcloud.index.ChunkIndex
 import com.karasiq.shadowcloud.test.utils.CoreTestUtils
+import org.scalatest.{FlatSpec, Matchers}
 
 class ChunkIndexTest extends FlatSpec with Matchers {
   val chunk = CoreTestUtils.randomChunk

@@ -1,18 +1,16 @@
 package com.karasiq.shadowcloud.streams.file
 
-import scala.concurrent.Future
-import scala.language.postfixOps
-
 import akka.NotUsed
-import akka.stream.{FlowShape, Materializer}
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, Source}
+import akka.stream.{FlowShape, Materializer}
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.model.{Chunk, File, Path, RegionId}
 import com.karasiq.shadowcloud.streams.chunk.ChunkProcessingStreams
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges.RangeList
 import com.karasiq.shadowcloud.streams.region.RegionStreams
+
+import scala.concurrent.Future
 
 object FileStreams {
   def apply(regionStreams: RegionStreams, chunkProcessing: ChunkProcessingStreams)(implicit m: Materializer): FileStreams = {

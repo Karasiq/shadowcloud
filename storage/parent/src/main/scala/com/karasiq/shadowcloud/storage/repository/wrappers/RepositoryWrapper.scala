@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.storage.repository.wrappers
 
-import scala.language.postfixOps
+
 
 import com.karasiq.shadowcloud.storage.repository.Repository
 

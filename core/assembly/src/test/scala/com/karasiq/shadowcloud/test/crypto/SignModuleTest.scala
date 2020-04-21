@@ -1,13 +1,12 @@
 package com.karasiq.shadowcloud.test.crypto
 
-import scala.language.postfixOps
 
-import org.scalatest.{FlatSpec, Matchers}
 
 import com.karasiq.shadowcloud.crypto.SignModule
 import com.karasiq.shadowcloud.model.crypto.{HashingMethod, SignMethod}
-import com.karasiq.shadowcloud.test.utils.TestUtils
 import com.karasiq.shadowcloud.test.utils.CoreTestUtils.modules
+import com.karasiq.shadowcloud.test.utils.TestUtils
+import org.scalatest.{FlatSpec, Matchers}
 
 class SignModuleTest extends FlatSpec with Matchers {
    val hashingMethod = HashingMethod("SHA-512")

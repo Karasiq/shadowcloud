@@ -1,19 +1,17 @@
 package com.karasiq.shadowcloud.streams.chunk
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
-
 import akka.NotUsed
 import akka.stream.FlowShape
 import akka.stream.scaladsl.{Flow, GraphDSL, Sink, ZipWith}
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.config.{ChunksConfig, CryptoConfig, ParallelismConfig}
 import com.karasiq.shadowcloud.exceptions.{CryptoException, SCExceptions}
-import com.karasiq.shadowcloud.model.{Chunk, Data}
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters, HashingMethod}
+import com.karasiq.shadowcloud.model.{Chunk, Data}
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 import com.karasiq.shadowcloud.streams.file.FileIndexer
+
+import scala.concurrent.{ExecutionContext, Future}
 
 object ChunkProcessingStreams {
   def apply(cryptoModules: CryptoModuleRegistry, chunks: ChunksConfig, crypto: CryptoConfig,

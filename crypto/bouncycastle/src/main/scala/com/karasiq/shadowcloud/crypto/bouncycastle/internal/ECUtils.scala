@@ -1,8 +1,8 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.internal
 
-import scala.language.postfixOps
-import scala.util.control.NonFatal
 
+import com.karasiq.shadowcloud.config.ConfigProps
+import com.karasiq.shadowcloud.model.crypto.{CryptoMethod, EncryptionMethod, SignMethod}
 import org.bouncycastle.crypto.AsymmetricCipherKeyPairGenerator
 import org.bouncycastle.crypto.generators.ECKeyPairGenerator
 import org.bouncycastle.crypto.params.{ECDomainParameters, ECKeyGenerationParameters, ECNamedDomainParameters}
@@ -10,8 +10,7 @@ import org.bouncycastle.jcajce.provider.asymmetric.util.ECUtil
 import org.bouncycastle.jce.ECNamedCurveTable
 import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec
 
-import com.karasiq.shadowcloud.config.ConfigProps
-import com.karasiq.shadowcloud.model.crypto.{CryptoMethod, EncryptionMethod, SignMethod}
+import scala.util.control.NonFatal
 
 private[bouncycastle] object ECUtils {
   // Curve list: org.bouncycastle.crypto.ec.CustomNamedCurves.getByName

@@ -2,14 +2,11 @@ package com.karasiq.shadowcloud.crypto.bouncycastle.hashing
 
 import java.security.MessageDigest
 
-import scala.language.postfixOps
-
-import org.bouncycastle.crypto.Digest
-
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.BCUtils
 import com.karasiq.shadowcloud.model.crypto.HashingMethod
+import org.bouncycastle.crypto.Digest
 
 private[bouncycastle] object BCDigests extends ConfigImplicits {
   /** [[org.bouncycastle.jce.provider.BouncyCastleProvider.DIGESTS]] */

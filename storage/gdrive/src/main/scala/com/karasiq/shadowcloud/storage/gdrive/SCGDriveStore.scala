@@ -2,17 +2,15 @@ package com.karasiq.shadowcloud.storage.gdrive
 
 import java.{io, util}
 
-import scala.collection.JavaConverters._
-import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 import akka.util.ByteString
 import com.google.api.client.util.IOUtils
 import com.google.api.client.util.store.{AbstractDataStore, AbstractDataStoreFactory, DataStore}
-
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.model.StorageId
+
+import scala.collection.JavaConverters._
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 object SCGDriveStore {
   def apply(storageId: StorageId, userId: String)(implicit sc: ShadowCloudExtension, ec: ExecutionContext): SCGDriveStore = {

@@ -1,8 +1,6 @@
 package com.karasiq.shadowcloud.test.index
 
-import scala.language.postfixOps
 
-import org.scalatest.{Matchers, WordSpec}
 
 import com.karasiq.shadowcloud.exceptions.SCExceptions
 import com.karasiq.shadowcloud.index.FolderIndex
@@ -10,6 +8,7 @@ import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model.{Folder, Path}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, TestUtils}
+import org.scalatest.{Matchers, WordSpec}
 
 class IndexMergerTest extends WordSpec with Matchers {
   "Index" when {

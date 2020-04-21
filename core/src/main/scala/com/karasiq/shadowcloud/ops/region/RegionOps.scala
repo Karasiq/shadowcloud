@@ -1,32 +1,30 @@
 package com.karasiq.shadowcloud.ops.region
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
-
 import akka.actor.ActorRef
 import akka.pattern.ask
 import akka.stream.Materializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.Timeout
-
-import com.karasiq.shadowcloud.actors.{RegionDispatcher, RegionGC}
 import com.karasiq.shadowcloud.actors.RegionDispatcher._
+import com.karasiq.shadowcloud.actors.RegionGC.GCStrategy
 import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
-import com.karasiq.shadowcloud.actors.RegionGC.GCStrategy
+import com.karasiq.shadowcloud.actors.{RegionDispatcher, RegionGC}
 import com.karasiq.shadowcloud.cache.ChunkCache
 import com.karasiq.shadowcloud.config.TimeoutsConfig
-import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.index.diffs.{FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.index.files.FileVersions
+import com.karasiq.shadowcloud.index.{ChunkIndex, FolderIndex}
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.utils._
-import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
+import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.streams.chunk.ChunkProcessingStreams
+
+import scala.concurrent.{ExecutionContext, Future}
 
 object RegionOps {
   def apply(regionSupervisor: ActorRef,

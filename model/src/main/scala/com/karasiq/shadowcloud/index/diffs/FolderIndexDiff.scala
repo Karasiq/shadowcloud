@@ -1,13 +1,13 @@
 package com.karasiq.shadowcloud.index.diffs
 
-import scala.language.postfixOps
+
 
 import com.karasiq.shadowcloud.index.FolderIndex
 import com.karasiq.shadowcloud.index.utils._
 import com.karasiq.shadowcloud.model.{File, Folder, Path, SCEntity}
-import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 import com.karasiq.shadowcloud.utils.MergeUtil.Decider
 import com.karasiq.shadowcloud.utils.MergeUtil.State.{Conflict, Equal, Left, Right}
+import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 
 @SerialVersionUID(0L)
 final case class FolderIndexDiff(folders: Seq[FolderDiff] = Vector.empty)

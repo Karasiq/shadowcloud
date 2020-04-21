@@ -1,13 +1,12 @@
 package com.karasiq.shadowcloud.storage.files
 
-import java.nio.file.{Files, Path ⇒ FsPath}
-
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
+import java.nio.file.{Files, Path => FsPath}
 
 import com.karasiq.shadowcloud.model.utils.StorageHealth
 import com.karasiq.shadowcloud.storage.StorageHealthProvider
 import com.karasiq.shadowcloud.utils.FileSystemUtils
+
+import scala.concurrent.{ExecutionContext, Future}
 
 private[storage] final class FileStorageTraverseHealthProvider(directory: FsPath)(implicit ec: ExecutionContext) extends StorageHealthProvider {
 

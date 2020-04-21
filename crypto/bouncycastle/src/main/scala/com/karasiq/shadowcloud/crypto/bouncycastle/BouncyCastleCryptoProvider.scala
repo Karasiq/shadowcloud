@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle
 
-import scala.language.postfixOps
+
 
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric.{ECIESCipherModule, RSACipherModule}

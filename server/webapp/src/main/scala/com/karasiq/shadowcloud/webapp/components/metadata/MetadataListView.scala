@@ -1,18 +1,16 @@
 package com.karasiq.shadowcloud.webapp.components.metadata
 
-import scala.language.postfixOps
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-
-import rx.{Rx, Var}
-import rx.async._
 
 import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.model.{File, RegionId}
 import com.karasiq.shadowcloud.webapp.components.common.AppComponents
 import com.karasiq.shadowcloud.webapp.context.AppContext
+import rx.async._
+import rx.{Rx, Var}
+import scalaTags.all._
+
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 object MetadataListView {
   def apply(regionId: RegionId, file: File)(implicit context: AppContext): MetadataListView = {

@@ -1,11 +1,10 @@
 package com.karasiq.shadowcloud.config
 
-import scala.language.postfixOps
 
-import com.typesafe.config.{Config, ConfigException}
 
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.model.crypto.EncryptionMethod
+import com.typesafe.config.{Config, ConfigException}
 
 private[shadowcloud] case class EncryptionConfig(rootConfig: Config, chunks: EncryptionMethod,
                                                  index: EncryptionMethod, keys: EncryptionMethod,

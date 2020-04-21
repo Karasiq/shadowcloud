@@ -1,22 +1,20 @@
 package com.karasiq.shadowcloud.actors
 
-import scala.collection.mutable.{AnyRefMap ⇒ MMap}
-import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
 import akka.actor.{Actor, ActorLogging, ActorRef, Props, Status}
 import akka.pattern.{ask, pipe}
 import akka.util.Timeout
-
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.exceptions.StorageException
-import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.model.utils.SyncReport
+import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}
 import com.karasiq.shadowcloud.utils.Utils
+
+import scala.collection.mutable.{AnyRefMap => MMap}
+import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 
 object StorageIndex {
   // Messages

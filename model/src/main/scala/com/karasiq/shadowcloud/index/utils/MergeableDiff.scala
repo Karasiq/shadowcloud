@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.index.utils
 
-import scala.language.postfixOps
+
 
 trait MergeableDiff extends Mergeable {
   type Repr

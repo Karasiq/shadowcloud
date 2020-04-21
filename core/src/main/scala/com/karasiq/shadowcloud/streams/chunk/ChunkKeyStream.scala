@@ -2,14 +2,11 @@ package com.karasiq.shadowcloud.streams.chunk
 
 import java.security.SecureRandom
 
-import scala.language.postfixOps
-
 import akka.stream._
 import akka.stream.stage.{GraphStage, GraphStageLogic, OutHandler}
-
 import com.karasiq.shadowcloud.exceptions.CryptoException
 import com.karasiq.shadowcloud.model.crypto._
-import com.karasiq.shadowcloud.providers.{CryptoModuleRegistry, SCModules}
+import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 
 private[shadowcloud] object ChunkKeyStream {
   def apply(cryptoModules: CryptoModuleRegistry,

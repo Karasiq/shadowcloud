@@ -31,7 +31,6 @@ import com.karasiq.shadowcloud.utils.{ProviderInstantiator, SCProviderInstantiat
 import com.typesafe.config.Config
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.language.postfixOps
 import scala.reflect.ClassTag
 import scala.util.Try
 import scala.util.control.NonFatal

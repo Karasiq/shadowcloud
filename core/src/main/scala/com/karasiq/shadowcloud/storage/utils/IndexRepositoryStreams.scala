@@ -1,13 +1,9 @@
 package com.karasiq.shadowcloud.storage.utils
 
-import scala.concurrent.ExecutionContext
-import scala.language.postfixOps
-
 import akka.NotUsed
 import akka.actor.{ActorContext, ActorSystem}
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.config.StorageConfig
 import com.karasiq.shadowcloud.index.IndexData
@@ -15,6 +11,8 @@ import com.karasiq.shadowcloud.model.RegionId
 import com.karasiq.shadowcloud.storage.internal.DefaultIndexRepositoryStreams
 import com.karasiq.shadowcloud.storage.repository.Repository
 import com.karasiq.shadowcloud.streams.index.IndexProcessingStreams
+
+import scala.concurrent.ExecutionContext
 
 private[shadowcloud] trait IndexRepositoryStreams {
   def write[Key](repository: Repository[Key]): Flow[(Key, IndexData), IndexIOResult[Key], NotUsed]

@@ -2,14 +2,13 @@ package com.karasiq.shadowcloud.shell
 
 import java.nio.file.Files
 
-import scala.concurrent.Await
-import scala.concurrent.duration.Duration
-import scala.language.postfixOps
-
 import com.karasiq.shadowcloud.actors.RegionSupervisor
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.props.StorageProps
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 object Shell extends ImplicitConversions {
   private[this] implicit val context = ShellContext()

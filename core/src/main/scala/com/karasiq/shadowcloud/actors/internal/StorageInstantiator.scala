@@ -1,9 +1,8 @@
 package com.karasiq.shadowcloud.actors.internal
 
-import scala.language.postfixOps
+
 
 import akka.actor.{ActorContext, ActorRef}
-
 import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.storage._

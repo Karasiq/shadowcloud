@@ -1,17 +1,16 @@
 package com.karasiq.shadowcloud.test.utils
 
-import scala.language.postfixOps
-import scala.util.{Random, Try}
 
 import akka.util.ByteString
-import com.typesafe.config.{Config, ConfigFactory}
-
 import com.karasiq.shadowcloud.config.{RegionConfig, SCConfig, SerializedProps, StorageConfig}
 import com.karasiq.shadowcloud.index.diffs.{ChunkIndexDiff, FolderIndexDiff, IndexDiff}
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, HashingMethod}
 import com.karasiq.shadowcloud.providers.SCModules
 import com.karasiq.shadowcloud.utils.ProviderInstantiator
+import com.typesafe.config.{Config, ConfigFactory}
+
+import scala.util.{Random, Try}
 
 object CoreTestUtils extends ByteStringImplicits {
   import TestUtils.{randomBytes, randomString}

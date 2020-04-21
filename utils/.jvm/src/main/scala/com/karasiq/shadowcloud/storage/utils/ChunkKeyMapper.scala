@@ -1,13 +1,12 @@
 package com.karasiq.shadowcloud.storage.utils
 
-import scala.language.postfixOps
+
 
 import akka.util.ByteString
-import com.typesafe.config.Config
-
 import com.karasiq.common.configs.ConfigImplicits._
 import com.karasiq.shadowcloud.model.{Chunk, ChunkId}
 import com.karasiq.shadowcloud.utils.{ProviderInstantiator, Utils}
+import com.typesafe.config.Config
 
 private[shadowcloud] trait ChunkKeyMapper extends (Chunk ⇒ ByteString) {
   def apply(chunk: Chunk): ChunkId

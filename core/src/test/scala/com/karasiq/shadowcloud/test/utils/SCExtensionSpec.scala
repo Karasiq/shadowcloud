@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.test.utils
 
-import scala.language.postfixOps
+
 
 import com.karasiq.shadowcloud.{ShadowCloud, ShadowCloudExtension}
 

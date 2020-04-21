@@ -1,9 +1,8 @@
 package com.karasiq.shadowcloud.storage.repository
 
-import scala.language.postfixOps
+
 
 import akka.stream.scaladsl.Source
-
 import com.karasiq.shadowcloud.storage.repository.wrappers.{PrefixedRepositoryWrapper, RepositoryKeyMapper}
 
 trait CategorizedRepository[CatKey, ItemKey] extends Repository[(CatKey, ItemKey)] {

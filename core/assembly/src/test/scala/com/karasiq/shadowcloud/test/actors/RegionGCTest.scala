@@ -1,16 +1,14 @@
 package com.karasiq.shadowcloud.test.actors
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
-
-import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
-import org.scalatest.concurrent.PatienceConfiguration.Timeout
-
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
 import com.karasiq.shadowcloud.actors.RegionGC.GCStrategy
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, SCExtensionSpec}
+import org.scalatest.concurrent.PatienceConfiguration.Timeout
+import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
+
+import scala.concurrent.duration._
 
 class RegionGCTest extends SCExtensionSpec with FlatSpecLike with SequentialNestedSuiteExecution {
   val testRegionId = "regionGCTest"

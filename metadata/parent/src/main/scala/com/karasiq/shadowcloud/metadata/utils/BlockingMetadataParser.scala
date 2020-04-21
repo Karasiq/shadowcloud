@@ -2,15 +2,14 @@ package com.karasiq.shadowcloud.metadata.utils
 
 import java.io.InputStream
 
-import scala.concurrent.duration._
-import scala.language.postfixOps
 import akka.NotUsed
-import akka.stream.{ActorAttributes, FlowShape}
 import akka.stream.scaladsl.{Flow, GraphDSL, Sink, Source, StreamConverters}
+import akka.stream.{ActorAttributes, FlowShape}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.actors.SCDispatchers
 import com.karasiq.shadowcloud.metadata.{Metadata, MetadataParser}
 
+import scala.concurrent.duration._
 import scala.util.Try
 
 /**

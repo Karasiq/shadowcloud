@@ -30,8 +30,7 @@ jobs:
           java-package: jdk+fx
       - name: Package DEB
         run: JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1" sbt desktopApp/jdkPackager:packageBin
-      - name: Upload artifact
-        uses: actions/upload-artifact@v2-preview
+      - uses: actions/upload-artifact@v2-preview
         with:
           name: shadowcloud-${{steps.version.outputs.version}}.deb
           path: ${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles/shadowcloud-${{steps.version.outputs.version}}.deb

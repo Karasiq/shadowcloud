@@ -23,6 +23,7 @@ SetupIconFile={#ProjectFolder}\setup\icon.ico
 Compression=lzma
 SolidCompression=true
 PrivilegesRequired=admin
+MinVersion=6.0
 
 [Languages]
 Name: english; MessagesFile: compiler:Default.isl

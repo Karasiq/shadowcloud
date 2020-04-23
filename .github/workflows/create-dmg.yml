@@ -33,7 +33,8 @@ jobs:
           sdk use sbt 1.3.8
           java -version
           echo $JAVA_HOME
-          JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1" sbt desktopApp/jdkPackager:packageBin
+          JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1" sbt "set name in desktopApp in Universal := \"shadowcloud-full\"" desktopApp/jdkPackager:packageBin
+          JAVA_OPTS="-Xmx4G -Denable-tika=0 -Denable-javacv=0" sbt "set name in desktopApp in Universal := \"shadowcloud-light\"" desktopApp/jdkPackager:packageBin
       - uses: actions/upload-artifact@v2-preview
         with:
           name: shadowcloud-macos

@@ -28,7 +28,11 @@ jobs:
           curl -s "https://get.sdkman.io" | bash
           source "$HOME/.sdkman/bin/sdkman-init.sh"
           sdk install java 8.0.252.fx-zulu
-          sdk install sbt
+          sdk install sbt 1.3.8
+          sdk use java 8.0.252.fx-zulu
+          sdk use sbt 1.3.8
+          java -version
+          echo $JAVA_HOME
           JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1" sbt desktopApp/jdkPackager:packageBin
       - uses: actions/upload-artifact@v2-preview
         with:

@@ -30,9 +30,9 @@ jobs:
           java-package: jdk+fx
       - name: Package DEB
         run: |
-          JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv-all=1" sbt "set name in desktopApp in Universal := \"shadowcloud-full\"" desktopApp/universal:packageBin
-          JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1" sbt "set name in desktopApp in Universal := \"shadowcloud-full\"" desktopApp/jdkPackager:packageBin
-          JAVA_OPTS="-Xmx4G -Denable-tika=0 -Denable-javacv=0" sbt "set name in desktopApp in Universal := \"shadowcloud-light\"" desktopApp/jdkPackager:packageBin desktopApp/universal:packageBin
+          JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv-all=1" sbt "set packageName in desktopApp in Universal := \"shadowcloud-full-\" + version.value" desktopApp/universal:packageBin
+          JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1" sbt "set packageName in desktopApp in Universal := \"shadowcloud-full-\" + version.value" desktopApp/jdkPackager:packageBin
+          JAVA_OPTS="-Xmx4G -Denable-tika=0 -Denable-javacv=0" sbt "set packageName in desktopApp in Universal := \"shadowcloud-light-\" + version.value" desktopApp/jdkPackager:packageBin desktopApp/universal:packageBin
       - uses: actions/upload-artifact@v2-preview
         with:
           name: shadowcloud-linux

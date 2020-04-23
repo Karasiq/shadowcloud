@@ -36,9 +36,5 @@ jobs:
           JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1" sbt desktopApp/jdkPackager:packageBin
       - uses: actions/upload-artifact@v2-preview
         with:
-          name: shadowcloud-${{steps.version.outputs.version}}.dmg
-          path: ${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles/shadowcloud-${{steps.version.outputs.version}}.dmg
-      - uses: actions/upload-artifact@v2-preview
-        with:
-          name: shadowcloud-${{steps.version.outputs.version}}.pkg
-          path: ${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles/shadowcloud-${{steps.version.outputs.version}}.pkg
+          name: shadowcloud-macos
+          path: ${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles

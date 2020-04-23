@@ -34,8 +34,7 @@ jobs:
         run: |
           $env:JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1"
           sbt desktopApp/jdkPackager:packageBin
-      - name: Upload artifact
-        uses: actions/upload-artifact@v2-preview
+      - uses: actions/upload-artifact@v2-preview
         with:
-          name: shadowcloud-${{steps.version.outputs.version}}.exe
-          path: ${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles/shadowcloud-${{steps.version.outputs.version}}.exe
+          name: shadowcloud-windows
+          path: ${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles

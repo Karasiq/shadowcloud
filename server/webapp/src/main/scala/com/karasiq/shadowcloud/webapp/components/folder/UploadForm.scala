@@ -53,11 +53,15 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
   private[this] val uploadQueue        = Var(List.empty[UploadRequest])
   private[this] val uploading          = Var(List.empty[UploadRequest])
 
-  private[this] lazy val renderedForm = Form(
-    action := "/",
-    `class` := "dropzone",
-    Dropzone(folderContext.regionId, () => folderContext.selected.now, _ => folderContext.update(folderContext.selected.now))
-  ).render
+  private[this] val formMap = collection.mutable.Map.empty[Path, ElementT]
+
+  private[this] def createForm(regionId: RegionId, path: Path) = {
+    formMap.getOrElseUpdate(path, Form(
+      action := "/",
+      `class` := "dropzone",
+      Dropzone(folderContext.regionId, () => path, _ => folderContext.update(path))
+    ).render)
+  }
 
   def renderTag(md: ModifierT*): TagT = {
     val editor = TextEditor.memoized("sc-text-upload") { editor ⇒
@@ -77,7 +81,7 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
         appContext.locale.uploadFiles,
         "upload-files",
         NoIcon,
-        renderedForm
+        Rx(createForm(folderContext.regionId, folderContext.selected()))
       ),
       NavigationTab(appContext.locale.pasteText, "paste-text", NoIcon, editor)
     )

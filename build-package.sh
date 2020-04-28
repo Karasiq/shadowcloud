@@ -1,7 +1,2 @@
-export VERSION=1.1.0
-
-sbt -J-Xmx4G -J-Denable-tika=1 -J-Denable-javacv=1 desktopApp/jdkPackager:packageBin && \
-  sbt -J-Xmx4G -J-Denable-tika=0 -J-Denable-javacv=0 desktopApp/universal:packageBin && \
-  mv -f "./desktop-app/target/universal/shadowcloud-desktop-$VERSION.zip" "./desktop-app/target/universal/shadowcloud-$VERSION-light.zip" && \
-  sbt -J-Xmx4G -J-Denable-tika=1 -J-Denable-javacv-all=1 desktopApp/universal:packageBin && \
-  mv -f "./desktop-app/target/universal/shadowcloud-desktop-$VERSION.zip" "./desktop-app/target/universal/shadowcloud-$VERSION-full.zip"
+JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1" sbt "set packageName in desktopApp in Universal := \"shadowcloud-full-\" + version.value" desktopApp/jdkPackager:packageBin
+JAVA_OPTS="-Xmx4G -Denable-tika=0 -Denable-javacv=0" sbt "set packageName in desktopApp in Universal := \"shadowcloud-light-\" + version.value" desktopApp/jdkPackager:packageBin

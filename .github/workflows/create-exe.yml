@@ -33,10 +33,18 @@ jobs:
         run: |
           choco uninstall -y InnoSetup
           choco install -y InnoSetup --version=5.6.1
+
+          $Version="${{steps.version.outputs.version}}"
+          $Universal="desktop-app/target/universal"
+          $JPBundles="$Universal/jdkpackager/bundles"
+
           $env:JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1"
-          sbt 'set packageName in desktopApp in Universal := \"shadowcloud-full-\" + version.value' desktopApp/jdkPackager:packageBin
+          sbt desktopApp/jdkPackager:packageBin
+          move "$JPBundles\shadowcloud-$Version.exe" "$JPBundles\shadowcloud-full-$Version.exe"
+
           $env:JAVA_OPTS="-Xmx4G -Denable-tika=0 -Denable-javacv=0"
-          sbt 'set name in desktopApp in Universal := \"shadowcloud-light-\" + version.value' desktopApp/jdkPackager:packageBin
+          sbt desktopApp/jdkPackager:packageBin
+          move "$JPBundles\shadowcloud-$Version.exe" "$JPBundles\shadowcloud-light-$Version.exe"
       - uses: actions/upload-artifact@v2-preview
         with:
           name: shadowcloud-windows

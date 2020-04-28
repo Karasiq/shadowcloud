@@ -14,15 +14,15 @@ jobs:
         run: |
           git fetch --prune --unshallow
           git checkout master
-          export git_message=$(git log -1 --pretty=%B)
-          version_msg_regex='Version ([0-9]+\.[0-9]+\.?[0-9]*).*'
-          if [[ $git_message =~ $version_msg_regex ]]; then
-            export version="${BASH_REMATCH[1]}"
+          GitMessage=$(git log -1 --pretty=%B)
+          VersionMsgRegex='Version ([0-9]+\.[0-9]+\.?[0-9]*).*'
+          if [[ $GitMessage =~ $VersionMsgRegex ]]; then
+            Version="${BASH_REMATCH[1]}"
           else
-            export version_tag=$(git describe --tags --abbrev=0)
-            export version="${version_tag:1}"
+            VersionTag=$(git describe --tags --abbrev=0)
+            Version="${VersionTag:1}"
           fi
-          echo "::set-output name=version::$version"
+          echo "::set-output name=version::$Version"
       - name: Set up JDK 1.8
         uses: actions/setup-java@v1
         with:
@@ -30,9 +30,21 @@ jobs:
           java-package: jdk+fx
       - name: Package DEB
         run: |
-          JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv-all=1" sbt "set packageName in desktopApp in Universal := \"shadowcloud-full-\" + version.value" desktopApp/universal:packageBin
-          JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1" sbt "set name in desktopApp in Universal := \"shadowcloud-full\"" desktopApp/jdkPackager:packageBin
-          JAVA_OPTS="-Xmx4G -Denable-tika=0 -Denable-javacv=0" sbt "set name in desktopApp in Universal := \"shadowcloud-light\"" desktopApp/jdkPackager:packageBin desktopApp/universal:packageBin
+          Version="${{steps.version.outputs.version}}"
+          Universal="${{github.workspace}}/desktop-app/target/universal"
+          JPBundles="$Universal/jdkpackager/bundles"
+          
+          JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv-all=1" sbt desktopApp/universal:packageBin
+          mv "$Universal/shadowcloud-$Version.zip" "$Universal/shadowcloud-full-$Version.zip"
+
+          JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1" sbt desktopApp/jdkPackager:packageBin
+          mv "$JPBundles/shadowcloud-$Version.deb" "$JPBundles/shadowcloud-full-$Version.deb"
+          mv "$JPBundles/shadowcloud-$Version-1.x86_64.rpm" "$JPBundles/shadowcloud-full-$Version-1.x86_64.rpm"
+
+          JAVA_OPTS="-Xmx4G -Denable-tika=0 -Denable-javacv=0" sbt desktopApp/jdkPackager:packageBin desktopApp/universal:packageBin
+          mv "$JPBundles/shadowcloud-$Version.deb" "$JPBundles/shadowcloud-light-$Version.deb"
+          mv "$JPBundles/shadowcloud-$Version.rpm-1.x86_64" "$JPBundles/shadowcloud-light-$Version-1.x86_64.rpm"
+          mv "$Universal/shadowcloud-$Version.zip" "$Universal/shadowcloud-light-$Version.zip"
       - uses: actions/upload-artifact@v2-preview
         with:
           name: shadowcloud-linux

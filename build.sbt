@@ -34,6 +34,7 @@ val commonSettings = Seq(
 val packageSettings = Seq(
   // javaOptions in Universal += "-Xmx2G",
   name in Universal := "shadowcloud",
+  packageName := (name in Universal).value,
   version in Universal := version.value.replace("-SNAPSHOT", ""),
   maintainer := "Karasiq",
   packageSummary := "shadowcloud application",

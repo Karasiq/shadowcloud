@@ -1,11 +1,6 @@
 package com.karasiq.shadowcloud.storage.gdrive
 
-import java.util
-
 import akka.actor.{Actor, ActorContext, ActorRef, Props}
-import com.google.api.client.extensions.java6.auth.oauth2.VerificationCodeReceiver
-import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
-import com.google.api.services.drive.DriveScopes
 import com.karasiq.common.configs.ConfigImplicits._
 import com.karasiq.gdrive.context.GDriveContext
 import com.karasiq.gdrive.files.GDriveService
@@ -51,7 +46,14 @@ private[gdrive] class GDriveStoragePlugin(implicit sc: ShadowCloudExtension) ext
             GDriveContext(config, dataStore)
           }
 
-          val oauth            = GDriveOAuth()
+          val oauth = GDriveOAuth()
+
+          val sessions = sc.sessions.listBlocking(storageId)
+          if (sessions.isEmpty)
+            sc.ui.showNotification(
+              s"Please authorize shadowcloud in your Google Drive acc: $storageId (${props.credentials.login})\nPress OK to open OAuth web page"
+            )
+
           implicit val session = oauth.authorize(props.credentials.login)
 
           val service = {

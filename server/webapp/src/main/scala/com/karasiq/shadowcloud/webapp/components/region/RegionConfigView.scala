@@ -9,10 +9,9 @@ import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
 import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
+import com.karasiq.shadowcloud.webapp.utils.RxWithKey
 import rx._
-import rx.async._
 import scalaTags.all._
-import scalatags.JsDom
 
 import scala.concurrent.Future
 
@@ -33,21 +32,44 @@ object RegionConfigView {
 class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionContext: RegionContext) extends BootstrapHtmlComponent {
   private[this] lazy val regionStatus = regionContext.region(regionId)
 
-  private[this] val compactStarted = Var(false)
-  private[this] val gcStarted      = Var(false)
-  private[this] val gcAnalysed     = Var(false)
-  private[this] val gcReport       = Var(None: Option[GCReport])
-  private[this] val repairStarted  = Var(false)
+  private[this] object state {
+    val syncStarted    = Var(false)
+    val compactStarted = Var(false)
+    val repairStarted  = Var(false)
+    val gcStarted      = Var(false)
+    val gcAnalysed     = Var(false)
+    val gcReport       = Var(None: Option[GCReport])
+    val syncReport     = Var(Map.empty[StorageId, SyncReport])
+    val compactReport  = Var(Map.empty[StorageId, SyncReport])
+    val healthRx       = RxWithKey.static(regionId, RegionHealth.empty)(context.api.getRegionHealth)
+  }
+
+  import state._
+
+  // Hack to bypass an initialization lag
+  def updateHealth(): Unit = {
+    healthRx.update()
+    org.scalajs.dom.window.setTimeout(() => healthRx.update(), 100)
+    org.scalajs.dom.window.setTimeout(() => healthRx.update(), 500)
+    org.scalajs.dom.window.setTimeout(() => healthRx.update(), 1500)
+  }
+
+  syncReport.triggerLater(healthRx.update())
+  compactReport.triggerLater(healthRx.update())
+  gcReport.triggerLater(healthRx.update())
 
   def renderTag(md: ModifierT*): TagT = {
+    updateHealth()
+
     div(regionStatus.map { regionStatus ⇒
       div(
         if (!regionStatus.suspended) {
           Seq(
-            renderRegionHealth(),
+            div(HealthView(healthRx.toRx), onclick := Callback.onClick(_ => updateHealth())),
             renderCompactButton(),
             renderGCButton(),
             renderRepairButton(),
+            renderSyncButton(),
             hr
           )
         } else (),
@@ -57,11 +79,6 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
         renderStoragesRegistration(regionStatus)
       )
     })
-  }
-
-  private[this] def renderRegionHealth() = {
-    val regionHealth = context.api.getRegionHealth(regionId).toRx(RegionHealth.empty)
-    HealthView(regionHealth)
   }
 
   private[this] def renderGCButton() = {
@@ -87,34 +104,32 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
         )
       },
       div(gcReport.map[Frag] {
-        case Some(report) ⇒
-          div(new UniversalAlert(AlertStyle.warning) {
-            override def closeButton: JsDom.all.Tag =
-              super.closeButton(onclick := Callback.onClick { _ =>
-                gcReport() = None
-              })
-          }.renderTag(report.toString))
-
-        case None ⇒ Bootstrap.noContent
+        case Some(report) ⇒ AppComponents.closeableAlert(AlertStyle.warning, () => gcReport() = None, report.toString)
+        case None         ⇒ Bootstrap.noContent
       })
     )
   }
 
-  private[this] def renderCompactButton() = {
-    val compactReport = Var(Map.empty[StorageId, SyncReport])
+  private[this] def renderSyncReports(reportsVar: Var[Map[StorageId, SyncReport]]) =
+    div(reportsVar.map { reports =>
+      if (reports.nonEmpty)
+        div(
+          AppComponents.closeableAlert(
+            AlertStyle.success,
+            () => reportsVar() = Map.empty,
+            for ((storageId, report) ← reports.toSeq) yield div(b(storageId), ": ", report.toString)
+          )
+        )
+      else
+        Bootstrap.noContent
+    })
 
+  private[this] def renderCompactButton() = {
     def startCompact() = {
       compactStarted() = true
       val future = context.api.compactIndexes(regionId)
       future.onComplete(_ ⇒ compactStarted() = false)
       future.foreach(compactReport() = _)
-    }
-
-    def renderReports(reports: Map[StorageId, SyncReport]): Frag = {
-      if (reports.nonEmpty)
-        div(Alert(AlertStyle.success, for ((storageId, report) ← reports.toSeq) yield div(b(storageId), ": ", report.toString)))
-      else
-        Bootstrap.noContent
     }
 
     div(
@@ -124,7 +139,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
         "disabled".classIf(compactStarted),
         onclick := Callback.onClick(_ ⇒ if (!compactStarted.now) startCompact())
       ),
-      div(compactReport.map(renderReports))
+      renderSyncReports(compactReport)
     )
   }
 
@@ -158,10 +173,32 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
     )
   }
 
+  def renderSyncButton(): TagT = {
+    def startSync(): Unit = {
+      syncStarted() = true
+      val future = context.api.synchronizeRegion(regionId)
+      future.onComplete(_ ⇒ syncStarted() = false)
+      future.foreach(syncReport() = _)
+    }
+
+    div(
+      Button(ButtonStyle.primary, ButtonSize.extraSmall)(
+        AppIcons.refresh,
+        context.locale.synchronize,
+        "disabled".classIf(syncStarted),
+        onclick := Callback.onClick(_ ⇒ if (!syncStarted.now) startSync())
+      ),
+      renderSyncReports(syncReport)
+    )
+  }
+
   private[this] def renderStateButtons(regionStatus: RegionStatus) = {
     def doSuspend() = context.api.suspendRegion(regionId).foreach(_ ⇒ regionContext.updateRegion(regionId))
-    def doResume()  = context.api.resumeRegion(regionId).foreach(_ ⇒ regionContext.updateRegion(regionId))
-    def doDelete()  = context.api.deleteRegion(regionId).foreach(_ ⇒ regionContext.updateAll())
+    def doResume() = context.api.resumeRegion(regionId).foreach { _ =>
+      regionContext.updateRegion(regionId)
+      updateHealth()
+    }
+    def doDelete() = context.api.deleteRegion(regionId).foreach(_ ⇒ regionContext.updateAll())
 
     val suspendResumeButton =
       if (regionStatus.suspended)

@@ -75,6 +75,7 @@ trait AppLocale {
   def collectGarbage: String
   def compactIndex: String
   def repairRegion: String
+  def synchronize: String
 
   def writableSpace: String
   def totalSpace: String
@@ -94,6 +95,8 @@ trait AppLocale {
   def unregisterRegion: String
   def suspend: String
   def resume: String
+  def export: String
+  def `import`: String
 
   def keys: String
   def keyId: String

@@ -100,17 +100,20 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
         .show()
     }
 
-    val generateButton = Button(ButtonStyle.success)(
+    val generateButton = Button(ButtonStyle.success, block = true)(
       context.locale.generateKey,
       onclick := Callback.onClick(_ ⇒ showGenerateDialog())
     )
 
-    val importButton = Button(ButtonStyle.primary)(
+    val importButton = Button(ButtonStyle.primary, block = true)(
       context.locale.importKey,
       onclick := Callback.onClick(_ ⇒ showImportDialog())
     )
 
-    ButtonGroup(ButtonGroupSize.default, generateButton, importButton)
+    GridSystem.row(
+      GridSystem.col.md(6)(generateButton),
+      GridSystem.col.md(6)(importButton)
+    )
   }
 
   private[this] def showExportDialog(key: KeySet): Unit = {

@@ -8,4 +8,8 @@ class HeadlessUIProvider(as: ActorSystem) extends UIProvider {
   override def showErrorMessage(error: Throwable): Unit = {
     as.log.error(error, "Unhandled application error")
   }
+
+  override def showNotification(text: String): Unit = {
+    as.log.info("Notification: {}", text)
+  }
 }

@@ -46,6 +46,12 @@ final class H2SessionProvider(actorSystem: ActorSystem) extends SessionProvider 
         .map(_.data)
     }
 
+    def listSessions(storageId: StorageId) = quote {
+      query[DBSession]
+        .filter(s ⇒ s.storageId == lift(storageId))
+        .map(_.key)
+    }
+
     def deleteSessions(storageId: StorageId) = quote {
       query[DBSession]
         .filter(_.storageId == lift(storageId))
@@ -73,6 +79,11 @@ final class H2SessionProvider(actorSystem: ActorSystem) extends SessionProvider 
   def loadSession(storageId: StorageId, key: String) = {
     val query = queries.getSession(storageId, key)
     Future(runQuery(query).head)
+  }
+
+  override def listSessions(storageId: StorageId): Future[Seq[String]] = {
+    val query = queries.listSessions(storageId)
+    Future(runQuery(query))
   }
 
   def dropSessions(storageId: StorageId) = {

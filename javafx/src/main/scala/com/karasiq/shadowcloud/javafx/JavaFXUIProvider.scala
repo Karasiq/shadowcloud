@@ -8,7 +8,7 @@ import com.karasiq.shadowcloud.ui.UIProvider
 private[javafx] final class JavaFXUIProvider(actorSystem: ActorSystem) extends UIProvider {
   private[this] lazy val context = JavaFXContext(actorSystem)
 
-  override def showErrorMessage(error: Throwable): Unit = {
+  override def showErrorMessage(error: Throwable): Unit = synchronized {
     context.assertInitialized()
     val message = {
       val stream = new ByteArrayOutputStream()
@@ -17,5 +17,10 @@ private[javafx] final class JavaFXUIProvider(actorSystem: ActorSystem) extends U
       new String(stream.toByteArray)
     }
     ErrorAlert.show(context.app.stage, message)
+  }
+
+  override def showNotification(text: String): Unit = synchronized {
+    context.assertInitialized()
+    NotifyAlert.show(context.app.stage, text)
   }
 }

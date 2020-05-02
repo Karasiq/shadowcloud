@@ -62,7 +62,10 @@ object DropboxSessionProxy {
               case _ ⇒
                 val oauth = DropboxOAuth()
                 for {
-                  _     ← checkConnection()
+                  _ ← checkConnection()
+                  _ = sc.ui.showNotification(
+                    s"Please authorize shadowcloud in your Dropbox acc: $storageId (${props.credentials.login})\nPress OK to open OAuth web page"
+                  )
                   token ← oauth.authenticate(appKeys)
                   Done  ← sc.sessions.set(storageId, "oauth", token)
                 } yield token

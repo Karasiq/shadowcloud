@@ -41,7 +41,7 @@ private[locales] object Russian extends AppLocale {
   val uploadFiles = "Загрузить"
   val downloadFile = "Скачать"
   val deleteFile = "Удалить"
-  val repairFile = "Починить"
+  val repairFile = "Реплицировать"
   val playFile = "Просмотр"
   val viewTextFile = "Открыть текст"
   val inspectFile = "Подробности"
@@ -74,7 +74,8 @@ private[locales] object Russian extends AppLocale {
 
   val collectGarbage = "Собрать мусор"
   val compactIndex = "Сжать индекс"
-  val repairRegion = "Починить регион"
+  val repairRegion = "Репликация"
+  val synchronize = "Синхронизация"
 
   val writableSpace = "Доступно"
   val totalSpace = "Всего"
@@ -94,6 +95,8 @@ private[locales] object Russian extends AppLocale {
   val unregisterRegion = "Разрегистрировать регион"
   val suspend = "Остановить"
   val resume = "Запустить"
+  val export = "Экспорт"
+  val `import` = "Импорт"
 
   val keys = "Ключи"
   val keyId = "ID ключа"

@@ -26,6 +26,9 @@ private[shadowcloud] class InMemSessionProvider extends SessionProvider {
     Future.fromTry(Try(dataMap((storageId, key))))
   }
 
+  def listSessions(storageId: StorageId): Future[Seq[String]] =
+    Future.successful(dataMap.keys.filter(_._1 == storageId).map(_._2).toVector)
+
   def dropSessions(storageId: StorageId) = Future.fromTry(Try {
     dataMap.keys
       .filter(_._1 == storageId)

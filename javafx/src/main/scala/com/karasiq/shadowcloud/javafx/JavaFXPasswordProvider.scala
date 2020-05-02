@@ -2,6 +2,7 @@ package com.karasiq.shadowcloud.javafx
 
 import akka.actor.ActorSystem
 import com.karasiq.shadowcloud.ui.passwords.PasswordProvider
+import javafx.stage.Stage
 
 /** Shows JavaFX password dialog */
 private[javafx] final class JavaFXPasswordProvider(actorSystem: ActorSystem) extends PasswordProvider {

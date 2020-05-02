@@ -30,7 +30,8 @@ import com.karasiq.shadowcloud.ui.passwords.PasswordProvider
 import com.karasiq.shadowcloud.utils.{ProviderInstantiator, SCProviderInstantiator}
 import com.typesafe.config.Config
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.reflect.ClassTag
 import scala.util.Try
 import scala.util.control.NonFatal
@@ -139,16 +140,35 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     def get[T <: AnyRef: ClassTag](storageId: StorageId, key: String): Future[T] = {
       provider.loadSession(storageId, key).map(serialization.fromBytes[T])
     }
+
+    def list(storageId: StorageId): Future[Seq[String]] = {
+      provider.listSessions(storageId)
+    }
+
+    def setBlocking(storageId: StorageId, key: String, data: AnyRef): Done = {
+      Await.result(set(storageId, key, data), Duration.Inf)
+    }
+
+    def getBlocking[T <: AnyRef: ClassTag](storageId: StorageId, key: String): T = {
+      Await.result(get(storageId, key), Duration.Inf)
+    }
+
+    def listBlocking(storageId: StorageId): Seq[String] = {
+      Await.result(list(storageId), Duration.Inf)
+    }
   }
 
   // -----------------------------------------------------------------------
   // User interface
   // -----------------------------------------------------------------------
-  object ui {
+  object ui extends UIProvider with PasswordProvider  {
     private[this] lazy val passProvider: PasswordProvider = provInstantiator.getInstance(config.ui.passwordProvider)
     private[this] lazy val uiProvider: UIProvider         = provInstantiator.getInstance(config.ui.uiProvider)
 
-    def askPassword(configPath: String, passwordId: String = null): String = {
+    override def askPassword(id: String): String =
+      passProvider.askPassword(id)
+
+    def askOrReadPassword(configPath: String, passwordId: String = null): String = {
       import ConfigImplicits._
       val validId = if (passwordId == null) configPath else passwordId
       rootConfig.withDefault(passProvider.askPassword(validId), _.getString(configPath))
@@ -163,6 +183,9 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
           actorSystem.log.error(e1, "Error when reporting")
       }
     }
+
+    override def showNotification(text: String): Unit =
+      uiProvider.showNotification(text)
 
     def withShowError[T](f: => T): Either[Throwable, T] =
       try Right(f)
@@ -228,6 +251,8 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
 
   private[this] object lifecycleHooks extends LifecycleHook {
     private[this] val instances = config.misc.lifecycleHooks.map(hookClass => provInstantiator.getInstance(hookClass))
+    var initialized = false
+    var terminated = false
 
     def initialize(): Unit = instances.foreach { hook =>
       actorSystem.log.debug("Executing init hook: {}", hook)
@@ -240,9 +265,16 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     }
   }
 
-  def init(): Unit = {
+  def init(): Unit = synchronized {
+    if (lifecycleHooks.initialized) return
     lifecycleHooks.initialize()
-    sys.addShutdownHook(lifecycleHooks.shutdown())
     actors.regionSupervisor // Init actor
+    lifecycleHooks.initialized = true
+  }
+
+  def shutdown(): Unit = synchronized {
+    if (!lifecycleHooks.initialized || lifecycleHooks.terminated) return
+    lifecycleHooks.shutdown()
+    lifecycleHooks.terminated = true
   }
 }

@@ -1,12 +1,12 @@
 package com.karasiq.shadowcloud.webapp.components.common
 
-
 import com.karasiq.bootstrap.Bootstrap.default._
 import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.taboverridejs.TabOverride
 import org.scalajs.dom
 import rx.{Rx, Var}
 import scalaTags.all._
+import scalatags.JsDom
 import scalatags.JsDom.all.{a, href, onclick}
 
 object AppComponents {
@@ -30,7 +30,7 @@ object AppComponents {
   }
 
   def modalClose(md: Modifier*)(implicit context: AppContext): Tag = {
-    Modal.closeButton(context.locale.close)(md:_*)
+    Modal.closeButton(context.locale.close)(md: _*)
   }
 
   def modalSubmit(md: Modifier*)(implicit context: AppContext): Tag = {
@@ -40,4 +40,10 @@ object AppComponents {
   def tabOverride: Modifier = { elem ⇒
     TabOverride.set(elem.asInstanceOf[dom.html.TextArea])
   }
+
+  def closeableAlert(style: AlertStyle, onClose: () => Unit, md: Modifier*): Tag =
+    div(new UniversalAlert(style) {
+      override def closeButton: JsDom.all.Tag =
+        super.closeButton(onclick := Callback.onClick(_ => onClose()))
+    }.renderTag(md: _*))
 }

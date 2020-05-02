@@ -5,13 +5,16 @@ import com.karasiq.bootstrap.Bootstrap.default._
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.model.RegionId
 import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
+import com.karasiq.shadowcloud.webapp.components.keys.KeysContext
 import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
 import rx.{Rx, Var}
 import scalaTags.all._
 
+import scala.concurrent.Future
+
 object RegionsView {
-  def apply()(implicit context: AppContext, regionContext: RegionContext): RegionsView = {
+  def apply()(implicit context: AppContext, regionContext: RegionContext, keysContext: KeysContext): RegionsView = {
     new RegionsView
   }
 
@@ -31,7 +34,7 @@ object RegionsView {
   }
 }
 
-class RegionsView(implicit context: AppContext, regionContext: RegionContext) extends BootstrapHtmlComponent {
+class RegionsView(implicit context: AppContext, regionContext: RegionContext, keysContext: KeysContext) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
     val regionViewsRx = regionContext.regions.fold(Map.empty[RegionId, Tag]) {
       case (views, report) ⇒
@@ -43,7 +46,12 @@ class RegionsView(implicit context: AppContext, regionContext: RegionContext) ex
     }
 
     div(
-      renderAddButton(),
+      GridSystem.row(
+        GridSystem.col.md(3)(renderAddButton()),
+        GridSystem.col.md(3)(renderExportButton()),
+        GridSystem.col.md(3)(renderImportButton()),
+        GridSystem.col.md(3)(renderSuspendAllButton())
+      ),
       Rx(div(regionViewsRx().toSeq.sortBy(_._1).map(_._2)))
     )
   }
@@ -86,10 +94,37 @@ class RegionsView(implicit context: AppContext, regionContext: RegionContext) ex
         .show()
     }
 
-    Button(ButtonStyle.primary, ButtonSize.small, block = true)(
+    Button(ButtonStyle.success, ButtonSize.small, block = true)(
       AppIcons.create,
       context.locale.createRegion,
       onclick := Callback.onClick(_ ⇒ showCreateDialog())
+    )
+  }
+
+  private[this] def renderExportButton() = {
+    Button(ButtonStyle.warning, ButtonSize.small, block = true)(
+      AppIcons.download,
+      context.locale.export,
+      onclick := Callback.onClick(_ ⇒ ExportImportModal.exportDialog())
+    )
+  }
+
+  private[this] def renderImportButton() = {
+    Button(ButtonStyle.danger, ButtonSize.small, block = true)(
+      AppIcons.upload,
+      context.locale.`import`,
+      onclick := Callback.onClick(_ ⇒ ExportImportModal.importDialog())
+    )
+  }
+
+  private[this] def renderSuspendAllButton() = {
+    Button(ButtonStyle.danger, ButtonSize.small, block = true)(
+      AppIcons.suspend,
+      context.locale.suspend,
+      onclick := Callback.onClick { _ =>
+        val future = Future.sequence(regionContext.regions.now.regions.keys.map(context.api.suspendRegion))
+        future.onComplete(_ => regionContext.updateAll())
+      }
     )
   }
 

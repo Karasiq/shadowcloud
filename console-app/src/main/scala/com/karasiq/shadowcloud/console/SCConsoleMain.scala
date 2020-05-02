@@ -6,6 +6,10 @@ import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.drive.fuse.SCFuseHelper
 import com.typesafe.config.impl.ConfigImpl
 
+import scala.concurrent.Await
+import scala.concurrent.duration._
+import scala.util.Try
+
 object SCConsoleMain extends App {
   private[this] val config = {
     // Replace default ConfigFactory.load() config
@@ -17,6 +21,11 @@ object SCConsoleMain extends App {
 
   val sc = ShadowCloud(actorSystem)
   import sc.implicits.executionContext
+
+  sys.addShutdownHook {
+    Try(sc.shutdown())
+    Try(Await.result(actorSystem.terminate(), 15 seconds))
+  }
 
   sc.init()
 

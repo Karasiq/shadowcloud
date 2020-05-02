@@ -346,7 +346,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
 
         case StorageEvents.PendingIndexUpdated(`regionId`, diff) ⇒
           log.debug("Storage [{}] pending index updated: {}", storageId, diff)
-          // globalIndex.addPending(diff)
+        // globalIndex.addPending(diff)
 
         case StorageEvents.IndexDeleted(`regionId`, sequenceNrs) ⇒
           log.debug("Diffs deleted from storage [{}]: {}", storageId, sequenceNrs)
@@ -395,8 +395,8 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
   // Utils
   // -----------------------------------------------------------------------
   object schedules {
-    private[this] val scheduler = context.system.scheduler
-    var shouldRetry             = false
+    private[this] lazy val scheduler = context.system.scheduler
+    var shouldRetry                  = false
 
     def pullIndex(storageId: StorageId): Unit = {
       scheduler.scheduleOnce(5 seconds, self, PullStorageIndex(storageId))

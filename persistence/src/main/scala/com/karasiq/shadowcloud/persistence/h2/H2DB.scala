@@ -25,7 +25,7 @@ final class H2DBExtension(system: ExtendedActorSystem) extends Extension {
 
     private[H2DBExtension] def getDbPassword(): String = {
       sc.ui
-        .askPassword("persistence.h2.password")
+        .askOrReadPassword("persistence.h2.password")
         .replace(' ', '_')
     }
   }

@@ -38,10 +38,11 @@ object SCDesktopMain extends App {
       SCFuseHelper.mount()
 
     def onExit(): Unit =
-      new Thread(() => {
-        Try(Await.result(actorSystem.terminate(), 10 seconds))
-        sys.exit(0)
-      }, "app-shutdown").start()
-
+      sys.exit()
   }.addToTray()
+
+  sys.addShutdownHook {
+    Try(sc.shutdown())
+    Try(Await.result(actorSystem.terminate(), 15 seconds))
+  }
 }

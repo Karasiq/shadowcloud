@@ -41,7 +41,7 @@ private[locales] object English extends AppLocale {
   val uploadFiles = "Upload"
   val downloadFile = "Download"
   val deleteFile = "Delete"
-  val repairFile = "Repair"
+  val repairFile = "Replicate"
   val playFile = "Play"
   val viewTextFile = "View text"
   val inspectFile = "Inspect"
@@ -74,7 +74,8 @@ private[locales] object English extends AppLocale {
 
   val collectGarbage = "Collect garbage"
   val compactIndex = "Compact index"
-  val repairRegion = "Repair region"
+  val repairRegion = "Replicate region"
+  val synchronize = "Synchronize"
 
   val writableSpace = "Writable space"
   val totalSpace = "Total space"
@@ -94,6 +95,8 @@ private[locales] object English extends AppLocale {
   val unregisterRegion = "Unregister region"
   val suspend = "Suspend"
   val resume = "Resume"
+  val export = "Export"
+  val `import` = "Import"
 
   val keys = "Keys"
   val keyId = "Key ID"

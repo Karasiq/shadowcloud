@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.javafx
 
-import javafx.stage.WindowEvent
+import javafx.stage.{Stage, WindowEvent}
 import scalafx.geometry.Insets
 import scalafx.scene.control.{ButtonType, Dialog, PasswordField}
 import scalafx.scene.control.ButtonBar.ButtonData
@@ -50,11 +50,12 @@ private[javafx] class PasswordDialog(passwordId: String) extends Dialog[String] 
   dialogPane().content = gridPane
 
   dialogPane().scene().window().addEventHandler(WindowEvent.WINDOW_SHOWN, { e: WindowEvent =>
-    import javafx.geometry.Rectangle2D
     import javafx.stage.{Screen, Window}
     val window = e.getSource.asInstanceOf[Window]
     val screenBounds = Screen.getPrimary.getVisualBounds
     window.setX((screenBounds.getWidth - window.getWidth) / 2)
     window.setY((screenBounds.getHeight - window.getHeight) / 2)
   })
+
+  dialogPane().scene().window().asInstanceOf[Stage].setAlwaysOnTop(true)
 }

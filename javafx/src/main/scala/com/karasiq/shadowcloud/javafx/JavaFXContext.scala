@@ -6,7 +6,7 @@ import scalafx.application.JFXApp.PrimaryStage
 import scalafx.application.{JFXApp, Platform}
 import scalafx.scene.Scene
 import scalafx.scene.image.Image
-import scalafx.stage.StageStyle
+import scalafx.stage.{Modality, StageStyle}
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Promise}
@@ -40,7 +40,7 @@ final class JavaFXContextExtension(system: ExtendedActorSystem) extends Extensio
       }
 
       addEventHandler(
-        WindowEvent.WINDOW_SHOWN, { e: WindowEvent =>
+        WindowEvent.WINDOW_SHOWN, { _: WindowEvent =>
           import javafx.stage.Screen
           val screenBounds = Screen.getPrimary.getVisualBounds
           stage.x = (screenBounds.getWidth - stage.width()) / 2

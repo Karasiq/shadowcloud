@@ -74,14 +74,14 @@ lazy val dockerSettings = Seq(
   dockerEntrypoint ++= Seq(
     "-Dshadowcloud.external-config=/opt/docker/sc/shadowcloud.conf",
     "-Dshadowcloud.persistence.h2.path=/opt/docker/sc/shadowcloud",
+    "-Dshadowcloud.drive.fuse.mount-path=/opt/docker/sc/drive",
+    "-Dshadowcloud.drive.fuse.auto-mount=true",
     "-Dshadowcloud.http-server.host=0.0.0.0"
   ),
   dockerCommands := {
     val cmds = dockerCommands.value
     val injected = Seq(
-      Cmd("RUN", "apk", "add", "--no-cache", "bash", "fuse"),
-      Cmd("RUN", "echo 'user_allow_other' >> /etc/fuse.conf")
-      /* Cmd("RUN", "apt-get", "update", "&&", "apt-get", "install", "-y", "fuse")*/
+      Cmd("RUN", "apk", "add", "--no-cache", "bash", "fuse")
     )
     cmds.takeWhile(!_.makeContent.startsWith("USER")) ++ injected ++ cmds.dropWhile(!_.makeContent.startsWith("USER"))
   },

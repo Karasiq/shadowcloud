@@ -45,7 +45,7 @@ jobs:
 
           JAVA_OPTS="-Xmx4G -Denable-tika=0 -Denable-javacv=0" sbt desktopApp/jdkPackager:packageBin desktopApp/universal:packageBin
           mv "$JPBundles/shadowcloud-$Version.deb" "$JPBundles/shadowcloud-light-$Version.deb"
-          mv "$JPBundles/shadowcloud-$Version.rpm-1.x86_64" "$JPBundles/shadowcloud-light-$Version-1.x86_64.rpm"
+          mv "$JPBundles/shadowcloud-$Version-1.x86_64.rpm" "$JPBundles/shadowcloud-light-$Version-1.x86_64.rpm"
           mv "$Universal/shadowcloud-$Version.zip" "$Universal/shadowcloud-light-$Version.zip"
       - uses: actions/upload-artifact@v2-preview
         with:

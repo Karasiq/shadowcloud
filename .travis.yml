@@ -3,7 +3,7 @@ scala:
 # - 2.11.8
   - 2.12.4
 jdk:
-  - oraclejdk8
+  - openjdk8
 script:
   - sbt ++$TRAVIS_SCALA_VERSION coverage test coverageReport
 before_install:

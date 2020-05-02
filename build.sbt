@@ -65,25 +65,26 @@ val packageSettings = Seq(
 )
 
 lazy val dockerSettings = Seq(
-  dockerBaseImage := "openjdk:8-jre-alpine",
+  dockerBaseImage := "openjdk:8-jre-slim-stretch",
   dockerExposedPorts := Seq(1911),
-  dockerExposedVolumes := Seq("/mnt/sc", "/opt/docker/sc"),
+  dockerExposedVolumes := Seq("/opt/docker/sc"),
   dockerUsername := Some("karasiq"),
   dockerUpdateLatest := true,
   packageName in Docker := "shadowcloud",
   dockerEntrypoint ++= Seq(
     "-Dshadowcloud.external-config=/opt/docker/sc/shadowcloud.conf",
     "-Dshadowcloud.persistence.h2.path=/opt/docker/sc/shadowcloud",
-    "-Dshadowcloud.drive.fuse.mount-path=/opt/docker/sc/drive",
+    "-Dshadowcloud.drive.fuse.mount-path=/opt/docker/sc-drive",
     "-Dshadowcloud.drive.fuse.auto-mount=true",
     "-Dshadowcloud.http-server.host=0.0.0.0"
   ),
   dockerCommands := {
     val cmds = dockerCommands.value
     val injected = Seq(
-      Cmd("RUN", "apk", "add", "--no-cache", "bash", "fuse")
+      Cmd("RUN", "apt update && apt install -y fuse libfuse2 libfuse-dev && rm -rf /var/lib/apt/lists/*"), // TODO https://github.com/docker/for-mac/issues/3431
+      Cmd("RUN", "echo 'user_allow_other' >> /etc/fuse.conf")
     )
-    cmds.takeWhile(!_.makeContent.startsWith("USER")) ++ injected ++ cmds.dropWhile(!_.makeContent.startsWith("USER"))
+    cmds.takeWhile(!_.makeContent.startsWith("USER 1001:0")) ++ injected ++ cmds.dropWhile(!_.makeContent.startsWith("USER 1001:0"))
   },
   libraryDependencies in Docker ++= (if (ProjectDeps.javacv.isEnabled) ProjectDeps.javacv.dockerPlatforms else Nil)
 )
@@ -434,7 +435,7 @@ lazy val consoleApp = (project in file("console-app"))
     fork in run := true
   )
   .dependsOn(coreAssembly, server, `drive-fuse`)
-  .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin, DockerPlugin /*, AshScriptPlugin*/ )
+  .enablePlugins(JavaAppPackaging, ClasspathJarPlugin, JDKPackagerPlugin, DockerPlugin)
 
 // -----------------------------------------------------------------------
 // Misc

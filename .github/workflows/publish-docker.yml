@@ -20,4 +20,5 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Publish docker image
         run: |
+          export JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1"
           sbt consoleApp/docker:publish

@@ -5,6 +5,8 @@ import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.persistence.h2.H2Context.ContextT
 import com.typesafe.config.Config
 
+import scala.util.Try
+
 object H2DB extends ExtensionId[H2DBExtension] with ExtensionIdProvider {
   def createExtension(system: ExtendedActorSystem): H2DBExtension = {
     new H2DBExtension(system)
@@ -32,7 +34,7 @@ final class H2DBExtension(system: ExtendedActorSystem) extends Extension {
 
   lazy val context: ContextT = {
     val context = H2Context(settings.config, settings.getDbPassword())
-    system.registerOnTermination(context.close())
+    system.registerOnTermination(Try(context.close()))
     context
   }
 }

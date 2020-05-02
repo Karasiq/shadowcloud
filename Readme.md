@@ -65,3 +65,8 @@ Usage example:
 ```bash
 docker run -v ~/.shadowcloud:/opt/docker/sc -p 1911:1911 -i -t karasiq/shadowcloud:latest
 ```
+
+With FUSE drive:
+```bash
+docker run -v ~/.shadowcloud:/opt/docker/sc -v ~/sc:/opt/docker/sc-drive --device /dev/fuse --cap-add SYS_ADMIN -p 1911:1911 -i karasiq/shadowcloud:latest
+```

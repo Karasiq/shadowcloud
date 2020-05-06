@@ -86,18 +86,10 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
     }
 
     def showImportDialog(): Unit = {
-      val newKeyRx = Var("")
-      Modal()
-        .withTitle(context.locale.importKey)
-        .withBody(Form(FormInput.textArea("", rows := 20, newKeyRx.reactiveInput)))
-        .withButtons(
-          AppComponents.modalSubmit(newKeyRx.map(_.isEmpty).reactiveHide, onclick := Callback.onClick { _ ⇒
-            val key = ExportUtils.decodeKey(newKeyRx.now)
-            context.api.addKey(key).foreach(_ ⇒ kc.updateAll())
-          }),
-          AppComponents.modalClose()
-        )
-        .show()
+      AppComponents.importDialog(context.locale.importKey) { result =>
+        val key = ExportUtils.decodeKey(result)
+        context.api.addKey(key).foreach(_ ⇒ kc.updateAll())
+      }.show()
     }
 
     val generateButton = Button(ButtonStyle.success, block = true)(
@@ -117,23 +109,7 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
   }
 
   private[this] def showExportDialog(key: KeySet): Unit = {
-    val keyString = ExportUtils.encodeKey(key)
-
-    def downloadKey(): Unit = {
-      Blobs.saveBlob(Blobs.fromString(keyString, "application/json"), s"${key.id}.json")
-    }
-
-    Modal()
-      .withTitle(context.locale.exportKey)
-      .withBody(FormInput.textArea("", keyString, rows := 20, readonly, onclick := { (e: MouseEvent) ⇒
-        val textArea = e.target.asInstanceOf[TextArea]
-        textArea.focus()
-        textArea.select()
-      }))
-      .withButtons(
-        Button(ButtonStyle.success)(context.locale.downloadFile, onclick := Callback.onClick(_ ⇒ downloadKey())),
-        AppComponents.modalClose()
-      )
+    AppComponents.exportDialog(context.locale.exportKey, s"${key.id}.json", ExportUtils.encodeKey(key))
       .show(backdrop = false)
   }
 

@@ -2,8 +2,11 @@ package com.karasiq.shadowcloud.webapp.components.common
 
 import com.karasiq.bootstrap.Bootstrap.default._
 import com.karasiq.shadowcloud.webapp.context.AppContext
+import com.karasiq.shadowcloud.webapp.utils.Blobs
 import com.karasiq.taboverridejs.TabOverride
 import org.scalajs.dom
+import org.scalajs.dom.MouseEvent
+import org.scalajs.dom.html.TextArea
 import rx.{Rx, Var}
 import scalaTags.all._
 import scalatags.JsDom
@@ -46,4 +49,35 @@ object AppComponents {
       override def closeButton: JsDom.all.Tag =
         super.closeButton(onclick := Callback.onClick(_ => onClose()))
     }.renderTag(md: _*))
+
+  def exportDialog(title: String, fileName: String, content: String, contentType: String = "application/json")(implicit context: AppContext): Modal = {
+    def download(): Unit =
+      Blobs.saveBlob(Blobs.fromString(content, contentType), fileName)
+
+    Modal()
+      .withTitle(title)
+      .withBody(FormInput.textArea("", content, rows := 30, readonly, onclick := { (e: MouseEvent) ⇒
+        val textArea = e.target.asInstanceOf[TextArea]
+        textArea.focus()
+        textArea.select()
+      }))
+      .withButtons(
+        Button(ButtonStyle.success)(context.locale.downloadFile, onclick := Callback.onClick(_ ⇒ download())),
+        AppComponents.modalClose()
+      )
+  }
+
+  def importDialog(title: String)(submit: String => Unit)(implicit context: AppContext): Modal = {
+    val result = Var("")
+    Modal()
+      .withTitle(title)
+      .withBody(Form(FormInput.textArea("", rows := 30, result.reactiveInput)))
+      .withButtons(
+        AppComponents.modalSubmit(result.map(_.isEmpty).reactiveHide, onclick := Callback.onClick { _ ⇒
+          submit(result.now)
+          result.kill()
+        }),
+        AppComponents.modalClose()
+      )
+  }
 }

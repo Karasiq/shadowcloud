@@ -30,6 +30,8 @@ object SCConsoleMain extends App {
   sc.init()
 
   if (config.optional(_.getBoolean("shadowcloud.drive.fuse.auto-mount")).contains(true)) {
-    SCFuseHelper.mount().foreach(_ ⇒ actorSystem.log.info("shadowcloud FUSE filesystem mount success"))
+    val eventualDone = SCFuseHelper.mount()
+    eventualDone.foreach(_ ⇒ actorSystem.log.info("shadowcloud FUSE filesystem mount success"))
+    eventualDone.failed.foreach(_ => sys.exit(0))
   }
 }

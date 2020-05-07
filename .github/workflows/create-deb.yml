@@ -34,7 +34,7 @@ jobs:
           Version="${{steps.version.outputs.version}}"
           Universal="${{github.workspace}}/desktop-app/target/universal"
           JPBundles="$Universal/jdkpackager/bundles"
-          
+
           JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv-all=1" sbt desktopApp/universal:packageBin
           mv "$Universal/shadowcloud-$Version.zip" "$Universal/shadowcloud-full-$Version.zip"
 
@@ -54,3 +54,11 @@ jobs:
         with:
           name: shadowcloud-universal
           path: ${{github.workspace}}/desktop-app/target/universal/*.zip
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ${{github.workspace}}/desktop-app/target/universal/*.zip
+            ${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

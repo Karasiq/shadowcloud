@@ -46,3 +46,10 @@ jobs:
         with:
           name: shadowcloud-macos
           path: ${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            ${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

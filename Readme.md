@@ -47,6 +47,13 @@ shadowcloud is an enhanced cloud storage client. [Download last release](https:/
 * Import previously generated key on the second device
 * Create region with a same id and storages set
 
+# rclone integration
+If you have configured a rclone drive, you can run `rclone mount drive123:/ /mnt/example`, and then point the shadowcloud to this location: 
+```
+address.uri="file:////mnt/example"
+type=files
+```
+
 # Plugins
 Full list of currently supported algorithms (some requires libsodium):
 ```

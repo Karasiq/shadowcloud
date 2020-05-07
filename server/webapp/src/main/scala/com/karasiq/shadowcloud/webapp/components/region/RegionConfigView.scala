@@ -251,7 +251,10 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
       for {
         _ ← Future.sequence(toUnregister.map(context.api.unregisterStorage(regionId, _)))
         _ ← Future.sequence(toRegister.map(context.api.registerStorage(regionId, _)))
-      } regionContext.updateAll()
+      } {
+        regionContext.updateAll()
+        updateHealth()
+      }
     }
 
     def renderAddButton() = {

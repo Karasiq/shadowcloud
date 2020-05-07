@@ -6,7 +6,7 @@ import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.model.utils.RegionStateReport.RegionStatus
 import com.karasiq.shadowcloud.model.utils.{GCReport, RegionHealth, SyncReport}
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
-import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
+import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons, Toastr}
 import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
 import com.karasiq.shadowcloud.webapp.utils.RxWithKey
@@ -85,7 +85,10 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
     def startGC(delete: Boolean) = {
       gcStarted() = true
       val future = context.api.collectGarbage(regionId, delete)
-      future.onComplete(_ ⇒ gcStarted() = false)
+      future.onComplete { _ ⇒
+        gcStarted() = false
+        Toastr.success(s"Region $regionId GC finished")
+      }
       future.foreach { report ⇒
         gcAnalysed() = !delete
         gcReport() = Some(report)
@@ -128,7 +131,10 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
     def startCompact() = {
       compactStarted() = true
       val future = context.api.compactIndexes(regionId)
-      future.onComplete(_ ⇒ compactStarted() = false)
+      future.onComplete { _ ⇒
+        compactStarted() = false
+        Toastr.success(s"Region $regionId index compaction finished")
+      }
       future.foreach(compactReport() = _)
     }
 

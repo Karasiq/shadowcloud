@@ -66,7 +66,8 @@ class SCFrontend()(implicit val context: AppContext) {
       .withStyles(NavigationBarStyle.default, NavigationBarStyle.staticTop)
       .withTabs(
         NavigationTab(context.locale.foldersView, "folders", AppIcons.foldersView, renderFoldersPanel()),
-        NavigationTab(context.locale.regionsView, "regions", AppIcons.regionsView, renderRegionsPanel())
+        NavigationTab(context.locale.regionsView, "regions", AppIcons.regionsView, renderRegionsPanel()),
+        NavigationTab(context.locale.logs, "logs", AppIcons.logs, LogPanel())
       )
   }
 

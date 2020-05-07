@@ -156,6 +156,11 @@ object WebDeps {
     Style from "org.webjars"  % "dropzone" % "5.5.0" / "min/dropzone.min.css"
   )
 
+  def toastrJS = Seq[PageContent](
+    Script from "org.webjars" % "toastr" % "2.1.2" / "build/toastr.min.js",
+    Style from "org.webjars"  % "toastr" % "2.1.2" / "build/toastr.min.css"
+  )
+
   def indexHtml: Seq[PageContent] = {
     Seq(Html from Assets.index, Style from Assets.style)
   }

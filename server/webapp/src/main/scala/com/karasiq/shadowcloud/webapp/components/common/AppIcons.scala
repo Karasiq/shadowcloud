@@ -46,5 +46,7 @@ object AppIcons {
   val suspend: Icon = "pause"
   val resume: Icon = "play"
 
+  val logs: Icon = "book"
+
   private[this] implicit def castStringToIcon(iconName: String): Icon = iconName.faFwIcon
 }

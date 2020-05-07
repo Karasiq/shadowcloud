@@ -343,6 +343,7 @@ lazy val `server-static-routes` = (project in file("server") / "static-routes")
         WebDeps.videoJS,
         WebDeps.markedJS,
         WebDeps.dropzoneJS,
+        WebDeps.toastrJS,
         scalaJsApplication(webapp, fastOpt = false, launcher = false).value
       )
     },

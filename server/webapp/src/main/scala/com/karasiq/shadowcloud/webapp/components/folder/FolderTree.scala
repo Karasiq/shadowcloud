@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.webapp.components.folder
 
 import com.karasiq.shadowcloud.model.utils.IndexScope
 import com.karasiq.shadowcloud.model.{File, Path}
-import com.karasiq.shadowcloud.webapp.components.common.AppIcons
+import com.karasiq.shadowcloud.webapp.components.common.{AppIcons, Toastr}
 import com.karasiq.shadowcloud.webapp.context.AppContext.BootstrapContext._
 import com.karasiq.shadowcloud.webapp.context.AppContext.Implicits._
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
@@ -14,8 +14,6 @@ import org.scalajs.dom.DragEvent
 import org.scalajs.dom.raw.DragEffect
 import rx._
 import scalaTags.all._
-
-
 
 object FolderTree {
   def apply(path: Path)(implicit context: AppContext, folderContext: FolderContext, folderController: FolderController): FolderTree = {
@@ -96,12 +94,16 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
   private[this] def copyFiles(filePath: Path, readScope: IndexScope): Unit = {
     context.api.copyFiles(regionId, filePath, filePath.withParent(path), readScope).foreach { _ ⇒
       folderController.update(path)
+      Toastr.success(s"$filePath successfully copied to $path")
     }
   }
 
   private[this] def copyFile(file: File, readScope: IndexScope): Unit = {
     val newFileSet = context.api.copyFile(regionId, file, file.path.withParent(path), readScope)
-    newFileSet.foreach(_ ⇒ folderController.update(path))
+    newFileSet.foreach{ _ ⇒
+      folderController.update(path)
+      Toastr.success(s"${file.path} successfully copied to $path")
+    }
   }
 
   private[this] def copyFolder(folderPath: Path, readScope: IndexScope): Unit = {
@@ -109,6 +111,7 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
     context.api.copyFolder(regionId, folderPath, newPath, readScope).foreach { _ ⇒
       folderController.update(newPath.parent)
       folderController.update(newPath)
+      Toastr.success(s"$folderPath successfully copied to $path")
     }
   }
 

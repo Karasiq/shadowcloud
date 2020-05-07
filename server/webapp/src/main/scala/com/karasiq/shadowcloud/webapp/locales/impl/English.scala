@@ -62,6 +62,7 @@ private[locales] object English extends AppLocale {
 
   val foldersView = "Folders"
   val regionsView = "Regions"
+  val logs = "Logs"
 
   val storage = "Storage"
   val storages = "Storages"

@@ -62,6 +62,7 @@ private[locales] object Russian extends AppLocale {
 
   val foldersView = "Папки"
   val regionsView = "Регионы"
+  val logs = "Журнал"
 
   val storage = "Хранилище"
   val storages = "Хранилища"

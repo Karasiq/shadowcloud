@@ -1,18 +1,16 @@
 package com.karasiq.shadowcloud.webapp.components.folder
 
 import com.karasiq.bootstrap.Bootstrap.default._
-import com.karasiq.common.memory.SizeUnit
 import com.karasiq.shadowcloud.model.{File, Path, RegionId}
 import com.karasiq.shadowcloud.utils.Utils
-import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons, Dropzone, TextEditor}
+import com.karasiq.shadowcloud.webapp.components.common._
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.controllers.FileController
 import org.scalajs.dom
-import rx.{Rx, Var}
+import rx.Rx
 import scalaTags.all._
 
-import scala.annotation.tailrec
 import scala.concurrent.Future
 
 object UploadForm {
@@ -20,7 +18,10 @@ object UploadForm {
     new UploadForm
   }
 
-  private def uploadNoteOrPage(regionId: RegionId, path: Path, text: String)(implicit appContext: AppContext): Future[File] = {
+  private def isUrlList(text: String): Boolean =
+    text.lines.forall(_.matches("https?://[^\\s]+"))
+
+  private def uploadNoteOrPage(regionId: RegionId, path: Path, text: String)(implicit appContext: AppContext): Future[Seq[File]] = {
     def newNoteName(text: String): String = {
       val firstLine = text.lines
         .map(_.trim)
@@ -35,10 +36,12 @@ object UploadForm {
       conciseName + ".md"
     }
 
-    if (text.matches("https?://[^\\s]+")) {
-      appContext.api.saveWebPage(regionId, path, text)
+    if (isUrlList(text)) {
+      Future
+        .sequence(text.lines.map(appContext.api.saveWebPage(regionId, path, _).map(Some(_)).recover { case _ => None }).toSeq)
+        .map(_.flatten)
     } else {
-      appContext.api.uploadFile(regionId, path / newNoteName(text), text)._2
+      appContext.api.uploadFile(regionId, path / newNoteName(text), text)._2.map(Seq(_))
     }
   }
 }
@@ -47,20 +50,19 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
 
   private[this] final case class UploadRequest(regionId: RegionId, path: Path, file: dom.File)
 
-  private[this] val maxUploads         = 5
-  private[this] val maxUploadsSize     = SizeUnit.MB * 8
-  private[this] val uploadProgressBars = div().render
-  private[this] val uploadQueue        = Var(List.empty[UploadRequest])
-  private[this] val uploading          = Var(List.empty[UploadRequest])
-
   private[this] val formMap = collection.mutable.Map.empty[Path, ElementT]
 
   private[this] def createForm(regionId: RegionId, path: Path) = {
-    formMap.getOrElseUpdate(path, Form(
-      action := "/",
-      `class` := "dropzone",
-      Dropzone(folderContext.regionId, () => path, _ => folderContext.update(path))
-    ).render)
+    formMap.getOrElseUpdate(
+      path,
+      Form(
+        action := "/",
+        `class` := "dropzone",
+        Dropzone(folderContext.regionId, () => path, { file =>
+          folderContext.update(path)
+        })
+      ).render
+    )
   }
 
   def renderTag(md: ModifierT*): TagT = {
@@ -69,9 +71,10 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
       val future = UploadForm.uploadNoteOrPage(folderContext.regionId, folderContext.selected.now, editor.value.now)
       future.onComplete { result ⇒
         editor.submitting() = false
-        result.foreach { file ⇒
+        result.toOption.toSeq.flatten.foreach { file ⇒
           editor.value() = ""
           fileController.addFile(file)
+          Toastr.success(s"${file.path.name} successfully uploaded to ${file.path.parent}")
         }
       }
     }
@@ -86,10 +89,7 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
       NavigationTab(appContext.locale.pasteText, "paste-text", NoIcon, editor)
     )
 
-    div(
-      GridSystem.mkRow(navigation),
-      GridSystem.mkRow(uploadProgressBars)
-    )
+    GridSystem.mkRow(navigation)
   }
 
   def renderModal(md: ModifierT*): Modal = {

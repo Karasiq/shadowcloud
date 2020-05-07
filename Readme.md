@@ -45,7 +45,15 @@ shadowcloud is an enhanced cloud storage client. [Download last release](https:/
 
 # Synchronization
 * Import previously generated key on the second device
-* Create region with a same id and storages set
+* Create region with a same id and storages set (or use the export/import feature)
+
+# How to archive web page
+shadowcloud uses [webzinc](https://github.com/Karasiq/webzinc) to capture web pages in a single HTML file.
+
+Page will be bundled with all of the embedded resources, allowing you to read it even if the original website goes down.
+* Open Upload form in the web interface
+* Select "Paste text"
+* Paste URL in the form and click Submit
 
 # rclone integration
 If you have configured a rclone drive, you can run `rclone mount drive123:/ /mnt/example`, and then point the shadowcloud to this location: 

@@ -46,10 +46,6 @@ jobs:
           $env:JAVA_OPTS="-Xmx4G -Denable-tika=0 -Denable-javacv=0"
           sbt desktopApp/jdkPackager:packageBin
           move "$JPBundles\shadowcloud-$Version.exe" "$JPBundles\shadowcloud-light-$Version.exe"
-      - uses: actions/upload-artifact@v2-preview
-        with:
-          name: shadowcloud-windows
-          path: ${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles
       - name: Release
         uses: softprops/action-gh-release@v1
         with:

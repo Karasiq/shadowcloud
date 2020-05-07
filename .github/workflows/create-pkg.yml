@@ -42,10 +42,6 @@ jobs:
 
           JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1" sbt "set jdkPackagerType in desktopApp :=\"pkg\"" desktopApp/jdkPackager:packageBin
           mv "$JPBundles/shadowcloud-$Version.pkg" "$JPBundles/shadowcloud-full-$Version.pkg"
-      - uses: actions/upload-artifact@v2-preview
-        with:
-          name: shadowcloud-macos
-          path: ${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles
       - name: Release
         uses: softprops/action-gh-release@v1
         with:

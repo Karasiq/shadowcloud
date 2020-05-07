@@ -46,14 +46,6 @@ jobs:
           mv "$JPBundles/shadowcloud-$Version.deb" "$JPBundles/shadowcloud-light-$Version.deb"
           mv "$JPBundles/shadowcloud-$Version-1.x86_64.rpm" "$JPBundles/shadowcloud-light-$Version-1.x86_64.rpm"
           mv "$Universal/shadowcloud-$Version.zip" "$Universal/shadowcloud-light-$Version.zip"
-      - uses: actions/upload-artifact@v2-preview
-        with:
-          name: shadowcloud-linux
-          path: ${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles
-      - uses: actions/upload-artifact@v2-preview
-        with:
-          name: shadowcloud-universal
-          path: ${{github.workspace}}/desktop-app/target/universal/*.zip
       - name: Release
         uses: softprops/action-gh-release@v1
         with:

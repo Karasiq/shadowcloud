@@ -14,7 +14,7 @@ object LogPanel {
     var ws    = new WebSocket(url)
 
     ws.onmessage = { (msg: MessageEvent) =>
-      lines() = (msg.data.toString +: lines.now).take(1000)
+      lines() = (msg.data.toString +: lines.now).take(200)
     }
     ws.onerror = { _ =>
       dom.window.setTimeout(() => ws = new WebSocket(url), 5000)

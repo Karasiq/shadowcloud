@@ -32,7 +32,7 @@ object SCFuseHelper {
     val fileSystem = SCFileSystem(drive.config, drive.dispatcher, Logging(actorSystem, "SCFileSystem"))
     val mountFuture = SCFileSystem.mountInSeparateThread(fileSystem)
     mountFuture.failed.foreach(actorSystem.log.error(_, "FUSE filesystem mount failed"))
-    actorSystem.registerOnTermination(mountFuture.foreach(_ ⇒ fileSystem.umount()))
+    sys.addShutdownHook(fileSystem.umount())
     mountFuture
   }
 }

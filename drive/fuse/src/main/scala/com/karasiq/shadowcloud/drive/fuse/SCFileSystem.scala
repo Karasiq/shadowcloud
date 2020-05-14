@@ -152,9 +152,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
     lazy val folder = Try(dispatch(GetFolder(path), GetFolder))
     lazy val file   = Try(dispatch(GetFile(path), GetFile))
 
-    if (isTrashFile(path)) {
-      -ErrorCodes.ENOENT()
-    } else if (folder.isSuccess) {
+    if (folder.isSuccess) {
       returnFolderAttrs(folder.get)
       0
     } else if (file.isSuccess) {
@@ -164,12 +162,15 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
   }
 
   override def mkdir(path: String, mode: Long): Int = {
-    if (isTrashFile(path)) return 0
+    if (isTrashFile(path)) {
+      log.warning("Trash folder not created: {}", path)
+      return -ErrorCodes.EACCES()
+    }
 
     Try(dispatch(CreateFolder(path), CreateFolder, critical = true)) match {
       case Success(_)                                       ⇒ 0
       case Failure(exc) if SCException.isAlreadyExists(exc) ⇒ -ErrorCodes.EEXIST()
-      case Failure(_)                                       ⇒ -ErrorCodes.ENOENT()
+      case Failure(_)                                       ⇒ -ErrorCodes.EIO()
     }
   }
 
@@ -364,8 +365,8 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
 
   override def create(path: String, mode: Long, fi: FuseFileInfo): Int = {
     if (isTrashFile(path)) {
-      log.warning(s"Trash file not created: $path")
-      -ErrorCodes.EACCES()
+      log.warning("Trash file not created: {}", path)
+      return -ErrorCodes.EACCES()
     }
 
     Try(dispatch(CreateFile(path), CreateFile, critical = true)) match {

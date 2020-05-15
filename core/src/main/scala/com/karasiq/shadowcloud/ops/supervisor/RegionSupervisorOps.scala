@@ -60,4 +60,8 @@ final class RegionSupervisorOps(regionSupervisor: ActorRef, timeouts: TimeoutsCo
   def getSnapshot(): Future[RegionTracker.Snapshot] = {
     GetSnapshot.unwrapFuture(regionSupervisor.ask(GetSnapshot)(timeouts.query))
   }
+
+  def getRegionConfig(regionId: RegionId): Future[RegionConfig] ={
+    getSnapshot().map(_.regions(regionId).regionConfig)
+  }
 }

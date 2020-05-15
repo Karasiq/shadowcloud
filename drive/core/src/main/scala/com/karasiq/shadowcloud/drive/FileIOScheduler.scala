@@ -85,7 +85,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   // -----------------------------------------------------------------------
   import context.dispatcher
   private[this] implicit val materializer = ActorMaterializer()
-  private[this] implicit val timeout      = Timeout(config.fileIO.timeout)
+  private[this] implicit val timeout      = Timeout(config.fileIO.writeTimeout)
   private[this] val sc                    = ShadowCloud()
 
   // -----------------------------------------------------------------------
@@ -379,6 +379,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       val future = dataIO
         .readStream(range)
         .via(ByteStreams.concat)
+        .completionTimeout(config.fileIO.readTimeout)
         .runWith(Sink.head)
       ReadData.wrapFuture(range, future).pipeTo(sender())
 

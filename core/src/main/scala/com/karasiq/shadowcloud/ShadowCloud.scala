@@ -229,7 +229,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   object streams {
     lazy val chunk    = ChunkProcessingStreams(modules.crypto, config.chunks, config.crypto, config.parallelism)(executionContexts.cryptography)
     lazy val region   = RegionStreams(ops.region, config.parallelism, config.timeouts)
-    lazy val file     = FileStreams(region, chunk)
+    lazy val file     = FileStreams(region, chunk, ops.supervisor)
     lazy val metadata = MetadataStreams(ops.region, this.region, this.file, config.metadata, modules.metadata, config.serialization, serialization)
   }
 

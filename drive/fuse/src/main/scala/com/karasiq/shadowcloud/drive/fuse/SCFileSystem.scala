@@ -44,15 +44,13 @@ object SCFileSystem {
 
   def mountInSeparateThread(fs: SCFileSystem): Future[Done] = {
     val promise = Promise[Done]
-    val thread = new Thread(new Runnable {
-      def run(): Unit = {
-        try {
-          fs.mount()
-          promise.success(Done)
-        } catch {
-          case NonFatal(exc) ⇒
-            promise.failure(exc)
-        }
+    val thread = new Thread(() => {
+      try {
+        fs.mount()
+        promise.success(Done)
+      } catch {
+        case NonFatal(exc) ⇒
+          promise.failure(exc)
       }
     })
     thread.start()
@@ -77,7 +75,9 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
   import SCFileSystem.implicitStrToPath
   import com.karasiq.shadowcloud.drive.VirtualFSDispatcher._
 
-  protected implicit val timeout = Timeout(config.fileIO.timeout)
+  protected implicit val timeout = Timeout(config.fileIO.readTimeout)
+  protected val writeTimeout = Timeout(config.fileIO.writeTimeout)
+
   protected object settings {
     val fuseConfig             = config.rootConfig.getConfigIfExists("fuse")
     val mountPath              = SCFileSystem.getMountPath(fuseConfig)
@@ -99,7 +99,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
     mount(Paths.get(mountPath), blocking, debug, Array("-o", options.mkString(",")))
   }
 
-  protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T], critical: Boolean = false, handle: Long = 0): T = {
+  protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T], critical: Boolean = false, handle: Long = 0)(implicit timeout: Timeout): T = {
     if (critical) log.info(s"IO operation requested: $message")
 
     def getResult() = Await.result(status.unwrapFuture(fsDispatcher ? message), timeout.duration)
@@ -203,7 +203,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
   }
 
   override def truncate(path: String, size: Long): Int = {
-    Try(dispatch(DispatchIOOperation(path, FileIOScheduler.CutFile(size)), DispatchIOOperation, critical = true)) match {
+    Try(dispatch(DispatchIOOperation(path, FileIOScheduler.CutFile(size)), DispatchIOOperation, critical = true)(writeTimeout)) match {
       case Success(_)                                       ⇒ 0
       case Failure(exc) if SCException.isNotFound(exc)      ⇒ -ErrorCodes.ENOENT()
       case Failure(exc) if SCException.isAlreadyExists(exc) ⇒ -ErrorCodes.EEXIST()
@@ -268,7 +268,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
           DispatchIOOperation,
           critical = true,
           handle = fi.fh.longValue()
-        )
+        )(writeTimeout)
       )
 
     var result: Try[Any] = tryWrite()
@@ -325,7 +325,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
     if (!settings.flushOnFSync) return 0
 
     val flushResult =
-        Try(dispatch(DispatchIOOperation(path, FileIOScheduler.Flush), DispatchIOOperation, critical = true, handle = fi.fh.longValue()))
+        Try(dispatch(DispatchIOOperation(path, FileIOScheduler.Flush), DispatchIOOperation, critical = true, handle = fi.fh.longValue())(writeTimeout))
 
     if (settings.persistRevisionOnFSync) {
       val persistResult = Try {

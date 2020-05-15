@@ -81,7 +81,7 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
   import VirtualFSDispatcher._
   private[this] implicit lazy val sc = ShadowCloud()
   private[this] implicit val ec: ExecutionContext = context.dispatcher
-  private[this] implicit val timeout = Timeout(config.fileIO.timeout)
+  private[this] implicit val timeout = Timeout(config.fileIO.readTimeout)
 
   object state {
     val fileWrites = mutable.AnyRefMap.empty[Path, ActorRef]

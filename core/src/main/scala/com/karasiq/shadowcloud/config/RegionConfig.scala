@@ -12,6 +12,7 @@ import com.karasiq.shadowcloud.utils.Utils
 @SerialVersionUID(0L)
 final case class RegionConfig(rootConfig: Config,
                               chunkKey: Option[ChunkKeyMapper],
+                              chunkSize: Option[Int],
                               storageSelector: Class[StorageSelector],
                               dataReplicationFactor: Int,
                               indexReplicationFactor: Int,
@@ -30,6 +31,7 @@ object RegionConfig extends WrappedConfigFactory[RegionConfig] with ConfigImplic
     RegionConfig(
       config,
       config.optional(config ⇒ ChunkKeyMapper.forName(config.getString("chunk-key"), config)),
+      config.optional(_.getMemorySize("chunk-size").toBytes.toInt),
       config.withDefault(classOf[SimpleStorageSelector].asInstanceOf[Class[StorageSelector]], _.getClass("storage-selector")),
       config.withDefault(1, _.getInt("data-replication-factor")),
       config.withDefault(0, _.getInt("index-replication-factor")),

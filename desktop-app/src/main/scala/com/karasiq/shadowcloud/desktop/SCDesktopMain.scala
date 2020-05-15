@@ -10,8 +10,7 @@ import com.karasiq.shadowcloud.drive.fuse.SCFuseHelper
 import com.karasiq.shadowcloud.server.http.SCAkkaHttpServer
 import com.typesafe.config.impl.ConfigImpl
 
-import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.util.Try
 
 object SCDesktopMain extends App {
@@ -37,12 +36,13 @@ object SCDesktopMain extends App {
     def onMount(): Future[Done] =
       SCFuseHelper.mount()
 
-    def onExit(): Unit =
-      sys.exit()
+    def onExit(): Unit = {
+      Try(sc.shutdown())
+      sys.exit(0)
+    }
   }.addToTray()
 
   sys.addShutdownHook {
-    Try(sc.shutdown())
-    Try(Await.result(actorSystem.terminate(), 15 seconds))
+    sc.shutdown()
   }
 }

@@ -9,21 +9,27 @@ import scalaTags.all._
 
 object LogPanel {
   def apply(): Tag = {
-    val lines = Var(Vector.empty[String])
-    val url = s"ws://${dom.window.location.host}/log"
-    var ws    = new WebSocket(url)
+    val lines         = Var(Vector.empty[String])
+    val url           = s"ws://${dom.window.location.host}/log"
+    var ws: WebSocket = null
+    initWebSocket()
 
-    ws.onmessage = { (msg: MessageEvent) =>
-      lines() = (msg.data.toString +: lines.now).take(200)
-    }
-    ws.onerror = { _ =>
-      dom.window.setTimeout(() => ws = new WebSocket(url), 5000)
+    def initWebSocket(): Unit = {
+      ws = new WebSocket(url)
+      ws.onmessage = { (msg: MessageEvent) =>
+        lines() = (msg.data.toString +: lines.now).take(200)
+      }
+      ws.onerror = { _ =>
+        dom.window.setTimeout(initWebSocket _, 5000)
+      }
     }
 
-    GridSystem.containerFluid(Bootstrap.well(
-      lines.map(_.mkString("\n")),
-      whiteSpace.`pre-wrap`,
-      overflow.auto
-    ))
+    GridSystem.containerFluid(
+      Bootstrap.well(
+        lines.map(_.mkString("\n")),
+        whiteSpace.`pre-wrap`,
+        overflow.auto
+      )
+    )
   }
 }

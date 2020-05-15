@@ -7,8 +7,9 @@ import com.karasiq.shadowcloud.ui.UIProvider
 
 private[javafx] final class JavaFXUIProvider(actorSystem: ActorSystem) extends UIProvider {
   private[this] lazy val context = JavaFXContext(actorSystem)
+  @volatile private[this] var notificationPresent = false
 
-  override def showErrorMessage(error: Throwable): Unit = synchronized {
+  override def showErrorMessage(error: Throwable): Unit = {
     context.assertInitialized()
     val message = {
       val stream = new ByteArrayOutputStream()
@@ -19,8 +20,11 @@ private[javafx] final class JavaFXUIProvider(actorSystem: ActorSystem) extends U
     ErrorAlert.show(context.app.stage, message)
   }
 
-  override def showNotification(text: String): Unit = synchronized {
+  override def showNotification(text: String): Unit = {
     context.assertInitialized()
+    if (notificationPresent) throw new IllegalStateException("Notification already opened")
+    notificationPresent = true
     NotifyAlert.show(context.app.stage, text)
+    notificationPresent = false
   }
 }

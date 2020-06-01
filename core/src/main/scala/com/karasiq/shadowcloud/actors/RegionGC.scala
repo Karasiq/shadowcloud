@@ -162,7 +162,7 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
       val patchedStorageStates = storageStates.map {
         case (st, ss, chunks) =>
           val chunkKey = ChunkUtils.getChunkKeyMapper(regionConfig, st.config)
-          (st, ss.copy(ss.notIndexed -- reserved.map(chunkKey), ss.notExisting -- reserved), chunks)
+          (st, ss.copy(ss.notIndexed -- reserved.map(chunkKey), ss.notExisting), chunks)
       }
       val future = deleteGarbage(patchedRegionState, patchedStorageStates, delete)
         .map(_ ⇒ GCResult(patchedRegionState, patchedStorageStates, affectedFiles))

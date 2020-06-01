@@ -25,6 +25,6 @@ class SCConfigTest extends FlatSpec with Matchers {
   "Storage-specific config" should "be loaded" in {
     val storageConfig = StorageConfig.forId("testStorage", rootConfig)
     storageConfig.index.compactThreshold shouldBe 1234
-    storageConfig.index.syncInterval shouldBe 111.seconds
+    storageConfig.index.syncInterval shouldBe 999.seconds
   }
 }

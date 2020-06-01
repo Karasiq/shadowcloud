@@ -1,7 +1,9 @@
 package com.karasiq.shadowcloud.test.actors
 
 import com.karasiq.shadowcloud.actors.ChunkIODispatcher.ChunkPath
+import com.karasiq.shadowcloud.actors.RegionGC
 import com.karasiq.shadowcloud.actors.RegionGC.GCStrategy
+import com.karasiq.shadowcloud.actors.messages.RegionEnvelope
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.test.utils.{CoreTestUtils, SCExtensionSpec}
@@ -21,6 +23,7 @@ class RegionGCTest extends SCExtensionSpec with FlatSpecLike with SequentialNest
     sc.ops.region.writeChunk(testRegionId, chunk).futureValue shouldBe chunk
     sc.ops.region.synchronize(testRegionId).futureValue
     sc.ops.storage.deleteChunks(testStorageId, Set(ChunkPath(testRegionId, chunk.checksum.hash))).futureValue._2.isSuccess shouldBe true
+    sc.actors.regionSupervisor ! RegionEnvelope(testRegionId, RegionGC.UnReserve(Set(chunk)))
     expectNoMsg(1 second)
     whenReady(sc.ops.region.collectGarbage(testRegionId, GCStrategy.Delete)) { gcReport ⇒
       gcReport.regionId shouldBe testRegionId
@@ -37,9 +40,10 @@ class RegionGCTest extends SCExtensionSpec with FlatSpecLike with SequentialNest
   it should "delete unindexed chunks" in {
     val chunk = CoreTestUtils.randomChunk
     sc.ops.region.writeChunk(testRegionId, chunk).futureValue shouldBe chunk
+    sc.actors.regionSupervisor ! RegionEnvelope(testRegionId, RegionGC.UnReserve(Set(chunk)))
     sc.ops.region.synchronize(testRegionId)
     expectNoMsg(1 seconds)
-    
+
     sc.ops.storage.writeIndex(testStorageId, testRegionId, IndexDiff.deleteChunks(chunk)).futureValue
     sc.ops.storage.synchronize(testStorageId, testRegionId).futureValue
 
@@ -65,6 +69,6 @@ class RegionGCTest extends SCExtensionSpec with FlatSpecLike with SequentialNest
     sc.ops.supervisor.createRegion(testRegionId, sc.configs.regionConfig(testRegionId))
     sc.ops.supervisor.createStorage(testStorageId, StorageProps.inMemory) // fromDirectory(Files.createTempDirectory("region-gc-test"))
     sc.ops.supervisor.register(testRegionId, testStorageId)
-    expectNoMsg(1 second)
+    awaitAssert(sc.ops.region.getHealth(testRegionId).futureValue shouldBe 'fullyOnline, 30 seconds, 1 second)
   }
 }

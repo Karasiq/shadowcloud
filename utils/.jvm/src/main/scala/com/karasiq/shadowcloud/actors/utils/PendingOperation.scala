@@ -12,7 +12,7 @@ object PendingOperation {
 }
 
 class PendingOperation[Key <: AnyRef] {
-  private[this] val subscribers = mutable.AnyRefMap[Key, mutable.Set[ActorRef]]()
+  val subscribers = mutable.AnyRefMap[Key, mutable.Set[ActorRef]]()
 
   def addWaiter(key: Key, actor: ActorRef, ifFirst: () ⇒ Unit = () ⇒ ()): Unit = {
     subscribers.get(key) match {

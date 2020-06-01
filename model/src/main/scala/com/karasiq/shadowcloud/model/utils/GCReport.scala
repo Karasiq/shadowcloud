@@ -5,8 +5,11 @@ import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.utils.GCReport.{RegionGCState, StorageGCState}
 import com.karasiq.shadowcloud.utils.Utils
 
-@SerialVersionUID(0L)
-final case class GCReport(regionId: RegionId, regionState: RegionGCState, storageStates: Map[StorageId, StorageGCState])
+@SerialVersionUID(1L)
+final case class GCReport(regionId: RegionId, regionState: RegionGCState, storageStates: Map[StorageId, StorageGCState], affectedFiles: Set[File]) {
+  override def toString: StorageId =
+    s"GCReport($regionId, region state = $regionState, storage states = $storageStates, affected files = [${Utils.printValues(affectedFiles.map(_.path), 20)}])"
+}
 
 object GCReport {
   @SerialVersionUID(0L)

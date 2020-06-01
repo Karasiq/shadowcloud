@@ -50,8 +50,8 @@ object DropboxSessionProxy {
               Http()
                 .singleRequest(HttpRequest(uri = "https://dropbox.com/"))
                 .filter(_.status.isSuccess())
-                .recover { case _ => throw new IllegalStateException("No connection") }
-                .map(_ => Done)
+                .recover { case _ ⇒ throw new IllegalStateException("No connection") }
+                .map(_ ⇒ Done)
 
             val cachedToken = for {
               _token ← sc.sessions.get[UserToken](storageId, "oauth")
@@ -59,7 +59,7 @@ object DropboxSessionProxy {
             } yield _token
 
             cachedToken.recoverWith {
-              case _ ⇒
+              case _: NoSuchElementException ⇒
                 val oauth = DropboxOAuth()
                 for {
                   _ ← checkConnection()

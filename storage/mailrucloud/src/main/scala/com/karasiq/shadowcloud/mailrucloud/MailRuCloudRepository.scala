@@ -1,21 +1,20 @@
 package com.karasiq.shadowcloud.mailrucloud
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.language.implicitConversions
-
 import akka.NotUsed
 import akka.http.scaladsl.model.{ContentTypes, HttpEntity}
-import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
+import akka.stream.{ActorAttributes, Supervision}
 import akka.util.ByteString
-
-import com.karasiq.mailrucloud.api.{MailCloudClient, MailCloudTypes}
 import com.karasiq.mailrucloud.api.MailCloudTypes.{ApiException, CsrfToken, Nodes, Session}
+import com.karasiq.mailrucloud.api.{MailCloudClient, MailCloudTypes}
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.utils.CacheMap
+
+import scala.concurrent.{ExecutionContext, Future}
+import scala.language.implicitConversions
 
 object MailRuCloudRepository {
   def apply(client: MailCloudClient)(implicit nodes: Nodes, session: Session, token: CsrfToken, ec: ExecutionContext): MailRuCloudRepository = {
@@ -68,11 +67,14 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
 
   def delete = {
     Flow[Path]
-      .flatMapConcat(path ⇒ Source.fromFuture(client.file(path)).map((path, _)))
+      .flatMapConcat(path ⇒ Source.future(client.file(path)).map((path, _)))
       .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
       .flatMapMerge(2, { case (path, file) ⇒
-        Source.fromFuture(client.delete(path))
+        Source.future(client.delete(path))
           .map(_ ⇒ file.size)
+          .recover {
+            case ae: ApiException if ae.errorName.contains("not_exists") => 0L
+          }
           .via(StorageUtils.wrapCountStream(path))
       })
       .via(StorageUtils.foldStream())
@@ -125,7 +127,7 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
         .recover { case ae: ApiException if ae.errorName.contains("exists") ⇒ path }
     }
 
-    Source.fromFuture(future)
+    Source.future(future)
       .named("mailrucloudCreateFolder")
   } 
 }

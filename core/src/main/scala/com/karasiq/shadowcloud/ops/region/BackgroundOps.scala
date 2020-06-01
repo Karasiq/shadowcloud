@@ -1,13 +1,12 @@
 package com.karasiq.shadowcloud.ops.region
 
-import scala.concurrent.Future
-
 import akka.stream._
 import akka.stream.scaladsl.Source
-
 import com.karasiq.shadowcloud.config.SCConfig
 import com.karasiq.shadowcloud.model.{Chunk, RegionId}
 import com.karasiq.shadowcloud.streams.region.RegionRepairStream
+
+import scala.concurrent.Future
 
 private[shadowcloud] object BackgroundOps {
   def apply(config: SCConfig, regionOps: RegionOps)(implicit mat: Materializer): BackgroundOps = {
@@ -16,7 +15,7 @@ private[shadowcloud] object BackgroundOps {
 }
 
 private[shadowcloud] final class BackgroundOps(config: SCConfig, regionOps: RegionOps)(implicit mat: Materializer) {
-  private[this] val repairStream = RegionRepairStream(config.parallelism, regionOps)
+  private[this] val repairStream = RegionRepairStream(regionOps, config.parallelism, config.buffers.repair)(mat.executionContext)
     .withAttributes(Attributes.name("regionRepair") and ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
 
   def repair(regionId: RegionId, strategy: RegionRepairStream.Strategy, chunks: Seq[Chunk] = Nil): Future[Seq[Chunk]] = { // TODO: Queue

@@ -15,21 +15,21 @@ object TextEditor {
 
   def memoized(key: String)(_onSubmit: TextEditor ⇒ Unit)(implicit context: AppContext): TextEditor = {
     new TextEditor {
-      override val value: Var[String] = LocalStorage.memoize(key)
+      override val text: Var[String] = LocalStorage.memoize(key)
       def onSubmit(): Unit            = _onSubmit(this)
     }
   }
 }
 
 sealed abstract class TextEditor(implicit context: AppContext) extends BootstrapHtmlComponent {
-  val value      = Var("")
+  val text      = Var("")
   val submitting = Var(false)
 
   def onSubmit(): Unit
 
   def renderTag(md: ModifierT*): TagT = {
     Form(
-      FormInput.textArea((), rows := 10, value.reactiveInput, AppComponents.tabOverride),
+      FormInput.textArea((), rows := 10, text.reactiveInput, AppComponents.tabOverride),
       Form.submit(context.locale.submit, ButtonStyle.success, "btn-block".addClass, "disabled".classIf(submitting)),
       onsubmit := Callback.onSubmit(_ ⇒ if (!submitting.now) onSubmit())
     )

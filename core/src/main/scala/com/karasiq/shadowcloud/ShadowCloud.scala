@@ -4,8 +4,9 @@ import java.util.UUID
 
 import akka.Done
 import akka.actor.{ActorContext, ActorRef, ActorSystem, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
-import akka.stream.{ActorMaterializer, Materializer}
-import akka.util.Timeout
+import akka.event.Logging
+import akka.stream.Materializer
+import akka.util.{ByteString, Timeout}
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.StringEventBus
@@ -57,6 +58,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // -----------------------------------------------------------------------
   private[this] val rootConfig: Config = _actorSystem.settings.config.getConfig("shadowcloud")
   val config: SCConfig                 = SCConfig(rootConfig)
+  lazy val log                         = Logging(_actorSystem, getClass)
 
   object configs {
     def regionConfig(regionId: RegionId): RegionConfig = {
@@ -84,7 +86,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   object implicits {
     implicit val actorSystem: ActorSystem           = _actorSystem
     implicit val executionContext: ExecutionContext = _actorSystem.dispatcher
-    implicit val materializer: Materializer         = ActorMaterializer()(_actorSystem)
+    implicit val materializer: Materializer         = Materializer.matFromSystem(actorSystem)
     implicit val defaultTimeout: Timeout            = Timeout(config.timeouts.query)
 
     private[ShadowCloudExtension] implicit val provInstantiator: ProviderInstantiator =
@@ -137,8 +139,16 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
       provider.storeSession(storageId, key, serialization.toBytes(data))
     }
 
+    def setRaw(storageId: StorageId, key: String, data: ByteString): Future[Done] = {
+      provider.storeSession(storageId, key, data)
+    }
+
     def get[T <: AnyRef: ClassTag](storageId: StorageId, key: String): Future[T] = {
       provider.loadSession(storageId, key).map(serialization.fromBytes[T])
+    }
+
+    def getRaw(storageId: StorageId, key: String): Future[ByteString] = {
+      provider.loadSession(storageId, key)
     }
 
     def list(storageId: StorageId): Future[Seq[String]] = {
@@ -150,7 +160,15 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     }
 
     def getBlocking[T <: AnyRef: ClassTag](storageId: StorageId, key: String): T = {
-      Await.result(get(storageId, key), Duration.Inf)
+      Await.result(get[T](storageId, key), Duration.Inf)
+    }
+
+    def setRawBlocking(storageId: StorageId, key: String, data: ByteString): Done = {
+      Await.result(setRaw(storageId, key, data), Duration.Inf)
+    }
+
+    def getRawBlocking(storageId: StorageId, key: String): ByteString = {
+      Await.result(getRaw(storageId, key), Duration.Inf)
     }
 
     def listBlocking(storageId: StorageId): Seq[String] = {
@@ -161,7 +179,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // -----------------------------------------------------------------------
   // User interface
   // -----------------------------------------------------------------------
-  object ui extends UIProvider with PasswordProvider  {
+  object ui extends UIProvider with PasswordProvider {
     private[this] lazy val passProvider: PasswordProvider = provInstantiator.getInstance(config.ui.passwordProvider)
     private[this] lazy val uiProvider: UIProvider         = provInstantiator.getInstance(config.ui.uiProvider)
 
@@ -171,25 +189,30 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     def askOrReadPassword(configPath: String, passwordId: String = null): String = {
       import ConfigImplicits._
       val validId = if (passwordId == null) configPath else passwordId
+      log.info(s"Asking password: {}", validId)
       rootConfig.withDefault(passProvider.askPassword(validId), _.getString(configPath))
     }
 
     def showErrorMessage(error: Throwable): Unit = {
-      actorSystem.log.error(error, "Unhandled application error")
+      log.error(error, "Unhandled application error")
       try {
         uiProvider.showErrorMessage(error)
       } catch {
-        case NonFatal(e1) =>
-          actorSystem.log.error(e1, "Error when reporting")
+        case NonFatal(e1) ⇒
+          log.error(e1, "Error when reporting")
       }
     }
 
-    override def showNotification(text: String): Unit =
+    override def showNotification(text: String): Unit = {
+      log.info(s"Showing notification in UI: {}", text)
       uiProvider.showNotification(text)
+    }
 
-    def withShowError[T](f: => T): Either[Throwable, T] =
+    def withShowError[T](f: ⇒ T): Either[Throwable, T] =
       try Right(f)
-      catch { case NonFatal(err) => showErrorMessage(err); Left(err) }
+      catch { case NonFatal(err) ⇒ showErrorMessage(err); Left(err) }
+
+    override def canBlock: Boolean = uiProvider.canBlock
   }
 
   // -----------------------------------------------------------------------
@@ -228,7 +251,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // -----------------------------------------------------------------------
   object streams {
     lazy val chunk    = ChunkProcessingStreams(modules.crypto, config.chunks, config.crypto, config.parallelism)(executionContexts.cryptography)
-    lazy val region   = RegionStreams(ops.region, config.parallelism, config.timeouts)
+    lazy val region   = RegionStreams(ops.region, config.parallelism, config.buffers)
     lazy val file     = FileStreams(region, chunk, ops.supervisor)
     lazy val metadata = MetadataStreams(ops.region, this.region, this.file, config.metadata, modules.metadata, config.serialization, serialization)
   }
@@ -250,17 +273,17 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   }
 
   private[this] object lifecycleHooks extends LifecycleHook {
-    private[this] val instances = config.misc.lifecycleHooks.map(hookClass => provInstantiator.getInstance(hookClass))
-    var initialized = false
-    var terminated = false
+    private[this] val instances = config.misc.lifecycleHooks.map(hookClass ⇒ provInstantiator.getInstance(hookClass))
+    var initialized             = false
+    var terminated              = false
 
-    def initialize(): Unit = instances.foreach { hook =>
-      actorSystem.log.debug("Executing init hook: {}", hook)
-      ui.withShowError(hook.initialize()).left.foreach(_ => System.exit(-1))
+    def initialize(): Unit = instances.foreach { hook ⇒
+      log.debug("Executing init hook: {}", hook)
+      ui.withShowError(hook.initialize()).left.foreach(_ ⇒ System.exit(-1))
     }
 
-    def shutdown(): Unit = instances.foreach { hook =>
-      actorSystem.log.debug("Executing shutdown hook: {}", hook)
+    def shutdown(): Unit = instances.foreach { hook ⇒
+      log.debug("Executing shutdown hook: {}", hook)
       Try(hook.shutdown()).failed.foreach(actorSystem.log.error(_, "Shutdown hook error"))
     }
   }
@@ -274,6 +297,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
 
   def shutdown(): Unit = synchronized {
     if (!lifecycleHooks.initialized || lifecycleHooks.terminated) return
+    log.warning("Shutting down shadowcloud")
     lifecycleHooks.shutdown()
     lifecycleHooks.terminated = true
   }

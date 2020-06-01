@@ -24,7 +24,7 @@ class RegionRepairTest extends SCExtensionSpec with FlatSpecLike with Sequential
     sc.ops.region.synchronize(testRegionId).futureValue
 
     val (repairStream, repairResult) = TestSource.probe[RegionRepairStream.Request]
-      .alsoTo(RegionRepairStream(sc.config.parallelism, sc.ops.region))
+      .alsoTo(RegionRepairStream(sc.ops.region, sc.config.parallelism, sc.config.chunks.chunkSize))
       .mapAsync(1)(_.result.future)
       .toMat(TestSink.probe)(Keep.both)
       .run()

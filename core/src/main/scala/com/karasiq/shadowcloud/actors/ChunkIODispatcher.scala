@@ -86,26 +86,27 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
         case (path, chunk, promise) ⇒
           val repository = subRepository(path.regionId)
           val writeSource = Source
-            .lazySingle(() => chunk.data.encrypted)
+            .single(chunk.data.encrypted)
             .alsoToMat(repository.write(path.chunkId))(Keep.right) //.alsoToMat(RepositoryStreams.writeWithRetries(repository, path.chunkId))(Keep.right)
 
           writeSource.extractMatFuture
-            .recoverWithRetries(
-              1, {
-                case StorageException.AlreadyExists(sp) =>
-                  log.warning("Chunk already exists: {}", sp)
-                  Source
-                    .single(path.chunkId)
-                    .mapAsync(1)(repository.delete(_))
-                    .flatMapConcatMatRight(_ => writeSource)
-                    .extractMatFuture
-                    .map(_.last)
-              }
-            )
-            .alsoTo(Sink.foreach(result => promise.trySuccess(result)))
-            .alsoTo(AkkaStreamUtils.failPromiseOnFailure(promise))
-            .viaMat(AkkaStreamUtils.ignoreUpstream(Source.future(promise.future)))(Keep.right)
+            .flatMapConcat {
+              case StorageIOResult.Failure(_, StorageException.AlreadyExists(sp, _)) =>
+                log.warning("Chunk already exists: {}", sp)
+                Source
+                  .single(path.chunkId)
+                  .mapAsync(1)(repository.delete(_))
+                  .flatMapConcatMatRight(_ => writeSource)
+                  .extractMatFuture
+                  .map(_.last)
+
+              case otherResult =>
+                Source.single(otherResult)
+            }
             .completionTimeout(config.chunkIO.writeTimeout)
+            .alsoTo(AkkaStreamUtils.successPromiseOnFirst(promise))
+            .viaMat(AkkaStreamUtils.ignoreUpstream(Source.future(promise.future)))(Keep.right)
+            .log("storage-chunkio-write")
             .map(_ => NotUsed)
             .recover { case _ ⇒ NotUsed }
             .named("storageWrite")
@@ -135,7 +136,7 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
             val zipResults = builder.add(Zip[Chunk, StorageIOResult]())
 
             readSource ~> zipResults.in0
-            builder.materializedValue.flatMapConcat(Source.fromFuture) ~> zipResults.in1
+            builder.materializedValue.flatMapConcat(Source.future) ~> zipResults.in1
 
             SourceShape(zipResults.out)
           }
@@ -148,8 +149,8 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
               promise.completeWith(f)
               NotUsed
             }
-            .alsoTo(AkkaStreamUtils.failPromiseOnFailure(promise))
             .completionTimeout(config.chunkIO.readTimeout)
+            .alsoTo(AkkaStreamUtils.failPromiseOnFailure(promise))
             .recover { case _ ⇒ NotUsed }
             .named("storageReadGraph")
       }
@@ -164,9 +165,11 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
   // -----------------------------------------------------------------------
   def receive: Receive = {
     case WriteChunk(path, chunk) ⇒
+      if (chunksWrite.subscribers.contains((path, chunk.withoutData))) log.debug("Chunk already writing: {} -> {}", chunk, path)
       chunksWrite.addWaiter((path, chunk.withoutData), sender(), () ⇒ writeChunk(path, chunk))
 
     case ReadChunk(path, chunk) ⇒
+      if (chunksWrite.subscribers.contains((path, chunk.withoutData))) log.debug("Chunk already reading: {} -> {}", chunk, path)
       chunksRead.addWaiter((path, chunk.withoutData), sender(), () ⇒ readChunk(path, chunk))
 
     case msg: WriteChunk.Status ⇒
@@ -227,14 +230,9 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
     val promise     = Promise[StorageIOResult]
     val queueFuture = writeQueue.offer((path, chunk, promise))
     queueFuture.onComplete {
-      case Success(QueueOfferResult.Enqueued) ⇒
-      // Ignore
-
-      case Success(_) ⇒
-        promise.failure(new IOException("Write queue is full"))
-
-      case Failure(exc) ⇒
-        promise.failure(exc)
+      case Success(QueueOfferResult.Enqueued) ⇒ log.debug(s"New write enqueued: {} -> {}", chunk, path)
+      case Success(_)                         ⇒ promise.failure(new IOException("Write queue is full"))
+      case Failure(exc)                       ⇒ promise.failure(exc)
     }
 
     promise.future.onComplete {
@@ -258,7 +256,7 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
     val queueFuture = readQueue.offer((path, chunk, promise))
 
     queueFuture.onComplete {
-      case Success(QueueOfferResult.Enqueued) ⇒ // Ignore
+      case Success(QueueOfferResult.Enqueued) ⇒ log.debug(s"New read enqueued: {} -> {}", chunk, path)
       case Success(_)                         ⇒ promise.failure(new IOException("Read queue is full"))
       case Failure(exc)                       ⇒ promise.failure(exc)
     }

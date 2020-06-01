@@ -1,14 +1,13 @@
 package com.karasiq.shadowcloud.storage.repository
 
-import scala.concurrent.{Future, Promise}
-
 import akka.NotUsed
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.streams.utils.AkkaStreamUtils
+
+import scala.concurrent.{Future, Promise}
 
 object RepositoryStreams {
   val DefaultRetries = 3
@@ -24,7 +23,7 @@ object RepositoryStreams {
             .alsoTo(Sink.onComplete(_.failed.foreach(promise.tryFailure)))
             .mapMaterializedValue(promise.completeWith)
             .fold(NotUsed)((_, _) ⇒ NotUsed)
-            .flatMapConcat(_ ⇒ Source.fromFuture(promise.future))
+            .flatMapConcat(_ ⇒ Source.future(promise.future))
             .mapMaterializedValue(_ ⇒ NotUsed)
             .named("read")
         }
@@ -50,7 +49,7 @@ object RepositoryStreams {
     openStream().recoverWithRetries(retries, { case _ ⇒ openStream() })
       .alsoToMat {
         Flow[(Source[ByteString, NotUsed], Future[StorageIOResult])]
-          .flatMapConcat { case (_, future) ⇒ Source.fromFuture(future) }
+          .flatMapConcat { case (_, future) ⇒ Source.future(future) }
           .via(StorageUtils.wrapStream(StorageUtils.toStoragePath(key)))
           .alsoToMat(Sink.last)(Keep.right)
           .to(Sink.ignore)

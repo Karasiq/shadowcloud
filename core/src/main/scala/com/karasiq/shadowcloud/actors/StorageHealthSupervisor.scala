@@ -1,44 +1,42 @@
 package com.karasiq.shadowcloud.actors
 
-import scala.concurrent.duration._
-
-import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, Kill, PossiblyHarmful, Props, Terminated}
+import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, PossiblyHarmful, Props, Terminated}
 import akka.pattern.{ask, pipe}
-import akka.util.Timeout
-
+import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.model.utils.StorageHealth
+
+import scala.concurrent.duration._
 
 object StorageHealthSupervisor {
   // Messages
   sealed trait Message
 
   // Internal messages
-  private sealed trait InternalMessage extends Message with PossiblyHarmful
-  private case object Check extends InternalMessage
+  private sealed trait InternalMessage              extends Message with PossiblyHarmful
+  private case object Check                         extends InternalMessage
   private case class Success(health: StorageHealth) extends InternalMessage
-  private case object Failure extends InternalMessage
+  private case object Failure                       extends InternalMessage
 
   // Events
   sealed trait Event
 
   // Props
   def props(actor: ActorRef, interval: FiniteDuration, maxFailures: Int): Props = {
-    Props(classOf[StorageHealthSupervisor], actor, interval, maxFailures)
+    Props(new StorageHealthSupervisor(actor, interval, maxFailures))
   }
 }
 
 class StorageHealthSupervisor(actor: ActorRef, interval: FiniteDuration, maxFailures: Int) extends Actor with ActorLogging {
-  import context.dispatcher
-
   import StorageHealthSupervisor._
-  implicit val timeout = Timeout(interval)
+  import context.dispatcher
+  private[this] implicit val timeout = ShadowCloud().implicits.defaultTimeout
 
-  var schedule: Cancellable = _
-  var failures = 0
+  private[this] var schedule: Cancellable = _
+  private[this] var failures              = 0
 
   override def receive: Receive = {
     case Check ⇒
-      (actor ? StorageDispatcher.GetHealth)
+      (actor ? StorageDispatcher.GetHealth())
         .mapTo[StorageDispatcher.GetHealth.Success]
         .filter(_.result.online)
         .map(hs ⇒ Success(hs.result))
@@ -50,7 +48,7 @@ class StorageHealthSupervisor(actor: ActorRef, interval: FiniteDuration, maxFail
       log.debug("Health check failure #{}", failures)
       if (failures >= maxFailures) {
         log.warning("Health checks failed ({}), restarting storage: {}", failures, actor)
-        actor ! Kill
+        context.stop(actor)
       }
 
     case Success(health) ⇒

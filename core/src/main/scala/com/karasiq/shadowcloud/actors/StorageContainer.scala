@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.actors
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props, Stash, Terminated}
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.RegionSupervisor.RenewStorageSubscriptions
 import com.karasiq.shadowcloud.actors.StorageContainer.SetProps
@@ -45,8 +45,9 @@ private[actors] final class StorageContainer(instantiator: StorageInstantiator, 
       }
 
       def receive: Receive = {
-        /* case Terminated(`storage`) ⇒
-          context.stop(self) */
+        case Terminated(ref) ⇒
+          log.error("Watched actor terminated: {}", ref)
+          context.stop(self)
 
         case msg if sender() == storage ⇒
           context.parent ! msg
@@ -58,7 +59,7 @@ private[actors] final class StorageContainer(instantiator: StorageInstantiator, 
 
     val id = Utils.uniqueActorName(storageId)
     val actor = context.actorOf(props, id)
-    val healthSupervisor = context.actorOf(StorageHealthSupervisor.props(actor, 5 minutes, 3), s"$id-health-sv")
+    val healthSupervisor = context.actorOf(StorageHealthSupervisor.props(actor, 30 seconds, 5), s"$id-health-sv")
     afterStart(healthSupervisor)
   }
 

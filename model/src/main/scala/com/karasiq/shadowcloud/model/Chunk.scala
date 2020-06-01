@@ -1,17 +1,18 @@
 package com.karasiq.shadowcloud.model
 
-
-
+import com.karasiq.common.encoding.HexString
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData, HasWithoutKeys}
 import com.karasiq.shadowcloud.model.crypto.EncryptionParameters
 
 @SerialVersionUID(0L)
-final case class Chunk(checksum: Checksum = Checksum.empty,
-                       encryption: EncryptionParameters = EncryptionParameters.empty,
-                       data: Data = Data.empty) extends SCEntity with HasEmpty with HasWithoutData with HasWithoutKeys {
+final case class Chunk(checksum: Checksum = Checksum.empty, encryption: EncryptionParameters = EncryptionParameters.empty, data: Data = Data.empty)
+    extends SCEntity
+    with HasEmpty
+    with HasWithoutData
+    with HasWithoutKeys {
   type Repr = Chunk
-  
+
   def isEmpty: Boolean = {
     data.isEmpty
   }
@@ -42,4 +43,9 @@ final case class Chunk(checksum: Checksum = Checksum.empty,
   override def toString: String = {
     s"Chunk($checksum, $encryption, ${MemorySize(data.plain.length)}/${MemorySize(data.encrypted.length)})"
   }
+
+  def hashString: String =
+    if (checksum.hash.nonEmpty) HexString.encode(checksum.hash)
+    else if (checksum.encHash.nonEmpty) HexString.encode(checksum.encHash)
+    else "(not hashed chunk)"
 }

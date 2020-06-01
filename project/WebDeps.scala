@@ -161,6 +161,12 @@ object WebDeps {
     Style from "org.webjars"  % "toastr" % "2.1.2" / "build/toastr.min.css"
   )
 
+  def pellJS = Seq[PageContent](
+    Script from "org.webjars.npm" % "pell" % "1.0.6" / "dist/pell.min.js",
+    Style from "org.webjars.npm"  % "pell" % "1.0.6" / "dist/pell.min.css",
+    Script from url("https://unpkg.com/turndown@6.0.0/dist/turndown.js")
+  )
+
   def indexHtml: Seq[PageContent] = {
     Seq(Html from Assets.index, Style from Assets.style)
   }

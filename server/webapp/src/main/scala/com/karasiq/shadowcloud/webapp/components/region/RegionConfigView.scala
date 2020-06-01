@@ -52,11 +52,12 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
     org.scalajs.dom.window.setTimeout(() => healthRx.update(), 100)
     org.scalajs.dom.window.setTimeout(() => healthRx.update(), 500)
     org.scalajs.dom.window.setTimeout(() => healthRx.update(), 1500)
+    org.scalajs.dom.window.setTimeout(() => healthRx.update(), 5000)
   }
 
-  syncReport.triggerLater(healthRx.update())
-  compactReport.triggerLater(healthRx.update())
-  gcReport.triggerLater(healthRx.update())
+  compactReport.triggerLater(updateHealth())
+  syncReport.triggerLater(updateHealth())
+  gcReport.triggerLater(updateHealth())
 
   def renderTag(md: ModifierT*): TagT = {
     updateHealth()
@@ -87,7 +88,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
       val future = context.api.collectGarbage(regionId, delete)
       future.onComplete { _ ⇒
         gcStarted() = false
-        Toastr.success(s"Region $regionId GC finished")
+        Toastr.success(s"Region GC finished: $regionId")
       }
       future.foreach { report ⇒
         gcAnalysed() = !delete
@@ -133,7 +134,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
       val future = context.api.compactIndexes(regionId)
       future.onComplete { _ ⇒
         compactStarted() = false
-        Toastr.success(s"Region $regionId index compaction finished")
+        Toastr.success(s"Region index compaction finished: $regionId")
       }
       future.foreach(compactReport() = _)
     }
@@ -155,7 +156,10 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
         if (!repairStarted.now) {
           repairStarted() = true
           val future = context.api.repairRegion(regionId, storages)
-          future.onComplete(_ ⇒ repairStarted() = false)
+          future.onComplete { _ =>
+            Toastr.success(s"Region replication finished: $regionId")
+            repairStarted() = false
+          }
         }
       }
 

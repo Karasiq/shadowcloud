@@ -19,8 +19,8 @@ object LogPanel {
       ws.onmessage = { (msg: MessageEvent) =>
         lines() = (msg.data.toString +: lines.now).take(200)
       }
-      ws.onerror = { _ =>
-        dom.window.setTimeout(initWebSocket _, 5000)
+      ws.onclose = { _ =>
+        dom.window.setTimeout(() => initWebSocket(), 5000)
       }
     }
 

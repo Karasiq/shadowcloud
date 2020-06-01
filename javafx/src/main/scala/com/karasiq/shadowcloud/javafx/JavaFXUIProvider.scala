@@ -27,4 +27,6 @@ private[javafx] final class JavaFXUIProvider(actorSystem: ActorSystem) extends U
     NotifyAlert.show(context.app.stage, text)
     notificationPresent = false
   }
+
+  override def canBlock: Boolean = true
 }

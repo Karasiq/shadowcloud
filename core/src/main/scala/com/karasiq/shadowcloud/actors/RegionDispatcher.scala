@@ -301,7 +301,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
         .flatMap(_ => indexTracker.storages.io.getIndex(storage))
 
       indexFuture.onComplete {
-        case Success(IndexMerger.State(Nil, IndexDiff.empty)) | Failure(StorageException.NotFound(_)) ⇒
+        case Success(IndexMerger.State(Nil, IndexDiff.empty)) | Failure(StorageException.NotFound(_, _)) ⇒
           log.info("Copying index to {}", storageId)
           val newDiff = indexTracker.indexes.toMergedDiff
             .copy(chunks = ChunkIndexDiff.empty)

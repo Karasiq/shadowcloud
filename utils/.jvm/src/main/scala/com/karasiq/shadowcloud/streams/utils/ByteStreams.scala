@@ -3,12 +3,13 @@ package com.karasiq.shadowcloud.streams.utils
 import java.io.IOException
 
 import akka.NotUsed
-import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.stream.scaladsl.Flow
-import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
+import akka.stream.stage._
+import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.util.ByteString
+import com.karasiq.common.memory.{MemorySize, SizeUnit}
 
-import com.karasiq.common.memory.MemorySize
+import scala.collection.mutable.ListBuffer
 
 object ByteStreams {
   type ByteFlow = Flow[ByteString, ByteString, NotUsed]
@@ -25,10 +26,17 @@ object ByteStreams {
     Flow.fromGraph(new ByteStringConcat)
   }
 
-  private final class ByteStringConcat extends GraphStage[FlowShape[ByteString, ByteString]] {
-    val inlet = Inlet[ByteString]("ByteStringConcat.in")
+  def bufferT[T](getSize: T ⇒ Long, maxSize: Long): Flow[T, T, NotUsed] = {
+    Flow.fromGraph(new BytesBuffer[T](getSize, maxSize))
+  }
+
+  def buffer(maxSize: Long): ByteFlow =
+    bufferT[ByteString](_.length, maxSize)
+
+  private[this] final class ByteStringConcat extends GraphStage[FlowShape[ByteString, ByteString]] {
+    val inlet  = Inlet[ByteString]("ByteStringConcat.in")
     val outlet = Outlet[ByteString]("ByteStringConcat.out")
-    val shape = FlowShape(inlet, outlet)
+    val shape  = FlowShape(inlet, outlet)
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) with InHandler with OutHandler {
       private[this] val builder = ByteString.newBuilder
@@ -59,10 +67,10 @@ object ByteStreams {
     }
   }
 
-  private final class ByteStringLimit(limit: Long, truncate: Boolean) extends GraphStage[FlowShape[ByteString, ByteString]] {
-    val inlet = Inlet[ByteString]("ByteStringConcat.in")
+  private[this] final class ByteStringLimit(limit: Long, truncate: Boolean) extends GraphStage[FlowShape[ByteString, ByteString]] {
+    val inlet  = Inlet[ByteString]("ByteStringConcat.in")
     val outlet = Outlet[ByteString]("ByteStringConcat.out")
-    val shape = FlowShape(inlet, outlet)
+    val shape  = FlowShape(inlet, outlet)
 
     def createLogic(inheritedAttributes: Attributes): GraphStageLogic = new GraphStageLogic(shape) with InHandler with OutHandler {
       private[this] var written = 0L
@@ -78,7 +86,7 @@ object ByteStreams {
       def onPush(): Unit = {
         val bytes = grab(inlet)
         if (truncate) {
-          val size = math.max(0L, math.min(limit - written, bytes.length)).toInt
+          val size      = math.max(0L, math.min(limit - written, bytes.length)).toInt
           val truncated = bytes.take(size)
           written += size
           push(outlet, truncated)
@@ -91,8 +99,60 @@ object ByteStreams {
         }
       }
 
-
       setHandlers(inlet, outlet, this)
     }
+  }
+
+  private[this] final class BytesBuffer[T](getSize: T ⇒ Long, maxSize: Long) extends GraphStage[FlowShape[T, T]] {
+    val inlet  = Inlet[T]("BytesBuffer.in")
+    val outlet = Outlet[T]("BytesBuffer.out")
+    val shape  = FlowShape(inlet, outlet)
+
+    override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
+      new GraphStageLogic(shape) with InHandler with OutHandler with StageLogging {
+        override protected def logSource: Class[_] = classOf[BytesBuffer[_]]
+
+        private[this] var buffer = ListBuffer.empty[T]
+        def currentSize: Long    = buffer.map(getSize).sum
+
+        def enqueue(e: T): Unit = {
+          buffer += e
+          if (currentSize < maxSize) pull(inlet)
+        }
+
+        override def preStart(): Unit = {
+          pull(inlet)
+        }
+
+        override def onPush(): Unit = {
+          val elem = grab(inlet)
+          if (isAvailable(outlet)) {
+            push(outlet, elem)
+            pull(inlet)
+          } else {
+            enqueue(elem)
+          }
+          log.debug("Buffer size: {} MB of {} MB", currentSize / SizeUnit.MB, maxSize / SizeUnit.MB)
+        }
+
+        override def onPull(): Unit = {
+          if (buffer.nonEmpty) {
+            val element = buffer.remove(0)
+            push(outlet, element)
+          }
+
+          if (isClosed(inlet)) {
+            if (buffer.isEmpty) completeStage()
+          } else if (!hasBeenPulled(inlet)) {
+            pull(inlet)
+          }
+        }
+
+        override def onUpstreamFinish(): Unit = {
+          if (buffer.isEmpty) completeStage()
+        }
+
+        setHandlers(inlet, outlet, this)
+      }
   }
 }

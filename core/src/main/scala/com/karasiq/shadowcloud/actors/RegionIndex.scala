@@ -1,10 +1,10 @@
 package com.karasiq.shadowcloud.actors
 
-import akka.NotUsed
-import akka.actor.{Actor, ActorLogging, DeadLetterSuppression, PossiblyHarmful, Props, Status}
+import akka.actor.{Actor, ActorLogging, DeadLetterSuppression, PossiblyHarmful, Props, ReceiveTimeout, Status}
 import akka.persistence._
 import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.{Done, NotUsed}
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.events.StorageEvents._
 import com.karasiq.shadowcloud.actors.utils.{MessageStatus, PendingOperation}
@@ -19,7 +19,6 @@ import com.karasiq.shadowcloud.storage.utils.{IndexIOResult, IndexMerger, IndexR
 import com.karasiq.shadowcloud.utils.DiffStats
 
 import scala.concurrent.duration._
-
 
 object RegionIndex {
   // Types
@@ -36,6 +35,7 @@ object RegionIndex {
   object WriteDiff                            extends MessageStatus[IndexDiff, IndexDiff]
   case object Compact                         extends Message
   case object Synchronize                     extends Message with MessageStatus[RegionIndexId, SyncReport]
+  case object DeleteHistory                   extends Message with PossiblyHarmful with MessageStatus[RegionIndexId, Done]
 
   // Internal messages
   private sealed trait InternalMessage                                                                          extends Message with PossiblyHarmful
@@ -115,8 +115,22 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
         state.compactRequested = true
       }
 
-    case Synchronize if sender() != self && sender() != Actor.noSender =>
+    case Synchronize if sender() != self && sender() != Actor.noSender ⇒
       state.pendingSync.addWaiter(state.indexId, sender())
+
+    case DeleteHistory ⇒
+      val sender = context.sender()
+      deleteSnapshots(SnapshotSelectionCriteria())
+      deleteMessages(Long.MaxValue)
+      context.become {
+        case result @ (DeleteSnapshotsSuccess(_) | DeleteSnapshotsFailure(_, _)) ⇒
+          log.warning("Snapshots cleared: {}", result)
+
+        case result @ (DeleteMessagesSuccess(_) | DeleteMessagesFailure(_, _)) ⇒
+          log.warning("Local history cleared: {}", result)
+          sender ! DeleteHistory.Success(state.indexId, Done)
+          context.stop(self)
+      }
   }
 
   // -----------------------------------------------------------------------
@@ -438,17 +452,30 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
   private[this] def createSnapshot(after: () ⇒ Unit): Unit = {
     val snapshot = Snapshot(IndexMerger.createState(state.index))
     log.info("Saving region index snapshot: {}", snapshot)
+    deleteSnapshot(this.snapshotSequenceNr)
     saveSnapshot(snapshot)
 
     becomeOrDefault {
       case SaveSnapshotSuccess(snapshot) ⇒
         log.info("Snapshot saved: {}", snapshot)
+        state.diffsSaved = 0
+
         if (config.index.snapshotClearHistory) {
           deleteSnapshots(SnapshotSelectionCriteria(maxSequenceNr = snapshot.sequenceNr - 1))
           deleteMessages(snapshot.sequenceNr)
-        }
-        state.diffsSaved = 0
-        after()
+
+          val timeout = context.system.scheduler.scheduleOnce(15 seconds, self, ReceiveTimeout)
+          becomeOrDefault {
+            case r @ (DeleteMessagesSuccess(_) | DeleteMessagesFailure(_, _)) ⇒
+              log.debug("Delete old history result: {}", r)
+              timeout.cancel()
+              after()
+
+            case ReceiveTimeout ⇒
+              log.error("Timeout deleting messages")
+              context.stop(self)
+          }
+        } else after()
 
       case SaveSnapshotFailure(snapshot, error) ⇒
         log.error(error, "Snapshot save failed: {}", snapshot)
@@ -456,9 +483,8 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
     }
   }
 
-
   override def postStop(): Unit = {
-    state.pendingSync.finishAll(indexId => Synchronize.Failure(indexId, new RuntimeException("Index dispatcher stopped")))
+    state.pendingSync.finishAll(indexId ⇒ Synchronize.Failure(indexId, new RuntimeException("Index dispatcher stopped")))
     super.postStop()
   }
 

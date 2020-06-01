@@ -177,6 +177,9 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     }
     val status = regions.remove(regionId).get
     State.ifActive(status.actorState, context.stop)
+    status.storages.flatMap(storages.get).foreach { storage =>
+      State.ifActive(storage.actorState, _ ! StorageIndex.CloseIndex(regionId, clear = true))
+    }
     status
   }
 
@@ -227,7 +230,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     regions += regionId → region.copy(storages = region.storages - storageId)
     storages += storageId → storage.copy(regions = storage.regions - regionId)
     State.ifActive(region.actorState, _ ! RegionDispatcher.DetachStorage(storageId))
-    State.ifActive(storage.actorState, _ ! StorageIndex.CloseIndex(regionId))
+    State.ifActive(storage.actorState, _ ! StorageIndex.CloseIndex(regionId, clear = true))
   }
 
   def registerRegionStorages(regionId: RegionId): Unit = {

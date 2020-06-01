@@ -1,15 +1,11 @@
 package com.karasiq.shadowcloud.server.http.api
 
-import scala.concurrent.Future
-import scala.language.implicitConversions
-
 import akka.Done
 import akka.stream.scaladsl.Sink
-
 import com.karasiq.shadowcloud.ShadowCloudExtension
+import com.karasiq.shadowcloud.actors.RegionGC.GCStrategy
 import com.karasiq.shadowcloud.actors.internal.RegionTracker
 import com.karasiq.shadowcloud.actors.utils.ActorState
-import com.karasiq.shadowcloud.actors.RegionGC.GCStrategy
 import com.karasiq.shadowcloud.api.ShadowCloudApi
 import com.karasiq.shadowcloud.config.{ConfigProps, RegionConfig, SerializedProps}
 import com.karasiq.shadowcloud.index.diffs.FolderIndexDiff
@@ -22,6 +18,10 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.streams.region.RegionRepairStream
 
+import scala.concurrent.Future
+import scala.language.implicitConversions
+
+//noinspection TypeAnnotation
 private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends ShadowCloudApi {
   import sc.implicits.{executionContext, materializer}
 
@@ -30,22 +30,32 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
   // -----------------------------------------------------------------------
   def getRegions() = {
     def toSerializableStorageStatus(storage: RegionTracker.StorageStatus) = {
-      RegionStateReport.StorageStatus(storage.storageId, ConfigProps.fromConfig(storage.storageProps.rootConfig, json = false),
-        storage.actorState == ActorState.Suspended, storage.regions)
+      RegionStateReport.StorageStatus(
+        storage.storageId,
+        ConfigProps.fromConfig(storage.storageProps.rootConfig),
+        storage.actorState == ActorState.Suspended,
+        storage.regions
+      )
     }
 
     def toSerializableRegionStatus(region: RegionTracker.RegionStatus) = {
-      RegionStateReport.RegionStatus(region.regionId, ConfigProps.fromConfig(region.regionConfig.rootConfig, json = false),
-        region.actorState == ActorState.Suspended, region.storages)
+      RegionStateReport.RegionStatus(
+        region.regionId,
+        ConfigProps.fromConfig(region.regionConfig.rootConfig),
+        region.actorState == ActorState.Suspended,
+        region.storages
+      )
     }
 
     sc.ops.supervisor.getSnapshot().map { snapshot ⇒
-      val storages = snapshot.storages.map { case (storageId, storage) ⇒
-        (storageId, toSerializableStorageStatus(storage))
+      val storages = snapshot.storages.map {
+        case (storageId, storage) ⇒
+          (storageId, toSerializableStorageStatus(storage))
       }
 
-      val regions = snapshot.regions.map { case (regionId, region) ⇒
-        (regionId, toSerializableRegionStatus(region))
+      val regions = snapshot.regions.map {
+        case (regionId, region) ⇒
+          (regionId, toSerializableRegionStatus(region))
       }
 
       RegionStateReport(regions, storages)
@@ -98,14 +108,15 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
   def deleteRegion(regionId: RegionId) = {
     for {
       region ← getRegion(regionId)
-      _ ← sc.ops.supervisor.deleteRegion(regionId)
+      _      ← sc.ops.supervisor.deleteRegion(regionId)
     } yield region
   }
 
   def deleteStorage(storageId: StorageId) = {
     for {
       storage ← getStorage(storageId)
-      _ ← sc.ops.supervisor.deleteStorage(storageId)
+      _       ← sc.ops.supervisor.deleteStorage(storageId)
+      _       ← sc.sessions.provider.dropSessions(storageId)
     } yield storage
   }
 
@@ -132,7 +143,8 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
   }
 
   def repairRegion(regionId: RegionId, storages: Seq[StorageId]) = {
-    sc.ops.background.repair(regionId, RegionRepairStream.Strategy.SetAffinity(ChunkWriteAffinity(storages)))
+    sc.ops.background
+      .repair(regionId, RegionRepairStream.Strategy.SetAffinity(ChunkWriteAffinity(storages)))
       .map(_ ⇒ Done)
   }
 
@@ -182,7 +194,8 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
   }
 
   def createFolder(regionId: RegionId, path: Path) = {
-    sc.ops.region.createFolder(regionId, path)
+    sc.ops.region
+      .createFolder(regionId, path)
       .flatMap(_ ⇒ getFolder(regionId, path))
   }
 
@@ -192,15 +205,15 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
 
   def copyFolder(regionId: RegionId, path: Path, newPath: Path, scope: IndexScope = IndexScope.default) = {
     for {
-      index ← sc.ops.region.getFolderIndex(regionId, scope)
-      _ ← sc.ops.region.writeIndex(regionId, FolderIndexDiff.copyFolder(index, path, newPath))
+      index     ← sc.ops.region.getFolderIndex(regionId, scope)
+      _         ← sc.ops.region.writeIndex(regionId, FolderIndexDiff.copyFolder(index, path, newPath))
       newFolder ← sc.ops.region.getFolder(regionId, newPath)
     } yield newFolder
   }
 
   def mergeFolder(regionId: RegionId, folder: Folder) = {
     for {
-      _ ← sc.ops.region.writeIndex(regionId, FolderIndexDiff.createFolders(folder))
+      _         ← sc.ops.region.writeIndex(regionId, FolderIndexDiff.createFolders(folder))
       newFolder ← sc.ops.region.getFolder(regionId, folder.path)
     } yield newFolder
   }
@@ -228,7 +241,7 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
   def copyFiles(regionId: RegionId, path: Path, newPath: Path, scope: IndexScope = IndexScope.default) = {
     for {
       files ← sc.ops.region.getFiles(regionId, path, scope)
-      _ ← sc.ops.region.writeIndex(regionId, FolderIndexDiff.copyFiles(files, newPath))
+      _     ← sc.ops.region.writeIndex(regionId, FolderIndexDiff.copyFiles(files, newPath))
     } yield Done
   }
 
@@ -250,15 +263,14 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
   def deleteFile(regionId: RegionId, file: File) = {
     for {
       actualFile ← getFullFile(regionId, file, IndexScope.default)
-      _ ← sc.ops.region.deleteFiles(regionId, actualFile)
+      _          ← sc.ops.region.deleteFiles(regionId, actualFile)
     } yield actualFile
   }
-
 
   def repairFile(regionId: RegionId, file: File, storages: Seq[StorageId], scope: IndexScope) = {
     for {
       actualFile ← getFullFile(regionId, file, scope) if actualFile.chunks.nonEmpty
-      _ ← sc.ops.background.repair(regionId, RegionRepairStream.Strategy.SetAffinity(ChunkWriteAffinity(storages)), actualFile.chunks)
+      _          ← sc.ops.background.repair(regionId, RegionRepairStream.Strategy.SetAffinity(ChunkWriteAffinity(storages)), actualFile.chunks)
     } yield Done
   }
 

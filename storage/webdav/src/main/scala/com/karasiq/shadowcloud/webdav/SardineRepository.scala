@@ -1,25 +1,15 @@
 package com.karasiq.shadowcloud.webdav
 
-import java.{net, util}
 import java.io.IOException
 import java.net._
-
-import scala.collection.JavaConverters._
-import scala.collection.concurrent.TrieMap
-import scala.concurrent.Future
-import scala.util.{Failure, Success, Try}
+import java.{net, util}
 
 import akka.NotUsed
 import akka.dispatch.MessageDispatcher
-import akka.stream.{ActorAttributes, Supervision}
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source, StreamConverters}
-import com.github.sardine.{DavResource, Sardine}
+import akka.stream.{ActorAttributes, Supervision}
 import com.github.sardine.impl.SardineImpl
-import org.apache.http.config.Registry
-import org.apache.http.conn.HttpClientConnectionManager
-import org.apache.http.conn.socket.ConnectionSocketFactory
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager
-
+import com.github.sardine.{DavResource, Sardine}
 import com.karasiq.common.configs.ConfigImplicits._
 import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.StorageIOResult
@@ -27,6 +17,15 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
 import com.karasiq.shadowcloud.streams.utils.AkkaStreamUtils
+import org.apache.http.config.Registry
+import org.apache.http.conn.HttpClientConnectionManager
+import org.apache.http.conn.socket.ConnectionSocketFactory
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager
+
+import scala.collection.JavaConverters._
+import scala.collection.concurrent.TrieMap
+import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
 
 object SardineRepository {
   def apply(props: StorageProps, sardine: Sardine)(implicit dispatcher: MessageDispatcher): SardineRepository = {
@@ -106,7 +105,7 @@ class SardineRepository(props: StorageProps, sardine: Sardine)(implicit dispatch
           StorageIOResult.Success(path, result.getContentLength)
         }
         result.failed.foreach(_ ⇒ inputStream.close())
-        Source.fromFuture(StorageUtils.wrapFuture(path, result))
+        Source.future(StorageUtils.wrapFuture(path, result))
       }
       .log("webdav-write")
       .toMat(Sink.head)(Keep.right)

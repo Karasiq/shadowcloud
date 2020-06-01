@@ -1,7 +1,8 @@
 package com.karasiq.shadowcloud.streams.region
 
 import akka.NotUsed
-import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.event.Logging
+import akka.stream.scaladsl.{Flow, RestartFlow, Sink, Source}
 import akka.stream.{ActorAttributes, Supervision}
 import com.karasiq.shadowcloud.config.ParallelismConfig
 import com.karasiq.shadowcloud.model.{Chunk, RegionId}
@@ -9,8 +10,10 @@ import com.karasiq.shadowcloud.ops.region.RegionOps
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.ChunkStatus
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.streams.region.RegionRepairStream.Strategy.{AutoAffinity, SetAffinity, TransformAffinity}
+import com.karasiq.shadowcloud.streams.utils.{AkkaStreamUtils, ByteStreams}
 
-import scala.concurrent.Promise
+import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Promise}
 
 object RegionRepairStream {
   sealed trait Strategy
@@ -22,7 +25,7 @@ object RegionRepairStream {
 
   final case class Request(regionId: RegionId, strategy: Strategy, chunks: Seq[Chunk] = Nil, result: Promise[Seq[Chunk]] = Promise())
 
-  def apply(parallelism: ParallelismConfig, regionOps: RegionOps): Sink[Request, NotUsed] = {
+  def apply(regionOps: RegionOps, parallelism: ParallelismConfig, bufferSize: Long)(implicit ec: ExecutionContext): Sink[Request, NotUsed] = {
     def createNewAffinity(status: ChunkStatus, strategy: Strategy): Option[ChunkWriteAffinity] = {
       strategy match {
         case AutoAffinity ⇒
@@ -42,27 +45,35 @@ object RegionRepairStream {
         val chunksSource: Source[Chunk, NotUsed] = if (request.chunks.nonEmpty) {
           Source(request.chunks.toList)
         } else {
-          Source.fromFuture(regionOps.getChunkIndex(request.regionId)).mapConcat(_.chunks)
+          Source
+            .future(regionOps.getChunkIndex(request.regionId))
+            .mapConcat(_.chunks.toVector.sortBy(-_.checksum.encSize))
         }
 
         chunksSource
-          .mapAsyncUnordered(parallelism.read)(regionOps.getChunkStatus(request.regionId, _))
-          .flatMapConcat { status ⇒
-            val newAffinity = createNewAffinity(status, request.strategy)
-            val readAndWrite: Source[Chunk, NotUsed] = Source
-              .single(status)
-              .filterNot(status ⇒ newAffinity.exists(_.isFinished(status)))
-              .mapAsyncUnordered(parallelism.read)(status ⇒ regionOps.readChunkEncrypted(request.regionId, status.chunk))
-              .mapAsyncUnordered(parallelism.write)(chunk ⇒ regionOps.rewriteChunk(request.regionId, chunk, newAffinity))
+          .mapAsyncUnordered(parallelism.query)(regionOps.getChunkStatus(request.regionId, _))
+          .via(RestartFlow.onFailuresWithBackoff(3 seconds, 30 seconds, 0.2, 20) { () ⇒
+            Flow[ChunkStatus]
+              .map(status ⇒ status → createNewAffinity(status, request.strategy))
+              .filterNot { case (status, newAffinity) ⇒ newAffinity.exists(_.isFinished(status)) }
+              .mapAsyncUnordered(parallelism.read) {
+                case (status, newAffinity) ⇒
+                  regionOps.readChunkEncrypted(request.regionId, status.chunk).map(_ → newAffinity)
+              }
+              .log("region-repair-read", chunk ⇒ s"${chunk._1.hashString} at ${request.regionId}")
+              .async
+              .via(ByteStreams.bufferT(_._1.data.encrypted.length, bufferSize))
+              .mapAsyncUnordered(parallelism.write) {
+                case (chunk, newAffinity) ⇒
+                  regionOps.rewriteChunk(request.regionId, chunk, newAffinity)
+              }
+              .log("region-repair-write", chunk ⇒ s"${chunk.hashString} at ${request.regionId}")
+              .withAttributes(ActorAttributes.logLevels(onElement = Logging.InfoLevel))
               .map(_.withoutData)
-
-            readAndWrite.recoverWithRetries(30, { case _ => readAndWrite })
-          }
-          .log("region-repair-chunk", chunk ⇒ s"$chunk at ${request.regionId}")
+          })
           .fold(Nil: Seq[Chunk])(_ :+ _)
           .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
-          .alsoTo(Sink.foreach(request.result.success))
-          .alsoTo(Sink.onComplete(_.failed.foreach(request.result.tryFailure)))
+          .alsoTo(AkkaStreamUtils.successPromiseOnFirst(request.result))
           .recoverWithRetries(1, { case _ ⇒ Source.empty })
       }
       .to(Sink.ignore)

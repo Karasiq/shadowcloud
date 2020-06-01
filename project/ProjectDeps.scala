@@ -227,4 +227,8 @@ object ProjectDeps {
   def larrayCache: Deps = larray ++ Seq(
     "com.github.karasiq" %% "scala-cache-larray" % "1.0.3"
   )
+
+  def guava: Deps = Seq(
+    "com.google.guava" % "guava" % "29.0-jre"
+  )
 }

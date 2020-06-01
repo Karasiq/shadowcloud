@@ -80,8 +80,9 @@ lazy val dockerSettings = Seq(
   dockerCommands := {
     val cmds = dockerCommands.value
     val injected = Seq(
-      Cmd("RUN", "apt update && apt install -y fuse libfuse2 libfuse-dev && rm -rf /var/lib/apt/lists/*"), // TODO https://github.com/docker/for-mac/issues/3431
-      Cmd("RUN", "echo 'user_allow_other' >> /etc/fuse.conf")
+      Cmd("RUN", "apt update && apt install -y fuse libfuse2 libfuse-dev python3-pip && rm -rf /var/lib/apt/lists/*"), // TODO https://github.com/docker/for-mac/issues/3431
+      Cmd("RUN", "echo 'user_allow_other' >> /etc/fuse.conf"),
+      Cmd("RUN", "python3 -m pip install Telethon==0.19.1 cryptg==0.2.post1 Flask==1.1.1")
     )
     cmds.takeWhile(!_.makeContent.startsWith("USER 1001:0")) ++ injected ++ cmds.dropWhile(!_.makeContent.startsWith("USER 1001:0"))
   },
@@ -180,7 +181,8 @@ lazy val coreAssembly = (project in file("core/assembly"))
     googleDriveStorage,
     mailruCloudStorage,
     dropboxStorage,
-    webdavStorage
+    webdavStorage,
+    telegramStorage
   )
   .dependsOn(
     Seq[ClasspathDep[ProjectReference]](javacvMetadata).filter(_ ⇒ ProjectDeps.javacv.isEnabled) ++
@@ -273,6 +275,9 @@ lazy val mailruCloudStorage = storagePlugin("mailrucloud")
 lazy val webdavStorage = storagePlugin("webdav")
   .settings(libraryDependencies ++= ProjectDeps.sardine)
 
+lazy val telegramStorage = storagePlugin("telegram")
+  .settings(libraryDependencies ++= ProjectDeps.guava)
+
 // Metadata plugins
 def metadataPlugin(id: String): Project = {
   val prefixedId = s"metadata-$id"
@@ -344,6 +349,7 @@ lazy val `server-static-routes` = (project in file("server") / "static-routes")
         WebDeps.markedJS,
         WebDeps.dropzoneJS,
         WebDeps.toastrJS,
+        WebDeps.pellJS,
         scalaJsApplication(webapp, fastOpt = false, launcher = false).value
       )
     },

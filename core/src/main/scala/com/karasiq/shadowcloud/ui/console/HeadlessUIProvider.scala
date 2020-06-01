@@ -12,4 +12,6 @@ class HeadlessUIProvider(as: ActorSystem) extends UIProvider {
   override def showNotification(text: String): Unit = {
     as.log.info("Notification: {}", text)
   }
+
+  override def canBlock: Boolean = false
 }

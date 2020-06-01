@@ -89,6 +89,11 @@ object AkkaStreamUtils {
     case Failure(error) ⇒ promise.tryFailure(error)
   }
 
+  def successPromiseOnFirst[PT](promise: Promise[PT]) = Flow[PT]
+    .alsoTo(Sink.foreach(promise.trySuccess))
+    .to(Sink.onComplete(_.failed.foreach(promise.tryFailure)))
+
+
   def alsoToWaitForAll[Out, M](that: Graph[SinkShape[Out], M]): Graph[FlowShape[Out @uncheckedVariance, Out], M] =
     GraphDSL.create(that) { implicit b => r =>
       import GraphDSL.Implicits._

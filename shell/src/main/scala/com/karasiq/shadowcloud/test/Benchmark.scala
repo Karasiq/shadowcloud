@@ -92,7 +92,7 @@ private object Benchmark extends App {
 
   private[this] def runReadBenchmark(): Unit = {
     val start = System.nanoTime()
-    val future = Source.fromFuture(sc.ops.region.getFolderIndex("testRegion"))
+    val future = Source.future(sc.ops.region.getFolderIndex("testRegion"))
       .map(_.filesIterator.maxBy(_.checksum.size))
       .flatMapConcat(file ⇒ sc.streams.file.read("testRegion", file))
       .map(_.length)

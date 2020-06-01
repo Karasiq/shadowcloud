@@ -2,17 +2,14 @@ package com.karasiq.shadowcloud.streams.metadata
 
 import java.util.UUID
 
-import scala.concurrent.Future
-
 import akka.NotUsed
 import akka.stream._
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Source, Zip}
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.compression.StreamCompression
 import com.karasiq.shadowcloud.config.{MetadataConfig, SerializationConfig}
+import com.karasiq.shadowcloud.metadata.Metadata.Tag.{Disposition => MDDisposition}
 import com.karasiq.shadowcloud.metadata.{Metadata, MetadataUtils}
-import Metadata.Tag.{Disposition ⇒ MDDisposition}
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.ops.region.RegionOps
 import com.karasiq.shadowcloud.providers.MetadataModuleRegistry
@@ -20,6 +17,8 @@ import com.karasiq.shadowcloud.serialization.{SerializationModule, StreamSeriali
 import com.karasiq.shadowcloud.streams.file.{FileIndexer, FileStreams}
 import com.karasiq.shadowcloud.streams.region.RegionStreams
 import com.karasiq.shadowcloud.streams.utils.{AkkaStreamUtils, ByteStreams}
+
+import scala.concurrent.Future
 
 private[shadowcloud] object MetadataStreams {
   def apply(regionOps: RegionOps, regionStreams: RegionStreams, fileStreams: FileStreams, 
@@ -34,7 +33,7 @@ private[shadowcloud] final class MetadataStreams(regionOps: RegionOps, regionStr
                                                  serializationConfig: SerializationConfig, serialization: SerializationModule) {
   
   def keys(regionId: RegionId): Source[FileId, NotUsed] = {
-    Source.fromFuture(regionOps.getFolder(regionId, MetadataUtils.MetadataFolder))
+    Source.future(regionOps.getFolder(regionId, MetadataUtils.MetadataFolder))
       .recover { case _ ⇒ Folder(MetadataUtils.MetadataFolder) }
       .mapConcat(_.folders.map(UUID.fromString))
       .named("metadataFileKeys")
@@ -133,7 +132,7 @@ private[shadowcloud] final class MetadataStreams(regionOps: RegionOps, regionStr
           metadataIn.flatMapConcat { case (disposition, chunkStream) ⇒
             val path = MetadataUtils.getFilePath(file.id, disposition)
             val newFile = File.create(path, chunkStream.checksum, chunkStream.chunks)
-            Source.fromFuture(regionOps.createFile(regionId, newFile))
+            Source.future(regionOps.createFile(regionId, newFile))
           }
         }
         .log("metadata-files")

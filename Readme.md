@@ -62,6 +62,25 @@ address.uri="file:////mnt/example"
 type=files
 ```
 
+# Google Drive quota exceeded error
+You can bypass quota error by creating your own API key.
+
+1. Create API credentials as described here: https://rclone.org/drive/#making-your-own-client-id
+2. Paste your client_id and secret into the storage props in Web UI:
+```hocon
+config.gdrive.oauth.secrets.installed {
+  "client_id" = "YOUR_ID"
+  "client_secret" = "YOUR_SECRET"
+}
+```
+2.1: Or paste into your global ~/.shadowcloud/shadowcloud.conf: 
+```hocon
+shadowcloud.storage.gdrive.oauth.secrets.installed {
+  "client_id" = "YOUR_ID"
+  "client_secret" = "YOUR_SECRET"
+}
+```
+
 # Plugins
 Full list of currently supported algorithms (some requires libsodium):
 ```

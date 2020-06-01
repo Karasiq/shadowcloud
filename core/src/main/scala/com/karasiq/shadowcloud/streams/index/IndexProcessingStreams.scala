@@ -57,7 +57,7 @@ final class IndexProcessingStreams(regionId: RegionId)(implicit sc: ShadowCloudE
 
   private[this] object internalStreams {
     private[this] val keyChainSource = Source.single(NotUsed)
-      .flatMapConcat(_ ⇒ Source.fromFuture(sc.keys.provider.getKeyChain()))
+      .flatMapConcat(_ ⇒ Source.future(sc.keys.provider.getKeyChain()))
       .map(_.forRegion(regionId))
       .named("keyChainSource")
 

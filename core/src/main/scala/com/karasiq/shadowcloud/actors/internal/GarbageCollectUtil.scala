@@ -1,12 +1,11 @@
 package com.karasiq.shadowcloud.actors.internal
 
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.config.{RegionConfig, StorageConfig}
 import com.karasiq.shadowcloud.index._
 import com.karasiq.shadowcloud.metadata.MetadataUtils
-import com.karasiq.shadowcloud.model.{Chunk, File, FileId, Timestamp}
 import com.karasiq.shadowcloud.model.utils.GCReport.{RegionGCState, StorageGCState}
+import com.karasiq.shadowcloud.model.{Chunk, File, FileId, Timestamp}
 import com.karasiq.shadowcloud.storage.utils.IndexMerger
 import com.karasiq.shadowcloud.utils.{ChunkUtils, Utils}
 
@@ -31,7 +30,7 @@ private[actors] final class GarbageCollectUtil(regionConfig: RegionConfig) {
 
   def checkRegion(index: IndexMerger[_]): RegionGCState = {
     val indexPersistedChunks = index.chunks
-    val indexPendingFolders = index.folders.patch(index.pending.folders)
+    val indexPendingFolders = index.foldersWithPending
 
     RegionGCState(
       orphanedChunks(indexPersistedChunks, indexPendingFolders),

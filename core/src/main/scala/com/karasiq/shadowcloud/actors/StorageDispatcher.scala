@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.actors
 
-import akka.actor.{Actor, ActorLogging, ActorRef, Kill, NotInfluenceReceiveTimeout, PossiblyHarmful, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, NotInfluenceReceiveTimeout, PossiblyHarmful, Props, Status}
 import akka.pattern.pipe
 import akka.stream._
 import akka.stream.scaladsl.{Sink, Source}
@@ -12,31 +12,46 @@ import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.index.diffs.IndexDiff
 import com.karasiq.shadowcloud.model.utils.StorageHealth
 import com.karasiq.shadowcloud.model.{Chunk, StorageId}
+import com.karasiq.shadowcloud.providers.LifecycleHook
 import com.karasiq.shadowcloud.storage.StorageHealthProvider
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams.utils.AkkaStreamUtils
 
 import scala.concurrent.duration._
-import scala.util.Success
+import scala.util.{Success, Try}
 
 object StorageDispatcher {
   // Messages
   sealed trait Message
   final case class GetHealth(checkNow: Boolean = false) extends Message with NotInfluenceReceiveTimeout
-  object GetHealth extends MessageStatus[StorageId, StorageHealth]
+  object GetHealth                                      extends MessageStatus[StorageId, StorageHealth]
 
   // Internal messages
-  private sealed trait InternalMessage extends PossiblyHarmful
+  private sealed trait InternalMessage                                extends Message with PossiblyHarmful
   private case class WriteChunkToIndex(path: ChunkPath, chunk: Chunk) extends InternalMessage
 
   // Props
-  def props(storageId: StorageId, storageProps: StorageProps, index: ActorRef, chunkIO: ActorRef, health: StorageHealthProvider): Props = {
-    Props(new StorageDispatcher(storageId, storageProps, index, chunkIO, health))
+  def props(
+      storageId: StorageId,
+      storageProps: StorageProps,
+      index: ActorRef,
+      chunkIO: ActorRef,
+      health: StorageHealthProvider,
+      lifecycleHook: Option[LifecycleHook] = None
+  ): Props = {
+    Props(new StorageDispatcher(storageId, storageProps, index, chunkIO, health, lifecycleHook))
   }
 }
 
-private final class StorageDispatcher(storageId: StorageId, storageProps: StorageProps, index: ActorRef,
-                                      chunkIO: ActorRef, healthProvider: StorageHealthProvider) extends Actor with ActorLogging {
+private final class StorageDispatcher(
+    storageId: StorageId,
+    storageProps: StorageProps,
+    index: ActorRef,
+    chunkIO: ActorRef,
+    healthProvider: StorageHealthProvider,
+    lifecycleHook: Option[LifecycleHook] = None
+) extends Actor
+    with ActorLogging {
   import StorageDispatcher._
 
   // -----------------------------------------------------------------------
@@ -45,9 +60,9 @@ private final class StorageDispatcher(storageId: StorageId, storageProps: Storag
   import context.dispatcher
 
   private[this] implicit val materializer: Materializer = ActorMaterializer()
-  private[this] val sc = ShadowCloud()
-  private[this] val config = sc.configs.storageConfig(storageId, storageProps)
-  private[this] val healthCheckSchedule = context.system.scheduler.schedule(1 second, config.healthCheckInterval, self, GetHealth(true))
+  private[this] val sc                                  = ShadowCloud()
+  private[this] val config                              = sc.configs.storageConfig(storageId, storageProps)
+  private[this] val healthCheckSchedule                 = context.system.scheduler.schedule(1 second, config.healthCheckInterval, self, GetHealth(true))
 
   // -----------------------------------------------------------------------
   // State
@@ -57,14 +72,16 @@ private final class StorageDispatcher(storageId: StorageId, storageProps: Storag
   // -----------------------------------------------------------------------
   // Streams
   // -----------------------------------------------------------------------
-  private[this] val pendingIndexQueue = Source.queue[(ChunkPath, Chunk)](sc.config.queues.chunksIndex, OverflowStrategy.dropNew)
+  private[this] val pendingIndexQueue = Source
+    .queue[(ChunkPath, Chunk)](sc.config.queues.chunksIndex, OverflowStrategy.dropNew)
     .via(AkkaStreamUtils.groupedOrInstant(sc.config.queues.chunksIndex, sc.config.queues.chunksIndexTime))
     .filter(_.nonEmpty)
-    .mapConcat(_.groupBy(_._1.regionId).map { case (regionId, chunks) ⇒
-      StorageIndex.Envelope(regionId, RegionIndex.WriteDiff(IndexDiff.newChunks(chunks.map(_._2):_*)))
+    .mapConcat(_.groupBy(_._1.regionId).map {
+      case (regionId, chunks) ⇒
+        StorageIndex.Envelope(regionId, RegionIndex.WriteDiff(IndexDiff.newChunks(chunks.map(_._2): _*)))
     })
     .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
-    .to(Sink.actorRef(index, Kill))
+    .to(Sink.actorRef(index, Status.Failure(new IllegalStateException("Queue stopped"))))
     .named("pendingIndexQueue")
     .run()
 
@@ -88,7 +105,7 @@ private final class StorageDispatcher(storageId: StorageId, storageProps: Storag
       val scheduler = context.system.scheduler
       pendingIndexQueue.offer((path, chunk)).onComplete {
         case Success(QueueOfferResult.Enqueued) ⇒
-          // Pass
+        // Pass
 
         case _ ⇒
           log.warning("Rescheduling chunk index write: {}/{}", path, chunk)
@@ -116,18 +133,19 @@ private final class StorageDispatcher(storageId: StorageId, storageProps: Storag
     // -----------------------------------------------------------------------
     // Storage events
     // -----------------------------------------------------------------------
-    case StorageEnvelope(`storageId`, event: StorageEvents.Event) ⇒ event match {
-      case StorageEvents.ChunkWritten(path, chunk) ⇒
-        log.debug("Appending new chunk to index: {}", chunk)
-        self ! WriteChunkToIndex(path, chunk.withoutData)
+    case StorageEnvelope(`storageId`, event: StorageEvents.Event) ⇒
+      event match {
+        case StorageEvents.ChunkWritten(path, chunk) ⇒
+          log.debug("Appending new chunk to index: {}", chunk)
+          self ! WriteChunkToIndex(path, chunk.withoutData)
 
-        val written = chunk.checksum.encSize
-        log.debug("{} bytes written, updating storage health", written)
-        updateHealth(_ - written)
+          val written = chunk.checksum.encSize
+          log.debug("{} bytes written, updating storage health", written)
+          updateHealth(_ - written)
 
-      case _ ⇒
+        case _ ⇒
         // Ignore
-    }
+      }
   }
 
   // -----------------------------------------------------------------------
@@ -147,10 +165,11 @@ private final class StorageDispatcher(storageId: StorageId, storageProps: Storag
     context.watch(chunkIO)
     context.watch(index)
     sc.eventStreams.storage.subscribe(self, storageId)
-    pendingIndexQueue.watchCompletion().foreach(_ ⇒ self ! Kill)
+    lifecycleHook.foreach(_.initialize())
   }
 
   override def postStop(): Unit = {
+    Try(lifecycleHook.foreach(_.shutdown())).failed.foreach(log.error(_, "Error in shutdown hook"))
     sc.eventStreams.storage.unsubscribe(self)
     healthCheckSchedule.cancel()
     pendingIndexQueue.complete()

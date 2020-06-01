@@ -80,4 +80,11 @@ object AppComponents {
         AppComponents.modalClose()
       )
   }
+
+  def disabledIf(rx: Rx[Boolean]): Modifier = (t: Element) => {
+    rx.foreach(value =>
+      if (value) t.setAttribute("disabled", "")
+      else t.removeAttribute("disabled")
+    )
+  }
 }

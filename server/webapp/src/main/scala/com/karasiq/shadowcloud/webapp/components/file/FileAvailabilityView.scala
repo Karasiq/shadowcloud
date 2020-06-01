@@ -1,16 +1,14 @@
 package com.karasiq.shadowcloud.webapp.components.file
 
 import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
-import rx._
-
-import com.karasiq.shadowcloud.model.{File, StorageId}
 import com.karasiq.shadowcloud.model.utils.FileAvailability
-import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons}
+import com.karasiq.shadowcloud.model.{File, StorageId}
+import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons, Toastr}
+import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
-import AppContext.JsExecutionContext
 import com.karasiq.shadowcloud.webapp.utils.RxWithUpdate
+import rx._
+import scalaTags.all._
 
 object FileAvailabilityView {
   def apply(file: File)(implicit context: AppContext, folderContext: FolderContext): FileAvailabilityView = {
@@ -70,6 +68,7 @@ class FileAvailabilityView(file: File)(implicit context: AppContext, folderConte
           future.onComplete { _ ⇒
             repairing() = false
             availabilityRx.update()
+            Toastr.success(s"File replication finished: ${file.path}")
           }
         }
       }

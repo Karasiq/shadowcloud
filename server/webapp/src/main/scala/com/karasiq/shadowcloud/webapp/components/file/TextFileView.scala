@@ -1,22 +1,20 @@
 package com.karasiq.shadowcloud.webapp.components.file
 
-import scala.scalajs.js.UndefOr
-
-import rx.{Rx, Var}
-
 import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import com.karasiq.common.memory.SizeUnit
 import com.karasiq.highlightjs.HighlightJS
 import com.karasiq.markedjs.{Marked, MarkedOptions, MarkedRenderer}
 import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.utils.Utils
-import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons, TextEditor}
-import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
+import com.karasiq.shadowcloud.webapp.components.common.{AppComponents, AppIcons, Pell, TextEditor}
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
+import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.controllers.FileController
 import com.karasiq.shadowcloud.webapp.utils.HtmlUtils
+import rx.{Rx, Var}
+import scalaTags.all._
+
+import scala.scalajs.js.UndefOr
 
 object TextFileView {
   private[this] val TextFormats = Set("txt", "ini", "csv", "log")
@@ -71,7 +69,10 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
       val content = contentRx()
 
       if (editorOpened()) {
-        renderEditor(content)
+        if (file.path.name.endsWith(".html") || file.path.name.endsWith(".htm"))
+          renderHtmlEditor(content)
+        else
+          renderTextEditor(content)
       } else {
         if (TextFileView.isRenderableFile(file)) {
           renderHtml(Utils.getFileExtensionLowerCase(file.path.name), content)
@@ -97,19 +98,27 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
       .foreach(contentRx.update)
   }
 
-  private[this] def renderEditor(content: String): TagT = {
-    val editor = TextEditor { editor ⇒
-      editor.submitting() = true
-      val oldFile = fileRx.now
-      val (_, future) = context.api.uploadFile(folderContext.regionId, oldFile.path, editor.value.now)
-      future.onComplete(_ ⇒ editor.submitting() = false)
-      future.foreach { newFile ⇒
-        editorOpened() = false
-        fileRx() = newFile
-        fileController.updateFile(oldFile, newFile)
-      }
+  private[this] def editorOnSubmit[T](getText: T => String, submitting: T => Var[Boolean])(editor: T): Unit = {
+    submitting(editor)() = true
+    val oldFile = fileRx.now
+    val (_, future) = context.api.uploadFile(folderContext.regionId, oldFile.path, getText(editor))
+    future.onComplete(_ ⇒ submitting(editor)() = false)
+    future.foreach { newFile ⇒
+      editorOpened() = false
+      fileRx() = newFile
+      fileController.updateFile(oldFile, newFile)
     }
-    editor.value() = content
+  }
+
+  private[this] def renderHtmlEditor(content: String): TagT = {
+    val editor = Pell(editorOnSubmit(_.html.now, _.submitting))
+    editor.html() = content
+    div(editor)
+  }
+
+  private[this] def renderTextEditor(content: String): TagT = {
+    val editor = TextEditor(editorOnSubmit(_.text.now, _.submitting))
+    editor.text() = content
     editor.renderTag()
   }
 
@@ -138,7 +147,7 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
         lang.fold(HighlightJS.highlightAuto(source))(HighlightJS.highlight(_, source)).value
       },
       renderer = MarkedRenderer(table = { (header: String, body: String) ⇒
-        import scalatags.Text.all.{body ⇒ _, header ⇒ _, _}
+        import scalatags.Text.all.{body => _, header => _, _}
         table(`class` := "table table-striped", thead(raw(header)), tbody(raw(body))).render
       }),
       breaks = true,

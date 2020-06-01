@@ -147,7 +147,7 @@ final class RegionOps(regionSupervisor: ActorRef,
   // TODO: Fix crypto parallelism not applied
   def readChunk(regionId: RegionId, chunk: Chunk): Future[Chunk] = {
     chunkCache.readCached(chunk, { () ⇒
-      Source.fromFuture(readChunkEncrypted(regionId, chunk))
+      Source.future(readChunkEncrypted(regionId, chunk))
         .via(chunkProcessing.afterRead)
         .runWith(Sink.head)
     })

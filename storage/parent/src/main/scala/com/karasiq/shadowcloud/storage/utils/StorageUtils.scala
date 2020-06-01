@@ -45,16 +45,16 @@ object StorageUtils {
       se
 
     case _: FileNotFoundException | _: NoSuchElementException ⇒
-      StorageException.NotFound(path)
+      StorageException.NotFound(path, error)
 
     case _: FileAlreadyExistsException ⇒
-      StorageException.AlreadyExists(path)
+      StorageException.AlreadyExists(path, error)
 
     case _ ⇒
       StorageException.IOFailure(path, error)
   }
 
-  def wrapAkkaIOResult(path: Path, result: AkkaIOResult) = result match {
+  def wrapAkkaIOResult(path: Path, result: AkkaIOResult): StorageIOResult = result match {
     case AkkaIOResult(count, Success(Done)) ⇒
       StorageIOResult.Success(path, count)
 

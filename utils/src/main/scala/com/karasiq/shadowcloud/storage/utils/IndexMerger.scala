@@ -28,6 +28,10 @@ private[shadowcloud] trait IndexMerger[T] extends HasEmpty {
 }
 
 private[shadowcloud] object IndexMerger {
+  implicit class IndexMergerExt[T](private val i: IndexMerger[T]) {
+    def foldersWithPending: FolderIndex = i.folders.patch(i.pending.folders)
+  }
+
   def apply[T](implicit ko: IndexKeyOrdering[T]): IndexMerger[T] = {
     create[T](ko.zero)(ko.ordering)
   }

@@ -9,6 +9,7 @@ import com.karasiq.shadowcloud.webapp.components.file.FilePreview.PreviewVariant
 import com.karasiq.shadowcloud.webapp.components.file.{FileDownloadLink, FilePreview}
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.utils.Blobs
+import org.scalajs.dom.DragEvent
 import rx._
 import rx.async._
 import scalaTags.all._
@@ -28,6 +29,13 @@ class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit
   }
 
   def renderTag(md: ModifierT*): TagT = {
+    val dragAndDropHandlers = Seq[Modifier](
+      draggable,
+      ondragstart := { ev: DragEvent ⇒
+        DragAndDrop.addFolderContext(ev.dataTransfer)
+        DragAndDrop.addFileHandle(ev.dataTransfer, file)
+      }
+    )
     val fileLink = FileDownloadLink(file)(file.path.name)
 
     GridSystem.row(
@@ -75,7 +83,8 @@ class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit
       border := "solid 0.1px",
       marginTop := 2.px,
       wordWrap.`break-word`,
-      onclick := Callback.onClick(_ ⇒ selectedFile() = Some(file))
+      onclick := Callback.onClick(_ ⇒ selectedFile() = Some(file)),
+      dragAndDropHandlers
     )
   }
 }

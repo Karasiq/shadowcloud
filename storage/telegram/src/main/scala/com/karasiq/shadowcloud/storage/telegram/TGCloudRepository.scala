@@ -34,11 +34,11 @@ class TGCloudRepository(port: Int)(implicit as: ActorSystem) extends PathTreeRep
 
   private[this] val executeHttpRequest = {
     val settings = ConnectionPoolSettings("""
-        |max-connections = 8
-        |max-open-requests = 32
-        |idle-timeout = 1m
+        |max-connections = 32
+        |max-open-requests = 128
+        |idle-timeout = 10m
         |max-retries = 0
-        |idle-timeout = 300s
+        |idle-timeout = 1200s
         |""".stripMargin)
 
     Flow[HttpRequest]
@@ -76,11 +76,11 @@ class TGCloudRepository(port: Int)(implicit as: ActorSystem) extends PathTreeRep
       .flatMapConcat(_.entity.dataBytes)
       .alsoToMat(StorageUtils.countPassedBytes(key).toMat(Sink.head)(Keep.right))(Keep.right)
 
-  override def write(key: Path): Sink[Data, Result] = {
+  override def write(path: Path): Sink[Data, Result] = {
     Flow[Data]
       .alsoToMat(
         Flow[Data]
-          .via(StorageUtils.countPassedBytes(key))
+          .via(StorageUtils.countPassedBytes(path))
           .toMat(Sink.head)(Keep.right)
       )(Keep.right)
       .via(ByteStreams.concat)
@@ -89,20 +89,17 @@ class TGCloudRepository(port: Int)(implicit as: ActorSystem) extends PathTreeRep
         upstream ⇒
           HttpRequest(
             HttpMethods.POST,
-            Uri("/upload").withQuery(Uri.Query("path" → encodePath(key))),
+            Uri("/upload").withQuery(Uri.Query("path" → encodePath(path))),
             entity = HttpEntity(ContentTypes.`application/octet-stream`, upstream)
           )
       )
       .via(executeHttpRequest)
-      .alsoTo(Sink.foreach(_.discardEntityBytes()))
       .collect[StorageIOResult] {
-        case r if r.status.isSuccess()             ⇒ StorageIOResult.Success(key, 0)
-        case r if r.status == StatusCodes.Conflict ⇒ StorageIOResult.Failure(key, StorageException.AlreadyExists(key))
-        case r                                     ⇒ StorageIOResult.Failure(key, StorageUtils.wrapException(key, new IOException(s"Request error: $r")))
+        case r if r.status.isSuccess()             ⇒ StorageIOResult.Success(path, 0)
+        case r if r.status == StatusCodes.Conflict ⇒ StorageIOResult.Failure(path, StorageException.AlreadyExists(path))
+        case r                                     ⇒ StorageIOResult.Failure(path, StorageUtils.wrapException(path, new IOException(s"Request error: $r")))
       }
-      .recover {
-        case err ⇒ StorageIOResult.Failure(key, StorageUtils.wrapException(key, err))
-      }
+      .via(StorageUtils.wrapStream(path))
       .toMat(Sink.head)(StorageUtils.foldIOFutures(_, _))
   }
 

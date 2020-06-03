@@ -436,4 +436,9 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
     pendingIndexQueue.complete()
     super.postStop()
   }
+
+  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
+    reason.printStackTrace()
+    super.preRestart(reason, message)
+  }
 }

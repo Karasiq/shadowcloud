@@ -4,16 +4,21 @@
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import asyncio
 from secret import *
-from telegram_client_x import TelegramClientX
+from telethon import TelegramClient
 
-path_home = './'  # os.path.abspath('.')
-client = TelegramClientX(entity, api_id, api_hash, update_workers=None, spawn_read_thread=True)
-# client = TelegramClient(entity, api_id, api_hash, update_workers=None, spawn_read_thread=True)
+client = TelegramClient(entity, api_id, api_hash)
 
-client.connect()
 
-if not client.is_user_authorized():
-    client.start()
+async def create_session():
+    await client.connect()
 
-client.disconnect()
+    if not client.is_user_authorized():
+        client.start()
+
+    await client.disconnect()
+
+
+loop = asyncio.get_event_loop()
+result = loop.run_until_complete(create_session())

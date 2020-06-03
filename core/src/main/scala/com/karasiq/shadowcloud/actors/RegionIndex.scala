@@ -296,7 +296,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
           becomeOrDefault(receivePreWrite(loadedKeys ++ keys))
 
         case Status.Failure(error) ⇒
-          log.error(error, "Keys load error")
+          log.debug("Keys load error: {}", error)
           synchronization.scheduleNext()
 
         case StreamCompleted ⇒
@@ -515,5 +515,10 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
   private[this] def becomeOrDefault(receive: Receive): Unit = {
     context.become(receive.orElse(receiveDefault))
+  }
+
+  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
+    reason.printStackTrace()
+    super.preRestart(reason, message)
   }
 }

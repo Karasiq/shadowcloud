@@ -51,31 +51,36 @@ object RegionRepairStream {
         }
 
         chunksSource
-          .mapAsyncUnordered(parallelism.query)(regionOps.getChunkStatus(request.regionId, _))
-          .via(RestartFlow.onFailuresWithBackoff(3 seconds, 30 seconds, 0.2, 20) { () ⇒
+          .via(RestartFlow.onFailuresWithBackoff(500 millis, 10 seconds, 0.2, 20) { () ⇒
+            Flow[Chunk].mapAsyncUnordered(parallelism.query)(regionOps.getChunkStatus(request.regionId, _))
+          })
+          .via(
             Flow[ChunkStatus]
               .map(status ⇒ status → createNewAffinity(status, request.strategy))
               .filterNot { case (status, newAffinity) ⇒ newAffinity.exists(_.isFinished(status)) }
-              .mapAsyncUnordered(parallelism.read) {
-                case (status, newAffinity) ⇒
-                  regionOps.readChunkEncrypted(request.regionId, status.chunk).map(_ → newAffinity)
-              }
+              .via(RestartFlow.onFailuresWithBackoff(500 millis, 10 seconds, 0.2, 20) { () ⇒
+                Flow[(ChunkStatus, Option[ChunkWriteAffinity])].mapAsyncUnordered(parallelism.read) {
+                  case (status, newAffinity) ⇒
+                    regionOps.readChunkEncrypted(request.regionId, status.chunk).map(_ → newAffinity)
+                }
+              })
               .log("region-repair-read", chunk ⇒ s"${chunk._1.hashString} at ${request.regionId}")
-              .async
               .via(ByteStreams.bufferT(_._1.data.encrypted.length, bufferSize))
-              .mapAsyncUnordered(parallelism.write) {
-                case (chunk, newAffinity) ⇒
-                  regionOps.rewriteChunk(request.regionId, chunk, newAffinity)
-              }
+              .via(RestartFlow.onFailuresWithBackoff(500 millis, 10 seconds, 0.2, 20) { () ⇒
+                Flow[(Chunk, Option[ChunkWriteAffinity])].mapAsyncUnordered(parallelism.write) {
+                  case (chunk, newAffinity) ⇒
+                    regionOps.rewriteChunk(request.regionId, chunk, newAffinity)
+                }
+              })
               .log("region-repair-write", chunk ⇒ s"${chunk.hashString} at ${request.regionId}")
               .withAttributes(ActorAttributes.logLevels(onElement = Logging.InfoLevel))
               .map(_.withoutData)
-          })
+          )
           .fold(Nil: Seq[Chunk])(_ :+ _)
           .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
           .alsoTo(AkkaStreamUtils.successPromiseOnFirst(request.result))
       }
-      .recover { case _ => Nil }
+      .recover { case _ ⇒ Nil }
       .to(Sink.ignore)
       .named("regionRepairStream")
   }

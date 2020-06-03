@@ -89,7 +89,7 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
       .named("gdriveRead")
   }
 
-  def write(key: Path) = {
+  def write(path: Path) = {
     def getFolderId(path: Path) =
       for {
         folderId   ← entityCache.getOrCreateFolderId(path.parent)
@@ -106,24 +106,24 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
 
     Flow[Data]
       .via(AkkaStreamUtils.extractUpstream)
-      .zip(Source.lazyFuture(() ⇒ getFolderId(key)))
+      .zip(Source.lazyFuture(() ⇒ getFolderId(path)))
       .flatMapConcat {
         case (stream, folderId) ⇒
           stream.via(
             AkkaStreamUtils.writeInputStream(
               { inputStream ⇒
-                val result = Try(blockingUpload(folderId, key.name, inputStream))
-                result.foreach(_ ⇒ entityCache.resetFileCache(key))
+                val result = Try(blockingUpload(folderId, path.name, inputStream))
+                result.foreach(_ ⇒ entityCache.resetFileCache(path))
                 Source.future(Future.fromTry(result))
               },
               Dispatcher(GDriveDispatchers.fileDispatcherId)
             )
           )
       }
-      .map(written ⇒ StorageIOResult.Success(key, written))
+      .map(written ⇒ StorageIOResult.Success(path, written))
       .withAttributes(fileStreamAttributes)
       .withAttributes(ActorAttributes.supervisionStrategy(Supervision.stoppingDecider))
-      .recover { case err ⇒ StorageIOResult.Failure(key, StorageUtils.wrapException(key, err)) }
+      .via(StorageUtils.wrapStream(path))
       .toMat(Sink.head)(Keep.right)
       .named("gdriveWrite")
   }

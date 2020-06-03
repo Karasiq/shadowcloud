@@ -192,6 +192,7 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
   // -----------------------------------------------------------------------
   override def preStart(): Unit = {
     def stopOnComplete(f: Future[Done]) = {
+      val log = this.log
       f.onComplete(result ⇒ log.error("Queue stopped: {}", result))
       f.map(_ ⇒ Kill).pipeTo(self)
     }
@@ -305,5 +306,10 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
       .run()
 
     DeleteChunks.wrapFuture(paths, deleted.zip(ioResult))
+  }
+
+  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
+    reason.printStackTrace()
+    super.preRestart(reason, message)
   }
 }

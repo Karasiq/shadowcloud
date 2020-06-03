@@ -2,7 +2,6 @@ package com.karasiq.shadowcloud.actors
 
 import akka.actor.{Actor, ActorLogging, DeadLetterSuppression, PossiblyHarmful, Props, ReceiveTimeout, Status}
 import akka.persistence._
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.{Done, NotUsed}
 import com.karasiq.shadowcloud.ShadowCloud
@@ -66,9 +65,10 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
   require(storageId.nonEmpty && regionId.nonEmpty, "Invalid storage identifier")
 
   import context.dispatcher
-  private[this] implicit val materializer = ActorMaterializer()
   private[this] implicit lazy val sc      = ShadowCloud()
   private[this] lazy val config           = sc.configs.storageConfig(storageId, storageProps)
+
+  import sc.implicits.materializer
 
   private[this] object state {
     val indexId       = RegionIndexId(storageId, regionId)
@@ -115,8 +115,9 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
         state.compactRequested = true
       }
 
-    case Synchronize if sender() != self && sender() != Actor.noSender ⇒
-      state.pendingSync.addWaiter(state.indexId, sender())
+    case Synchronize ⇒
+      if (sender() != self && sender() != Actor.noSender)
+        state.pendingSync.addWaiter(state.indexId, sender())
 
     case DeleteHistory ⇒
       val sender = context.sender()
@@ -223,7 +224,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
           becomeOrDefault(receivePreRead(loadedKeys ++ keys))
 
         case Status.Failure(error) ⇒
-          log.error(error, "Diffs load failed")
+          log.debug("Diffs load failed: {}", error)
           // throw error
           synchronization.scheduleNext()
 

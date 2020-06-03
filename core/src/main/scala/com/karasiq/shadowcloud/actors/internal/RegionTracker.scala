@@ -1,19 +1,15 @@
 package com.karasiq.shadowcloud.actors.internal
 
-import akka.actor.{ActorContext, OneForOneStrategy, Props, SupervisorStrategy}
-import akka.pattern.BackoffSupervisor
+import akka.actor.ActorContext
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.utils.{ActorState => State}
 import com.karasiq.shadowcloud.actors.{RegionContainer, RegionDispatcher, StorageContainer, StorageIndex}
 import com.karasiq.shadowcloud.config.RegionConfig
-import com.karasiq.shadowcloud.exceptions.SCException
 import com.karasiq.shadowcloud.model.utils.StorageHealth
 import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.props.StorageProps
-import com.karasiq.shadowcloud.utils.Utils
 
 import scala.collection.mutable
-import scala.concurrent.duration._
 
 object RegionTracker {
   final case class RegionStatus(regionId: RegionId, regionConfig: RegionConfig, actorState: State, storages: Set[String] = Set.empty)
@@ -33,10 +29,10 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
-  private[this] val sc = ShadowCloud()
+  private[this] val sc           = ShadowCloud()
   private[this] val instantiator = StorageInstantiator(sc.modules)
-  private[this] val regions = mutable.AnyRefMap.empty[String, RegionStatus]
-  private[this] val storages = mutable.AnyRefMap.empty[String, StorageStatus]
+  private[this] val regions      = mutable.AnyRefMap.empty[String, RegionStatus]
+  private[this] val storages     = mutable.AnyRefMap.empty[String, StorageStatus]
 
   // -----------------------------------------------------------------------
   // Contains
@@ -101,26 +97,30 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   def suspendStorage(storageId: StorageId): Unit = {
     storages.get(storageId) match {
       case Some(storage @ StorageStatus(`storageId`, _, State.Active(dispatcher), regions)) ⇒
-        regions.flatMap(this.regions.get)
+        regions
+          .flatMap(this.regions.get)
           .foreach(region ⇒ State.ifActive(region.actorState, _ ! RegionDispatcher.DetachStorage(storageId)))
+        context.unwatch(dispatcher)
         context.stop(dispatcher)
         storages += storageId → storage.copy(actorState = State.Suspended)
 
       case _ ⇒
-        // Pass
+      // Pass
     }
   }
 
   def suspendRegion(regionId: RegionId): Unit = {
     regions.get(regionId) match {
       case Some(region @ RegionStatus(`regionId`, _, State.Active(dispatcher), storages)) ⇒
-        storages.flatMap(this.storages.get)
+        storages
+          .flatMap(this.storages.get)
           .foreach(storage ⇒ State.ifActive(storage.actorState, _ ! StorageIndex.CloseIndex(regionId)))
+        context.unwatch(dispatcher)
         context.stop(dispatcher)
         regions += regionId → region.copy(actorState = State.Suspended)
 
       case _ ⇒
-        // Pass
+      // Pass
     }
   }
 
@@ -128,13 +128,13 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     storages.get(storageId) match {
       case Some(StorageStatus(`storageId`, props, State.Suspended, regions)) ⇒
         val dispatcherProps = StorageContainer.props(instantiator, storageId)
-        val dispatcher = context.actorOf(supervisorProps(dispatcherProps), Utils.uniqueActorName(s"$storageId-sv"))
+        val dispatcher      = context.watch(context.actorOf(dispatcherProps))
         dispatcher ! StorageContainer.SetProps(props)
         storages += storageId → StorageStatus(storageId, props, State.Active(dispatcher), regions)
-        // registerStorageRegions(storageId)
+      // registerStorageRegions(storageId)
 
       case _ ⇒
-        // Pass
+      // Pass
     }
   }
 
@@ -142,28 +142,14 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
     regions.get(regionId) match {
       case Some(RegionStatus(`regionId`, config, State.Suspended, storages)) ⇒
         val dispatcherProps = RegionContainer.props(regionId)
-        val dispatcher = context.actorOf(supervisorProps(dispatcherProps), Utils.uniqueActorName(s"$regionId-sv"))
+        val dispatcher      = context.watch(context.actorOf(dispatcherProps))
         dispatcher ! RegionContainer.SetConfig(config)
         regions += regionId → RegionStatus(regionId, config, State.Active(dispatcher), storages)
-        // registerRegionStorages(regionId)
+      // registerRegionStorages(regionId)
 
       case _ ⇒
-        // Pass
+      // Pass
     }
-  }
-
-  private[this] def supervisorProps(props: Props): Props = {
-    BackoffSupervisor.propsWithSupervisorStrategy(props, "backoff-supervised",
-      1 second, 5 minutes, 0.2, OneForOneStrategy(5, 15 seconds) {
-      case _: IllegalArgumentException | _: SCException.NotFound | _: SCException.AlreadyExists ⇒
-        SupervisorStrategy.Resume
-
-      case _: SCException.IOError ⇒
-        SupervisorStrategy.Restart
-
-      case _ ⇒
-        SupervisorStrategy.Stop
-    })
   }
 
   // -----------------------------------------------------------------------
@@ -171,13 +157,17 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   // -----------------------------------------------------------------------
   def deleteRegion(regionId: RegionId): RegionStatus = {
     require(containsRegion(regionId))
-    storages.foreach { case (storageId, storage) ⇒
-      if (storage.regions.contains(regionId))
-        storages += storageId → storage.copy(regions = storage.regions - regionId)
+    storages.foreach {
+      case (storageId, storage) ⇒
+        if (storage.regions.contains(regionId))
+          storages += storageId → storage.copy(regions = storage.regions - regionId)
     }
     val status = regions.remove(regionId).get
-    State.ifActive(status.actorState, context.stop)
-    status.storages.flatMap(storages.get).foreach { storage =>
+    State.ifActive(status.actorState, { dispatcher ⇒
+      context.unwatch(dispatcher)
+      context.stop(dispatcher)
+    })
+    status.storages.flatMap(storages.get).foreach { storage ⇒
       State.ifActive(storage.actorState, _ ! StorageIndex.CloseIndex(regionId, clear = true))
     }
     status
@@ -185,20 +175,26 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
 
   def deleteStorage(storageId: StorageId): StorageStatus = {
     require(containsStorage(storageId))
-    regions.foreach { case (regionId, region) ⇒
-      if (region.storages.contains(storageId)) {
-        regions += regionId → region.copy(storages = region.storages - storageId)
-        State.ifActive(region.actorState, _ ! RegionDispatcher.DetachStorage(storageId))
-      }
+    regions.foreach {
+      case (regionId, region) ⇒
+        if (region.storages.contains(storageId)) {
+          regions += regionId → region.copy(storages = region.storages - storageId)
+          State.ifActive(region.actorState, _ ! RegionDispatcher.DetachStorage(storageId))
+        }
     }
     val status = storages.remove(storageId).get
-    State.ifActive(status.actorState, context.stop)
+    State.ifActive(status.actorState, { dispatcher ⇒
+      context.unwatch(dispatcher)
+      context.stop(dispatcher)
+    })
     status
   }
 
   def clear(): Unit = {
-    regions.foreachValue(region ⇒ State.ifActive(region.actorState, context.stop))
-    storages.foreachValue(storage ⇒ State.ifActive(storage.actorState, context.stop))
+    (regions.values.map(_.actorState) ++ storages.values.map(_.actorState)).foreach(State.ifActive(_, { dispatcher ⇒
+      context.unwatch(dispatcher)
+      context.stop(dispatcher)
+    }))
     regions.clear()
     storages.clear()
   }
@@ -208,9 +204,9 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   // -----------------------------------------------------------------------
   def registerStorage(regionId: RegionId, storageId: StorageId): Unit = {
     require(containsRegionAndStorage(regionId, storageId))
-    val region = regions(regionId)
+    val region  = regions(regionId)
     val storage = storages(storageId)
-    regions += regionId → region.copy(storages = region.storages + storageId)
+    regions += regionId   → region.copy(storages = region.storages + storageId)
     storages += storageId → storage.copy(regions = storage.regions + regionId)
 
     (storage.actorState, region.actorState) match {
@@ -219,15 +215,15 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
         regionDispatcher ! RegionDispatcher.AttachStorage(storageId, storage.storageProps, storageDispatcher, StorageHealth.empty)
 
       case _ ⇒
-        // Pass
+      // Pass
     }
   }
 
   def unregisterStorage(regionId: RegionId, storageId: StorageId): Unit = {
     require(containsRegionAndStorage(regionId, storageId))
-    val region = regions(regionId)
+    val region  = regions(regionId)
     val storage = storages(storageId)
-    regions += regionId → region.copy(storages = region.storages - storageId)
+    regions += regionId   → region.copy(storages = region.storages - storageId)
     storages += storageId → storage.copy(regions = storage.regions - regionId)
     State.ifActive(region.actorState, _ ! RegionDispatcher.DetachStorage(storageId))
     State.ifActive(storage.actorState, _ ! StorageIndex.CloseIndex(regionId, clear = true))
@@ -239,7 +235,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
         region.storages.foreach(registerStorage(regionId, _))
 
       case None ⇒
-        // Pass
+      // Pass
     }
   }
 
@@ -249,7 +245,7 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
         storage.regions.foreach(registerStorage(_, storageId))
 
       case None ⇒
-        // Pass 
+      // Pass
     }
   }
 }

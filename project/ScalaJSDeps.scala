@@ -1,11 +1,11 @@
-import org.scalajs.sbtplugin.ScalaJSPlugin.autoImport._
-import sbt._
+import org.portablescala.sbtplatformdeps.PlatformDepsPlugin.autoImport._
 import sbt.Keys.libraryDependencies
+import sbt._
 
 object ScalaJSDeps {
   type Deps = Def.Setting[Seq[ModuleID]]
   object akka {
-    val version = "1.2.5.13" // s"1.${ProjectDeps.akka.version}"
+    val version = "2.2.6.3" // s"1.${ProjectDeps.akka.version}"
 
     def actors: Deps = {
       libraryDependencies ++= Seq(

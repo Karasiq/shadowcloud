@@ -88,7 +88,7 @@ class TGCloudRepository(port: Int)(implicit as: ActorSystem) extends PathTreeRep
       .map(
         upstream ⇒
           HttpRequest(
-            HttpMethods.PUT,
+            HttpMethods.POST,
             Uri("/upload").withQuery(Uri.Query("path" → encodePath(key))),
             entity = HttpEntity(ContentTypes.`application/octet-stream`, upstream)
           )

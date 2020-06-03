@@ -55,7 +55,8 @@ class StorageHealthSupervisor(actor: ActorRef, interval: FiniteDuration, maxFail
       log.debug("Health check passed: {}", health)
       failures = 0
 
-    case Terminated(`actor`) ⇒
+    case Terminated(actor) ⇒
+      log.warning("Supervised storage terminated: {}", actor)
       context.stop(self)
 
     case message if sender() == actor ⇒

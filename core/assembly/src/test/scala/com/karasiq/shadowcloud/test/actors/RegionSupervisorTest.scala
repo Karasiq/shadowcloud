@@ -63,7 +63,7 @@ class RegionSupervisorTest extends SCExtensionSpec with FlatSpecLike with Matche
     regions.keySet shouldBe Set(testRegion)
     storages shouldBe empty
     regions(testRegion).storages shouldBe empty
-    expectNoMsg(500 millis) // Wait for storage actor stop
+    expectNoMessage(500 millis) // Wait for storage actor stop
   }
 
   it should "suspend storage" in {

@@ -45,7 +45,7 @@ class TGCloudStoragePlugin extends StoragePlugin {
         private[this] val scriptsPath = Files.createTempDirectory("tgcloud")
         private[this] var threads     = Seq.empty[Thread]
 
-        override def initialize(): Unit = {
+        override def initialize(): Unit = if (config.port.isEmpty) {
           val session = Try(sc.sessions.getRawBlocking(storageId, "tgcloud-session")).toOption
             .orElse(props.rootConfig.optional(_.getString("session")).map(Base64.decode))
             .filter(_.nonEmpty)
@@ -54,42 +54,40 @@ class TGCloudStoragePlugin extends StoragePlugin {
           require(session.nonEmpty, "Session is empty")
           sc.sessions.setRawBlocking(storageId, "tgcloud-session", session)
 
-          if (config.port.isEmpty) {
-            val process = {
-              TGCloudScripts.extract(scriptsPath)
-              TGCloudScripts.writeSecrets(scriptsPath, config.secrets)
-              TGCloudScripts.writeSession(scriptsPath, config.secrets.entity, session)
+          val process = {
+            TGCloudScripts.extract(scriptsPath)
+            TGCloudScripts.writeSecrets(scriptsPath, config.secrets)
+            TGCloudScripts.writeSession(scriptsPath, config.secrets.entity, session)
 
-              val python = config.pythonPath.getOrElse {
-                val paths = Seq("/usr/local/bin/python3", "/usr/bin/python3", "/usr/local/bin/python", "/usr/bin/python", "C:\\Windows\\py.exe")
-                paths
-                  .find(f ⇒ Files.isExecutable(Paths.get(f)))
-                  .getOrElse(throw new IllegalStateException("Python executable is not found. Please provide an explicit 'python-path' setting."))
-              }
-              new ProcessBuilder(python, "download_service.py", "server", port.toString, config.entity).directory(scriptsPath.toFile)
+            val python = config.pythonPath.getOrElse {
+              val paths = Seq("/usr/local/bin/python3", "/usr/bin/python3", "/usr/local/bin/python", "/usr/bin/python", "C:\\Windows\\py.exe")
+              paths
+                .find(f ⇒ Files.isExecutable(Paths.get(f)))
+                .getOrElse(throw new IllegalStateException("Python executable is not found. Please provide an explicit 'python-path' setting."))
             }
-            log.info("Starting subprocess: {}", process.command().asScala.mkString(" "))
-            runningProc = process.start()
-
-            val stdoutReader = new Thread(() ⇒ {
-              scala.io.Source
-                .fromInputStream(runningProc.getInputStream, "UTF-8")
-                .getLines()
-                .foreach(log.info("(Python) {}", _))
-            })
-            val stderrReader = new Thread(() ⇒ {
-              scala.io.Source
-                .fromInputStream(runningProc.getErrorStream, "UTF-8")
-                .getLines()
-                .foreach(log.info("Python: {}", _))
-            })
-            stdoutReader.setName(s"python-$port-stdout")
-            stderrReader.setName(s"python-$port-stderr")
-            threads = Seq(stdoutReader, stderrReader)
-            threads.foreach(_.setDaemon(true))
-            threads.foreach(_.start())
-            sys.addShutdownHook(shutdown())
+            new ProcessBuilder(python, "download_service.py", "server", port.toString, config.entity).directory(scriptsPath.toFile)
           }
+          log.info("Starting subprocess: {}", process.command().asScala.mkString(" "))
+          runningProc = process.start()
+
+          val stdoutReader = new Thread(() ⇒ {
+            scala.io.Source
+              .fromInputStream(runningProc.getInputStream, "UTF-8")
+              .getLines()
+              .foreach(log.info("(Python) {}", _))
+          })
+          val stderrReader = new Thread(() ⇒ {
+            scala.io.Source
+              .fromInputStream(runningProc.getErrorStream, "UTF-8")
+              .getLines()
+              .foreach(log.info("Python: {}", _))
+          })
+          stdoutReader.setName(s"python-$port-stdout")
+          stderrReader.setName(s"python-$port-stderr")
+          threads = Seq(stdoutReader, stderrReader)
+          threads.foreach(_.setDaemon(true))
+          threads.foreach(_.start())
+          sys.addShutdownHook(shutdown())
         }
 
         override def shutdown(): Unit = synchronized {

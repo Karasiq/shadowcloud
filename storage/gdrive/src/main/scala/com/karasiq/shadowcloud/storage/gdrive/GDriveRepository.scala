@@ -106,23 +106,24 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
 
     Flow[Data]
       .via(AkkaStreamUtils.extractUpstream)
-      .zip(Source.lazyFuture(() => getFolderId(key)))
+      .zip(Source.lazyFuture(() ⇒ getFolderId(key)))
       .flatMapConcat {
-        case (stream, folderId) =>
+        case (stream, folderId) ⇒
           stream.via(
             AkkaStreamUtils.writeInputStream(
-              { inputStream =>
+              { inputStream ⇒
                 val result = Try(blockingUpload(folderId, key.name, inputStream))
-                result.foreach(_ => entityCache.resetFileCache(key))
+                result.foreach(_ ⇒ entityCache.resetFileCache(key))
                 Source.future(Future.fromTry(result))
               },
               Dispatcher(GDriveDispatchers.fileDispatcherId)
             )
           )
       }
-      .map(written => StorageIOResult.Success(key, written))
+      .map(written ⇒ StorageIOResult.Success(key, written))
       .withAttributes(fileStreamAttributes)
       .withAttributes(ActorAttributes.supervisionStrategy(Supervision.stoppingDecider))
+      .recover { case err ⇒ StorageIOResult.Failure(key, StorageUtils.wrapException(key, err)) }
       .toMat(Sink.head)(Keep.right)
       .named("gdriveWrite")
   }

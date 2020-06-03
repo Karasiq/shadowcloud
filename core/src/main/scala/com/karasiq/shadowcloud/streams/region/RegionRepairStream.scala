@@ -74,8 +74,8 @@ object RegionRepairStream {
           .fold(Nil: Seq[Chunk])(_ :+ _)
           .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
           .alsoTo(AkkaStreamUtils.successPromiseOnFirst(request.result))
-          .recoverWithRetries(1, { case _ ⇒ Source.empty })
       }
+      .recover { case _ => Nil }
       .to(Sink.ignore)
       .named("regionRepairStream")
   }

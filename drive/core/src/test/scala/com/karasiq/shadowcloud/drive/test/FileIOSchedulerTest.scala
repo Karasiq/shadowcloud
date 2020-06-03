@@ -4,20 +4,19 @@ import akka.pattern.ask
 import akka.stream.testkit.scaladsl.TestSink
 import akka.testkit.TestActorRef
 import akka.util.ByteString
-import org.scalatest.FlatSpecLike
-
 import com.karasiq.shadowcloud.actors.RegionSupervisor.{CreateRegion, CreateStorage, RegisterStorage}
 import com.karasiq.shadowcloud.drive.FileIOScheduler
-import com.karasiq.shadowcloud.drive.config.SCDriveConfig
 import com.karasiq.shadowcloud.drive.FileIOScheduler._
+import com.karasiq.shadowcloud.drive.config.SCDriveConfig
 import com.karasiq.shadowcloud.drive.utils.ChunkPatch
 import com.karasiq.shadowcloud.model.{Chunk, File}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.test.utils.SCExtensionSpec
+import org.scalatest.FlatSpecLike
 
-class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
+final class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------

@@ -59,10 +59,12 @@ private final class StorageDispatcher(
   // -----------------------------------------------------------------------
   import context.dispatcher
 
-  private[this] implicit val materializer: Materializer = ActorMaterializer()
-  private[this] val sc                                  = ShadowCloud()
-  private[this] val config                              = sc.configs.storageConfig(storageId, storageProps)
-  private[this] val healthCheckSchedule                 = context.system.scheduler.schedule(1 second, config.healthCheckInterval, self, GetHealth(true))
+  private[this] val sc     = ShadowCloud()
+  private[this] val config = sc.configs.storageConfig(storageId, storageProps)
+  private[this] val healthCheckSchedule =
+    context.system.scheduler.scheduleWithFixedDelay(Duration.Zero, config.healthCheckInterval, self, GetHealth(true))
+
+  import sc.implicits.materializer
 
   // -----------------------------------------------------------------------
   // State

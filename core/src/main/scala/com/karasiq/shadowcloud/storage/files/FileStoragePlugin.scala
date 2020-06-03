@@ -3,7 +3,7 @@ package com.karasiq.shadowcloud.storage.files
 import java.nio.file.Paths
 
 import akka.actor.{ActorContext, ActorRef, ActorSystem}
-import akka.stream.{ActorMaterializer, Materializer}
+import akka.stream.Materializer
 import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage._
 import com.karasiq.shadowcloud.storage.props.StorageProps
@@ -21,8 +21,8 @@ private[storage] object FileStoragePlugin {
 private[storage] final class FileStoragePlugin extends StoragePlugin {
   def createStorage(storageId: StorageId, props: StorageProps)(implicit context: ActorContext): ActorRef = {
     implicit val executionContext: ExecutionContext = FileStoragePlugin.getBlockingDispatcher(context.system)
-    implicit val materializer: Materializer = ActorMaterializer()
-    
+    implicit val materializer: Materializer         = Materializer.matFromSystem(context.system)
+
     val path = props.address.uri.fold(Paths.get(""))(Paths.get)
     StoragePluginBuilder(storageId, props)
       .withIndexTree(Repositories.fromDirectory(path))

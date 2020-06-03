@@ -19,9 +19,10 @@ import scala.concurrent.duration._
 private[server] trait SCAkkaHttpApiRoutes { self: Directives ⇒
   protected val sc: ShadowCloudExtension
 
+  //noinspection TypeAnnotation
   private[http] object SCApiInternals {
     private[this] implicit val executionContext: ExecutionContext = sc.implicits.executionContext
-    val apiServer = SCDefaultApiServer
+    val apiServer                                                 = SCDefaultApiServer
 
     val apiEncoding = apiServer.encoding
     import apiEncoding.implicits._
@@ -30,7 +31,8 @@ private[server] trait SCAkkaHttpApiRoutes { self: Directives ⇒
     type RequestT = apiServer.Request
 
     val apiMediaType = {
-      MediaType.parse(apiServer.payloadContentType)
+      MediaType
+        .parse(apiServer.payloadContentType)
         .getOrElse(sys.error(s"Invalid content type: ${apiServer.payloadContentType}"))
     }
 
@@ -63,7 +65,10 @@ private[server] trait SCAkkaHttpApiRoutes { self: Directives ⇒
 
     def validateContentType(expectedValue: MediaType): Directive0 = {
       extract(_.request.entity.contentType)
-        .require(_.mediaType == expectedValue, UnsupportedRequestContentTypeRejection(Set(ContentTypeRange(expectedValue))))
+        .require(
+          _.mediaType == expectedValue,
+          UnsupportedRequestContentTypeRejection(Set(ContentTypeRange(expectedValue)), Some(ContentType(expectedValue, () ⇒ HttpCharsets.`UTF-8`)))
+        )
     }
 
     def validateHeader(name: String, func: String ⇒ Boolean): Directive0 = {

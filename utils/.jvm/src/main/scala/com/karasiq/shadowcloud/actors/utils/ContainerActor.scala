@@ -2,9 +2,10 @@ package com.karasiq.shadowcloud.actors.utils
 
 import java.util.concurrent.TimeoutException
 
-import akka.actor.{Actor, ActorLogging, ActorRef, ReceiveTimeout, Stash, Terminated}
+import akka.actor.{Actor, ActorLogging, ActorRef, OneForOneStrategy, ReceiveTimeout, Stash, SupervisorStrategy, Terminated}
 
 import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 private[actors] object ContainerActor {
   sealed trait Message
@@ -15,14 +16,16 @@ private[actors] trait ContainerActor { self: Actor with Stash with ActorLogging 
   import ContainerActor._
 
   protected var actorRef: Option[ActorRef] = None
-  protected var stopping: Boolean = false
+  protected var stopping: Boolean          = false
 
   def startActor(): Unit
+
+  def restartInterval: FiniteDuration = 5 seconds
 
   def stopActor(): Unit = {
     stopping = true
     actorRef.foreach(context.stop)
-    context.setReceiveTimeout(30 seconds)
+    context.setReceiveTimeout(10 seconds)
   }
 
   def restartActor(): Unit = {
@@ -55,8 +58,10 @@ private[actors] trait ContainerActor { self: Actor with Stash with ActorLogging 
         afterStop(actor)
         startActor()
       } else {
-        // log.warning("Actor stopped: {}", actor)
-        context.stop(context.self)
+        log.warning("Contained actor stopped unexpectedly: {}", actor)
+
+        import context.dispatcher
+        context.system.scheduler.scheduleOnce(restartInterval, context.self, Restart)
       }
 
     case ReceiveTimeout ⇒
@@ -71,5 +76,9 @@ private[actors] trait ContainerActor { self: Actor with Stash with ActorLogging 
       } else {
         stash()
       }
+  }
+
+  override def supervisorStrategy: _root_.akka.actor.SupervisorStrategy = OneForOneStrategy() {
+    case NonFatal(_) ⇒ SupervisorStrategy.Stop
   }
 }

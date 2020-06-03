@@ -24,7 +24,7 @@ class RegionGCTest extends SCExtensionSpec with FlatSpecLike with SequentialNest
     sc.ops.region.synchronize(testRegionId).futureValue
     sc.ops.storage.deleteChunks(testStorageId, Set(ChunkPath(testRegionId, chunk.checksum.hash))).futureValue._2.isSuccess shouldBe true
     sc.actors.regionSupervisor ! RegionEnvelope(testRegionId, RegionGC.UnReserve(Set(chunk)))
-    expectNoMsg(1 second)
+    expectNoMessage(1 second)
     whenReady(sc.ops.region.collectGarbage(testRegionId, GCStrategy.Delete)) { gcReport ⇒
       gcReport.regionId shouldBe testRegionId
       gcReport.regionState.oldFiles shouldBe empty
@@ -42,7 +42,7 @@ class RegionGCTest extends SCExtensionSpec with FlatSpecLike with SequentialNest
     sc.ops.region.writeChunk(testRegionId, chunk).futureValue shouldBe chunk
     sc.actors.regionSupervisor ! RegionEnvelope(testRegionId, RegionGC.UnReserve(Set(chunk)))
     sc.ops.region.synchronize(testRegionId)
-    expectNoMsg(1 seconds)
+    expectNoMessage(1 seconds)
 
     sc.ops.storage.writeIndex(testStorageId, testRegionId, IndexDiff.deleteChunks(chunk)).futureValue
     sc.ops.storage.synchronize(testStorageId, testRegionId).futureValue

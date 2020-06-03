@@ -96,10 +96,10 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
-  private[this] implicit val sc           = ShadowCloud()
-  private[this] implicit val materializer = ActorMaterializer()
+  private[this] implicit val sc = ShadowCloud()
+
   import context.dispatcher
-  import sc.implicits.defaultTimeout
+  import sc.implicits.{defaultTimeout, materializer}
 
   val storageTracker = StorageTracker()
   val chunksTracker  = ChunksTracker(regionId, regionConfig, storageTracker)
@@ -113,7 +113,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
   // -----------------------------------------------------------------------
   // Actors
   // -----------------------------------------------------------------------
-  private[this] val gcActor = context.actorOf(RegionGC.props(regionId, regionConfig), "region-gc")
+  private[this] val gcActor = context.watch(context.actorOf(RegionGC.props(regionId, regionConfig), "region-gc"))
 
   // -----------------------------------------------------------------------
   // Streams
@@ -126,7 +126,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
     .log("region-grouped-diff")
     .map(WriteIndexDiff)
     .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
-    .to(Sink.actorRef(self, Kill))
+    .to(Sink.actorRef(self, Kill, _ => Kill))
     .named("regionPendingQueue")
     .run()
 
@@ -298,7 +298,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
 
       val indexFuture = indexTracker.storages.io
         .synchronize(storage)
-        .flatMap(_ => indexTracker.storages.io.getIndex(storage))
+        .flatMap(_ ⇒ indexTracker.storages.io.getIndex(storage))
 
       indexFuture.onComplete {
         case Success(IndexMerger.State(Nil, IndexDiff.empty)) | Failure(StorageException.NotFound(_, _)) ⇒

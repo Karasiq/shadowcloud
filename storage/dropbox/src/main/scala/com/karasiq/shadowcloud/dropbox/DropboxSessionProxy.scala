@@ -4,7 +4,6 @@ import akka.Done
 import akka.actor.{ActorRef, Props}
 import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpRequest
-import akka.stream.{ActorMaterializer, Materializer}
 import com.karasiq.common.configs.ConfigImplicits._
 import com.karasiq.dropbox.client.DropboxClient
 import com.karasiq.dropbox.model.Dropbox
@@ -42,8 +41,8 @@ object DropboxSessionProxy {
     SessionProxyActor.props(
       implicit context ⇒
         new SessionAuthenticator[UserToken] {
-          private[this] implicit val materializer: Materializer = ActorMaterializer()
           import context.{dispatcher, system}
+          import sc.implicits.materializer
 
           def getSession(): Future[UserToken] = {
             def checkConnection(): Future[Done] =

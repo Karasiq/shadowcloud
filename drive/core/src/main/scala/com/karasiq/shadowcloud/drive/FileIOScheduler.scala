@@ -2,7 +2,6 @@ package com.karasiq.shadowcloud.drive
 
 import akka.actor.{Actor, ActorLogging, PoisonPill, Props, ReceiveTimeout}
 import akka.pattern.{ask, pipe}
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Sink, Source}
 import akka.util.{ByteString, Timeout}
 import akka.{Done, NotUsed}
@@ -83,10 +82,11 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
-  import context.dispatcher
-  private[this] implicit val materializer = ActorMaterializer()
   private[this] implicit val timeout      = Timeout(config.fileIO.writeTimeout)
   private[this] val sc                    = ShadowCloud()
+
+  import context.dispatcher
+  import sc.implicits.materializer
 
   // -----------------------------------------------------------------------
   // State

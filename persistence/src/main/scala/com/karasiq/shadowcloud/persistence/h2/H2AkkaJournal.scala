@@ -1,27 +1,26 @@
 package com.karasiq.shadowcloud.persistence.h2
 
+import akka.persistence.journal.{AsyncWriteJournal, Tagged}
+import akka.persistence.{AtomicWrite, PersistentRepr}
+import akka.serialization.SerializationExtension
+import akka.stream.Materializer
+import akka.stream.scaladsl.{Sink, Source}
+import akka.util.ByteString
+import com.karasiq.shadowcloud.persistence.utils.SCQuillEncoders
+
 import scala.collection.immutable
 import scala.concurrent.Future
 import scala.util.Try
-
-import akka.persistence.{AtomicWrite, PersistentRepr}
-import akka.persistence.journal.{AsyncWriteJournal, Tagged}
-import akka.serialization.SerializationExtension
-import akka.stream.{ActorMaterializer, Materializer}
-import akka.stream.scaladsl.{Sink, Source}
-import akka.util.ByteString
-
-import com.karasiq.shadowcloud.persistence.utils.SCQuillEncoders
 
 final class H2AkkaJournal extends AsyncWriteJournal {
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
   private[this] val h2DB = H2DB(context.system)
-  private[this] implicit val materializer: Materializer = ActorMaterializer()
+  private[this] implicit val materializer = Materializer.matFromSystem(context.system)
 
   import context.dispatcher
-  import h2DB.context.{run ⇒ runQuery, _}
+  import h2DB.context.{run => runQuery, _}
 
   // -----------------------------------------------------------------------
   // Schema

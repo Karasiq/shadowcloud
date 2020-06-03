@@ -70,11 +70,12 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
-  private[this] implicit val materializer = ActorMaterializer()
   private[this] val sc                    = ShadowCloud()
   private[this] val config                = sc.configs.storageConfig(storageId, storageProps)
   private[this] val chunksWrite           = PendingOperations.withRegionChunk
   private[this] val chunksRead            = PendingOperations.withRegionChunk
+
+  import sc.implicits.materializer
 
   // -----------------------------------------------------------------------
   // Queues

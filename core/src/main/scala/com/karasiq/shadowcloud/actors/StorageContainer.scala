@@ -8,7 +8,6 @@ import com.karasiq.shadowcloud.actors.internal.StorageInstantiator
 import com.karasiq.shadowcloud.actors.utils.ContainerActor
 import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage.props.StorageProps
-import com.karasiq.shadowcloud.utils.Utils
 
 import scala.concurrent.duration._
 
@@ -23,21 +22,27 @@ private[actors] object StorageContainer {
 
 //noinspection ActorMutableStateInspection
 private[actors] final class StorageContainer(instantiator: StorageInstantiator, storageId: StorageId)
-  extends Actor with ActorLogging with Stash with ContainerActor {
+    extends Actor
+    with ActorLogging
+    with Stash
+    with ContainerActor {
 
-  private[this] val sc = ShadowCloud()
   private[this] var storageProps: StorageProps = StorageProps.inMemory
 
   def receive: Receive = {
     case SetProps(props) ⇒
-      log.warning("Storage props changed: {}", props)
+      log.info("Storage props changed: {}", props)
       this.storageProps = props
       restartActor()
   }
 
   def startActor(): Unit = {
     val props = Props(new Actor {
-      private[this] val storage = instantiator.createStorage(storageId, storageProps)
+      private[this] val storage: ActorRef = context.watch(instantiator.createStorage(storageId, storageProps))
+
+      //noinspection ScalaUnusedSymbol
+      private[this] val healthSupervisor: ActorRef =
+        context.watch(context.actorOf(StorageHealthSupervisor.props(storage, 30 seconds, 5), "health-sv"))
 
       override def preStart(): Unit = {
         super.preStart()
@@ -46,7 +51,7 @@ private[actors] final class StorageContainer(instantiator: StorageInstantiator, 
 
       def receive: Receive = {
         case Terminated(ref) ⇒
-          log.error("Watched actor terminated: {}", ref)
+          log.warning("Terminated: {}", ref)
           context.stop(self)
 
         case msg if sender() == storage ⇒
@@ -57,14 +62,12 @@ private[actors] final class StorageContainer(instantiator: StorageInstantiator, 
       }
     })
 
-    val id = Utils.uniqueActorName(storageId)
-    val actor = context.actorOf(props, id)
-    val healthSupervisor = context.actorOf(StorageHealthSupervisor.props(actor, 30 seconds, 5), s"$id-health-sv")
-    afterStart(healthSupervisor)
+    val actor = context.actorOf(props, storageId)
+    afterStart(actor)
   }
 
   override def afterStart(actor: ActorRef): Unit = {
-    sc.actors.regionSupervisor ! RenewStorageSubscriptions(storageId)
+    ShadowCloud().actors.regionSupervisor ! RenewStorageSubscriptions(storageId)
     super.afterStart(actor)
   }
 }

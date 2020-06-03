@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.actors
 
 import akka.NotUsed
-import akka.actor.{ActorLogging, OneForOneStrategy, Props, Status, SupervisorStrategy}
+import akka.actor.{ActorInitializationException, ActorLogging, DeathPactException, OneForOneStrategy, Props, Status, SupervisorStrategy, Terminated}
 import akka.persistence.{PersistentActor, RecoveryCompleted, SnapshotOffer}
 import akka.util.Timeout
 import com.karasiq.shadowcloud.ShadowCloud
@@ -21,18 +21,18 @@ object RegionSupervisor {
   // Messages
   sealed trait Message
   final case class CreateRegion(regionId: RegionId, regionConfig: RegionConfig = RegionConfig.empty) extends Message
-  final case class DeleteRegion(regionId: RegionId) extends Message
-  final case class CreateStorage(storageId: StorageId, props: StorageProps) extends Message
-  final case class DeleteStorage(storageId: StorageId) extends Message
-  final case class RegisterStorage(regionId: RegionId, storageId: StorageId) extends Message
-  final case class UnregisterStorage(regionId: RegionId, storageId: StorageId) extends Message
-  final case class SuspendStorage(storageId: StorageId) extends Message
-  final case class SuspendRegion(regionId: RegionId) extends Message
-  final case class ResumeStorage(storageId: StorageId) extends Message
-  final case class ResumeRegion(regionId: RegionId) extends Message
-  final case object GetSnapshot extends Message with MessageStatus[NotUsed, RegionTracker.Snapshot]
+  final case class DeleteRegion(regionId: RegionId)                                                  extends Message
+  final case class CreateStorage(storageId: StorageId, props: StorageProps)                          extends Message
+  final case class DeleteStorage(storageId: StorageId)                                               extends Message
+  final case class RegisterStorage(regionId: RegionId, storageId: StorageId)                         extends Message
+  final case class UnregisterStorage(regionId: RegionId, storageId: StorageId)                       extends Message
+  final case class SuspendStorage(storageId: StorageId)                                              extends Message
+  final case class SuspendRegion(regionId: RegionId)                                                 extends Message
+  final case class ResumeStorage(storageId: StorageId)                                               extends Message
+  final case class ResumeRegion(regionId: RegionId)                                                  extends Message
+  final case object GetSnapshot                                                                      extends Message with MessageStatus[NotUsed, RegionTracker.Snapshot]
 
-  private[actors] final case class RenewRegionSubscriptions(regionId: RegionId) extends Message
+  private[actors] final case class RenewRegionSubscriptions(regionId: RegionId)    extends Message
   private[actors] final case class RenewStorageSubscriptions(storageId: StorageId) extends Message
 
   // Snapshot
@@ -54,10 +54,10 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
   // Settings
   // -----------------------------------------------------------------------
   private[this] implicit val timeout: Timeout = Timeout(10 seconds)
-  private[this] implicit lazy val sc = ShadowCloud()
+  private[this] implicit lazy val sc          = ShadowCloud()
 
-  override def persistenceId: String = "regions"
-  override def journalPluginId: String = sc.config.persistence.journalPlugin
+  override def persistenceId: String    = "regions"
+  override def journalPluginId: String  = sc.config.persistence.journalPlugin
   override def snapshotPluginId: String = sc.config.persistence.snapshotPlugin
 
   // -----------------------------------------------------------------------
@@ -65,7 +65,7 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
   // -----------------------------------------------------------------------
   def receiveRecover: Receive = { // TODO: Create snapshots
     val storages = mutable.AnyRefMap.empty[String, StorageSnapshot]
-    val regions = mutable.AnyRefMap.empty[String, RegionSnapshot]
+    val regions  = mutable.AnyRefMap.empty[String, RegionSnapshot]
     val recoverFunc: Receive = {
       case SnapshotOffer(_, snapshot: Snapshot) ⇒
         regions.clear()
@@ -177,8 +177,7 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
             dispatcher.forward(message)
 
           case ActorState.Suspended ⇒
-            sender() ! Status.Failure(SupervisorException.IllegalRegionState(regionId,
-              new IllegalStateException("Region is suspended")))
+            sender() ! Status.Failure(SupervisorException.IllegalRegionState(regionId, new IllegalStateException("Region is suspended")))
         }
       } else {
         sender() ! Status.Failure(SupervisorException.RegionNotFound(regionId))
@@ -191,12 +190,17 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
             dispatcher.forward(message)
 
           case ActorState.Suspended ⇒
-            sender() ! Status.Failure(SupervisorException.IllegalStorageState(storageId,
-              new IllegalStateException("Storage is suspended")))
+            sender() ! Status.Failure(SupervisorException.IllegalStorageState(storageId, new IllegalStateException("Storage is suspended")))
         }
       } else {
         sender() ! Status.Failure(SupervisorException.StorageNotFound(storageId))
       }
+
+    // -----------------------------------------------------------------------
+    // Misc
+    // -----------------------------------------------------------------------
+    case Terminated(ref) ⇒
+      log.error("Supervised actor terminated: {}", ref)
   }
 
   // -----------------------------------------------------------------------
@@ -206,11 +210,15 @@ private final class RegionSupervisor extends PersistentActor with ActorLogging w
     case error: IllegalArgumentException ⇒
       log.error(error, "Unexpected error")
       SupervisorStrategy.Resume
-      
+
+    case error @ (_: ActorInitializationException | _: DeathPactException) ⇒
+      log.error(error, "Stopping actor due to error")
+      SupervisorStrategy.Stop
+
     case error: Throwable ⇒
       log.error(error, "Actor failure")
       SupervisorStrategy.Escalate
-  } 
+  }
 }
 
 private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
@@ -271,12 +279,14 @@ private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
 
   def loadState(storages: collection.Map[String, StorageSnapshot], regions: collection.Map[String, RegionSnapshot]): Unit = {
     state.clear()
-    storages.foreach { case (storageId, StorageSnapshot(props, active)) ⇒ 
-      updateState(StorageAdded(storageId, props, active))
+    storages.foreach {
+      case (storageId, StorageSnapshot(props, active)) ⇒
+        updateState(StorageAdded(storageId, props, active))
     }
-    regions.foreach { case (regionId, RegionSnapshot(regionConfig, storages, active)) ⇒
-      updateState(RegionAdded(regionId, regionConfig, active))
-      storages.foreach(storageId ⇒ updateState(StorageRegistered(regionId, storageId)))
+    regions.foreach {
+      case (regionId, RegionSnapshot(regionConfig, storages, active)) ⇒
+        updateState(RegionAdded(regionId, regionConfig, active))
+        storages.foreach(storageId ⇒ updateState(StorageRegistered(regionId, storageId)))
     }
   }
 }

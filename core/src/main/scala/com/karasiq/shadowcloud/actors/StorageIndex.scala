@@ -11,7 +11,6 @@ import com.karasiq.shadowcloud.model.{RegionId, StorageId}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}
-import com.karasiq.shadowcloud.utils.Utils
 
 import scala.collection.mutable.{AnyRefMap => MMap}
 import scala.concurrent.duration._
@@ -94,18 +93,20 @@ private[actors] final class StorageIndex(storageId: StorageId, storageProps: Sto
   private[this] def startRegionDispatcher(regionId: RegionId): Unit = {
     if (!subIndexes.contains(regionId)) {
       val newDispatcher =
-        context.actorOf(RegionIndex.props(storageId, regionId, storageProps, repository.subRepository(regionId)), Utils.uniqueActorName(regionId))
+        context.actorOf(RegionIndex.props(storageId, regionId, storageProps, repository.subRepository(regionId)), regionId)
       subIndexes += (regionId, newDispatcher)
     }
   }
 
   private[this] def stopRegionDispatcher(regionId: RegionId, clear: Boolean): Unit = {
-    subIndexes.remove(regionId).foreach { actor =>
+    subIndexes.remove(regionId).foreach { actor ⇒
+      context.unwatch(actor)
+
       if (clear)
         (actor ? RegionIndex.DeleteHistory)
-          .map(_ => Done)
-          .recover { case _ => Done }
-          .foreach(_ => context.stop(actor))
+          .map(_ ⇒ Done)
+          .recover { case _ ⇒ Done }
+          .foreach(_ ⇒ context.stop(actor))
       else context.stop(actor)
     }
   }

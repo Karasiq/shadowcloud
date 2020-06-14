@@ -17,11 +17,14 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
     val selectorConfig    = region.config.rootConfig.getConfigIfExists("simple-selector")
     val indexRF           = region.config.indexReplicationFactor
     val dataRF            = region.config.dataReplicationFactor
-    val randomize         = selectorConfig.withDefault(false, _.getBoolean("randomize"))
+    val writeRandomize    = selectorConfig.withDefault(false, _.getBoolean("write-randomize"))
+    val readRandomize     = selectorConfig.withDefault(false, _.getBoolean("read-randomize"))
     val indexWriteMinSize = selectorConfig.withDefault[Long](SizeUnit.KB * 10, _.getBytes("index-write-min-size"))
-    val priority          = selectorConfig.withDefault(Nil, _.getStrings("priority"))
+    val writePriority     = selectorConfig.withDefault(Nil, _.getStrings("write-priority"))
+    val readPriority      = selectorConfig.withDefault(Nil, _.getStrings("priority"))
     val writeExclude      = selectorConfig.withDefault(Set.empty[String], _.getStringSet("write-exclude"))
     val writeInclude      = selectorConfig.withDefault(Set.empty[String], _.getStringSet("write-include"))
+    val readExclude       = selectorConfig.withDefault(Set.empty[String], _.getStringSet("read-exclude"))
     val reservedSize      = selectorConfig.withDefault(100L * SizeUnit.MB, _.getMemorySize("reserved-size").toBytes)
   }
 
@@ -38,7 +41,8 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
 
   def forRead(status: ChunkStatus): Option[RegionStorage] = {
     val readable = available().filter(storage ⇒ status.availability.isWritten(storage.id) && !status.availability.isFailed(storage.id))
-    tryRandomize(readable).headOption
+    sortStoragesForRead(readable.map(_.id)).headOption
+      .map(region.storages.getStorage)
   }
 
   def forWrite(chunk: ChunkStatus): ChunkWriteAffinity = {
@@ -67,19 +71,29 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
     }
   }
 
-  protected def tryRandomize[T](storages: Seq[T]): Seq[T] = {
-    if (settings.randomize) Random.shuffle(storages) else storages
+  protected def sortStoragesForRead(storages: Seq[StorageId]): Seq[StorageId] = {
+    def tryRandomize[T](storages: Seq[T]): Seq[T] = {
+      if (settings.readRandomize) Random.shuffle(storages) else storages
+    }
+
+    val hasIndex           = settings.readPriority.toSet
+    val (sorted, unsorted) = storages.distinct.partition(hasIndex)
+    sorted.sortBy(settings.readPriority.indexOf) ++ tryRandomize(unsorted)
   }
 
-  protected def sortStorages(storages: Seq[StorageId]): Seq[StorageId] = {
-    val hasIndex           = settings.priority.toSet
+  protected def sortStoragesForWrite(storages: Seq[StorageId]): Seq[StorageId] = {
+    def tryRandomize[T](storages: Seq[T]): Seq[T] = {
+      if (settings.writeRandomize) Random.shuffle(storages) else storages
+    }
+
+    val hasIndex           = settings.writePriority.toSet
     val (sorted, unsorted) = storages.distinct.partition(hasIndex)
-    sorted.sortBy(settings.priority.indexOf) ++ tryRandomize(unsorted)
+    sorted.sortBy(settings.writePriority.indexOf) ++ tryRandomize(unsorted)
   }
 
   protected def selectStoragesToWrite(storages: Seq[StorageId]): Seq[StorageId] = {
     val notExplicitlyIncluded = storages.filterNot(settings.writeInclude).distinct
-    val sorted                = sortStorages(notExplicitlyIncluded)
+    val sorted                = sortStoragesForWrite(notExplicitlyIncluded)
     Utils.takeOrAll(sorted, settings.dataRF) ++ settings.writeInclude
   }
 }

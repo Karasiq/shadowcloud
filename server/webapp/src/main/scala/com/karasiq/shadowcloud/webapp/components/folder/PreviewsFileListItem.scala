@@ -44,7 +44,7 @@ class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit
           case Some(thumbnail) ⇒
             val blob = Blobs.fromBytes(thumbnail.data.toArray)
             val imageUrl = Blobs.getUrl(blob)
-            img(Bootstrap.image.responsive, Bootstrap.image.rounded, src := imageUrl)
+            img(Bootstrap.image.responsive, Bootstrap.image.rounded, src := imageUrl, marginBottom := 10.px)
 
           case None ⇒
             AppIcons.file
@@ -60,7 +60,8 @@ class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit
             GridSystem.mkRow(MemorySize.toString(file.checksum.size)),
             GridSystem.mkRow(context.timeFormat.timestamp(file.timestamp.lastModified)),
             color.gray,
-            fontStyle.italic,
+            // fontStyle.italic,
+            fontWeight.bold,
             fontSizeAdjust := 0.4,
             lineHeight := 80.pct
           )
@@ -71,16 +72,21 @@ class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit
               if (text.format == "text/html") raw(text.data) else text.data,
               maxHeight := 5.em,
               color.gray,
-              fontSizeAdjust := 0.4,
-              lineHeight := 80.pct,
-              overflow.hidden
+              // fontFamily := "monospace",
+              fontSize := 12.px,
+              // whiteSpace.`pre-wrap`,
+              // lineHeight := 80.pct,
+              overflow.hidden,
+              marginTop := 8.px,
+              marginBottom := 8.px
             )
 
           case None ⇒
             ()
         })
       ),
-      border := "solid 0.1px",
+      "tr-hover".addClass,
+      // border := "solid 0.1px",
       marginTop := 2.px,
       wordWrap.`break-word`,
       onclick := Callback.onClick(_ ⇒ selectedFile() = Some(file)),

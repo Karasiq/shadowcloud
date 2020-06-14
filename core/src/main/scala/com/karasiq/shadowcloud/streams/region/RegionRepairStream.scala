@@ -2,8 +2,8 @@ package com.karasiq.shadowcloud.streams.region
 
 import akka.NotUsed
 import akka.event.Logging
-import akka.stream.scaladsl.{Flow, RestartFlow, Sink, Source}
-import akka.stream.{ActorAttributes, Supervision}
+import akka.stream.scaladsl.{Flow, RestartSource, Sink, Source}
+import akka.stream.{ActorAttributes, Materializer, Supervision}
 import com.karasiq.shadowcloud.config.ParallelismConfig
 import com.karasiq.shadowcloud.model.{Chunk, RegionId}
 import com.karasiq.shadowcloud.ops.region.RegionOps
@@ -13,7 +13,7 @@ import com.karasiq.shadowcloud.streams.region.RegionRepairStream.Strategy.{AutoA
 import com.karasiq.shadowcloud.streams.utils.{AkkaStreamUtils, ByteStreams}
 
 import scala.concurrent.duration._
-import scala.concurrent.{ExecutionContext, Promise}
+import scala.concurrent.{Future, Promise}
 
 object RegionRepairStream {
   sealed trait Strategy
@@ -25,7 +25,9 @@ object RegionRepairStream {
 
   final case class Request(regionId: RegionId, strategy: Strategy, chunks: Seq[Chunk] = Nil, result: Promise[Seq[Chunk]] = Promise())
 
-  def apply(regionOps: RegionOps, parallelism: ParallelismConfig, bufferSize: Long)(implicit ec: ExecutionContext): Sink[Request, NotUsed] = {
+  def apply(regionOps: RegionOps, parallelism: ParallelismConfig, bufferSize: Long)(implicit mat: Materializer): Sink[Request, NotUsed] = {
+    import mat.executionContext
+
     def createNewAffinity(status: ChunkStatus, strategy: Strategy): Option[ChunkWriteAffinity] = {
       strategy match {
         case AutoAffinity ⇒
@@ -36,6 +38,12 @@ object RegionRepairStream {
 
         case TransformAffinity(newAffinityFunction) ⇒
           newAffinityFunction(status)
+      }
+    }
+
+    def futureWithRetry[T](f: ⇒ Future[T]): Source[T, NotUsed] = {
+      RestartSource.onFailuresWithBackoff(500 millis, 15 seconds, 0.2, 6) { () ⇒
+        Source.future(f)
       }
     }
 
@@ -51,29 +59,23 @@ object RegionRepairStream {
         }
 
         chunksSource
-          .via(RestartFlow.onFailuresWithBackoff(500 millis, 10 seconds, 0.2, 20) { () ⇒
-            Flow[Chunk].mapAsyncUnordered(parallelism.query)(regionOps.getChunkStatus(request.regionId, _))
-          })
+          .flatMapMerge(parallelism.query, st ⇒ futureWithRetry(regionOps.getChunkStatus(request.regionId, st)))
           .via(
             Flow[ChunkStatus]
               .map(status ⇒ status → createNewAffinity(status, request.strategy))
               .filterNot { case (status, newAffinity) ⇒ newAffinity.exists(_.isFinished(status)) }
-              .via(RestartFlow.onFailuresWithBackoff(500 millis, 10 seconds, 0.2, 20) { () ⇒
-                Flow[(ChunkStatus, Option[ChunkWriteAffinity])].mapAsyncUnordered(parallelism.read) {
-                  case (status, newAffinity) ⇒
-                    regionOps.readChunkEncrypted(request.regionId, status.chunk).map(_ → newAffinity)
-                }
+              .flatMapMerge(parallelism.read, {
+                case (status, newAffinity) ⇒
+                  futureWithRetry(regionOps.readChunkEncrypted(request.regionId, status.chunk).map(_ → newAffinity))
               })
               .log("region-repair-read", chunk ⇒ s"${chunk._1.hashString} at ${request.regionId}")
               .via(ByteStreams.bufferT(_._1.data.encrypted.length, bufferSize))
-              .via(RestartFlow.onFailuresWithBackoff(500 millis, 10 seconds, 0.2, 20) { () ⇒
-                Flow[(Chunk, Option[ChunkWriteAffinity])].mapAsyncUnordered(parallelism.write) {
-                  case (chunk, newAffinity) ⇒
-                    regionOps.rewriteChunk(request.regionId, chunk, newAffinity)
-                }
+              .flatMapMerge(parallelism.write, {
+                case (chunk, newAffinity) ⇒
+                  futureWithRetry(regionOps.rewriteChunk(request.regionId, chunk, newAffinity))
               })
               .log("region-repair-write", chunk ⇒ s"${chunk.hashString} at ${request.regionId}")
-              .withAttributes(ActorAttributes.logLevels(onElement = Logging.InfoLevel))
+              // .withAttributes(ActorAttributes.logLevels(onElement = Logging.InfoLevel))
               .map(_.withoutData)
           )
           .fold(Nil: Seq[Chunk])(_ :+ _)

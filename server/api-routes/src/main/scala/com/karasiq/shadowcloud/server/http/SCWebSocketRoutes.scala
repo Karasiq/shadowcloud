@@ -22,6 +22,10 @@ trait SCWebSocketRoutes { self: SCAkkaHttpApiRoutes with SCHttpServerSettings wi
       formatter.format(instant)
     }
 
+    val blacklist = Seq(
+      "Illegal header"
+    )
+
     Source
       .actorRef[LogEvent](PartialFunction.empty, PartialFunction.empty, 100, OverflowStrategy.dropBuffer)
       .mapMaterializedValue { actor =>
@@ -40,7 +44,7 @@ trait SCWebSocketRoutes { self: SCAkkaHttpApiRoutes with SCHttpServerSettings wi
           }
           s"${formatTime(e.timestamp)} (${e.logSource}) - ${e.message}\n$stack"
 
-        case e: LogEvent =>
+        case e: LogEvent if !blacklist.exists(e.message.toString.contains) =>
           s"${formatTime(e.timestamp)} (${e.logSource}) - ${e.message}"
       }
   }

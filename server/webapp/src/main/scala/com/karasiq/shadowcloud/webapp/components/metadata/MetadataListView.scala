@@ -13,8 +13,8 @@ import scalaTags.all._
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 object MetadataListView {
-  def apply(regionId: RegionId, file: File)(implicit context: AppContext): MetadataListView = {
-    new MetadataListView(regionId, file)
+  def apply(regionId: RegionId, file: File, available: Rx[Set[Metadata.Tag.Disposition]])(implicit context: AppContext): MetadataListView = {
+    new MetadataListView(regionId, file, available)
   }
 
   private object utils {
@@ -38,13 +38,15 @@ object MetadataListView {
   }
 }
 
-final class MetadataListView(regionId: RegionId, file: File)(implicit context: AppContext) extends BootstrapHtmlComponent {
+final class MetadataListView(regionId: RegionId, file: File, available: Rx[Set[Metadata.Tag.Disposition]])(implicit context: AppContext) extends BootstrapHtmlComponent {
   import MetadataListView.utils
 
   def renderTag(md: ModifierT*): TagT = {
     def renderDisposition(disposition: Metadata.Tag.Disposition): Tag = {
       val opened = Var(false)
+      val isAvailable = available.map(_.contains(disposition))
       div(
+        isAvailable.reactiveShow,
         AppComponents.dropdownLink(utils.dispositionToString(disposition), opened),
         Rx[Frag](if (opened()) {
           val metadata = context.api.getFileMetadata(regionId, file.id, disposition).toRx(Nil)

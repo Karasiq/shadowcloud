@@ -37,7 +37,7 @@ object AkkaStreamUtils {
   def waitUpstream[T, T1, M](newStream: Source[T1, M]): Flow[T, T1, M] = {
     val promise = Promise[Done]
     val sink = Flow[T]
-      .watchTermination() { (_, f) =>
+      .watchTermination() { (_, f) ⇒
         promise.completeWith(f)
         NotUsed
       }
@@ -89,13 +89,16 @@ object AkkaStreamUtils {
     case Failure(error) ⇒ promise.tryFailure(error)
   }
 
-  def successPromiseOnFirst[PT](promise: Promise[PT]) = Flow[PT]
-    .alsoTo(Sink.foreach(promise.trySuccess))
-    .to(Sink.onComplete(_.failed.foreach(promise.tryFailure)))
-
+  def successPromiseOnFirst[PT](promise: Promise[PT]) =
+    Flow[PT]
+      .alsoTo(Sink.foreach(promise.trySuccess))
+      .to(Sink.onComplete {
+        case Failure(err) ⇒ promise.tryFailure(err)
+        case Success(_)   ⇒ promise.tryFailure(new IllegalStateException("Stream finished"))
+      })
 
   def alsoToWaitForAll[Out, M](that: Graph[SinkShape[Out], M]): Graph[FlowShape[Out @uncheckedVariance, Out], M] =
-    GraphDSL.create(that) { implicit b => r =>
+    GraphDSL.create(that) { implicit b ⇒ r ⇒
       import GraphDSL.Implicits._
       val bcast = b.add(Broadcast[Out](2, eagerCancel = false))
       bcast.out(1) ~> r
@@ -131,14 +134,14 @@ object AkkaStreamUtils {
 
   object Implicits {
     class FlowExt[E, Mat, Repr[`E`, `Mat`] <: FlowOpsMat[E, Mat]](val flow: Repr[E, Mat]) {
-      def extractMatFuture[T](implicit ev: Mat => Future[T]): Repr[T, NotUsed] =
-        extractMatValue.flatMapConcat(m => Source.future(ev(m))).asInstanceOf[Repr[T, NotUsed]]
+      def extractMatFuture[T](implicit ev: Mat ⇒ Future[T]): Repr[T, NotUsed] =
+        extractMatValue.flatMapConcat(m ⇒ Source.future(ev(m))).asInstanceOf[Repr[T, NotUsed]]
 
       def extractMatValue: Repr[Mat, NotUsed] = {
         val promise = Promise[Mat]
         flow
           .alsoTo(failPromiseOnFailure(promise))
-          .mapMaterializedValue { mat =>
+          .mapMaterializedValue { mat ⇒
             promise.trySuccess(mat)
             NotUsed
           }
@@ -146,7 +149,7 @@ object AkkaStreamUtils {
           .asInstanceOf[Repr[Mat, NotUsed]]
       }
 
-      def flatMapConcatMat[E1, M, M1](f: E ⇒ Graph[SourceShape[E1], Future[M]])(matF: (Mat, Future[Seq[M]]) => M1): Repr[E1, M1] = {
+      def flatMapConcatMat[E1, M, M1](f: E ⇒ Graph[SourceShape[E1], Future[M]])(matF: (Mat, Future[Seq[M]]) ⇒ M1): Repr[E1, M1] = {
         flow.viaMat(AkkaStreamUtils.flatMapConcatMat(f))(matF).asInstanceOf[Repr[E1, M1]]
       }
 

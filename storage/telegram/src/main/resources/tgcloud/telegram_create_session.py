@@ -5,8 +5,10 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import asyncio
-from secret import *
+
 from telethon import TelegramClient
+
+from secret import *
 
 client = TelegramClient(entity, api_id, api_hash)
 
@@ -14,8 +16,8 @@ client = TelegramClient(entity, api_id, api_hash)
 async def create_session():
     await client.connect()
 
-    if not client.is_user_authorized():
-        client.start()
+    if not await client.is_user_authorized():
+        await client.start()
 
     await client.disconnect()
 

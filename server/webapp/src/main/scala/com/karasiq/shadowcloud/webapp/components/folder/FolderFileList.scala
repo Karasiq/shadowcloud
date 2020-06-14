@@ -62,7 +62,7 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
     table.createTable(filesSeqRx)
   }
 
-  lazy val previewsFileTable = PreviewsFileTable(filesSeqRx, selectedFile)
+  lazy val previewsFileTable = PreviewsFileList(filesSeqRx, selectedFile)
 
   def renderTag(md: ModifierT*): TagT = {
     val viewSelectButton = Button(ButtonStyle.info)(AppIcons.changeView, context.locale.changeView, onclick := Callback.onClick(_ ⇒ changeListView()))

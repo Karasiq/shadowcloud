@@ -21,12 +21,12 @@ object FileAvailabilityView {
 }
 
 class FileAvailabilityView(file: File)(implicit context: AppContext, folderContext: FolderContext) extends BootstrapHtmlComponent {
-  lazy val availabilityRx = FileAvailabilityView.getAvailabilityRx(file)
+  private[this] lazy val availabilityRx = FileAvailabilityView.getAvailabilityRx(file)
 
   def renderTag(md: ModifierT*): TagT = {
     div(
       div(renderRepairLink()),
-      AppComponents.dropdown(context.locale.show)(div(Rx(renderContent(availabilityRx.toRx(), md:_*))))
+      Rx(renderContent(availabilityRx.toRx(), md:_*))
     )
   }
 

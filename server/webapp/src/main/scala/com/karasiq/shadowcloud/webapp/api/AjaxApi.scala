@@ -1,17 +1,17 @@
 package com.karasiq.shadowcloud.webapp.api
 
-import scala.concurrent.ExecutionContext
-
 import autowire._
-
-import com.karasiq.shadowcloud.api.{SCApiMeta, ShadowCloudApi}
 import com.karasiq.shadowcloud.api.js.SCAjaxBooPickleApiClient
+import com.karasiq.shadowcloud.api.{SCApiMeta, ShadowCloudApi}
 import com.karasiq.shadowcloud.config.SerializedProps
+import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.metadata.Metadata.Tag
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.keys.{KeyId, KeySet}
 import com.karasiq.shadowcloud.model.utils.IndexScope
 import com.karasiq.shadowcloud.webapp.context.AppContext
+
+import scala.concurrent.{ExecutionContext, Future}
 
 object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
 
@@ -21,12 +21,12 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
   private[api] val clientFactory = SCAjaxBooPickleApiClient
 
   type EncodingT = clientFactory.EncodingT
-  val encoding = clientFactory.encoding
+  val encoding           = clientFactory.encoding
   val payloadContentType = clientFactory.payloadContentType
 
-  import encoding.implicits._
+  import encoding.implicits._ // Should not be deleted
 
-  private[this] val apiClient = clientFactory[ShadowCloudApi]
+  private[this] val apiClient                                           = clientFactory[ShadowCloudApi]
   private[this] implicit val implicitExecutionContext: ExecutionContext = AppContext.JsExecutionContext
 
   // -----------------------------------------------------------------------
@@ -39,7 +39,7 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
   def getRegion(regionId: RegionId) = {
     apiClient.getRegion(regionId).call()
   }
-  
+
   def getStorage(storageId: StorageId) = {
     apiClient.getStorage(storageId).call()
   }
@@ -138,7 +138,7 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
   def generateKey(regionSet: Set[RegionId], forEncryption: Boolean, forDecryption: Boolean, props: SerializedProps) = {
     apiClient.generateKey(regionSet, forEncryption, forDecryption, props).call()
   }
-  
+
   def addKey(key: KeySet, regionSet: Set[RegionId], forEncryption: Boolean, forDecryption: Boolean) = {
     apiClient.addKey(key, regionSet, forEncryption, forDecryption).call()
   }
@@ -181,7 +181,11 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
     apiClient.getFileAvailability(regionId, file, scope).call()
   }
 
-  def getFileMetadata(regionId: RegionId, fileId: FileId, disposition: Tag.Disposition) = {
+  def listFileMetadata(regionId: RegionId, fileId: FileId): Future[Set[Tag.Disposition]] = {
+    apiClient.listFileMetadata(regionId, fileId).call()
+  }
+
+  def getFileMetadata(regionId: RegionId, fileId: FileId, disposition: Tag.Disposition): Future[Seq[Metadata]] = {
     apiClient.getFileMetadata(regionId, fileId, disposition).call()
   }
 

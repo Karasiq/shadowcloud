@@ -2,6 +2,7 @@ package com.karasiq.shadowcloud.actors
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Cancellable, PossiblyHarmful, Props, Terminated}
 import akka.pattern.{ask, pipe}
+import akka.util.Timeout
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.model.utils.StorageHealth
 
@@ -29,29 +30,26 @@ object StorageHealthSupervisor {
 class StorageHealthSupervisor(actor: ActorRef, interval: FiniteDuration, maxFailures: Int) extends Actor with ActorLogging {
   import StorageHealthSupervisor._
   import context.dispatcher
-  private[this] implicit val timeout = ShadowCloud().implicits.defaultTimeout
+  private[this] implicit val timeout: Timeout = ShadowCloud().config.timeouts.chunksList
 
   private[this] var schedule: Cancellable = _
   private[this] var failures              = 0
 
   override def receive: Receive = {
     case Check ⇒
-      (actor ? StorageDispatcher.GetHealth())
-        .mapTo[StorageDispatcher.GetHealth.Success]
-        .filter(_.result.online)
-        .map(hs ⇒ Success(hs.result))
-        .recover { case _ ⇒ Failure }
+      StorageDispatcher.GetHealth
+        .unwrapFuture(actor ? StorageDispatcher.GetHealth())
         .pipeTo(self)
 
-    case Failure ⇒
+    case result @ (StorageDispatcher.GetHealth.Failure(_, _) | StorageDispatcher.GetHealth.Success(_, StorageHealth(_, _, _, false))) ⇒
       failures += 1
-      log.debug("Health check failure #{}", failures)
+      log.debug("Health check failure #{}: {}", failures, result)
       if (failures >= maxFailures) {
         log.warning("Health checks failed ({}), restarting storage: {}", failures, actor)
         context.stop(actor)
       }
 
-    case Success(health) ⇒
+    case StorageDispatcher.GetHealth.Success(_, health) if health.online ⇒
       log.debug("Health check passed: {}", health)
       failures = 0
 

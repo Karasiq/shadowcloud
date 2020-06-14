@@ -16,30 +16,30 @@ import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.StorageIOResult
 import com.karasiq.shadowcloud.storage.repository.PathTreeRepository
 import com.karasiq.shadowcloud.storage.utils.StorageUtils
-import com.karasiq.shadowcloud.streams.utils.ByteStreams
+import com.karasiq.shadowcloud.streams.utils.{AkkaStreamUtils, ByteStreams}
 
 import scala.concurrent.Future
 import scala.concurrent.duration._
 
-object TGCloudRepository {
-  def apply(port: Int)(implicit as: ActorSystem): TGCloudRepository =
-    new TGCloudRepository(port)
+object TelegramRepository {
+  def apply(port: Int)(implicit as: ActorSystem): TelegramRepository =
+    new TelegramRepository(port)
 }
 
-class TGCloudRepository(port: Int)(implicit as: ActorSystem) extends PathTreeRepository {
+class TelegramRepository(port: Int)(implicit as: ActorSystem) extends PathTreeRepository {
   import as.dispatcher
 
   private[this] val host = "localhost"
   private[this] val log  = Logging(as, getClass)
 
   private[this] val executeHttpRequest = {
-    val settings = ConnectionPoolSettings("""
-        |max-connections = 32
-        |max-open-requests = 128
-        |idle-timeout = 10m
+    val settings = ConnectionPoolSettings("""akka.http.host-connection-pool {
+        |max-connection-backoff = 5s
+        |max-connections = 12
+        |max-open-requests = 16
         |max-retries = 0
-        |idle-timeout = 1200s
-        |""".stripMargin)
+        |client.idle-timeout = 600s
+        |}""".stripMargin)
 
     Flow[HttpRequest]
       .map(_ → NotUsed)
@@ -73,18 +73,20 @@ class TGCloudRepository(port: Int)(implicit as: ActorSystem) extends PathTreeRep
       )
       .via(executeHttpRequest)
       .via(requireHttpSuccess)
-      .flatMapConcat(_.entity.dataBytes)
+      .flatMapConcat(_.entity.withoutSizeLimit().dataBytes)
       .alsoToMat(StorageUtils.countPassedBytes(key).toMat(Sink.head)(Keep.right))(Keep.right)
 
   override def write(path: Path): Sink[Data, Result] = {
     Flow[Data]
-      .alsoToMat(
-        Flow[Data]
-          .via(StorageUtils.countPassedBytes(path))
-          .toMat(Sink.head)(Keep.right)
+      .viaMat(
+        AkkaStreamUtils.alsoToWaitForAll(
+          Flow[Data]
+            .via(StorageUtils.countPassedBytes(path))
+            .toMat(Sink.head)(Keep.right)
+        )
       )(Keep.right)
-      .via(ByteStreams.concat)
-      // .via(AkkaStreamUtils.extractUpstream)
+      // .via(ByteStreams.concat)
+      .via(AkkaStreamUtils.extractUpstream)
       .map(
         upstream ⇒
           HttpRequest(
@@ -94,13 +96,18 @@ class TGCloudRepository(port: Int)(implicit as: ActorSystem) extends PathTreeRep
           )
       )
       .via(executeHttpRequest)
-      .collect[StorageIOResult] {
+      .alsoTo(Sink.foreach(_.discardEntityBytes()))
+      .map {
         case r if r.status.isSuccess()             ⇒ StorageIOResult.Success(path, 0)
         case r if r.status == StatusCodes.Conflict ⇒ StorageIOResult.Failure(path, StorageException.AlreadyExists(path))
         case r                                     ⇒ StorageIOResult.Failure(path, StorageUtils.wrapException(path, new IOException(s"Request error: $r")))
       }
       .via(StorageUtils.wrapStream(path))
-      .toMat(Sink.head)(StorageUtils.foldIOFutures(_, _))
+      .toMat(Sink.headOption) { case (bytesCount, reqResult) =>
+        val result = reqResult.map(_.getOrElse(StorageUtils.failure(path, new IOException)))
+        StorageUtils.foldIOFutures(result, bytesCount)
+      }
+      //.toMat(Sink.headOption)(Keep.right(_, _).map(_.getOrElse(StorageUtils.failure(path, new IOException))))
   }
 
   override def delete: Sink[Path, Result] =
@@ -114,7 +121,8 @@ class TGCloudRepository(port: Int)(implicit as: ActorSystem) extends PathTreeRep
     Source
       .single(HttpRequest(uri = Uri("/size").withQuery(Uri.Query("path" → encodePath(path)))))
       .via(executeHttpRequest)
-      .mapAsync(1)(_.entity.toStrict(5 seconds, 20))
+      .via(requireHttpSuccess)
+      .mapAsync(1)(_.entity.toStrict(30 minutes, 20))
       .map(_.data.utf8String.toLong)
       .runWith(Sink.head)
   }

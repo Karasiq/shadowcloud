@@ -18,19 +18,22 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
     val indexRF           = region.config.indexReplicationFactor
     val dataRF            = region.config.dataReplicationFactor
     val randomize         = selectorConfig.withDefault(false, _.getBoolean("randomize"))
-    val indexWriteMinSize = selectorConfig.withDefault[Long](SizeUnit.KB * 100, _.getBytes("index-write-min-size"))
+    val indexWriteMinSize = selectorConfig.withDefault[Long](SizeUnit.KB * 10, _.getBytes("index-write-min-size"))
     val priority          = selectorConfig.withDefault(Nil, _.getStrings("priority"))
     val writeExclude      = selectorConfig.withDefault(Set.empty[String], _.getStringSet("write-exclude"))
     val writeInclude      = selectorConfig.withDefault(Set.empty[String], _.getStringSet("write-include"))
+    val reservedSize      = selectorConfig.withDefault(100L * SizeUnit.MB, _.getMemorySize("reserved-size").toBytes)
   }
 
   def available(toWrite: Long = 0): Seq[RegionStorage] = {
-    region.storages.storages.filter(_.health.canWrite(toWrite)).toVector
+    region.storages.storages
+      .filter(_.health.canWrite(toWrite + settings.reservedSize))
+      .toVector
   }
 
   def forIndexWrite(diff: IndexDiff): Seq[RegionStorage] = {
     val writable = available(settings.indexWriteMinSize)
-    (Utils.takeOrAll(writable, settings.indexRF) ++ writable.filter(s => settings.writeInclude(s.id))).distinct
+    (Utils.takeOrAll(writable, settings.indexRF) ++ writable.filter(s ⇒ settings.writeInclude(s.id))).distinct
   }
 
   def forRead(status: ChunkStatus): Option[RegionStorage] = {
@@ -49,7 +52,7 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
       val writeSize = chunk.chunk.checksum.encSize
       available(writeSize)
         .filter(canWriteChunk)
-        .sortBy(storage ⇒ chunk.availability.isFailed(storage.id))
+        .sortBy(storage ⇒ (chunk.availability.isFailed(storage.id), -storage.health.writableSpace / SizeUnit.GB))
         .map(_.id)
     }
 
@@ -75,6 +78,8 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
   }
 
   protected def selectStoragesToWrite(storages: Seq[StorageId]): Seq[StorageId] = {
-    Utils.takeOrAll(sortStorages(storages.filterNot(settings.writeInclude).distinct), settings.dataRF) ++ settings.writeInclude
+    val notExplicitlyIncluded = storages.filterNot(settings.writeInclude).distinct
+    val sorted                = sortStorages(notExplicitlyIncluded)
+    Utils.takeOrAll(sorted, settings.dataRF) ++ settings.writeInclude
   }
 }

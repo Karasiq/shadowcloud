@@ -4,17 +4,19 @@ import com.karasiq.gdrive.files.GDriveService
 import com.karasiq.gdrive.files.GDriveService.TeamDriveId
 import com.karasiq.shadowcloud.model.utils.StorageHealth
 import com.karasiq.shadowcloud.storage.StorageHealthProvider
+import com.karasiq.shadowcloud.storage.props.StorageProps
+import com.karasiq.shadowcloud.storage.utils.StoragePluginBuilder
 
 import scala.concurrent.{ExecutionContext, Future}
 
 private[gdrive] object GDriveHealthProvider {
-  def apply(service: GDriveService)(implicit ec: ExecutionContext, td: TeamDriveId): GDriveHealthProvider = {
-    new GDriveHealthProvider(service)
+  def apply(service: GDriveService, props: StorageProps)(implicit ec: ExecutionContext, td: TeamDriveId): GDriveHealthProvider = {
+    new GDriveHealthProvider(service, props)
   }
 }
 
-private[gdrive] class GDriveHealthProvider(service: GDriveService)(implicit ec: ExecutionContext, td: TeamDriveId) extends StorageHealthProvider {
-  lazy val estimator = GDriveSpaceEstimator(service)
+private[gdrive] class GDriveHealthProvider(service: GDriveService, props: StorageProps)(implicit ec: ExecutionContext, td: TeamDriveId) extends StorageHealthProvider {
+  lazy val estimator = GDriveSpaceEstimator(service, StoragePluginBuilder.getRootPath(props))
 
   def health = {
     if (td.enabled)

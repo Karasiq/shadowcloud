@@ -1,5 +1,5 @@
 import com.typesafe.sbt.packager.docker.Cmd
-import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
+import sbtcrossProject(JSPlatform, JVMPlatform).CrossPlugin.autoImport.{CrossType, crossProject(JSPlatform, JVMPlatform)}
 
 val commonSettings = Seq(
   organization := "com.github.karasiq",
@@ -26,8 +26,8 @@ val commonSettings = Seq(
     "-Ywarn-unused:-implicits",
     "-Xlint",
     "-Ypartial-unification",
-    "-opt:l:inline",
-    "-opt-inline-from:**"
+    //"-opt:l:inline",
+    //"-opt-inline-from:**"
   )
 )
 
@@ -93,7 +93,7 @@ lazy val dockerSettings = Seq(
 // -----------------------------------------------------------------------
 // Shared
 // -----------------------------------------------------------------------
-lazy val model = crossProject
+lazy val model = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .settings(commonSettings, name := "shadowcloud-model")
   .settings(
@@ -111,7 +111,7 @@ lazy val modelJVM = model.jvm
 
 lazy val modelJS = model.js
 
-lazy val utils = crossProject
+lazy val utils = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .settings(commonSettings, name := "shadowcloud-utils")
   .jvmSettings(
@@ -126,7 +126,7 @@ lazy val utilsJVM = utils.jvm
 
 lazy val utilsJS = utils.js
 
-lazy val testUtils = (crossProject.crossType(CrossType.Pure) in file("utils") / "test")
+lazy val testUtils = (crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Pure) in file("utils") / "test")
   .settings(commonSettings, name := "shadowcloud-test-utils")
   .jvmSettings(
     libraryDependencies ++=
@@ -139,7 +139,7 @@ lazy val testUtilsJVM = testUtils.jvm
 
 lazy val testUtilsJS = testUtils.js
 
-lazy val serialization = crossProject
+lazy val serialization = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Pure)
   .settings(commonSettings, name := "shadowcloud-serialization")
   .jvmSettings(libraryDependencies ++= ProjectDeps.playJson ++ ProjectDeps.boopickle ++ ProjectDeps.kryo)
@@ -183,7 +183,8 @@ lazy val coreAssembly = (project in file("core/assembly"))
     mailruCloudStorage,
     dropboxStorage,
     webdavStorage,
-    telegramStorage
+    telegramStorage,
+    yandexStorage
   )
   .dependsOn(
     Seq[ClasspathDep[ProjectReference]](javacvMetadata).filter(_ ⇒ ProjectDeps.javacv.isEnabled) ++
@@ -201,7 +202,9 @@ lazy val coreAssembly = (project in file("core/assembly"))
     googleDriveStorage,
     mailruCloudStorage,
     dropboxStorage,
-    webdavStorage
+    webdavStorage,
+    telegramStorage,
+    yandexStorage
   )
 
 // -----------------------------------------------------------------------
@@ -279,6 +282,8 @@ lazy val webdavStorage = storagePlugin("webdav")
 lazy val telegramStorage = storagePlugin("telegram")
   .settings(libraryDependencies ++= ProjectDeps.guava)
 
+lazy val yandexStorage = storagePlugin("yandex")
+
 // Metadata plugins
 def metadataPlugin(id: String): Project = {
   val prefixedId = s"metadata-$id"
@@ -310,7 +315,7 @@ lazy val markdownMetadata = metadataPlugin("markdown")
 // -----------------------------------------------------------------------
 // HTTP
 // -----------------------------------------------------------------------
-lazy val autowireApi = (crossProject.crossType(CrossType.Pure) in (file("server") / "autowire-api"))
+lazy val autowireApi = (crossProject(JSPlatform, JVMPlatform).crossType(CrossType.Pure) in (file("server") / "autowire-api"))
   .settings(commonSettings, name := "shadowcloud-autowire-api")
   .jvmSettings(libraryDependencies ++= ProjectDeps.autowire ++ ProjectDeps.scalaTest.map(_ % "test"))
   .jsSettings(ScalaJSDeps.autowire, ScalaJSDeps.browserDom, ScalaJSDeps.scalaTest)

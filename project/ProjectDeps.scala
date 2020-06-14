@@ -4,7 +4,7 @@ object ProjectDeps {
   type Deps = Seq[ModuleID]
 
   object akka {
-    val version     = "2.6.4"
+    val version     = "2.6.6"
     val httpVersion = "10.1.11"
 
     def actors: Deps = Seq(
@@ -119,7 +119,7 @@ object ProjectDeps {
 
   // https://github.com/lookfirst/sardine/
   def sardine: Deps = Seq(
-    "com.github.lookfirst" % "sardine" % "5.8"
+    "com.github.lookfirst" % "sardine" % "5.9"
   )
 
   def logback: Deps = Seq(

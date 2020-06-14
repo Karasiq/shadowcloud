@@ -59,7 +59,11 @@ object StorageUtils {
       StorageIOResult.Success(path, count)
 
     case AkkaIOResult(_, Failure(error)) ⇒
-      StorageIOResult.Failure(path, StorageUtils.wrapException(path, error))
+      failure(path, error)
+  }
+
+  def failure(path: Path, error: Throwable): StorageIOResult.Failure = {
+    StorageIOResult.Failure(path, StorageUtils.wrapException(path, error))
   }
 
   def wrapAkkaIOFuture(path: Path, future: Future[AkkaIOResult])(implicit ec: ExecutionContext): Future[StorageIOResult] = {
@@ -67,12 +71,12 @@ object StorageUtils {
   }
 
   def wrapFuture(path: Path, future: Future[_ <: StorageIOResult])(implicit ec: ExecutionContext): Future[StorageIOResult] = {
-    future.recover { case error ⇒ StorageIOResult.Failure(path, StorageUtils.wrapException(path, error)) }
+    future.recover { case error ⇒ failure(path, error) }
   }
 
   def wrapStream(path: Path = Path.root): Flow[StorageIOResult, StorageIOResult, NotUsed] = {
     Flow[StorageIOResult]
-      .recover { case error ⇒ StorageIOResult.Failure(path, StorageUtils.wrapException(path, error)) }
+      .recover { case error ⇒ failure(path, error) }
       // .orElse(Source.single(StorageIOResult.Failure(path, StorageUtils.wrapException(path, new IllegalArgumentException("No data passed")))))
   }
 

@@ -15,12 +15,13 @@ private[shadowcloud] object BackgroundOps {
 }
 
 private[shadowcloud] final class BackgroundOps(config: SCConfig, regionOps: RegionOps)(implicit mat: Materializer) {
-  private[this] val repairStream = RegionRepairStream(regionOps, config.parallelism, config.buffers.repair)(mat.executionContext)
+  private[this] val repairStream = RegionRepairStream(regionOps, config.parallelism, config.buffers.repair)
     .withAttributes(Attributes.name("regionRepair") and ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
 
   def repair(regionId: RegionId, strategy: RegionRepairStream.Strategy, chunks: Seq[Chunk] = Nil): Future[Seq[Chunk]] = { // TODO: Queue
     val request = RegionRepairStream.Request(regionId, strategy, chunks)
-    Source.single(request)
+    Source
+      .single(request)
       .to(repairStream)
       .mapMaterializedValue(_ ⇒ request.result.future)
       .named("regionRepairStream")

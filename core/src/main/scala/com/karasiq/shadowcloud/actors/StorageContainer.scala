@@ -42,7 +42,7 @@ private[actors] final class StorageContainer(instantiator: StorageInstantiator, 
 
       //noinspection ScalaUnusedSymbol
       private[this] val healthSupervisor: ActorRef =
-        context.watch(context.actorOf(StorageHealthSupervisor.props(storage, 30 seconds, 5), "health-sv"))
+        context.watch(context.actorOf(StorageHealthSupervisor.props(storage, 1 minute, 3), "health-sv"))
 
       override def preStart(): Unit = {
         super.preStart()

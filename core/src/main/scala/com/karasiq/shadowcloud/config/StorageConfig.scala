@@ -1,23 +1,26 @@
 package com.karasiq.shadowcloud.config
 
-import scala.concurrent.duration.FiniteDuration
-
-import com.typesafe.config.Config
-
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.utils.ChunkKeyMapper
+import com.typesafe.config.Config
 
-final case class StorageConfig(rootConfig: Config,
-                               chunkKey: Option[ChunkKeyMapper],
-                               healthCheckInterval: FiniteDuration,
-                               index: StorageIndexConfig,
-                               chunkIO: StorageChunkIOConfig) extends WrappedConfig
+import scala.concurrent.duration.FiniteDuration
+
+final case class StorageConfig(
+    rootConfig: Config,
+    immutable: Boolean,
+    chunkKey: Option[ChunkKeyMapper],
+    healthCheckInterval: FiniteDuration,
+    index: StorageIndexConfig,
+    chunkIO: StorageChunkIOConfig
+) extends WrappedConfig
 
 object StorageConfig extends WrappedConfigFactory[StorageConfig] with ConfigImplicits {
   private[this] def getConfigForId(storageId: StorageId, rootConfig: Config): Config = {
-    rootConfig.getConfigOrRef(s"storages.$storageId")
+    rootConfig
+      .getConfigOrRef(s"storages.$storageId")
       .withFallback(rootConfig.getConfig("default-storage"))
   }
 
@@ -27,7 +30,8 @@ object StorageConfig extends WrappedConfigFactory[StorageConfig] with ConfigImpl
   }
 
   def forProps(storageId: StorageId, props: StorageProps, rootConfig: Config): StorageConfig = {
-    val config = props.rootConfig.getConfigOrRef("config")
+    val config = props.rootConfig
+      .getConfigOrRef("config")
       .withFallback(getConfigForId(storageId, rootConfig))
     apply(config)
   }
@@ -35,6 +39,7 @@ object StorageConfig extends WrappedConfigFactory[StorageConfig] with ConfigImpl
   def apply(config: Config): StorageConfig = {
     StorageConfig(
       config,
+      config.getBoolean("immutable"),
       config.optional(config ⇒ ChunkKeyMapper.forName(config.getString("chunk-key"), config)),
       config.getFiniteDuration("health-check-interval"),
       StorageIndexConfig(config.getConfig("index")),

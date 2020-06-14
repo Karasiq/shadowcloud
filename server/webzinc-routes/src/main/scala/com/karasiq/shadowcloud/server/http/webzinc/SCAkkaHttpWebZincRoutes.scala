@@ -42,7 +42,7 @@ trait SCAkkaHttpWebZincRoutes { self: SCAkkaHttpFileRoutes with SCAkkaHttpApiRou
 
     def fetchWebPage(url: String): PageFuture = {
       val pageFuture = fetcher.getWebPage(url).flatMap((inliner.inline _).tupled)
-      pageFuture.map(page ⇒ (WebZincUtils.getFileName(page), Source.single(page.data)))
+      pageFuture.map(page ⇒ (WebZincUtils.getValidFileName(page), Source.single(page.data)))
     }
 
     def fetchHttpFile(url: String): PageFuture = {

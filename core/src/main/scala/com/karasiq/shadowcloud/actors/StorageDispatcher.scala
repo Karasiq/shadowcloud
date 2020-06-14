@@ -145,8 +145,7 @@ private final class StorageDispatcher(
           log.debug("{} bytes written, updating storage health", written)
           updateHealth(_ - written)
 
-        case _ ⇒
-        // Ignore
+        case _ ⇒ // Ignore
       }
   }
 

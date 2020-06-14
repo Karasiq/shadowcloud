@@ -17,22 +17,20 @@ private[shadowcloud] object StorageModuleRegistry {
   }
 }
 
-private[shadowcloud] final class StorageModuleRegistryImpl(providers: ProvidersConfig[StorageProvider])
-                                                          (implicit inst: ProviderInstantiator) extends StorageModuleRegistry {
+private[shadowcloud] final class StorageModuleRegistryImpl(providers: ProvidersConfig[StorageProvider])(implicit inst: ProviderInstantiator)
+    extends StorageModuleRegistry {
 
   private[this] val providerInstances = providers.instances
-  private[this] val providerMap = providerInstances.toMap
+  private[this] val providerMap       = providerInstances.toMap
+
   private[this] val storages = providerInstances
     .foldLeft(PartialFunction.empty[StorageProps, StoragePlugin]) { case (pf, (_, pr)) ⇒ pr.storages.orElse(pf) }
   private[this] val storageConfigs = providerInstances
     .foldLeft(PartialFunction.empty[String, SerializedProps]) { case (pf, (_, pr)) ⇒ pr.storageConfigs.orElse(pf) }
 
   def storagePlugin(storageProps: StorageProps): StoragePlugin = {
-    if (storageProps.provider.isEmpty) {
-      storages(storageProps)
-    } else {
-      providerMap(storageProps.provider).storages(storageProps)
-    }
+    val pf = if (storageProps.provider.isEmpty) storages else providerMap(storageProps.provider).storages
+    pf.applyOrElse(storageProps, (p: StorageProps) ⇒ throw new IllegalArgumentException(s"Invalid storage type or props: $p"))
   }
 
   val storageTypes: Set[String] = {

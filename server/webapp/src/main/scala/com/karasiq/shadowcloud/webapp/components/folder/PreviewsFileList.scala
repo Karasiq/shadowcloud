@@ -8,15 +8,15 @@ import scalaTags.all._
 import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 
-private[folder] object PreviewsFileTable {
+private[folder] object PreviewsFileList {
   def apply(files: Rx[Seq[File]], selectedFile: Var[Option[File]])
-           (implicit context: AppContext, fc: FolderContext): PreviewsFileTable = {
-    new PreviewsFileTable(files, selectedFile)
+           (implicit context: AppContext, fc: FolderContext): PreviewsFileList = {
+    new PreviewsFileList(files, selectedFile)
   }
 }
 
-private[folder] class PreviewsFileTable(files: Rx[Seq[File]], selectedFile: Var[Option[File]])
-                                       (implicit context: AppContext, fc: FolderContext) extends BootstrapHtmlComponent {
+private[folder] class PreviewsFileList(files: Rx[Seq[File]], selectedFile: Var[Option[File]])
+                                      (implicit context: AppContext, fc: FolderContext) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
     val filterField = Form(FormInput.text("", sorting.filter.reactiveInput))
 

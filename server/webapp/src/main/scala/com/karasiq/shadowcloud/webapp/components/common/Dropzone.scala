@@ -29,7 +29,8 @@ object Dropzone {
           },
           headers = js.Dynamic.literal("X-Requested-With" -> SCApiUtils.RequestedWith, "Accept" -> AjaxApi.payloadContentType),
           maxFilesize = null,
-          timeout = -1
+          timeout = -1,
+          parallelUploads = 4
         )
         .asInstanceOf[js.Object]
     )

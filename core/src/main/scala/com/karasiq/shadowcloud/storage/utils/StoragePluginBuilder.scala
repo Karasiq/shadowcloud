@@ -3,10 +3,13 @@ package com.karasiq.shadowcloud.storage.utils
 import akka.actor.{ActorContext, ActorRef}
 import com.karasiq.shadowcloud.actors.{ChunkIODispatcher, StorageDispatcher, StorageIndex}
 import com.karasiq.shadowcloud.model._
+import com.karasiq.shadowcloud.model.utils.StorageHealth
 import com.karasiq.shadowcloud.providers.LifecycleHook
 import com.karasiq.shadowcloud.storage.StorageHealthProvider
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository._
+
+import scala.concurrent.Future
 
 object StoragePluginBuilder {
   val defaultDelimiter = "__scd__"
@@ -35,6 +38,10 @@ case class StoragePluginBuilder(storageId: StorageId,
     copy(index = Some(repository))
   }
 
+  def withTreeRepo(repository: PathTreeRepository): StoragePluginBuilder = {
+    withIndexTree(repository).withChunksTree(repository)
+  }
+
   def withIndexTree(repository: PathTreeRepository): StoragePluginBuilder = {
     val indexRepo = PathTreeRepository.toCategorized(repository, StoragePluginBuilder.getIndexPath(props))
     withIndex(Repository.forIndex(indexRepo))
@@ -61,6 +68,12 @@ case class StoragePluginBuilder(storageId: StorageId,
 
   def withHealth(healthProvider: StorageHealthProvider): StoragePluginBuilder = {
     copy(health = Some(healthProvider))
+  }
+
+  def withHealthF(f: () => Future[StorageHealth]): StoragePluginBuilder = {
+    withHealth(new StorageHealthProvider {
+      override def health: Future[StorageHealth] = f()
+    })
   }
 
   def withLifecycleHook(lifecycleHook: LifecycleHook): StoragePluginBuilder = {

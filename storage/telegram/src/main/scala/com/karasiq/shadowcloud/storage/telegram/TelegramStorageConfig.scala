@@ -1,12 +1,12 @@
 package com.karasiq.shadowcloud.storage.telegram
 
 import com.karasiq.common.configs.ConfigImplicits._
-import com.karasiq.shadowcloud.storage.telegram.TGCloudConfig.Secrets
+import com.karasiq.shadowcloud.storage.telegram.TelegramStorageConfig.Secrets
 import com.typesafe.config.Config
 
-case class TGCloudConfig(pythonPath: Option[String], entity: String, port: Option[Int], secrets: Secrets)
+case class TelegramStorageConfig(pythonPath: Option[String], entity: String, port: Option[Int], secrets: Secrets)
 
-object TGCloudConfig {
+object TelegramStorageConfig {
   case class Secrets(apiId: Int, apiHash: String, entity: String)
   object Secrets {
     def apply(config: Config): Secrets = {
@@ -18,8 +18,8 @@ object TGCloudConfig {
     }
   }
 
-  def apply(config: Config): TGCloudConfig = {
-    TGCloudConfig(
+  def apply(config: Config): TelegramStorageConfig = {
+    TelegramStorageConfig(
       config.optional(_.getString("python-path")),
       config.withDefault("tgcloud", _.getString("entity")),
       config.optional(_.getInt("port")),

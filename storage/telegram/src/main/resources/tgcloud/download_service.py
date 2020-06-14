@@ -1,28 +1,35 @@
 #!/usr/bin/env python3
 # -*- coding: UTF-8 -*-
 
-from __future__ import print_function
-from __future__ import unicode_literals
-
 import asyncio
+import sys
+from datetime import datetime, timedelta
+from io import BytesIO
+
 # noinspection PyUnresolvedReferences
 import errno
-import sys
-from io import BytesIO
-from quart import Quart, request
-from quart import Response
-from secret import *
+import lz4.frame
+import pytz
+from quart import Quart, request, Response
 from telethon import TelegramClient
+from telethon.errors.rpcbaseerrors import RPCError
 from telethon.tl.types import DocumentAttributeFilename
+
+import secret
 
 app = Quart(__name__)
 app.config.from_object(__name__)
 
-path_home = './'  # os.path.abspath('.') #  os.path.dirname(os.path.realpath(__file__))
-client = TelegramClient(entity, api_id, api_hash, timeout=30)
+client = TelegramClient(secret.entity, secret.api_id, secret.api_hash, timeout=60, request_retries=0, retry_delay=0,
+                        flood_sleep_threshold=10, lang_code='ru', system_lang_code='ru')
 
 entity_name = "tgcloud"
 entity = None
+
+
+@app.before_request
+async def auto_reconnect():
+    await try_reconnect()
 
 
 @app.route('/download', methods=['GET'])
@@ -37,7 +44,7 @@ async def download_route():
 
 @app.route('/list', methods=['GET'])
 async def list_route():
-    path = request.args.get('path') or ''
+    path = request.args.get('path')
     f = BytesIO()
     await list_files(path, f)
     f.seek(0)
@@ -58,26 +65,25 @@ async def upload_route():
         return Response("File upload failed", 500)
 
 
-@app.route('/delete', methods=['POST', 'DELETE'])
+@app.route('/delete', methods=['POST', 'DELETE', 'GET'])
 async def delete_route():
     path = request.args.get("path")
     assert path is not None
-    assert await delete_block(path) == 0
+    assert await delete_data(path) == 0
     return Response("")
 
 
 @app.route('/size', methods=['GET'])
 async def size_route():
-    path = request.args.get('path') or ''
+    path = request.args.get('path')
     size = await size_files(path)
     return Response(str(size))
 
 
 async def download_block(uid, file_out):
-    messages = await client.get_messages(entity, limit=1, search=uid)
-    for i in range(len(messages)):
-        msg = messages[i]
-        if msg.message == uid:
+    messages = client.iter_messages(entity, search=uid)
+    async for msg in messages:
+        if msg.document and msg.message == uid:
             if await client.download_media(msg, file_out):
                 return 0
             else:
@@ -85,17 +91,23 @@ async def download_block(uid, file_out):
     return -1
 
 
-async def delete_block(uid):
-    messages = await client.get_messages(entity, limit=1, search=uid)
-    for i in range(len(messages)):
-        msg = messages[i]
-        if msg.message == uid:
-            await client.delete_messages(entity, [msg])
-    return 0
+async def delete_data(uid):
+    messages = client.iter_messages(entity, search=uid)
+    to_delete = []
+    async for m in messages:
+        if starts_with(m.message, uid):
+            to_delete.append(m.id)
+
+    if len(await client.delete_messages(entity, to_delete)) > 0:
+        await delete_outdated_meta(uid)
+        return 0
+    else:
+        return errno.EEXIST
 
 
 async def upload_block(uid, file_in, overwrite=False):
-    messages = await client.get_messages(entity, limit=1, search=uid)
+    messages = list(filter(lambda m: m.message == uid, await client.get_messages(entity, limit=100, search=uid)))
+
     if len(messages):
         app.logger.warning(f"File already exists: {uid}")
         if overwrite:
@@ -116,29 +128,119 @@ async def upload_block(uid, file_in, overwrite=False):
         return -1
 
 
-async def list_files(pattern, file_out):
-    messages = await client.get_messages(entity, limit=100, search=pattern)
-    last_id = 0
-    while len(messages) != 0:
-        last_id = messages[-1].id
-        with_doc = filter(lambda m: m.document is not None and m.message != '', messages)
-        texts = map(lambda m: m.message, with_doc)
-        for file in texts:
-            file_out.write(bytes(file + "\n", "utf-8"))
-        messages = await client.get_messages(entity, limit=100, search=pattern, offset_id=last_id)
+def starts_with(path: str, required_path: str) -> bool:
+    return path.startswith(required_path + '/') or path == required_path
+
+
+meta_lock = asyncio.Lock()
+meta_lock_local = {}
+
+
+def get_meta_lock(path) -> asyncio.Lock:
+    if path in meta_lock_local:
+        return meta_lock_local[path]
+    else:
+        lock = asyncio.Lock()
+        meta_lock_local[path] = lock
+        return lock
+
+
+async def delete_outdated_meta(path):
+    to_delete = []
+    async with meta_lock:
+        async for m in client.iter_messages(entity, search='$tgcloud_meta'):
+            if starts_with(f'$tgcloud_meta/{path}', m.message):
+                to_delete.append(m.id)
+        return await client.delete_messages(entity, to_delete)
+
+
+async def _get_files_meta_unsafe(path) -> list:
+    class AsObject:
+        def __init__(self, obj):
+            self.__dict__ = obj
+
+    import json
+
+    uid = f'$tgcloud_meta/{path}'
+
+    async def list_files() -> list:
+        meta_messages = []
+        async for m in client.iter_messages(entity, search=uid):
+            if m.message == uid:
+                meta_messages.append(m)
+        return meta_messages
+
+    size_meta = await list_files()
+    messages = client.iter_messages(entity, search=path)
+    data = {
+        'messages': [],
+        'last_id': -1
+    }
+    if len(size_meta) > 0:
+        msg = size_meta[0]
+        compressed_data = BytesIO()
+        await client.download_media(msg, compressed_data)
+        try:
+            compressed_data.seek(0)
+            raw_data = lz4.frame.decompress(compressed_data.read())
+            data = json.loads(raw_data)
+            messages = client.iter_messages(entity, search=path, min_id=data['last_id'] + 1)
+        except Exception:
+            pass
+
+    added = 0
+    async for m in messages:
+        if m.message and m.document and starts_with(m.message, path):
+            data['messages'].append({
+                'id': m.id,
+                'path': m.message,
+                'size': m.document.size
+            })
+            data['last_id'] = max(data['last_id'], m.id)
+            added += 1
+
+    now = pytz.utc.localize(datetime.utcnow())
+    is_outdated = added > 0 and (len(size_meta) == 0 or now > (size_meta[0].date + timedelta(minutes=10)))
+    if is_outdated and len(data['messages']) > 10:
+        try:
+            raw_json = bytes(json.dumps(data), "utf-8")
+            compressed_json = lz4.frame.compress(raw_json)
+            result = await client.send_file(entity,
+                                            file=compressed_json,
+                                            caption=f'{uid}',
+                                            attributes=[DocumentAttributeFilename(f'{uid}')],
+                                            allow_cache=False,
+                                            part_size_kb=512,
+                                            force_document=True)
+            if result:
+                if len(size_meta) > 0:
+                    await client.delete_messages(entity, list(map(lambda m: m.id, size_meta)))
+        except RPCError:
+            pass
+    messages_objs = list(map(lambda m: AsObject(m), data['messages']))
+    return messages_objs
+
+
+async def get_files_meta(path) -> list:
+    lock = get_meta_lock(path)
+    async with lock:
+        return await _get_files_meta_unsafe(path)
+
+
+async def list_files(path, file_out):
+    messages = await get_files_meta(path)
+    for m in messages:
+        if starts_with(m.path, path):
+            file_out.write(bytes(m.path + "\n", "utf-8"))
     return 0
 
 
-async def size_files(pattern):
-    messages = await client.get_messages(entity, limit=100, search=pattern)
+async def size_files(path):
+    messages = await get_files_meta(path)
     total_size = 0
-    last_id = 0
-    while len(messages) != 0:
-        last_id = messages[-1].id
-        with_doc = filter(lambda m: m.document is not None and m.message != '', messages)
-        sizes = map(lambda m: m.document.size, with_doc)
-        total_size += sum(sizes)
-        messages = await client.get_messages(entity, limit=100, search=pattern, offset_id=last_id)
+    for m in messages:
+        if starts_with(m.path, path):
+            total_size += m.size
     return total_size
 
 
@@ -150,7 +252,7 @@ async def try_reconnect():
 
 async def init_entity():
     global entity
-    if entity == '':
+    if entity_name == '':
         entity = await client.get_entity(await client.get_me())
     else:
         entity = await (d async for d in client.iter_dialogs() if not d.is_user and d.name == entity_name).__anext__()
@@ -176,7 +278,7 @@ async def main(argv):
             return await list_files(pattern, sys.stdout.buffer)
         elif service == 'delete':
             uid = argv[2]
-            return await delete_block(uid)
+            return await delete_data(uid)
         elif service == 'size':
             pattern = argv[2]
             size = await size_files(pattern)
@@ -185,6 +287,7 @@ async def main(argv):
         elif service == 'server':
             port = argv[2] or 5000
             entity_name = argv[3]
+            await init_entity()
             await app.run_task(port=port, use_reloader=False)
         else:
             return -1

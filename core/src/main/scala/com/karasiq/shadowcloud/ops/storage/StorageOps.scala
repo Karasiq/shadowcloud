@@ -73,6 +73,7 @@ final class StorageOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(imp
   // Utils
   // -----------------------------------------------------------------------
   def getHealth(storageId: StorageId, checkNow: Boolean = false): Future[StorageHealth] = {
+    implicit val timeout = if (checkNow) timeouts.chunksList else timeouts.query
     askStorage(storageId, StorageDispatcher.GetHealth, StorageDispatcher.GetHealth(checkNow))
   }
 

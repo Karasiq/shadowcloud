@@ -1,7 +1,9 @@
 package com.karasiq.shadowcloud.actors
 
 import akka.actor.{Actor, ActorLogging, DeadLetterSuppression, PossiblyHarmful, Props, ReceiveTimeout, Status}
+import akka.event.Logging
 import akka.persistence._
+import akka.stream.ActorAttributes
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.{Done, NotUsed}
 import com.karasiq.shadowcloud.ShadowCloud
@@ -65,8 +67,8 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
   require(storageId.nonEmpty && regionId.nonEmpty, "Invalid storage identifier")
 
   import context.dispatcher
-  private[this] implicit lazy val sc      = ShadowCloud()
-  private[this] lazy val config           = sc.configs.storageConfig(storageId, storageProps)
+  private[this] implicit lazy val sc = ShadowCloud()
+  private[this] lazy val config      = sc.configs.storageConfig(storageId, storageProps)
 
   import sc.implicits.materializer
 
@@ -110,7 +112,9 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
       }
 
     case Compact ⇒
-      if (!state.compactRequested) {
+      if (config.immutable) {
+        log.warning("Storage is immutable, unable to compact indexes")
+      } else if (!state.compactRequested) {
         log.debug("Index compaction requested")
         state.compactRequested = true
       }
@@ -416,6 +420,7 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
                 Source(diffsToDelete)
                   .via(state.streams.delete(repository))
                   .log("compact-delete")
+                  .withAttributes(ActorAttributes.logLevels(onElement = Logging.InfoLevel))
                   .filter(_.ioResult.isSuccess)
                   .map(_.key)
                   .fold(Set.empty[SequenceNr])(_ + _)
@@ -497,7 +502,8 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
   }
 
   private[this] def isCompactRequired(): Boolean = {
-    state.compactRequested || (config.index.compactThreshold > 0 && state.diffStats.deletes > config.index.compactThreshold)
+    !config.immutable &&
+    (state.compactRequested || (config.index.compactThreshold > 0 && state.diffStats.deletes > config.index.compactThreshold))
   }
 
   private[this] def loadRepositoryKeys(): Unit = {

@@ -78,7 +78,7 @@ private[gdrive] class GDriveStoragePlugin(implicit sc: ShadowCloudExtension) ext
           val dispatcher = StoragePluginBuilder(storageId, props)
             .withIndexTree(GDriveRepository(service))
             .withChunksTree(GDriveRepository(service))
-            .withHealth(GDriveHealthProvider(service))
+            .withHealth(GDriveHealthProvider(service, props))
             .createStorage()
 
           context.become(receiveAuthorized(dispatcher))

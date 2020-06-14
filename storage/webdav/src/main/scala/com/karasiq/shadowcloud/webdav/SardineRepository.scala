@@ -71,7 +71,7 @@ object SardineRepository {
       }
     }
     sardine.enablePreemptiveAuthentication(props.address.uri.get.getHost)
-    sardine.disableCompression()
+    // sardine.disableCompression()
     sardine
   }
 }

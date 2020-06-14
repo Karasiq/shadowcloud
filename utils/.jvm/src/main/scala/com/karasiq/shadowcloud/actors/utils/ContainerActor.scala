@@ -24,8 +24,11 @@ private[actors] trait ContainerActor { self: Actor with Stash with ActorLogging 
 
   def stopActor(): Unit = {
     stopping = true
-    actorRef.foreach(context.stop)
-    context.setReceiveTimeout(10 seconds)
+    actorRef.foreach { ref ⇒
+      context.watch(ref)
+      context.stop(ref)
+    }
+    context.setReceiveTimeout(15 seconds)
   }
 
   def restartActor(): Unit = {
@@ -65,7 +68,8 @@ private[actors] trait ContainerActor { self: Actor with Stash with ActorLogging 
       }
 
     case ReceiveTimeout ⇒
-      throw new TimeoutException("Actor restart timeout")
+      log.error("Actor restart timeout: {}", actorRef.mkString)
+      context.stop(context.self)
 
     case message if actorRef.contains(sender()) ⇒
       context.parent ! message

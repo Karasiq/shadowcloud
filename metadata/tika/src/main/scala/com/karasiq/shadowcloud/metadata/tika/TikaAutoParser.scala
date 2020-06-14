@@ -12,6 +12,7 @@ import org.apache.tika.Tika
 import org.apache.tika.parser.{ParseContext, RecursiveParserWrapper}
 import org.apache.tika.sax._
 import org.xml.sax.ContentHandler
+import org.xml.sax.helpers.DefaultHandler
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
@@ -107,7 +108,7 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
         parser.parse(inputStream, null, metadata, new ParseContext)
       } catch {
         case NonFatal(_) ⇒
-        // Ignore
+          // Ignore
       }
 
       (parser.getMetadata.asScala.toVector, handlers.toVector)

@@ -1,14 +1,13 @@
 package com.karasiq.shadowcloud.api
 
-import scala.concurrent.Future
-
 import akka.Done
-
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyId, KeySet}
 import com.karasiq.shadowcloud.model.utils._
+
+import scala.concurrent.Future
 
 trait ShadowCloudApi {
   // -----------------------------------------------------------------------
@@ -61,6 +60,7 @@ trait ShadowCloudApi {
   def getFiles(regionId: RegionId, path: Path, dropChunks: Boolean = true, scope: IndexScope = IndexScope.default): Future[Set[File]]
   def getFile(regionId: RegionId, path: Path, id: FileId, dropChunks: Boolean = true, scope: IndexScope = IndexScope.default): Future[File]
   def getFileAvailability(regionId: RegionId, file: File, scope: IndexScope = IndexScope.default): Future[FileAvailability]
+  def listFileMetadata(regionId: RegionId, fileId: FileId): Future[Set[Metadata.Tag.Disposition]]
   def getFileMetadata(regionId: RegionId, fileId: FileId, disposition: Metadata.Tag.Disposition): Future[Seq[Metadata]]
   def copyFiles(regionId: RegionId, path: Path, newPath: Path, scope: IndexScope = IndexScope.default): Future[Done]
   def copyFile(regionId: RegionId, file: File, newPath: Path, scope: IndexScope = IndexScope.default): Future[Done]

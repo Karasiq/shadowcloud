@@ -102,7 +102,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
   import sc.implicits.{defaultTimeout, materializer}
 
   val storageTracker = StorageTracker()
-  val chunksTracker  = ChunksTracker(regionId, regionConfig, storageTracker)
+  val chunksTracker  = ChunksTracker(regionId, regionConfig, storageTracker, () => schedules.scheduleRetry())
   val indexTracker   = RegionIndexTracker(regionId, chunksTracker)
 
   private[this] implicit val regionContext =
@@ -274,6 +274,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
         log.info("Attaching storage {}: {}", storageId, dispatcher)
         storageTracker.register(storageId, props, dispatcher, health)
         self ! PullStorageIndex(storageId)
+        chunksTracker.chunkIO.retryPendingChunks()
       }
 
     case DetachStorage(storageId) if storageTracker.contains(storageId) ⇒
@@ -281,6 +282,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
       chunksTracker.storages.state.unregister(storageId)
       indexTracker.storages.state.dropStorageDiffs(storageId)
       storageTracker.unregister(storageId)
+      chunksTracker.chunkIO.retryPendingChunks()
 
     case GetStorages ⇒
       sender() ! GetStorages.Success(regionId, storageTracker.storages)
@@ -353,7 +355,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
           indexTracker.storages.state.dropStorageDiffs(storageId, sequenceNrs)
 
         case StorageEvents.ChunkWritten(ChunkPath(`regionId`, _), chunk) ⇒
-          log.info("Chunk written: {}", chunk)
+          // log.info("Chunk written: {}", chunk)
           // chunks.onWriteSuccess(chunk, storageId)
           indexTracker.indexes.registerChunk(chunk)
           sc.eventStreams.publishRegionEvent(regionId, RegionEvents.ChunkWritten(storageId, chunk))
@@ -419,7 +421,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
     }
 
     private[RegionDispatcher] def initSchedules(): Unit = {
-      scheduler.schedule(30 seconds, 3 seconds, self, RetryPendingChunks)
+      scheduler.scheduleAtFixedRate(30 seconds, 3 seconds, self, RetryPendingChunks)
     }
   }
 

@@ -70,10 +70,10 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
-  private[this] val sc                    = ShadowCloud()
-  private[this] val config                = sc.configs.storageConfig(storageId, storageProps)
-  private[this] val chunksWrite           = PendingOperations.withRegionChunk
-  private[this] val chunksRead            = PendingOperations.withRegionChunk
+  private[this] val sc          = ShadowCloud()
+  private[this] val config      = sc.configs.storageConfig(storageId, storageProps)
+  private[this] val chunksWrite = PendingOperations.withRegionChunk
+  private[this] val chunksRead  = PendingOperations.withRegionChunk
 
   import sc.implicits.materializer
 
@@ -92,24 +92,28 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
 
           writeSource.extractMatFuture
             .flatMapConcat {
-              case StorageIOResult.Failure(_, StorageException.AlreadyExists(sp, _)) =>
+              case res @ StorageIOResult.Failure(_, StorageException.AlreadyExists(sp, _)) ⇒
                 log.warning("Chunk already exists: {}", sp)
-                Source
-                  .single(path.chunkId)
-                  .mapAsync(1)(repository.delete(_))
-                  .flatMapConcatMatRight(_ => writeSource)
-                  .extractMatFuture
-                  .map(_.last)
 
-              case otherResult =>
+                if (config.immutable)
+                  Source.single(res)
+                else
+                  Source
+                    .single(path.chunkId)
+                    .mapAsync(1)(repository.delete(_))
+                    .flatMapConcatMatRight(_ ⇒ writeSource)
+                    .extractMatFuture
+                    .map(_.last)
+
+              case otherResult ⇒
                 Source.single(otherResult)
             }
             .completionTimeout(config.chunkIO.writeTimeout)
             .alsoTo(AkkaStreamUtils.successPromiseOnFirst(promise))
             .viaMat(AkkaStreamUtils.ignoreUpstream(Source.future(promise.future)))(Keep.right)
             .log("storage-chunkio-write")
-            .map(_ => NotUsed)
-            .recover { case _ ⇒ NotUsed }
+            .map(_ ⇒ NotUsed)
+            .recoverWithRetries(1, { case _ ⇒ Source.empty })
             .named("storageWrite")
       }
     )
@@ -146,13 +150,13 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
             .fromGraph(readGraph)
             // .log("storage-read-results")
             .alsoToMat(Sink.head)(Keep.right)
-            .mapMaterializedValue { f =>
+            .mapMaterializedValue { f ⇒
               promise.completeWith(f)
               NotUsed
             }
             .completionTimeout(config.chunkIO.readTimeout)
             .alsoTo(AkkaStreamUtils.failPromiseOnFailure(promise))
-            .recover { case _ ⇒ NotUsed }
+            .recoverWithRetries(1, { case _ ⇒ Source.empty })
             .named("storageReadGraph")
       }
     )
@@ -180,6 +184,7 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
       chunksRead.finish(msg.key, msg)
 
     case DeleteChunks(chunks) ⇒
+      if (config.immutable) sender() ! DeleteChunks.Failure(chunks, new IllegalStateException("Storage is immutable"))
       log.warning("Deleting chunks from storage: [{}]", Utils.printValues(chunks))
       deleteChunks(chunks).pipeTo(sender())
 
@@ -205,10 +210,10 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
 
   override def postStop(): Unit = {
     chunksWrite.finishAll(
-      key => WriteChunk.Failure(key, StorageException.IOFailure(key._1.toStoragePath, new RuntimeException("Chunk IO dispatcher stopped")))
+      key ⇒ WriteChunk.Failure(key, StorageException.IOFailure(key._1.toStoragePath, new RuntimeException("Chunk IO dispatcher stopped")))
     )
     chunksRead.finishAll(
-      key => ReadChunk.Failure(key, StorageException.IOFailure(key._1.toStoragePath, new RuntimeException("Chunk IO dispatcher stopped")))
+      key ⇒ ReadChunk.Failure(key, StorageException.IOFailure(key._1.toStoragePath, new RuntimeException("Chunk IO dispatcher stopped")))
     )
     writeQueue.complete()
     readQueue.complete()
@@ -306,10 +311,5 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
       .run()
 
     DeleteChunks.wrapFuture(paths, deleted.zip(ioResult))
-  }
-
-  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
-    reason.printStackTrace()
-    super.preRestart(reason, message)
   }
 }

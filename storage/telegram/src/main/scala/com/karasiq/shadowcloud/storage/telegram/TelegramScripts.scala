@@ -5,13 +5,14 @@ import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
 
 import akka.util.ByteString
-import com.karasiq.shadowcloud.storage.telegram.TGCloudConfig.Secrets
+import com.karasiq.shadowcloud.model.StorageId
+import com.karasiq.shadowcloud.storage.telegram.TelegramStorageConfig.Secrets
 import com.karasiq.shadowcloud.ui.UIProvider
 
-object TGCloudScripts {
-  def createSession(secrets: Secrets, uiProvider: UIProvider): ByteString = {
+object TelegramScripts {
+  def createSession(storageId: StorageId, secrets: Secrets, uiProvider: UIProvider): ByteString = {
     require(uiProvider.canBlock, "Please create session manually and paste it as base64 in storage config session key")
-    val baseDir = Paths.get(sys.props("user.home"), "tgcloud-temp")
+    val baseDir = Paths.get(sys.props("user.home"), s"tgcloud-temp-$storageId")
     deleteDir(baseDir)
     extract(baseDir)
     writeSecrets(baseDir, secrets)
@@ -47,7 +48,6 @@ object TGCloudScripts {
     val files = Seq(
       "download_service.py",
       "requirements.txt",
-      "telegram_client_x.py",
       "telegram_create_session.py"
     )
     Files.createDirectories(directory)

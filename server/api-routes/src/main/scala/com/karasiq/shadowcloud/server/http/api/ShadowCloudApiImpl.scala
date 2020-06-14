@@ -11,6 +11,7 @@ import com.karasiq.shadowcloud.config.{ConfigProps, RegionConfig, SerializedProp
 import com.karasiq.shadowcloud.index.diffs.FolderIndexDiff
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.metadata.Metadata
+import com.karasiq.shadowcloud.metadata.Metadata.Tag
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.keys.{KeyId, KeySet}
 import com.karasiq.shadowcloud.model.utils.{IndexScope, RegionStateReport}
@@ -232,6 +233,12 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
 
   def getFileAvailability(regionId: RegionId, file: File, scope: IndexScope = IndexScope.default) = {
     getFullFile(regionId, file, scope).flatMap(sc.ops.region.getFileAvailability(regionId, _))
+  }
+
+  def listFileMetadata(regionId: RegionId, fileId: FileId): Future[Set[Tag.Disposition]] = {
+    sc.streams.metadata.list(regionId, fileId).map { f ⇒
+      f.files.flatMap(f ⇒ Tag.Disposition.fromName(f.path.name.toUpperCase))
+    }
   }
 
   def getFileMetadata(regionId: RegionId, fileId: FileId, disposition: Metadata.Tag.Disposition) = {

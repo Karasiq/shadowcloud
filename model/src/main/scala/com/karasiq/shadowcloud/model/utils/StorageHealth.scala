@@ -34,8 +34,8 @@ final case class StorageHealth(writableSpace: Long, totalSpace: Long, usedSpace:
 }
 
 object StorageHealth {
-  val empty     = StorageHealth(0, 0, 0)
-  val unlimited = StorageHealth(Long.MaxValue, Long.MaxValue, 0)
+  val empty     = StorageHealth(0, 0)
+  val unlimited = StorageHealth(Long.MaxValue, Long.MaxValue)
 
   def normalized(writableSpace: Long, totalSpace: Long, usedSpace: Long = 0L, online: Boolean = true): StorageHealth = {
     val totalSpaceN    = if (totalSpace >= 0) totalSpace else Long.MaxValue

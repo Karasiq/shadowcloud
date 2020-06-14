@@ -22,15 +22,15 @@ private[shadowcloud] trait IndexRepositoryStreams {
 
 private[shadowcloud] object IndexRepositoryStreams {
   def create(breadth: Int, writeFlow: Flow[IndexData, ByteString, _],
-             readFlow: Flow[ByteString, IndexData, _])(implicit ec: ExecutionContext): IndexRepositoryStreams = {
-    new DefaultIndexRepositoryStreams(breadth, writeFlow, readFlow)
+             readFlow: Flow[ByteString, IndexData, _], immutable: Boolean = false)(implicit ec: ExecutionContext): IndexRepositoryStreams = {
+    new DefaultIndexRepositoryStreams(breadth, writeFlow, readFlow, immutable)
   }
 
   def apply(regionId: RegionId, storageConfig: StorageConfig, actorSystem: ActorSystem): IndexRepositoryStreams = {
     import actorSystem.dispatcher
     implicit val sc = ShadowCloud(actorSystem)
     val index = IndexProcessingStreams(regionId)
-    create(3, index.preWrite(storageConfig), index.postRead)
+    create(3, index.preWrite(storageConfig), index.postRead, storageConfig.immutable)
   }
 
   def apply(regionId: RegionId, storageConfig: StorageConfig)(implicit ac: ActorContext): IndexRepositoryStreams = {

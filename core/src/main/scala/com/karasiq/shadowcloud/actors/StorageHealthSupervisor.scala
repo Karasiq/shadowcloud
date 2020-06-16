@@ -30,7 +30,7 @@ object StorageHealthSupervisor {
 class StorageHealthSupervisor(actor: ActorRef, interval: FiniteDuration, maxFailures: Int) extends Actor with ActorLogging {
   import StorageHealthSupervisor._
   import context.dispatcher
-  private[this] implicit val timeout: Timeout = ShadowCloud().config.timeouts.chunksList
+  private[this] implicit val timeout: Timeout = ShadowCloud().implicits.defaultTimeout
 
   private[this] var schedule: Cancellable = _
   private[this] var failures              = 0

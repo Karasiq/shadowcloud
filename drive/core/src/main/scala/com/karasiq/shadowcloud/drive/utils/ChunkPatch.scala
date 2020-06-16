@@ -1,16 +1,16 @@
 package com.karasiq.shadowcloud.drive.utils
 
+import akka.util.ByteString
+import com.karasiq.common.memory.MemorySize
+import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
+
 import scala.annotation.tailrec
 import scala.language.implicitConversions
-
-import akka.util.ByteString
-
-import com.karasiq.shadowcloud.streams.chunk.ChunkRanges
 
 private[drive] final case class ChunkPatch(offset: Long, data: ByteString) {
   val range = ChunkRanges.Range(offset, offset + data.length)
 
-  override def toString: String = s"ChunkPatch($offset, ${data.length} bytes)"
+  override def toString: String = s"ChunkPatch($offset, ${MemorySize(data.length)})"
 }
 
 private[drive] final case class ChunkPatchList(patches: Seq[ChunkPatch]) {

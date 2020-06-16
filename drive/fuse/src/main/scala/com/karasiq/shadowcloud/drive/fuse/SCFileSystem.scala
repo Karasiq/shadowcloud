@@ -100,7 +100,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
   }
 
   protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T], critical: Boolean = false, handle: Long = 0)(implicit timeout: Timeout): T = {
-    if (critical) log.info(s"IO operation requested: $message")
+    // if (critical) log.info(s"IO operation requested: $message")
 
     def getResult() = Await.result(status.unwrapFuture(fsDispatcher ? message), timeout.duration)
     val result = try {
@@ -116,7 +116,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
         if (critical || settings.debug) log.error(error, "IO operation failed: {}", message)
         throw error
     }
-    if (critical) log.info("IO operation: {} -> {}", message, result)
+    if (settings.debug) log.info("IO operation: {} -> {}", message, result)
     result
   }
 

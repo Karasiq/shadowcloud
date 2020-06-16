@@ -82,8 +82,8 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
-  private[this] implicit val timeout      = Timeout(config.fileIO.writeTimeout)
-  private[this] val sc                    = ShadowCloud()
+  private[this] implicit val timeout = Timeout(config.fileIO.writeTimeout)
+  private[this] val sc               = ShadowCloud()
 
   import context.dispatcher
   import sc.implicits.materializer
@@ -258,9 +258,11 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
 
     def flush(): Future[FlushResult] = {
       val currentWrites = dataState.pendingWrites
-      val writesStream = createWritesStream(currentWrites)
+      val writesStream = Source
+        .lazySource(() ⇒ createWritesStream(currentWrites))
         .via(WritesOptimizeStage(sc.config.chunks.chunkSize))
         .named("scDriveOptimizedWrites")
+        .mapMaterializedValue(_ ⇒ NotUsed)
 
       finishWrite(writesStream)
         .fold(Nil: Seq[ChunkIOOperation])(_ :+ _)
@@ -305,7 +307,14 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
 
   object dataOps {
     def applyPatch(patch: ChunkPatch): Unit = {
-      dataState.pendingWrites :+= patch
+      dataState.pendingWrites.lastOption match {
+        case Some(pw) if pw.range.end == patch.offset ⇒ // Optimization
+          dataState.pendingWrites = dataState.pendingWrites.init :+ pw.copy(data = pw.data ++ patch.data)
+
+        case _ ⇒
+          dataState.pendingWrites :+= patch
+      }
+
       dataState.lastModified = Utils.timestamp
     }
 
@@ -386,7 +395,6 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     case wr: WriteData ⇒
       dataOps.applyPatch(wr)
       if (dataState.isFlushRequired) {
-        log.debug("Flushing writes: {}", dataState.pendingWrites)
         val flushFuture = (self ? Flush)
           .mapTo[Flush.Success]
           .map(_ ⇒ Done)
@@ -404,7 +412,13 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       sender() ! DropChunks.Success(file, newSize)
 
     case Flush ⇒
-      actorState.pendingFlush.addWaiter(NotUsed, sender(), () ⇒ Flush.wrapFuture(file, dataIO.flush()).pipeTo(self))
+      actorState.pendingFlush.addWaiter(
+        NotUsed,
+        sender(), { () ⇒
+          log.info("Flushing writes: {}", dataState.pendingWrites) // MemorySize(dataState.pendingWrites.map(_.range.size).sum)
+          Flush.wrapFuture(file, dataIO.flush()).pipeTo(self)
+        }
+      )
 
     case PersistRevision ⇒
       val future = if (dataState.isRevisionModified) {
@@ -480,11 +494,11 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   // -----------------------------------------------------------------------
   override def preStart(): Unit = {
     super.preStart()
-    context.setReceiveTimeout(timeout.duration)
+    context.setReceiveTimeout(timeout.duration * 2)
   }
 
   override def postStop(): Unit = {
-    actorState.pendingFlush.finishAll(_ => Flush.Failure(file, new RuntimeException("IO scheduler stopped")))
+    actorState.pendingFlush.finishAll(_ ⇒ Flush.Failure(file, new RuntimeException("IO scheduler stopped")))
     super.postStop()
   }
 }

@@ -1,5 +1,5 @@
 import com.typesafe.sbt.packager.docker.Cmd
-import sbtcrossProject(JSPlatform, JVMPlatform).CrossPlugin.autoImport.{CrossType, crossProject(JSPlatform, JVMPlatform)}
+import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 val commonSettings = Seq(
   organization := "com.github.karasiq",

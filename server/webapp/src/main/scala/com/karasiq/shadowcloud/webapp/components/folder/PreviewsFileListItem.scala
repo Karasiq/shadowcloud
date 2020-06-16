@@ -1,6 +1,5 @@
 package com.karasiq.shadowcloud.webapp.components.folder
 
-
 import com.karasiq.bootstrap.Bootstrap.default._
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.model.File
@@ -22,9 +21,11 @@ object PreviewsFileListItem {
   }
 }
 
-class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit context: AppContext, fc: FolderContext) extends BootstrapHtmlComponent {
+class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit context: AppContext, fc: FolderContext)
+    extends BootstrapHtmlComponent {
   lazy val previews = {
-    FilePreview.getPreviews(fc.regionId, file.id)
+    FilePreview
+      .getPreviews(fc.regionId, file.id)
       .toRx(PreviewVariants.empty)
   }
 
@@ -42,7 +43,7 @@ class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit
       GridSystem.col(3)(
         Rx[Frag](previews().image match {
           case Some(thumbnail) ⇒
-            val blob = Blobs.fromBytes(thumbnail.data.toArray)
+            val blob     = Blobs.fromBytes(thumbnail.data.toArray)
             val imageUrl = Blobs.getUrl(blob)
             img(Bootstrap.image.responsive, Bootstrap.image.rounded, src := imageUrl, marginBottom := 10.px)
 
@@ -76,9 +77,7 @@ class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit
               fontSize := 12.px,
               // whiteSpace.`pre-wrap`,
               // lineHeight := 80.pct,
-              overflow.hidden,
-              marginTop := 8.px,
-              marginBottom := 8.px
+              overflow.hidden
             )
 
           case None ⇒
@@ -87,11 +86,11 @@ class PreviewsFileListItem(file: File, selectedFile: Var[Option[File]])(implicit
       ),
       "tr-hover".addClass,
       // border := "solid 0.1px",
-      marginTop := 2.px,
+      marginTop := 8.px,
+      marginBottom := 8.px,
       wordWrap.`break-word`,
       onclick := Callback.onClick(_ ⇒ selectedFile() = Some(file)),
       dragAndDropHandlers
     )
   }
 }
-

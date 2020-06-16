@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.actors
 
 import java.io.IOException
 
-import akka.actor.{Actor, ActorLogging, Kill, Props}
+import akka.actor.{Actor, ActorLogging, Props}
 import akka.event.Logging
 import akka.pattern.pipe
 import akka.stream._
@@ -196,10 +196,8 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
   // Lifecycle
   // -----------------------------------------------------------------------
   override def preStart(): Unit = {
-    def stopOnComplete(f: Future[Done]) = {
-      val log = this.log
-      f.onComplete(result ⇒ log.error("Queue stopped: {}", result))
-      f.map(_ ⇒ Kill).pipeTo(self)
+    def stopOnComplete(f: Future[Done]): Unit = {
+      f.onComplete(_ ⇒ context.stop(self))
     }
 
     super.preStart()

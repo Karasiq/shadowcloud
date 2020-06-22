@@ -1,10 +1,9 @@
 package com.karasiq.shadowcloud.webapp.components
 
-import play.api.libs.json.Json
-import rx.{Ctx, Rx, Var}
-
 import com.karasiq.shadowcloud.model.{Path, RegionId}
 import com.karasiq.shadowcloud.serialization.json.SCJsonEncoders
+import play.api.libs.json.Json
+import rx.{Ctx, Rx, Var}
 
 private[webapp] object SCContextBinding {
   def apply()(implicit ctxOwner: Ctx.Owner): SCContextBinding = {
@@ -42,17 +41,29 @@ private[webapp] class SCContextBinding()(implicit ctxOwner: Ctx.Owner) {
 
   def bindToString(value: Var[Option[String]]): Unit = {
     value.foreach {
+      case Some(encoded) if encoded.startsWith("/") =>
+        val Array(regionId, nodes @ _*) = encoded.tail.split("/")
+        context() = EncodedContext(Some(regionId), Path(nodes))
+
       case Some(encoded) if encoded.nonEmpty ⇒
         val encodedContext = Json.parse(encoded).as[EncodedContext]
         context() = encodedContext
+
+      case Some("") =>
+        context() = EncodedContext(None, Path.root)
 
       case _ ⇒
         // Ignore
     }
 
     context.triggerLater {
-      val encoded = Json.toJson(context.now).toString()
-      value() = Some(encoded)
+      if (Path.isConventional(context.now.folder)) {
+        val simplyEncoded = s"/${context.now.regionId.mkString}${context.now.folder}"
+        value() = Some(simplyEncoded)
+      } else {
+        val encoded = Json.toJson(context.now).toString()
+        value() = Some(encoded)
+      }
     }
   }
 

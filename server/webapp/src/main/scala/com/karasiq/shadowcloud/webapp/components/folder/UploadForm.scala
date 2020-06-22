@@ -55,7 +55,7 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
 
   private[this] val formMap = collection.mutable.Map.empty[Path, ElementT]
 
-  private[this] def createForm(regionId: RegionId, path: Path) = {
+  private[this] def createForm(path: Path) = {
     formMap.getOrElseUpdate(
       path,
       Form(
@@ -136,7 +136,7 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
         appContext.locale.uploadFiles,
         "upload-files",
         NoIcon,
-        Rx(createForm(folderContext.regionId, folderContext.selected()))
+        Rx(createForm(folderContext.selected()))
       ),
       NavigationTab(appContext.locale.pasteText, "paste-text", NoIcon, editor),
       NavigationTab("HTML", "edit-html", NoIcon, htmlEditor)

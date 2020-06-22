@@ -22,8 +22,8 @@ import ru.serce.jnrfuse.struct.{FileStat, FuseFileInfo, Statvfs}
 import ru.serce.jnrfuse.{ErrorCodes, FuseFillDir, FuseStubFS}
 
 import scala.collection.concurrent.TrieMap
+import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future, Promise}
-import scala.language.implicitConversions
 import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
@@ -44,7 +44,7 @@ object SCFileSystem {
 
   def mountInSeparateThread(fs: SCFileSystem): Future[Done] = {
     val promise = Promise[Done]
-    val thread = new Thread(() => {
+    val thread = new Thread(() ⇒ {
       try {
         fs.mount()
         promise.success(Done)
@@ -76,7 +76,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
   import com.karasiq.shadowcloud.drive.VirtualFSDispatcher._
 
   protected implicit val timeout = Timeout(config.fileIO.readTimeout)
-  protected val writeTimeout = Timeout(config.fileIO.writeTimeout)
+  protected val writeTimeout     = Timeout(config.fileIO.writeTimeout)
 
   protected object settings {
     val fuseConfig             = config.rootConfig.getConfigIfExists("fuse")
@@ -99,10 +99,13 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
     mount(Paths.get(mountPath), blocking, debug, Array("-o", options.mkString(",")))
   }
 
-  protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T], critical: Boolean = false, handle: Long = 0)(implicit timeout: Timeout): T = {
+  protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T], critical: Boolean = false, handle: Long = 0)(
+      implicit timeout: Timeout
+  ): T = {
     // if (critical) log.info(s"IO operation requested: $message")
 
     def getResult() = Await.result(status.unwrapFuture(fsDispatcher ? message), timeout.duration)
+    val start       = System.nanoTime()
     val result = try {
       if (critical && settings.synchronizedMode) {
         val fh = if (handle == 0) null else fileHandles.get(handle).orNull
@@ -116,7 +119,8 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
         if (critical || settings.debug) log.error(error, "IO operation failed: {}", message)
         throw error
     }
-    if (settings.debug) log.info("IO operation: {} -> {}", message, result)
+    val elapsed = (System.nanoTime() - start).nanos
+    if (settings.debug || elapsed >= (5 seconds)) log.info("IO operation completed in {} ms: {} -> {}", elapsed.toMillis, message, result)
     result
   }
 
@@ -325,7 +329,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
     if (!settings.flushOnFSync) return 0
 
     val flushResult =
-        Try(dispatch(DispatchIOOperation(path, FileIOScheduler.Flush), DispatchIOOperation, critical = true, handle = fi.fh.longValue())(writeTimeout))
+      Try(dispatch(DispatchIOOperation(path, FileIOScheduler.Flush), DispatchIOOperation, critical = true, handle = fi.fh.longValue())(writeTimeout))
 
     if (settings.persistRevisionOnFSync) {
       val persistResult = Try {
@@ -381,9 +385,9 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
     if (path.isRoot) return false
 
     Platform.getNativePlatform.getOS match {
-      case OS.DARWIN  => path.name.startsWith("._") || path.name == ".DS_Store"
-      case OS.WINDOWS => path.name == "$Recycle.bin"
-      case _          => false
+      case OS.DARWIN  ⇒ path.name.startsWith("._") || path.name == ".DS_Store"
+      case OS.WINDOWS ⇒ path.name == "$Recycle.bin"
+      case _          ⇒ false
     }
   }
 }

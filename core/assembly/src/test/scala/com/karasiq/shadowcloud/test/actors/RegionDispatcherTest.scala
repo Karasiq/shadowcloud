@@ -58,7 +58,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike with Sequen
     (testRegion ? WriteChunk(chunk)).futureValue shouldBe WriteChunk.Success(chunk, chunk)
 
     receiveWhile(idle = 3 seconds) {
-      case StorageEnvelope(testStorageId, StorageEvents.ChunkWritten(ChunkPath(testRegionId, chunk.checksum.hash), writtenChunk)) ⇒
+      case StorageEnvelope(`testStorageId`, StorageEvents.ChunkWritten(ChunkPath(`testRegionId`, chunk.checksum.hash), writtenChunk)) ⇒
         writtenChunk shouldBe chunk
 
       case StorageEnvelope(testStorageId, StorageEvents.HealthUpdated(health)) ⇒
@@ -68,7 +68,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike with Sequen
           health.writableSpace shouldBe (initialHealth.writableSpace - chunk.checksum.encSize)
         }
 
-      case StorageEnvelope(testStorageId, StorageEvents.PendingIndexUpdated(testRegionId, diff)) ⇒
+      case StorageEnvelope(`testStorageId`, StorageEvents.PendingIndexUpdated(`testRegionId`, diff)) ⇒
         diff.folders shouldBe empty
         diff.time should be > TestUtils.testTimestamp
         diff.chunks.newChunks shouldBe Set(chunk)

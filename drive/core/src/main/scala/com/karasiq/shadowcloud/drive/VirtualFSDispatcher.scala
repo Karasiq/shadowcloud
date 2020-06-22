@@ -22,39 +22,39 @@ object VirtualFSDispatcher {
   // Messages
   sealed trait Message
   final case class GetFile(path: Path) extends Message
-  object GetFile extends MessageStatus[Path, File]
+  object GetFile                       extends MessageStatus[Path, File]
 
   final case class GetFolder(path: Path) extends Message
-  object GetFolder extends MessageStatus[Path, Folder]
+  object GetFolder                       extends MessageStatus[Path, Folder]
 
   final case class CreateFile(path: Path) extends Message
-  object CreateFile extends MessageStatus[Path, File]
+  object CreateFile                       extends MessageStatus[Path, File]
 
   final case class CreateFolder(path: Path) extends Message
-  object CreateFolder extends MessageStatus[Path, Folder]
+  object CreateFolder                       extends MessageStatus[Path, Folder]
 
   final case class DeleteFile(path: Path) extends Message
-  object DeleteFile extends MessageStatus[Path, File]
+  object DeleteFile                       extends MessageStatus[Path, File]
 
   final case class DeleteFolder(path: Path) extends Message
-  object DeleteFolder extends MessageStatus[Path, Folder]
+  object DeleteFolder                       extends MessageStatus[Path, Folder]
 
   final case class GetHealth(path: Path) extends Message
-  object GetHealth extends MessageStatus[Path, StorageHealth]
+  object GetHealth                       extends MessageStatus[Path, StorageHealth]
 
   final case class RenameFile(path: Path, newPath: Path) extends Message
-  object RenameFile extends MessageStatus[Path, File]
+  object RenameFile                                      extends MessageStatus[Path, File]
 
   final case class RenameFolder(path: Path, newPath: Path) extends Message
-  object RenameFolder extends MessageStatus[Path, Folder]
+  object RenameFolder                                      extends MessageStatus[Path, Folder]
 
   final case class DispatchIOOperation(path: Path, operation: FileIOScheduler.Message) extends Message
-  object DispatchIOOperation extends MessageStatus[Path, Any]
+  object DispatchIOOperation                                                           extends MessageStatus[Path, Any]
 
   // Internal messages
-  private sealed trait InternalMessage extends Message with PossiblyHarmful
-  private final case class OpenFile(path: Path, file: File) extends InternalMessage
-  private object OpenFile extends MessageStatus[Path, File]
+  private sealed trait InternalMessage                                 extends Message with PossiblyHarmful
+  private final case class OpenFile(path: Path, file: File)            extends InternalMessage
+  private object OpenFile                                              extends MessageStatus[Path, File]
   private final case class CloseFile(path: Path, dispatcher: ActorRef) extends InternalMessage
 
   // Events
@@ -71,7 +71,7 @@ object VirtualFSDispatcher {
     }
 
     def regionAndPath: (RegionId, Path) = {
-      (path.nodes.head, Path(path.nodes.drop(1)))
+      (path.nodes.head, Path(path.nodes.tail))
     }
   }
 }
@@ -79,9 +79,9 @@ object VirtualFSDispatcher {
 // TODO: Tests
 class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging {
   import VirtualFSDispatcher._
-  private[this] implicit lazy val sc = ShadowCloud()
+  private[this] implicit lazy val sc              = ShadowCloud()
   private[this] implicit val ec: ExecutionContext = context.dispatcher
-  private[this] implicit val timeout = Timeout(config.fileIO.writeTimeout)
+  private[this] implicit val timeout              = Timeout(config.fileIO.writeTimeout)
 
   object state {
     val fileWrites = mutable.AnyRefMap.empty[Path, ActorRef]
@@ -92,11 +92,11 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
       val future = actor.ask(FileIOScheduler.GetCurrentRevision)(timeout = sc.implicits.defaultTimeout)
       FileIOScheduler.GetCurrentRevision.unwrapFuture(future)
     }
-    
+
     def getCurrentRevision(path: Path): Future[File] = {
       getCurrentRevision(state.fileWrites(path))
     }
-  
+
     def getFile(path: Path): Future[File] = {
       if (path.isRoot || path.isRegionRoot) {
         Future.failed(StorageException.NotFound(path))
@@ -104,7 +104,8 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
         getCurrentRevision(path)
       } else {
         val (regionId, regionPath) = path.regionAndPath
-        sc.ops.region.getFiles(regionId, regionPath)
+        sc.ops.region
+          .getFiles(regionId, regionPath)
           .map(FileVersions.mostRecent)
       }
     }
@@ -112,8 +113,9 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
     def getFolder(path: Path): Future[Folder] = {
       if (path.isRoot) {
         // List region IDs
-        sc.ops.supervisor.getSnapshot()
-          .map(ss ⇒ Folder(path, folders = ss.regions.filter(_._2.actorState.isInstanceOf[ActorState.Active]).keySet))
+        sc.ops.supervisor
+          .getSnapshot()
+          .map(ss ⇒ Folder(path, folders = ss.regions.filter(_._2.actorState.isActive).keySet))
       } else {
         val (regionId, regionPath) = path.regionAndPath
         val virtualFiles = state.fileWrites
@@ -122,7 +124,12 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
           .toVector
 
         for {
-          folder ← sc.ops.region.getFolder(regionId, regionPath)
+          regions ← sc.ops.supervisor.getSnapshot()
+          regionIsActive = regions.regions.get(regionId).exists(_.actorState.isActive)
+          folder ← if (regionIsActive)
+            sc.ops.region.getFolder(regionId, regionPath)
+          else
+            Future.successful(Folder.create(regionPath))
           files ← Future.sequence(virtualFiles)
           fileNameSet = files.flatten.map(_.path.name).toSet
         } yield folder.copy(files = folder.files.filterNot(f ⇒ fileNameSet.contains(f.path.name)) ++ files.flatten)
@@ -148,7 +155,7 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
       } else {
         state.fileWrites.remove(path).foreach(_ ! PoisonPill)
         val (_, regionPath) = path.regionAndPath
-        val newFile = File(regionPath)
+        val newFile         = File(regionPath)
         OpenFile.unwrapFuture(self ? OpenFile(path, newFile))
       }
     }
@@ -158,7 +165,8 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
         Future.failed(StorageException.AlreadyExists(path))
       } else {
         val (regionId, regionPath) = path.regionAndPath
-        sc.ops.region.createFolder(regionId, regionPath)
+        sc.ops.region
+          .createFolder(regionId, regionPath)
           .flatMap(_ ⇒ sc.ops.region.getFolder(regionId, regionPath))
       }
     }
@@ -169,19 +177,22 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
       } else {
         val (regionId, regionPath) = path.regionAndPath
         val deletedFile = state.fileWrites.remove(path).map { dsp ⇒
-          operations.getCurrentRevision(dsp)
+          operations
+            .getCurrentRevision(dsp)
             .map((dsp, _))
             .recover { case _ ⇒ (dsp, null) }
         }
 
         deletedFile.foreach(_.foreach { case (dispatcher, _) ⇒ dispatcher ! PoisonPill })
 
-        sc.ops.region.deleteFiles(regionId, regionPath)
+        sc.ops.region
+          .deleteFiles(regionId, regionPath)
           .map(FileVersions.mostRecent)
-          .recoverWith { case _ if deletedFile.nonEmpty ⇒
-            deletedFile.get
-              .map(_._2)
-              .filter(_ ne null)
+          .recoverWith {
+            case _ if deletedFile.nonEmpty ⇒
+              deletedFile.get
+                .map(_._2)
+                .filter(_ ne null)
           }
       }
     }
@@ -209,7 +220,7 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
       if (path.isRoot || path.isRegionRoot || newPath.isRoot || newPath.isRegionRoot)
         return Future.failed(StorageException.NotFound(path))
 
-      val (regionId, oldRegionPath) = path.regionAndPath
+      val (regionId, oldRegionPath)  = path.regionAndPath
       val (regionId2, newRegionPath) = newPath.regionAndPath
 
       if (regionId != regionId2)
@@ -222,14 +233,14 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
         for {
           oldFile ← syncFile(path)
           newFile ← sc.ops.region.createFile(regionId, oldFile.copy(path = newRegionPath))
-          _ ← DeleteFile.unwrapFuture(self ? DeleteFile(path))
+          _       ← DeleteFile.unwrapFuture(self ? DeleteFile(path))
         } yield newFile
       } else {
         for {
           oldFiles ← sc.ops.region.getFiles(regionId, oldRegionPath)
           oldFile = FileVersions.mostRecent(oldFiles)
           newFile ← sc.ops.region.createFile(regionId, oldFile.copy(path = newRegionPath))
-          _ ← DeleteFile.unwrapFuture(self ? DeleteFile(path))
+          _       ← DeleteFile.unwrapFuture(self ? DeleteFile(path))
         } yield newFile
       }
     }
@@ -238,7 +249,7 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
       if (path.isRoot || path.isRegionRoot || newPath.isRoot || newPath.isRegionRoot)
         return Future.failed(StorageException.NotFound(path))
 
-      val (regionId, oldRegionPath) = path.regionAndPath
+      val (regionId, oldRegionPath)  = path.regionAndPath
       val (regionId2, newRegionPath) = newPath.regionAndPath
 
       if (regionId != regionId2)
@@ -246,10 +257,10 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
 
       for {
         oldFolder ← sc.ops.region.getFolder(regionId, oldRegionPath)
-        index ← sc.ops.region.getFolderIndex(regionId)
-        _ ← sc.ops.region.writeIndex(regionId, FolderIndexDiff.copyFolder(index, oldRegionPath, newRegionPath))
+        index     ← sc.ops.region.getFolderIndex(regionId)
+        _         ← sc.ops.region.writeIndex(regionId, FolderIndexDiff.copyFolder(index, oldRegionPath, newRegionPath))
         newFolder ← sc.ops.region.getFolder(regionId, newRegionPath)
-        _ ← sc.ops.region.deleteFolder(regionId, oldRegionPath)
+        _         ← sc.ops.region.deleteFolder(regionId, oldRegionPath)
       } yield newFolder
     }
 
@@ -293,7 +304,8 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
         state.fileWrites(path) = dispatcher
         context.watchWith(dispatcher, CloseFile(path, dispatcher))
       }
-      OpenFile.wrapFuture(path, operations.getCurrentRevision(path))
+      OpenFile
+        .wrapFuture(path, operations.getCurrentRevision(path))
         .pipeTo(sender())
 
     case CloseFile(path, dispatcher) ⇒
@@ -309,12 +321,13 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
       val currentSender = sender()
       state.fileWrites.get(path) match {
         case Some(dispatcher) ⇒
-          DispatchIOOperation.wrapFuture(path, dispatcher ? operation)
+          DispatchIOOperation
+            .wrapFuture(path, dispatcher ? operation)
             .pipeTo(currentSender)
 
         case None ⇒
           operations.openFileForWrite(path).onComplete {
-            case Success(_) ⇒ self.tell(msg, currentSender) // Retry
+            case Success(_)   ⇒ self.tell(msg, currentSender) // Retry
             case Failure(exc) ⇒ currentSender ! DispatchIOOperation.Failure(path, exc)
           }
       }
@@ -328,10 +341,11 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
             .toSeq
 
           val futures = storages.map { storageId ⇒
-            sc.ops.storage.getHealth(storageId)
+            sc.ops.storage
+              .getHealth(storageId)
               .recover { case _ ⇒ StorageHealth.empty }
           }
-          
+
           Future.sequence(futures)
         }
         val mergedHealth = allHealths.map(_.foldLeft(StorageHealth.empty)(_ + _))

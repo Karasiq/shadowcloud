@@ -25,7 +25,7 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
     val writeExclude      = selectorConfig.withDefault(Set.empty[String], _.getStringSet("write-exclude"))
     val writeInclude      = selectorConfig.withDefault(Set.empty[String], _.getStringSet("write-include"))
     val readExclude       = selectorConfig.withDefault(Set.empty[String], _.getStringSet("read-exclude"))
-    val reservedSize      = selectorConfig.withDefault(100L * SizeUnit.MB, _.getMemorySize("reserved-size").toBytes)
+    val reservedSize      = selectorConfig.withDefault(20L * SizeUnit.MB, _.getMemorySize("reserved-size").toBytes)
   }
 
   def available(toWrite: Long = 0): Seq[RegionStorage] = {

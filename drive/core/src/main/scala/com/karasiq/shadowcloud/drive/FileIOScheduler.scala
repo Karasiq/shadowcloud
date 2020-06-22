@@ -21,7 +21,6 @@ import com.karasiq.shadowcloud.utils.Utils
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
-import scala.language.{implicitConversions, postfixOps}
 import scala.util.control.NonFatal
 
 object FileIOScheduler {
@@ -151,12 +150,13 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     // Read
     // -----------------------------------------------------------------------
     def readStream(range: ChunkRanges.Range): Source[ByteString, NotUsed] = {
-      val currentWrites = dataState.pendingWrites
-      val patches       = currentWrites.filter(wr ⇒ range.contains(wr.range))
+      val (currentRanges, currentChunks) = dataState.currentChunks.toVector.unzip
+      val currentWrites                  = dataState.pendingWrites
+      val patches                        = currentWrites.filter(wr ⇒ range.contains(wr.range))
 
       def chunksStream = {
         sc.streams.file
-          .readChunkStreamRanged(regionId, dataState.currentChunks.values.toVector, range)
+          .readChunkStreamRanged(regionId, currentChunks, range)
           .statefulMapConcat { () ⇒
             var position = range.start
             bytes ⇒ {
@@ -172,7 +172,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
       }
 
       def appendsStream = {
-        val chunksEnd = dataState.currentChunks.lastOption.fold(0L)(_._1.end)
+        val chunksEnd = currentRanges.lastOption.fold(0L)(_.end)
         if (currentWrites.forall(_.range.end <= chunksEnd)) {
           Source.empty[ByteString]
         } else {

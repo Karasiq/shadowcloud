@@ -1,10 +1,13 @@
 package com.karasiq.shadowcloud.storage.telegram
 
-import java.io.{IOException, InputStream}
+import java.io.{InputStream, IOException}
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
 
+import scala.util.Try
+
 import akka.util.ByteString
+
 import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage.telegram.TelegramStorageConfig.Secrets
 import com.karasiq.shadowcloud.ui.UIProvider
@@ -17,7 +20,10 @@ object TelegramScripts {
     extract(baseDir)
     writeSecrets(baseDir, secrets)
     uiProvider.showNotification(
-      s"Please run 'sudo pip3 install -r requirements.txt && python3 telegram_create_session.py' in $baseDir, then press OK"
+      s"""Please run following command in $baseDir, then press OK
+         |Linux/MacOS: sudo pip3 install -r requirements.txt && python3 telegram_create_session.py
+         |Windows: pip3 install -r requirements.txt && py telegram_create_session.py
+         |""".stripMargin
     )
     val result = readSession(baseDir, secrets.entity)
     deleteDir(baseDir)
@@ -51,7 +57,7 @@ object TelegramScripts {
       "telegram_create_session.py"
     )
     Files.createDirectories(directory)
-    files.foreach { f =>
+    files.foreach { f ⇒
       val stream = getResource(s"tgcloud/$f")
       try Files.copy(stream, directory.resolve(f))
       finally stream.close()
@@ -59,21 +65,25 @@ object TelegramScripts {
   }
 
   def deleteDir(baseDir: Path): Unit = {
-    if (Files.isDirectory(baseDir))
-      Files.walkFileTree(
-        baseDir,
-        new SimpleFileVisitor[Path] {
-          override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
-            Files.deleteIfExists(file)
-            FileVisitResult.CONTINUE
-          }
+    def doDelete(): Try[Unit] = Try {
+      if (Files.isDirectory(baseDir))
+        Files.walkFileTree(
+          baseDir,
+          new SimpleFileVisitor[Path] {
+            override def visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult = {
+              Files.deleteIfExists(file)
+              FileVisitResult.CONTINUE
+            }
 
-          override def postVisitDirectory(dir: Path, exc: IOException): FileVisitResult = {
-            Files.deleteIfExists(dir)
-            FileVisitResult.CONTINUE
+            override def postVisitDirectory(dir: Path, exc: IOException): FileVisitResult = {
+              Files.deleteIfExists(dir)
+              FileVisitResult.CONTINUE
+            }
           }
-        }
-      )
+        )
+    }
+
+    doDelete().failed.foreach(_ ⇒ sys.addShutdownHook(doDelete()))
   }
 
   def getResource(name: String): InputStream = {

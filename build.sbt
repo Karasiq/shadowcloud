@@ -3,7 +3,7 @@ import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
 val commonSettings = Seq(
   organization := "com.github.karasiq",
-  version := "1.1.3",
+  version := "1.2.0",
   scalaVersion := "2.12.4",
   // crossScalaVersions := Seq("2.11.11", "2.12.4"),
   resolvers += Resolver.sonatypeRepo("snapshots"),
@@ -11,7 +11,7 @@ val commonSettings = Seq(
   coverageExcludedPackages := "com.karasiq.shadowcloud.javafx.*;com.karasiq.shadowcloud.desktop.*;com.karasiq.shadowcloud.webapp.*;com.karasiq.shadowcloud.storage.*;com.karasiq.shadowcloud.persistence.*",
   //parallelExecution in test := false,
   //fork in test := false,
-  scalacOptions ++= (if (sys.props.get("disable-assertions").exists(_ == "1"))
+  scalacOptions ++= (if (sys.props.get("disable-assertions").contains("1"))
                        Seq("-Xelide-below", "OFF", "-Xdisable-assertions")
                      else
                        Nil),
@@ -26,8 +26,8 @@ val commonSettings = Seq(
     "-Ywarn-unused:-implicits",
     "-Xlint",
     "-Ypartial-unification",
-    //"-opt:l:inline",
-    //"-opt-inline-from:**"
+    "-opt:l:inline",
+    "-opt-inline-from:**"
   )
 )
 
@@ -83,7 +83,7 @@ lazy val dockerSettings = Seq(
     val injected = Seq(
       Cmd("RUN", "apt update && apt install -y fuse libfuse2 libfuse-dev python3-pip && rm -rf /var/lib/apt/lists/*"), // TODO https://github.com/docker/for-mac/issues/3431
       Cmd("RUN", "echo 'user_allow_other' >> /etc/fuse.conf"),
-      Cmd("RUN", "python3 -m pip install Telethon==0.19.1 cryptg==0.2.post1 Flask==1.1.1")
+      Cmd("RUN", "python3 -m pip install Telethon==1.14.0 cryptg==0.2.post1 Quart==0.12.0 Hypercorn==0.9.5 lz4==3.1.0 pytz>=2020.1")
     )
     cmds.takeWhile(!_.makeContent.startsWith("USER 1001:0")) ++ injected ++ cmds.dropWhile(!_.makeContent.startsWith("USER 1001:0"))
   },

@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.streams.file
 
 import akka.NotUsed
-import akka.stream.scaladsl.{Flow, GraphDSL, Keep, Source}
+import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Source, Zip}
 import akka.stream.{FlowShape, Materializer}
 import akka.util.ByteString
 import com.karasiq.shadowcloud.index.files.FileVersions
@@ -38,16 +38,33 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
   }
 
   def readChunkStreamRanged(regionId: RegionId): Flow[(Chunk, RangeList), ByteString, NotUsed] = {
-    Flow[(Chunk, RangeList)]
-      .log("chunk-ranges")
-      .flatMapConcat {
-        case (chunk, ranges) ⇒
-          Source
-            .single(chunk)
-            .via(readChunkStream(regionId))
-            .map(ranges.slice)
-      }
-      .named("readChunkStreamRanged")
+    val graph = GraphDSL.create() { implicit b ⇒
+      import GraphDSL.Implicits._
+      val upstream = b.add(Broadcast[(Chunk, RangeList)](2))
+
+      val read = b.add(
+        Flow[Chunk]
+          .map((regionId, _))
+          .via(regionStreams.readChunksNonBuffered)
+          .map(_.data.plain)
+      )
+
+      val sliceData = b.add(
+        Flow[(ByteString, RangeList)]
+          .map { case (bytes, ranges) ⇒ ranges.slice(bytes) }
+      )
+
+      val zip = b.add(Zip[ByteString, RangeList])
+
+      upstream.map(_._2) ~> zip.in1
+      upstream.map(_._1) ~> read.in
+      read.out ~> zip.in0
+      zip.out ~> sliceData.in
+
+      FlowShape(upstream.in, sliceData.out)
+    }
+
+    Flow.fromGraph(graph).named("readChunkStreamRanged")
   }
 
   def readChunkStreamRanged(regionId: RegionId, chunks: Seq[Chunk], ranges: RangeList): Source[ByteString, NotUsed] = {
@@ -76,25 +93,26 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
     Flow[ByteString]
       .via(AkkaStreamUtils.extractUpstream)
       .zip(Source.future(supervisorOps.getRegionConfig(regionId)))
-      .flatMapConcat { case (stream, config) =>
-        val matSink = Flow
-          .fromGraph(chunkProcessing.split(config.chunkSize.getOrElse(chunkProcessing.defaultChunkSize)))
-          .via(chunkProcessing.beforeWrite())
-          // .map(c ⇒ c.copy(data = c.data.copy(plain = ByteString.empty))) // Memory optimization
-          .map((regionId, _))
-          .via(regionStreams.writeChunks)
-          // .log("chunk-stream-write")
-          .toMat(chunkProcessing.index())(Keep.right)
+      .flatMapConcat {
+        case (stream, config) ⇒
+          val matSink = Flow
+            .fromGraph(chunkProcessing.split(config.chunkSize.getOrElse(chunkProcessing.defaultChunkSize)))
+            .via(chunkProcessing.beforeWrite())
+            // .map(c ⇒ c.copy(data = c.data.copy(plain = ByteString.empty))) // Memory optimization
+            .map((regionId, _))
+            .via(regionStreams.writeChunks)
+            // .log("chunk-stream-write")
+            .toMat(chunkProcessing.index())(Keep.right)
 
-        val graph = GraphDSL.create(matSink) { implicit builder ⇒ matSink ⇒
-          import GraphDSL.Implicits._
-          val extractResult = builder.add(Flow[Future[FileIndexer.Result]].flatMapConcat(Source.future))
+          val graph = GraphDSL.create(matSink) { implicit builder ⇒ matSink ⇒
+            import GraphDSL.Implicits._
+            val extractResult = builder.add(Flow[Future[FileIndexer.Result]].flatMapConcat(Source.future))
 
-          builder.materializedValue ~> extractResult
-          FlowShape(matSink.in, extractResult.out)
-        }
+            builder.materializedValue ~> extractResult
+            FlowShape(matSink.in, extractResult.out)
+          }
 
-        stream.via(graph)
+          stream.via(graph)
       }
       .named("writeChunkStream")
   }

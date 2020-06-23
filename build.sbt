@@ -65,7 +65,7 @@ val packageSettings = Seq(
 )
 
 lazy val dockerSettings = Seq(
-  dockerBaseImage := "openjdk:8-jre-slim-stretch",
+  dockerBaseImage := "openjdk:8-jre-slim",
   dockerExposedPorts := Seq(1911),
   dockerExposedVolumes := Seq("/opt/docker/sc"),
   dockerUsername := Some("karasiq"),

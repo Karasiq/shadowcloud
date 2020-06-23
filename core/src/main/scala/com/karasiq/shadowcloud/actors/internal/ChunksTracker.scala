@@ -56,7 +56,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
   // Read/write
   // -----------------------------------------------------------------------
   object chunkIO {
-    def readChunk(chunk: Chunk, receiver: ActorRef)(implicit storageSelector: StorageSelector): Option[ChunkStatus] = {
+    def readChunk(chunk: Chunk, receiver: ActorRef = ActorRef.noSender)(implicit storageSelector: StorageSelector): Option[ChunkStatus] = {
       def getReadFuture(status: ChunkStatus): (Option[RegionStorage], Future[Chunk]) = {
         implicit val readTimeout: Timeout = sc.config.timeouts.chunkRead
 
@@ -164,7 +164,10 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
       }
 
       if (filteredAffinity.isEmpty) {
-        receiver ! WriteChunk.Failure(chunk, RegionException.ChunkRepairFailed(chunk, new IllegalStateException("No storages available for replication")))
+        receiver ! WriteChunk.Failure(
+          chunk,
+          RegionException.ChunkRepairFailed(chunk, new IllegalStateException("No storages available for replication"))
+        )
         return chunks.getChunkStatus(chunk)
       }
 
@@ -224,6 +227,12 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
           }
 
         case _ ⇒ // Skip
+      }
+
+      readingChunks.collect {
+        case (chunk, rs) if rs.reading.isEmpty ⇒
+          log.debug("Retrying chunk read: {}", chunk.hashString)
+          chunkIO.readChunk(chunk)
       }
     }
 
@@ -566,15 +575,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
             } else {
               val newReading = reading -- storageId
               readingChunks += chunk → ChunkReadStatus(newReading, waiting)
-              if (newReading.isEmpty) {
-                if (storageId.nonEmpty) {
-                  // Retry
-                  chunkIO.readChunk(chunk, ActorRef.noSender)
-                } else {
-                  // No storages left
-                  cancelChunkRead()
-                }
-              }
+              if (newReading.isEmpty) scheduleRetry()
             }
 
           case None ⇒

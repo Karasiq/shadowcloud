@@ -32,9 +32,12 @@ final class RegionStreams(regionOps: RegionOps, parallelism: ParallelismConfig, 
 
   val readChunks = Flow[(RegionId, Chunk)]
     .mapAsync(parallelism.read) { case (regionId, chunk) ⇒ regionOps.readChunk(regionId, chunk) }
-    .async
     .via(ByteStreams.bufferT(_.data.encrypted.length, buffers.readChunks))
     .named("readChunks")
+
+  val readChunksNonBuffered = Flow[(RegionId, Chunk)]
+    .mapAsync(1) { case (regionId, chunk) ⇒ regionOps.readChunk(regionId, chunk) }
+    .named("readChunksNonBuffered")
 
   val findFiles = Flow[(RegionId, Path)]
     .mapAsync(parallelism.query) {

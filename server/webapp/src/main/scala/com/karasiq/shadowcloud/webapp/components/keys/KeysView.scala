@@ -1,21 +1,17 @@
 package com.karasiq.shadowcloud.webapp.components.keys
 
 import akka.util.ByteString
-import org.scalajs.dom.MouseEvent
-import org.scalajs.dom.html.TextArea
-import rx.{Rx, Var}
-
 import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import com.karasiq.shadowcloud.config.SerializedProps
-import com.karasiq.shadowcloud.model.keys.KeySet
 import com.karasiq.shadowcloud.model.keys.KeyProps.RegionSet
+import com.karasiq.shadowcloud.model.keys.KeySet
 import com.karasiq.shadowcloud.webapp.components.common.AppComponents
 import com.karasiq.shadowcloud.webapp.components.region.RegionContext
 import com.karasiq.shadowcloud.webapp.context.AppContext
 import com.karasiq.shadowcloud.webapp.context.AppContext.JsExecutionContext
-import com.karasiq.shadowcloud.webapp.utils.{Blobs, ExportUtils}
+import com.karasiq.shadowcloud.webapp.utils.ExportUtils
+import rx.{Rx, Var}
+import scalaTags.all._
 
 object KeysView {
   def apply()(implicit context: AppContext, kc: KeysContext, rc: RegionContext): KeysView = {
@@ -121,16 +117,16 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
     def renderPermissions() = {
       val forEncryptionRx = Var(forEncryption)
       val forDecryptionRx = Var(forDecryption)
-      val regionSelector = FormInput.multipleSelect(context.locale.regions, rc.regions.map(_.regions.keys.toVector.map(id ⇒ FormSelectOption(id, id))))
-      regionSelector.selected() = regionSet.toVector
+      val allIds = rc.regions.now.regions.keys.toVector
+      val (idSelect, idSelectRendered) = AppComponents.idSelect(context.locale.regions, allIds, regionSet.toVector)
 
-      Rx((forEncryptionRx(), forDecryptionRx(), regionSelector.selected()))
-        .triggerLater(updatePermissions(regionSelector.selected.now.toSet, forEncryptionRx.now, forDecryptionRx.now))
+      Rx((forEncryptionRx(), forDecryptionRx(), idSelect.selected()))
+        .triggerLater(updatePermissions(idSelect.selected.now.toSet, forEncryptionRx.now, forDecryptionRx.now))
       
       Form(
         FormInput.checkbox(context.locale.keyForEncryption, forEncryptionRx.reactiveInput),
         FormInput.checkbox(context.locale.keyForDecryption, forDecryptionRx.reactiveInput),
-        regionSelector
+        idSelectRendered
       )
     }
 

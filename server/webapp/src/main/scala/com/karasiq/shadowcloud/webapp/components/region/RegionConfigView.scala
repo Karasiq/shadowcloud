@@ -49,10 +49,10 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
   // Hack to bypass an initialization lag
   def updateHealth(): Unit = {
     healthRx.update()
-    org.scalajs.dom.window.setTimeout(() => healthRx.update(), 100)
-    org.scalajs.dom.window.setTimeout(() => healthRx.update(), 500)
-    org.scalajs.dom.window.setTimeout(() => healthRx.update(), 1500)
-    org.scalajs.dom.window.setTimeout(() => healthRx.update(), 5000)
+    org.scalajs.dom.window.setTimeout(() ⇒ healthRx.update(), 100)
+    org.scalajs.dom.window.setTimeout(() ⇒ healthRx.update(), 500)
+    org.scalajs.dom.window.setTimeout(() ⇒ healthRx.update(), 1500)
+    org.scalajs.dom.window.setTimeout(() ⇒ healthRx.update(), 5000)
   }
 
   compactReport.triggerLater(updateHealth())
@@ -66,7 +66,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
       div(
         if (!regionStatus.suspended) {
           Seq(
-            div(HealthView(healthRx.toRx), onclick := Callback.onClick(_ => updateHealth())),
+            div(HealthView(healthRx.toRx), onclick := Callback.onClick(_ ⇒ updateHealth())),
             renderCompactButton(),
             renderGCButton(),
             renderRepairButton(),
@@ -108,19 +108,19 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
         )
       },
       div(gcReport.map[Frag] {
-        case Some(report) ⇒ AppComponents.closeableAlert(AlertStyle.warning, () => gcReport() = None, report.toString)
+        case Some(report) ⇒ AppComponents.closeableAlert(AlertStyle.warning, () ⇒ gcReport() = None, report.toString)
         case None         ⇒ Bootstrap.noContent
       })
     )
   }
 
   private[this] def renderSyncReports(reportsVar: Var[Map[StorageId, SyncReport]]) =
-    div(reportsVar.map { reports =>
+    div(reportsVar.map { reports ⇒
       if (reports.nonEmpty)
         div(
           AppComponents.closeableAlert(
             AlertStyle.success,
-            () => reportsVar() = Map.empty,
+            () ⇒ reportsVar() = Map.empty,
             for ((storageId, report) ← reports.toSeq) yield div(b(storageId), ": ", report.toString)
           )
         )
@@ -156,7 +156,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
         if (!repairStarted.now) {
           repairStarted() = true
           val future = context.api.repairRegion(regionId, storages)
-          future.onComplete { _ =>
+          future.onComplete { _ ⇒
             Toastr.success(s"Region replication finished: $regionId")
             repairStarted() = false
           }
@@ -204,7 +204,7 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
 
   private[this] def renderStateButtons(regionStatus: RegionStatus) = {
     def doSuspend() = context.api.suspendRegion(regionId).foreach(_ ⇒ regionContext.updateRegion(regionId))
-    def doResume() = context.api.resumeRegion(regionId).foreach { _ =>
+    def doResume() = context.api.resumeRegion(regionId).foreach { _ ⇒
       regionContext.updateRegion(regionId)
       updateHealth()
     }
@@ -269,12 +269,12 @@ class RegionConfigView(regionId: RegionId)(implicit context: AppContext, regionC
 
     def renderAddButton() = {
       def showAddDialog(): Unit = {
-        val allIds   = regionContext.regions.now.storages.keys.toSeq.sorted
-        val idSelect = FormInput.multipleSelect(context.locale.storages, allIds.map(id ⇒ FormSelectOption(id, id)))
+        val allIds                       = regionContext.regions.now.storages.keys.toSeq.sorted
+        val (idSelect, idSelectRendered) = AppComponents.idSelect(context.locale.storages, allIds, regionStatus.storages.toSeq)
         idSelect.selected() = regionStatus.storages.toSeq
         Modal()
           .withTitle(context.locale.registerStorage)
-          .withBody(Form(idSelect))
+          .withBody(Form(idSelectRendered))
           .withButtons(
             AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ updateStorageList(idSelect.selected.now.toSet))),
             AppComponents.modalClose()

@@ -10,12 +10,11 @@ from io import BytesIO
 import errno
 import lz4.frame
 import pytz
+import secret
 from quart import Quart, request, Response
 from telethon import TelegramClient
 from telethon.errors.rpcbaseerrors import RPCError
 from telethon.tl.types import DocumentAttributeFilename
-
-import secret
 
 app = Quart(__name__)
 app.config.from_object(__name__)
@@ -93,13 +92,14 @@ async def download_block(uid, file_out):
 
 async def delete_data(uid):
     messages = client.iter_messages(entity, search=uid)
-    to_delete = []
+    ids_to_delete = []
     async for m in messages:
         if starts_with(m.message, uid):
-            to_delete.append(m.id)
+            ids_to_delete.append(m.id)
 
-    if len(await client.delete_messages(entity, to_delete)) > 0:
-        await delete_outdated_meta(uid)
+    if len(await client.delete_messages(entity, ids_to_delete)) > 0:
+        max_id = min(ids_to_delete)
+        await delete_outdated_meta(uid, max_id)
         return 0
     else:
         return errno.EEXIST
@@ -145,11 +145,12 @@ def get_meta_lock(path) -> asyncio.Lock:
         return lock
 
 
-async def delete_outdated_meta(path):
+async def delete_outdated_meta(path, min_id):
     to_delete = []
     async with meta_lock:
-        async for m in client.iter_messages(entity, search='$tgcloud_meta'):
+        async for m in client.iter_messages(entity, search='$tgcloud_meta', min_id=min_id):
             if starts_with(f'$tgcloud_meta/{path}', m.message):
+                app.logger.warning(f"Removing meta file: {m}")
                 to_delete.append(m.id)
         return await client.delete_messages(entity, to_delete)
 
@@ -161,32 +162,29 @@ async def _get_files_meta_unsafe(path) -> list:
 
     import json
 
-    uid = f'$tgcloud_meta/{path}'
+    meta_file_path = f'$tgcloud_meta/{path}'
 
-    async def list_files() -> list:
-        meta_messages = []
-        async for m in client.iter_messages(entity, search=uid):
-            if m.message == uid:
-                meta_messages.append(m)
-        return meta_messages
+    async def get_meta_file():
+        async for m in client.iter_messages(entity, search=meta_file_path):
+            if m.message == meta_file_path:
+                return m
+        return None
 
-    size_meta = await list_files()
-    messages = client.iter_messages(entity, search=path)
+    meta_file = await get_meta_file()
     data = {
         'messages': [],
         'last_id': -1
     }
-    if len(size_meta) > 0:
-        msg = size_meta[0]
+    if meta_file:
+        msg = meta_file
         compressed_data = BytesIO()
         await client.download_media(msg, compressed_data)
-        try:
-            compressed_data.seek(0)
-            raw_data = lz4.frame.decompress(compressed_data.read())
-            data = json.loads(raw_data)
-            messages = client.iter_messages(entity, search=path, min_id=data['last_id'] + 1)
-        except Exception:
-            pass
+        compressed_data.seek(0)
+        raw_data = lz4.frame.decompress(compressed_data.read())
+        data = json.loads(raw_data)
+        messages = client.iter_messages(entity, search=path, min_id=data['last_id'] + 1)
+    else:
+        messages = client.iter_messages(entity, search=path)
 
     added = 0
     async for m in messages:
@@ -200,21 +198,18 @@ async def _get_files_meta_unsafe(path) -> list:
             added += 1
 
     now = pytz.utc.localize(datetime.utcnow())
-    is_outdated = added > 0 and (len(size_meta) == 0 or now > (size_meta[0].date + timedelta(minutes=10)))
+    is_outdated = added > 0 and (meta_file is None or now > (meta_file.date + timedelta(minutes=10)))
     if is_outdated and len(data['messages']) > 10:
         try:
             raw_json = bytes(json.dumps(data), "utf-8")
             compressed_json = lz4.frame.compress(raw_json)
-            result = await client.send_file(entity,
-                                            file=compressed_json,
-                                            caption=f'{uid}',
-                                            attributes=[DocumentAttributeFilename(f'{uid}')],
-                                            allow_cache=False,
-                                            part_size_kb=512,
-                                            force_document=True)
-            if result:
-                if len(size_meta) > 0:
-                    await client.delete_messages(entity, list(map(lambda m: m.id, size_meta)))
+            await client.send_file(entity,
+                                   file=compressed_json,
+                                   caption=f'{meta_file_path}',
+                                   attributes=[DocumentAttributeFilename(f'{meta_file_path}')],
+                                   allow_cache=False,
+                                   part_size_kb=512,
+                                   force_document=True)
         except RPCError:
             pass
     messages_objs = list(map(lambda m: AsObject(m), data['messages']))

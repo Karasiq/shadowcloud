@@ -16,14 +16,16 @@ import com.karasiq.shadowcloud.streams.utils.ByteStreams
 import com.karasiq.shadowcloud.test.utils.SCExtensionSpec
 import org.scalatest.FlatSpecLike
 
+import scala.concurrent.duration._
+
 final class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
-  val config = SCDriveConfig(sc.config.rootConfig.getConfig("drive"))
+  val config    = SCDriveConfig(sc.config.rootConfig.getConfig("drive"))
   val scheduler = TestActorRef[FileIOScheduler](FileIOScheduler.props(config, "testRegion", File("/123.txt")))
-  val zeroes = ByteString(0, 0, 0, 0, 0, 0, 0, 0, 0, 0).ensuring(_.length == 10)
-  val testData = ByteString("1234567890").ensuring(_.length == 10)
+  val zeroes    = ByteString(0, 0, 0, 0, 0, 0, 0, 0, 0, 0).ensuring(_.length == 10)
+  val testData  = ByteString("1234567890").ensuring(_.length == 10)
 
   // -----------------------------------------------------------------------
   // Tests
@@ -72,16 +74,16 @@ final class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
     flushResult.writes shouldBe Seq(write: ChunkPatch)
     flushResult.ops.sortBy(_.range.start) match {
       case ChunkIOOperation.ChunkRewritten(ChunkRanges.Range(0, 20), oldChunk, chunk) +:
-        ChunkIOOperation.ChunkAppended(ChunkRanges.Range(20, 30), newChunk) +: Nil ⇒
-
+            ChunkIOOperation.ChunkAppended(ChunkRanges.Range(20, 30), newChunk) +: Nil ⇒
         oldChunk.checksum.size shouldBe 20
         chunk.checksum.size shouldBe 20
         newChunk.checksum.size shouldBe 10
     }
 
-    testChunks { case chunk +: newChunk +: Nil ⇒
-      chunk.checksum.size shouldBe 20
-      newChunk.checksum.size shouldBe 10 
+    testChunks {
+      case chunk +: newChunk +: Nil ⇒
+        chunk.checksum.size shouldBe 20
+        newChunk.checksum.size shouldBe 10
     }
 
     testRead(testData ++ zeroes ++ testData)
@@ -100,15 +102,16 @@ final class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
         newChunk.checksum.size shouldBe 40
     }
 
-    testChunks { case newChunk +: Nil ⇒
-      newChunk.checksum.size shouldBe 40
+    testChunks {
+      case newChunk +: Nil ⇒
+        newChunk.checksum.size shouldBe 40
     }
 
     testRead(testData ++ zeroes ++ testData ++ testData)
   }
 
   it should "cut file" in {
-    (scheduler ? CutFile(25)).futureValue  
+    (scheduler ? CutFile(25)).futureValue
     testChunks(_ shouldBe empty)
     testRead(testData ++ zeroes ++ testData.take(5))
 
@@ -119,8 +122,9 @@ final class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
         newChunk.checksum.size shouldBe 25
     }
 
-    testChunks { case newChunk +: Nil ⇒
-      newChunk.checksum.size shouldBe 25
+    testChunks {
+      case newChunk +: Nil ⇒
+        newChunk.checksum.size shouldBe 25
     }
     testRead(testData ++ zeroes ++ testData.take(5))
   }
@@ -129,13 +133,23 @@ final class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
   // Utils
   // -----------------------------------------------------------------------
   def testRead(data: ByteString) = {
-    val testSink = scheduler.underlyingActor.dataIO.readStream(0 to 100)
+    val testSink = scheduler.underlyingActor.dataIO
+      .readStream(0 until 100)
       .via(ByteStreams.concat)
       .runWith(TestSink.probe)
 
     testSink.request(2)
     testSink.expectNext(data)
     testSink.expectComplete()
+
+    val testSink1 = scheduler.underlyingActor.dataIO
+      .readStream(0 until 5)
+      .via(ByteStreams.concat)
+      .runWith(TestSink.probe)
+
+    testSink1.request(2)
+    testSink1.expectNext(data.take(5))
+    testSink1.expectComplete()
   }
 
   def testChunks(f: Seq[Chunk] ⇒ Unit) = {
@@ -154,5 +168,6 @@ final class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
     sc.actors.regionSupervisor ! CreateRegion("testRegion", sc.configs.regionConfig("testRegion"))
     sc.actors.regionSupervisor ! CreateStorage("testStorage", StorageProps.inMemory)
     sc.actors.regionSupervisor ! RegisterStorage("testRegion", "testStorage")
+    awaitAssert(sc.ops.region.getHealth("testRegion").futureValue shouldBe 'fullyOnline, 10 seconds)
   }
 }

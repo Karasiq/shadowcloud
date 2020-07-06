@@ -229,27 +229,18 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
   }
 
   override def read(path: String, buf: Pointer, size: Long, offset: Long, fi: FuseFileInfo): Int = {
-    def tryRead() = {
-      Try(
-        dispatch(
-          DispatchIOOperation(path, FileIOScheduler.ReadData(ChunkRanges.Range(offset, offset + size))),
-          DispatchIOOperation,
-          critical = true,
-          handle = fi.fh.longValue()
-        )
+    val result = Try(
+      dispatch(
+        DispatchIOOperation(path, FileIOScheduler.ReadData(ChunkRanges.Range(offset, offset + size))),
+        DispatchIOOperation,
+        critical = true,
+        handle = fi.fh.longValue()
       )
-    }
-
-    var result: Try[Any] = tryRead()
-    var tries            = 3
-    while (result.isFailure && tries > 0) {
-      // Thread.sleep(5000)
-      result = tryRead()
-      tries -= 1
-    }
+    )
 
     result match {
       case Success(FileIOScheduler.ReadData.Success(_, data)) ⇒
+        require(data.length <= size, "Read too much")
         for (i ← data.indices) buf.putByte(i, data(i))
         data.length
 

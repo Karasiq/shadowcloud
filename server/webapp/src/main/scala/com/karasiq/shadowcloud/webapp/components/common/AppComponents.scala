@@ -44,13 +44,15 @@ object AppComponents {
     TabOverride.set(elem.asInstanceOf[dom.html.TextArea])
   }
 
-  def closeableAlert(style: AlertStyle, onClose: () => Unit, md: Modifier*): Tag =
+  def closeableAlert(style: AlertStyle, onClose: () ⇒ Unit, md: Modifier*): Tag =
     div(new UniversalAlert(style) {
       override def closeButton: JsDom.all.Tag =
-        super.closeButton(onclick := Callback.onClick(_ => onClose()))
+        super.closeButton(onclick := Callback.onClick(_ ⇒ onClose()))
     }.renderTag(md: _*))
 
-  def exportDialog(title: String, fileName: String, content: String, contentType: String = "application/json")(implicit context: AppContext): Modal = {
+  def exportDialog(title: String, fileName: String, content: String, contentType: String = "application/json")(
+      implicit context: AppContext
+  ): Modal = {
     def download(): Unit =
       Blobs.saveBlob(Blobs.fromString(content, contentType), fileName)
 
@@ -67,7 +69,7 @@ object AppComponents {
       )
   }
 
-  def importDialog(title: String)(submit: String => Unit)(implicit context: AppContext): Modal = {
+  def importDialog(title: String)(submit: String ⇒ Unit)(implicit context: AppContext): Modal = {
     val result = Var("")
     Modal()
       .withTitle(title)
@@ -81,10 +83,17 @@ object AppComponents {
       )
   }
 
-  def disabledIf(rx: Rx[Boolean]): Modifier = (t: Element) => {
-    rx.foreach(value =>
-      if (value) t.setAttribute("disabled", "")
-      else t.removeAttribute("disabled")
+  def disabledIf(rx: Rx[Boolean]): Modifier = (t: Element) ⇒ {
+    rx.foreach(
+      value ⇒
+        if (value) t.setAttribute("disabled", "")
+        else t.removeAttribute("disabled")
     )
+  }
+
+  def idSelect(title: String, ids: Seq[String], selected: Seq[String]): (FormSelect, Tag) = {
+    val select = FormInput.multipleSelect(title, ids.map(id ⇒ FormSelectOption(id, id)))
+    select.selected() = selected
+    select → select.renderTag(height := 500.px)
   }
 }

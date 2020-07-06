@@ -19,7 +19,7 @@ import com.karasiq.shadowcloud.utils.{ChunkUtils, Utils}
 
 import scala.collection.mutable
 import scala.concurrent.Future
-import scala.language.{implicitConversions, postfixOps}
+
 
 private[actors] object ChunksTracker {
   def apply(regionId: RegionId, config: RegionConfig, storageTracker: StorageTracker, scheduleRetry: () ⇒ Unit)(

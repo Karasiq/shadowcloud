@@ -1,21 +1,19 @@
 package com.karasiq.shadowcloud.utils
 
-import scala.collection.TraversableLike
-import scala.concurrent.duration.FiniteDuration
-import scala.language.{higherKinds, postfixOps}
-
 import akka.util.ByteString
-import com.typesafe.config.ConfigFactory
-
 import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.model.{Chunk, Path}
+import com.typesafe.config.ConfigFactory
+
+import scala.collection.TraversableLike
+import scala.concurrent.duration.FiniteDuration
 
 private[shadowcloud] object Utils {
   // -----------------------------------------------------------------------
   // Paths
   // -----------------------------------------------------------------------
   val InternalFolder = Path.root / ".$sc-internal"
-  
+
   // -----------------------------------------------------------------------
   // Time
   // -----------------------------------------------------------------------
@@ -35,7 +33,7 @@ private[shadowcloud] object Utils {
   private[this] val printValueDelimiter = ", "
 
   def printValues[T](values: Traversable[T], limit: Int = 10): String = {
-    val sb = new StringBuilder(100)
+    val sb   = new StringBuilder(100)
     val size = values.size
     values.take(limit).foreach { v ⇒
       if (sb.nonEmpty) sb.append(printValueDelimiter)
@@ -48,7 +46,7 @@ private[shadowcloud] object Utils {
   def printHashes(hashes: Traversable[ByteString], limit: Int = 10): String = {
     if (hashes.isEmpty) return ""
     val size = hashes.size
-    val sb = new StringBuilder(math.min(limit, size) * (hashes.head.length * 2) + 10)
+    val sb   = new StringBuilder(math.min(limit, size) * (hashes.head.length * 2) + 10)
     hashes.filter(_.nonEmpty).take(limit).foreach { hash ⇒
       if (sb.nonEmpty) sb.append(printValueDelimiter)
       sb.append(HexString.encode(hash))
@@ -64,7 +62,7 @@ private[shadowcloud] object Utils {
   // -----------------------------------------------------------------------
   // Misc
   // -----------------------------------------------------------------------
-  @inline 
+  @inline
   def isSameChunk(chunk: Chunk, chunk1: Chunk): Boolean = {
     // chunk.withoutData == chunk1.withoutData
     chunk == chunk1
@@ -78,8 +76,8 @@ private[shadowcloud] object Utils {
   def getFileExtension(path: String): String = {
     def indexOfExtension(path: String): Option[Int] = {
       def indexOfLastSeparator(filename: String): Int = math.max(filename.lastIndexOf('/'), filename.lastIndexOf('\\'))
-      val lastDot = path.lastIndexOf('.')
-      val lastSeparator = indexOfLastSeparator(path)
+      val lastDot                                     = path.lastIndexOf('.')
+      val lastSeparator                               = indexOfLastSeparator(path)
       Some(lastDot).filterNot(lastSeparator > _)
     }
     indexOfExtension(path).fold("")(index ⇒ path.substring(index + 1))
@@ -100,7 +98,8 @@ private[shadowcloud] object Utils {
       str
     } else {
       //cutAt("\n").orElse(cutAt(". "))
-      cutAt(". ").orElse(cutAt(" "))
+      cutAt(". ")
+        .orElse(cutAt(" "))
         .getOrElse(str.take(maxLength))
     }
   }

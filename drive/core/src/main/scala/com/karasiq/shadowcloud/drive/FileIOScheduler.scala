@@ -92,7 +92,7 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
   // -----------------------------------------------------------------------
   object actorState {
     val pendingFlush = PendingOperation[NotUsed]
-    var lastFlush    = 0L
+    var lastFlush    = System.nanoTime()
 
     def finishFlush(result: Flush.Status): Unit = {
       pendingFlush.finish(NotUsed, result)
@@ -173,19 +173,17 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
 
       def appendsStream = {
         val chunksEnd = currentRanges.lastOption.fold(0L)(_.end)
-        if (currentWrites.forall(_.range.end <= chunksEnd)) {
+        if (range.end <= chunksEnd || currentWrites.forall(_.range.end <= chunksEnd)) {
           Source.empty[ByteString]
         } else {
-          val fileEnd      = math.max(chunksEnd, math.min(range.end, currentWrites.map(_.range.end).max))
-          val appendsRange = ChunkRanges.Range(chunksEnd, fileEnd)
+          val appendsRange = ChunkRanges.Range(chunksEnd, range.end)
           Source
             .fromIterator(() ⇒ dataUtils.pendingAppends(currentWrites, chunksEnd))
             .map {
               case (range, chunk) ⇒
-                val selectedRange = range.relativeTo(appendsRange)
+                val selectedRange = range.relativeTo(appendsRange).fitToSize(appendsRange.size)
                 selectedRange.slice(chunk.data.plain)
             }
-            // .via(ByteStreams.limit(appendsRange.size))
             .named("scDriveReadAppends")
         }
       }

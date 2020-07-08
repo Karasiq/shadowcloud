@@ -23,7 +23,7 @@ case class ChunkWriteAffinity(
   }
 
   def isWrittenEnough(cs: ChunkStatus): Boolean = {
-    cs.availability.hasChunk.nonEmpty && mandatory.forall(cs.availability.isWritten)
+    (cs.availability.hasChunk.nonEmpty && mandatory.forall(cs.availability.isWritten)) || eventually.nonEmpty
   }
 
   def isFinished(cs: ChunkStatus): Boolean = {

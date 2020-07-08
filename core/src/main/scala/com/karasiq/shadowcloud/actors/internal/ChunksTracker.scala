@@ -511,6 +511,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
       private[ChunksTracker] def markAsWriting(status: ChunkStatus, storageIds: String*): ChunkStatus = {
         val newStatus = status.copy(availability = status.availability.withWriting(storageIds: _*))
         chunks.update(newStatus)
+        chunkIO.tryFinishChunk(newStatus)
       }
 
       private[ChunksTracker] def markAsLost(status: ChunkStatus, storageId: StorageId): Unit = {

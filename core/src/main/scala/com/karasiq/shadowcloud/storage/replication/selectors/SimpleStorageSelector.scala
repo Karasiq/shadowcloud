@@ -26,6 +26,7 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
     val writeInclude      = selectorConfig.withDefault(Set.empty[String], _.getStringSet("write-include"))
     val readExclude       = selectorConfig.withDefault(Set.empty[String], _.getStringSet("read-exclude"))
     val reservedSize      = selectorConfig.withDefault(20L * SizeUnit.MB, _.getMemorySize("reserved-size").toBytes)
+    val asyncWriteLimit   = selectorConfig.withDefault(100 * SizeUnit.KB, _.getMemorySize("async-write-limit").toBytes)
   }
 
   def available(toWrite: Long = 0): Seq[RegionStorage] = {
@@ -60,14 +61,19 @@ class SimpleStorageSelector(region: RegionContext) extends StorageSelector {
         .map(_.id)
     }
 
-    val generatedList = generateList()
+    val generatedList      = generateList()
+    val canWriteEventually = chunk.chunk.checksum.encSize <= settings.asyncWriteLimit
     chunk.writeStatus match {
       case WriteStatus.Pending(affinity) ⇒
-        val newList = affinity.mandatory.filterNot(chunk.availability.isFailed) ++ generatedList
-        affinity.copy(mandatory = (selectStoragesToWrite(newList)).distinct)
+        val currentList = if (canWriteEventually) affinity.mandatory ++ affinity.eventually else affinity.mandatory
+        val newList     = currentList.filterNot(chunk.availability.isFailed) ++ generatedList
+        val selected    = selectStoragesToWrite(newList).distinct
+        if (canWriteEventually) affinity.copy(mandatory = Nil, eventually = selected)
+        else affinity.copy(mandatory = selected)
 
       case _ ⇒
-        ChunkWriteAffinity(selectStoragesToWrite(generatedList))
+        if (canWriteEventually) ChunkWriteAffinity(eventually = selectStoragesToWrite(generatedList))
+        else ChunkWriteAffinity(selectStoragesToWrite(generatedList))
     }
   }
 

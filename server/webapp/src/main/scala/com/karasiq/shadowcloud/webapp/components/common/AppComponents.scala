@@ -91,9 +91,16 @@ object AppComponents {
     )
   }
 
-  def idSelect(title: String, ids: Seq[String], selected: Seq[String]): (FormSelect, Tag) = {
-    val select = FormInput.multipleSelect(title, ids.map(id ⇒ FormSelectOption(id, id)))
-    select.selected() = selected
-    select → select.renderTag(height := 500.px)
+  def idSelect(title: String, ids: Iterable[String], selected: Iterable[String] = Nil): (FormSelect, Element) = {
+    lazy val select: FormSelect = FormInput.multipleSelect(
+      a(title, onclick := Callback.onClick { _ ⇒
+        if (select.selected.now.toSet == ids.toSet) select.selected() = Nil
+        else select.selected() = ids.toVector
+      }),
+      ids.map(id ⇒ FormSelectOption(id, id)).toVector
+    )
+    select.selected() = selected.toVector
+    val rendered = JQueryMultiSelect.wrap(select)
+    select → rendered
   }
 }

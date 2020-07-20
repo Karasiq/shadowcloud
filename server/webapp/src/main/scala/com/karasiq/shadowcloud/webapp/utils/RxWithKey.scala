@@ -1,8 +1,8 @@
 package com.karasiq.shadowcloud.webapp.utils
 
-import scala.concurrent.{ExecutionContext, Future}
-
 import rx.{Ctx, Rx, Var}
+
+import scala.concurrent.{ExecutionContext, Future}
 
 object RxWithKey {
   def static[K, V](initialKey: K, initialValue: V)(getValue: K ⇒ Future[V])(implicit ctx: Ctx.Owner, ec: ExecutionContext): RxWithKey[K, V] = {
@@ -16,15 +16,22 @@ object RxWithKey {
   }
 }
 
-class RxWithKey[K, V](initialKey: K, initialValue: V, getValue: K ⇒ Future[V])
-                     (implicit ctx: Ctx.Owner, ec: ExecutionContext) extends HasUpdate with HasKeyUpdate[K] {
-  
-  final val counter = Var(0)
-  final val key = Var(initialKey)
+class RxWithKey[K, V](initialKey: K, initialValue: V, getValue: K ⇒ Future[V])(implicit ctx: Ctx.Owner, ec: ExecutionContext)
+    extends HasUpdate
+    with HasKeyUpdate[K] {
+
+  final val counter         = Var(0)
+  final val key             = Var(initialKey)
   protected final val value = Var(initialValue)
 
   counter.triggerLater {
-    getValue(key.now).foreach(value() = _)
+    val currentKey     = key.now
+    val currentCounter = counter.now
+
+    getValue(currentKey).foreach { result ⇒
+      if (key.now == currentKey && counter.now == currentCounter)
+        value() = result
+    }
   }
 
   key.trigger {

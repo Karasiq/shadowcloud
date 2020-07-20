@@ -1,11 +1,6 @@
 package com.karasiq.shadowcloud.webapp.components.folder
 
-import org.scalajs.dom.DragEvent
-import rx.{Rx, Var}
-
 import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.index.files.FileVersions
 import com.karasiq.shadowcloud.model.File
@@ -13,17 +8,24 @@ import com.karasiq.shadowcloud.webapp.components.common.AppIcons
 import com.karasiq.shadowcloud.webapp.components.file.FileDownloadLink
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.controllers.FileController
+import org.scalajs.dom.DragEvent
+import rx.{Rx, Var}
+import scalaTags.all._
 
 object FolderFileList {
-  def apply(files: Rx[Set[File]], flat: Boolean = true)
-           (implicit context: AppContext, folderContext: FolderContext, fileController: FileController): FolderFileList = {
+  def apply(
+      files: Rx[Set[File]],
+      flat: Boolean = true
+  )(implicit context: AppContext, folderContext: FolderContext, fileController: FileController): FolderFileList = {
     new FolderFileList(files, flat)
   }
 }
 
-class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: AppContext,
-                                                            folderContext: FolderContext,
-                                                            _fileController: FileController) extends BootstrapHtmlComponent {
+class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(
+    implicit context: AppContext,
+    folderContext: FolderContext,
+    _fileController: FileController
+) extends BootstrapHtmlComponent {
 
   val selectedFile = Var(None: Option[File])
 
@@ -40,7 +42,8 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
   }
 
   lazy val fileTable = {
-    val baseTable = SortableTable.Builder[File]()
+    val baseTable = SortableTable
+      .Builder[File]()
       .withRowModifiers(file ⇒ this.fileRowModifiers(file))
       .withFilter((file, str) ⇒ file.path.name.toLowerCase.contains(str.toLowerCase))
 
@@ -66,14 +69,14 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
 
   def renderTag(md: ModifierT*): TagT = {
     val viewSelectButton = Button(ButtonStyle.info)(AppIcons.changeView, context.locale.changeView, onclick := Callback.onClick(_ ⇒ changeListView()))
-    val uploadForm = UploadForm()(context, folderContext, fileController)
+    val uploadForm       = UploadForm()(context, folderContext, fileController)
     div(
       div(ButtonGroup(ButtonGroupSize.extraSmall, uploadForm.renderButton(), viewSelectButton)),
       Rx(div {
         if (selectedView() == "previews") {
-          previewsFileTable.renderTag(md:_*)
+          previewsFileTable.renderTag(md: _*)
         } else {
-          fileTable.renderTag(md:_*)
+          fileTable.renderTag(md: _*)
         }
       })
     )
@@ -89,7 +92,7 @@ class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit context: Ap
 
     selectedView() = selectedView.now match {
       case "table" ⇒ "previews"
-      case _ ⇒ "table"
+      case _       ⇒ "table"
     }
   }
 

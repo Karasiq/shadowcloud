@@ -167,6 +167,11 @@ object WebDeps {
     Script from url("https://unpkg.com/turndown@6.0.0/dist/turndown.js")
   )
 
+  def multiSelectJS = Seq[PageContent](
+    Script from url("https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/js/jquery.multi-select.min.js"),
+    Style from url("https://cdnjs.cloudflare.com/ajax/libs/multi-select/0.9.12/css/multi-select.min.css")
+  )
+
   def indexHtml: Seq[PageContent] = {
     Seq(Html from Assets.index, Style from Assets.style)
   }

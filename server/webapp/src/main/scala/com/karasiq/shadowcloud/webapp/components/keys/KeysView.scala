@@ -141,7 +141,6 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
         GridSystem.mkRow(renderPermissions())
       )
       .withButtons(
-        Button(ButtonStyle.warning)(context.locale.exportKey, onclick := Callback.onClick(_ ⇒ showExportDialog(key))),
         AppComponents.modalClose()
       )
       .show()

@@ -88,7 +88,8 @@ object ProjectDeps {
     val version = "1.22"
     Seq(
       "org.apache.tika" % "tika-parsers" % version,
-      "org.apache.tika" % "tika-core"    % version
+      "org.apache.tika" % "tika-core"    % version,
+      "org.xerial"      % "sqlite-jdbc"  % "3.28.0"
     )
   }
 
@@ -182,9 +183,9 @@ object ProjectDeps {
       //val architectures = Seq("x86", "x86_64")
 
       (for {
-        (lib, ver) <- libs
-        os         <- platforms
-        arch       <- architectures
+        (lib, ver) ← libs
+        os         ← platforms
+        arch       ← architectures
       } yield Seq(
         // Add both: dependency and its native binaries for the current `platform`
         "org.bytedeco.javacpp-presets" % lib % s"$ver-$javaCvVersion",

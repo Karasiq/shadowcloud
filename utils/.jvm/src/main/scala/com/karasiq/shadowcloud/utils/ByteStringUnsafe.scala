@@ -1,21 +1,24 @@
 package com.karasiq.shadowcloud.utils
 
-import scala.util.Try
-
 import akka.util.ByteString
 
-object ByteStringUnsafe {
-  private[this] val byteString1C = Try(Class.forName("akka.util.ByteString$ByteString1C"))
-  private[this] val bytesField = byteString1C.map(_.getDeclaredField("bytes"))
-  bytesField.foreach(_.setAccessible(true))
+import scala.util.Try
 
-  def getArray(bs: ByteString): Array[Byte] = {
-    if (byteString1C.isSuccess && bytesField.isSuccess && byteString1C.get.isInstance(bs)) {
-      bytesField.get.get(bs).asInstanceOf[Array[Byte]]
-    } else {
-      bs.toArray
-    }
+object ByteStringUnsafe {
+  private[this] val ByteString1CRef = Try(Class.forName("akka.util.ByteString$ByteString1C"))
+  private[this] val BytesFieldRef = ByteString1CRef.map { cls =>
+    val f = cls.getDeclaredField("bytes")
+    f.setAccessible(true)
+    f
   }
+
+  def getArray(bs: ByteString): Array[Byte] =
+    if (BytesFieldRef.isSuccess && ByteString1CRef.get.isInstance(bs)) {
+      BytesFieldRef.get.get(bs) match {
+        case bs: Array[Byte] => bs
+        case _ => bs.toArray // Patched version
+      }
+    } else bs.toArray
 
   object implicits {
     implicit class ImplicitByteStringUnsafeOps(private val bs: ByteString) extends AnyVal {

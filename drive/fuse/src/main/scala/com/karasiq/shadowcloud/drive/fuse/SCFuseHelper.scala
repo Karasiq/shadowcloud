@@ -4,19 +4,18 @@ import java.nio.file.{Files, Paths}
 
 import akka.Done
 import akka.actor.ActorSystem
-import akka.event.Logging
-import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.drive.SCDrive
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 object SCFuseHelper {
-  def mount()(implicit actorSystem: ActorSystem, ec: ExecutionContext): Future[Done] = {
+  def mount()(implicit actorSystem: ActorSystem): Future[Done] = {
     import com.karasiq.common.configs.ConfigImplicits._
 
     // Init FUSE file system
-    val drive = SCDrive(actorSystem)
-    val fuseConfig = drive.config.rootConfig.getConfigIfExists("fuse")
+    val drive               = SCDrive(actorSystem)
+    val fuseConfig          = drive.config.rootConfig.getConfigIfExists("fuse")
+    implicit val dispatcher = actorSystem.dispatchers.lookup("shadowcloud.drive.fuse.default-dispatcher")
 
     // Fix FUSE properties
     val fuseWinFspDll = {
@@ -29,7 +28,7 @@ object SCFuseHelper {
       System.setProperty("file.encoding", "UTF-8")
     }
 
-    val fileSystem = SCFileSystem(drive.config, drive.dispatcher, Logging(actorSystem, "SCFileSystem"))
+    val fileSystem  = SCFileSystem(drive.config, drive.dispatcher, actorSystem)
     val mountFuture = SCFileSystem.mountInSeparateThread(fileSystem)
     mountFuture.failed.foreach(actorSystem.log.error(_, "FUSE filesystem mount failed"))
     sys.addShutdownHook(fileSystem.umount())

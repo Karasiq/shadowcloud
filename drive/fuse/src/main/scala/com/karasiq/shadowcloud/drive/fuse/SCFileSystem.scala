@@ -3,12 +3,13 @@ package com.karasiq.shadowcloud.drive.fuse
 import java.nio.file.Paths
 
 import akka.Done
-import akka.actor.ActorRef
-import akka.event.LoggingAdapter
+import akka.actor.{ActorRef, ActorSystem}
+import akka.event.Logging
 import akka.pattern.ask
 import akka.util.{ByteString, Timeout}
 import com.karasiq.common.configs.ConfigImplicits._
 import com.karasiq.common.configs.ConfigUtils
+import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
 import com.karasiq.shadowcloud.drive.FileIOScheduler
 import com.karasiq.shadowcloud.drive.config.SCDriveConfig
@@ -28,8 +29,8 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 object SCFileSystem {
-  def apply(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAdapter)(implicit ec: ExecutionContext): SCFileSystem = {
-    new SCFileSystem(config, fsDispatcher, log)
+  def apply(config: SCDriveConfig, fsDispatcher: ActorRef, actorSystem: ActorSystem)(implicit ec: ExecutionContext): SCFileSystem = {
+    new SCFileSystem(config, fsDispatcher, actorSystem)
   }
 
   def getMountPath(config: Config = ConfigUtils.emptyConfig): String = {
@@ -69,14 +70,17 @@ object SCFileSystem {
   }
 }
 
-class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAdapter)(implicit ec: ExecutionContext) extends FuseStubFS {
+class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, actorSystem: ActorSystem)(implicit ec: ExecutionContext) extends FuseStubFS {
   protected final case class FileHandle(handle: Long, file: File)
 
   import SCFileSystem.implicitStrToPath
   import com.karasiq.shadowcloud.drive.VirtualFSDispatcher._
 
-  protected implicit val timeout = Timeout(config.fileIO.readTimeout)
-  protected val writeTimeout     = Timeout(config.fileIO.writeTimeout)
+  protected val log = Logging(actorSystem, "SCFileSystem")
+
+  protected implicit lazy val timeout = Timeout(ShadowCloud(actorSystem).config.timeouts.query)
+  protected val readTimeout           = Timeout(config.fileIO.readTimeout)
+  protected val writeTimeout          = Timeout(config.fileIO.writeTimeout)
 
   protected object settings {
     val fuseConfig             = config.rootConfig.getConfigIfExists("fuse")
@@ -235,7 +239,7 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, log: LoggingAd
         DispatchIOOperation,
         critical = true,
         handle = fi.fh.longValue()
-      )
+      )(readTimeout)
     )
 
     result match {

@@ -988,7 +988,7 @@ final class ByteStringBuilder extends Builder[Byte, ByteString] {
         _builder ++= bs.bytestrings
         _length += bs.length
       case xs: WrappedArray.ofByte ⇒
-        putByteArrayUnsafe(BSLArray.toLArray(xs.array))
+        putByteArrayUnsafe(xs.array)
       case seq: collection.IndexedSeq[Byte] if shouldResizeTempFor(seq.length) ⇒
         val copied = new Array[Byte](seq.length)
         seq.copyToArray(copied)
@@ -1014,6 +1014,10 @@ final class ByteStringBuilder extends Builder[Byte, ByteString] {
     assert((_length.toLong + xs.length) <= Int.MaxValue, "Overflow")
     _length += bs.length
     this
+  }
+
+  private[akka] def putByteArrayUnsafe(xs: Array[Byte]): this.type = {
+    putByteArrayUnsafe(BSLArray.toLArray(xs))
   }
 
   /**

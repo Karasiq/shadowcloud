@@ -1,6 +1,6 @@
 import com.typesafe.sbt.packager.docker.Cmd
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
-
+  
 val commonSettings = Seq(
   organization := "com.github.karasiq",
   version := "1.2.0",
@@ -356,6 +356,7 @@ lazy val `server-static-routes` = (project in file("server") / "static-routes")
         WebDeps.dropzoneJS,
         WebDeps.toastrJS,
         WebDeps.pellJS,
+        WebDeps.multiSelectJS,
         scalaJsApplication(webapp, fastOpt = false, launcher = false).value
       )
     },

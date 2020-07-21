@@ -1,24 +1,25 @@
 package com.karasiq.shadowcloud.actors.internal
 
+import scala.collection.mutable
+import scala.concurrent.Future
+
 import akka.actor.{ActorContext, ActorRef}
 import akka.event.Logging
 import akka.pattern.{ask, pipe}
 import akka.util.{ByteString, Timeout}
+
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.actors.RegionDispatcher._
 import com.karasiq.shadowcloud.actors.internal.ChunksTracker.ChunkReadStatus
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.exceptions.{RegionException, SCExceptions}
 import com.karasiq.shadowcloud.index.diffs.ChunkIndexDiff
-import com.karasiq.shadowcloud.model.utils.RegionHealth
 import com.karasiq.shadowcloud.model.{Chunk, ChunkId, RegionId, StorageId}
+import com.karasiq.shadowcloud.model.utils.RegionHealth
+import com.karasiq.shadowcloud.storage.replication.{ChunkAvailability, ChunkStatusProvider, ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.{ChunkStatus, WriteStatus}
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
-import com.karasiq.shadowcloud.storage.replication.{ChunkAvailability, ChunkStatusProvider, ChunkWriteAffinity, StorageSelector}
 import com.karasiq.shadowcloud.utils.{ChunkUtils, Utils}
-
-import scala.collection.mutable
-import scala.concurrent.Future
 
 
 private[actors] object ChunksTracker {
@@ -232,6 +233,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
       readingChunks.collect {
         case (chunk, rs) if rs.reading.isEmpty ⇒
           log.debug("Retrying chunk read: {}", chunk.hashString)
+          chunks.getChunkStatus(chunk).foreach(storages.state.resetFailures)
           chunkIO.readChunk(chunk)
       }
     }
@@ -357,7 +359,7 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
   // -----------------------------------------------------------------------
   object storages {
     object io {
-      import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk => SReadChunk, WriteChunk => SWriteChunk}
+      import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, ReadChunk ⇒ SReadChunk, WriteChunk ⇒ SWriteChunk}
 
       def writeChunk(storage: RegionStorage, chunk: Chunk) = {
         implicit val timeout: Timeout = sc.config.timeouts.chunkWrite
@@ -555,7 +557,6 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
       }
 
       def onReadFailure(chunk: Chunk, storageId: Option[StorageId], error: Throwable)(implicit storageSelector: StorageSelector): Unit = {
-
         log.error(error, "Chunk read failure from {}: {}", storageId.getOrElse("<internal>"), chunk)
 
         for (storageId ← storageId; status ← chunks.getChunkStatus(chunk)) {

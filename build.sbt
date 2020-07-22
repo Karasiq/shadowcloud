@@ -1,5 +1,5 @@
 import com.typesafe.sbt.packager.docker.Cmd
-import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
+import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
   
 val commonSettings = Seq(
   organization := "com.github.karasiq",
@@ -27,7 +27,7 @@ val commonSettings = Seq(
     "-Xlint",
     "-Ypartial-unification",
     "-opt:l:inline",
-    "-opt-inline-from:**"
+    "-opt-inline-from:com.karasiq.**"
   )
 )
 

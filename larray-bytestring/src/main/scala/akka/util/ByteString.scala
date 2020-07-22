@@ -5,18 +5,19 @@
 package akka.util
 
 import java.io.{ObjectInputStream, ObjectOutputStream}
-import java.lang.{Iterable => JIterable}
-import java.nio.charset.{Charset, StandardCharsets}
+import java.lang.{Iterable ⇒ JIterable}
 import java.nio.{ByteBuffer, ByteOrder}
-
-import xerial.larray.LArray
+import java.nio.charset.{Charset, StandardCharsets}
+import java.util.Base64
 
 import scala.annotation.{tailrec, varargs}
+import scala.collection.{immutable, IndexedSeqOptimized}
 import scala.collection.generic.CanBuildFrom
 import scala.collection.immutable.{IndexedSeq, VectorBuilder}
 import scala.collection.mutable.{Builder, WrappedArray}
-import scala.collection.{IndexedSeqOptimized, immutable}
 import scala.reflect.ClassTag
+
+import xerial.larray.LArray
 
 object ByteString {
 
@@ -62,13 +63,47 @@ object ByteString {
   def fromArray(array: Array[Byte]): ByteString = apply(array)
 
   /**
+   * Unsafe API: Use only in situations you are completely confident that this is what
+   * you need, and that you understand the implications documented below.
+   *
+   * Creates a ByteString without copying the passed in byte array, unlike other factory
+   * methods defined on ByteString. This method of creating a ByteString saves one array
+   * copy and allocation and therefore can lead to better performance, however it also means
+   * that one MUST NOT modify the passed in array, or unexpected immutable data structure
+   * contract-breaking behavior will manifest itself.
+   *
+   * This API is intended for users who have obtained an byte array from some other API, and
+   * want wrap it into an ByteArray, and from there on only use that reference (the ByteString)
+   * to operate on the wrapped data. For all other intents and purposes, please use the usual
+   * apply and create methods - which provide the immutability guarantees by copying the array.
+   *
+   */
+  def fromArrayUnsafe(array: Array[Byte]): ByteString = ByteString1C(array)
+
+  /**
    * Creates a new ByteString by copying length bytes starting at offset from
    * an Array.
    */
   def fromArray(array: Array[Byte], offset: Int, length: Int): ByteString =
     CompactByteString.fromArray(array, offset, length)
 
-  def fromArrayUnsafe(array: Array[Byte]): ByteString = ByteString1C(array)
+  /**
+   * Unsafe API: Use only in situations you are completely confident that this is what
+   * you need, and that you understand the implications documented below.
+   *
+   * Creates a ByteString without copying the passed in byte array, unlike other factory
+   * methods defined on ByteString. This method of creating a ByteString saves one array
+   * copy and allocation and therefore can lead to better performance, however it also means
+   * that one MUST NOT modify the passed in array, or unexpected immutable data structure
+   * contract-breaking behavior will manifest itself.
+   *
+   * This API is intended for users who have obtained an byte array from some other API, and
+   * want wrap it into an ByteArray, and from there on only use that reference (the ByteString)
+   * to operate on the wrapped data. For all other intents and purposes, please use the usual
+   * apply and create methods - which provide the immutability guarantees by copying the array.
+   *
+   */
+  def fromArrayUnsafe(array: Array[Byte], offset: Int, length: Int): ByteString = ByteString1(array, offset, length)
 
   /**
    * JAVA API
@@ -105,6 +140,9 @@ object ByteString {
 
   val empty: ByteString = CompactByteString(Array.empty[Byte])
 
+  /** Java API */
+  val emptyByteString: ByteString = empty
+
   def newBuilder: ByteStringBuilder = new ByteStringBuilder
 
   /** Java API */
@@ -113,17 +151,13 @@ object ByteString {
   implicit val canBuildFrom: CanBuildFrom[TraversableOnce[Byte], Byte, ByteString] =
     new CanBuildFrom[TraversableOnce[Byte], Byte, ByteString] {
       def apply(ignore: TraversableOnce[Byte]): ByteStringBuilder = newBuilder
-
       def apply(): ByteStringBuilder = newBuilder
     }
 
   private[akka] object ByteString1C extends Companion {
     def fromString(s: String): ByteString1C = apply(s.getBytes)
-
     def apply(bytes: Array[Byte]): ByteString1C = apply(BSLArray.toLArray(bytes))
-
     def apply(bytes: LArray[Byte]): ByteString1C = new ByteString1C(bytes)
-
     val SerializationIdentity = 1.toByte
 
     def readFromInputStream(is: ObjectInputStream): ByteString1C = {
@@ -162,6 +196,12 @@ object ByteString {
     override def decodeString(charset: Charset): String =
       if (isEmpty) "" else new String(BSLArray.toHeapArray(bytes), charset)
 
+    override def decodeBase64: ByteString =
+      if (isEmpty) this else ByteString1C(Base64.getDecoder.decode(bytes.toArray))
+
+    override def encodeBase64: ByteString =
+      if (isEmpty) this else ByteString1C(Base64.getEncoder.encode(bytes.toArray))
+
     override def ++(that: ByteString): ByteString = {
       if (that.isEmpty) this
       else if (this.isEmpty) that
@@ -170,6 +210,7 @@ object ByteString {
 
     override def take(n: Int): ByteString =
       if (n <= 0) ByteString.empty
+      else if (n >= length) this
       else toByteString1.take(n)
 
     override def dropRight(n: Int): ByteString =
@@ -181,7 +222,6 @@ object ByteString {
       else toByteString1.drop(n)
 
     override def indexOf[B >: Byte](elem: B): Int = indexOf(elem, 0)
-
     override def indexOf[B >: Byte](elem: B, from: Int): Int = {
       if (from >= length) -1
       else {
@@ -223,17 +263,12 @@ object ByteString {
   /** INTERNAL API: ByteString backed by exactly one array, with start / end markers */
   private[akka] object ByteString1 extends Companion {
     val empty: ByteString1 = new ByteString1(LArray.emptyByteArray)
-
     def fromString(s: String): ByteString1 = apply(s.getBytes)
-
     def apply(bytes: Array[Byte]): ByteString1 = apply(bytes, 0, bytes.length)
-
     def apply(bytes: Array[Byte], startIndex: Int, length: Int): ByteString1 =
       if (length == 0) empty
       else new ByteString1(BSLArray.toLArray(bytes), Math.max(0, startIndex), Math.max(0, length))
-
     def apply(bytes: LArray[Byte]): ByteString1 = apply(bytes, 0, bytes.length)
-
     def apply(bytes: LArray[Byte], startIndex: Long, length: Long): ByteString1 =
       if (length == 0) empty
       else new ByteString1(bytes, Math.max(0L, startIndex), Math.max(0L, length))
@@ -333,21 +368,43 @@ object ByteString {
     override def decodeString(charset: Charset): String = // avoids Charset.forName lookup in String internals
       new String(if (length == bytes.length) BSLArray.toHeapArray(bytes) else toArray, charset)
 
+    override def decodeBase64: ByteString =
+      if (isEmpty) this
+      else if (isCompact) ByteString1C(Base64.getDecoder.decode(bytes.toArray))
+      else {
+        val dst = Base64.getDecoder.decode(ByteBuffer.wrap(bytes.toArray, startIndex.toInt, length))
+        if (dst.hasArray) {
+          if (dst.array.length == dst.remaining) ByteString1C(dst.array)
+          else ByteString1(dst.array, dst.arrayOffset + dst.position(), dst.remaining)
+        } else CompactByteString(dst)
+      }
+
+    override def encodeBase64: ByteString =
+      if (isEmpty) this
+      else if (isCompact) ByteString1C(Base64.getEncoder.encode(bytes.toArray))
+      else {
+        val dst = Base64.getEncoder.encode(ByteBuffer.wrap(bytes.toArray, startIndex.toInt, length))
+        if (dst.hasArray) {
+          if (dst.array.length == dst.remaining) ByteString1C(dst.array)
+          else ByteString1(dst.array, dst.arrayOffset + dst.position(), dst.remaining)
+        } else CompactByteString(dst)
+      }
+
     def ++(that: ByteString): ByteString = {
       if (that.isEmpty) this
       else if (this.isEmpty) that
-      else that match {
-        case b: ByteString1C ⇒ ByteStrings(this, b.toByteString1)
-        case b: ByteString1 ⇒
-          if ((bytes eq b.bytes) && (startIndex + length == b.startIndex))
-            new ByteString1(bytes, startIndex, length + b.length)
-          else ByteStrings(this, b)
-        case bs: ByteStrings ⇒ ByteStrings(this, bs)
-      }
+      else
+        that match {
+          case b: ByteString1C => ByteStrings(this, b.toByteString1)
+          case b: ByteString1 =>
+            if ((bytes eq b.bytes) && (startIndex + length == b.startIndex))
+              new ByteString1(bytes, startIndex, length + b.length)
+            else ByteStrings(this, b)
+          case bs: ByteStrings => ByteStrings(this, bs)
+        }
     }
 
     override def indexOf[B >: Byte](elem: B): Int = indexOf(elem, 0)
-
     override def indexOf[B >: Byte](elem: B, from: Int): Int = {
       if (from >= length) -1
       else {
@@ -493,6 +550,10 @@ object ByteString {
 
     def decodeString(charset: Charset): String = compact.decodeString(charset)
 
+    override def decodeBase64: ByteString = compact.decodeBase64
+
+    override def encodeBase64: ByteString = compact.encodeBase64
+
     private[akka] def writeToOutputStream(os: ObjectOutputStream): Unit = {
       os.writeInt(bytestrings.length)
       bytestrings.foreach(_.writeToOutputStream(os))
@@ -524,7 +585,6 @@ object ByteString {
 
     private def dropRight0(n: Int): ByteString = {
       val byteStringsSize = bytestrings.length
-
       @tailrec def dropRightWithFullDropsAndRemainig(fullDrops: Int, remainingToDrop: Int): ByteString = {
         val bs = bytestrings(byteStringsSize - fullDrops - 1)
         if (bs.length > remainingToDrop) {
@@ -533,7 +593,10 @@ object ByteString {
           else if (remainingToDrop == 0)
             new ByteStrings(bytestrings.dropRight(fullDrops), length - n)
           else
-            new ByteStrings(bytestrings.dropRight(fullDrops + 1) :+ bytestrings(byteStringsSize - fullDrops - 1).dropRight1(remainingToDrop), length - n)
+            new ByteStrings(
+              bytestrings.dropRight(fullDrops + 1) :+ bytestrings(byteStringsSize - fullDrops - 1)
+                .dropRight1(remainingToDrop),
+              length - n)
         } else {
           dropRightWithFullDropsAndRemainig(fullDrops + 1, remainingToDrop - bs.length)
         }
@@ -656,6 +719,8 @@ sealed abstract class ByteString extends IndexedSeq[Byte] with IndexedSeqOptimiz
 
   override protected[this] def newBuilder: ByteStringBuilder = ByteString.newBuilder
 
+  override def isEmpty: Boolean = length == 0
+
   // *must* be overridden by derived classes. This construction is necessary
   // to specialize the return type, as the method is already implemented in
   // a parent trait.
@@ -702,6 +767,14 @@ sealed abstract class ByteString extends IndexedSeq[Byte] with IndexedSeqOptimiz
   // optimized in subclasses
   override def indexOf[B >: Byte](elem: B): Int = indexOf(elem, 0)
 
+  override def grouped(size: Int): Iterator[ByteString] = {
+    if (size <= 0) {
+      throw new IllegalArgumentException(s"size=$size must be positive")
+    }
+
+    Iterator.iterate(this)(_.drop(size)).takeWhile(_.nonEmpty).map(_.take(size))
+  }
+
   override def toString(): String = {
     val maxSize = 100
     if (size > maxSize)
@@ -744,7 +817,9 @@ sealed abstract class ByteString extends IndexedSeq[Byte] with IndexedSeqOptimiz
    * @return the number of bytes actually copied
    */
   // *must* be overridden by derived classes.
-  def copyToBuffer(buffer: ByteBuffer): Int = throw new UnsupportedOperationException("Method copyToBuffer is not implemented in ByteString")
+  def copyToBuffer(buffer: ByteBuffer): Int =
+    throw new UnsupportedOperationException(
+      s"Method copyToBuffer is not implemented in ByteString, failed for buffer $buffer")
 
   /**
    * Create a new ByteString with all contents compacted into a single,
@@ -806,10 +881,21 @@ sealed abstract class ByteString extends IndexedSeq[Byte] with IndexedSeqOptimiz
    */
   def decodeString(charset: Charset): String
 
+  /*
+   * Returns a ByteString which is the binary representation of this ByteString
+   * if this ByteString is Base64-encoded.
+   */
+  def decodeBase64: ByteString
+
+  /**
+   * Returns a ByteString which is the Base64 representation of this ByteString
+   */
+  def encodeBase64: ByteString
+
   /**
    * map method that will automatically cast Int back into Byte.
    */
-  final def mapI(f: Byte ⇒ Int): ByteString = map(f andThen (_.toByte))
+  final def mapI(f: Byte => Int): ByteString = map(f.andThen(_.toByte))
 }
 
 object CompactByteString {
@@ -971,6 +1057,23 @@ final class ByteStringBuilder extends Builder[Byte, ByteString] {
     this
   }
 
+  def ++=(bytes: ByteString): this.type = {
+    if (bytes.nonEmpty) {
+      clearTemp()
+      bytes match {
+        case b: ByteString1C =>
+          _builder += b.toByteString1
+          _length += b.length
+        case b: ByteString1 =>
+          _builder += b
+          _length += b.length
+        case bs: ByteStrings =>
+          _builder ++= bs.bytestrings
+          _length += bs.length
+      }
+    }
+    this
+  }
   override def ++=(xs: TraversableOnce[Byte]): this.type = {
     xs match {
       case b: ByteString if b.isEmpty ⇒
@@ -1007,6 +1110,10 @@ final class ByteStringBuilder extends Builder[Byte, ByteString] {
     this
   }
 
+  private[akka] def putByteArrayUnsafe(xs: Array[Byte]): this.type = {
+    putByteArrayUnsafe(BSLArray.toLArray(xs))
+  }
+
   private[akka] def putByteArrayUnsafe(xs: LArray[Byte]): this.type = {
     clearTemp()
     val bs = ByteString1(xs)
@@ -1014,10 +1121,6 @@ final class ByteStringBuilder extends Builder[Byte, ByteString] {
     assert((_length.toLong + xs.length) <= Int.MaxValue, "Overflow")
     _length += bs.length
     this
-  }
-
-  private[akka] def putByteArrayUnsafe(xs: Array[Byte]): this.type = {
-    putByteArrayUnsafe(BSLArray.toLArray(xs))
   }
 
   /**

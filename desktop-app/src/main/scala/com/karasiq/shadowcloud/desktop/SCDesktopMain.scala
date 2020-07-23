@@ -9,6 +9,7 @@ import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.drive.fuse.SCFuseHelper
 import com.karasiq.shadowcloud.server.http.SCAkkaHttpServer
 import com.typesafe.config.impl.ConfigImpl
+import scala.concurrent.duration._
 
 import scala.concurrent.Future
 import scala.util.Try
@@ -21,6 +22,11 @@ object SCDesktopMain extends App {
   }
 
   implicit val actorSystem = ActorSystem("shadowcloud", config)
+
+  // LArray memory fix
+  actorSystem.scheduler.scheduleAtFixedRate(30 seconds, 15 seconds) { () ⇒
+    System.gc()
+  }(actorSystem.dispatcher)
 
   val sc = ShadowCloud(actorSystem)
 

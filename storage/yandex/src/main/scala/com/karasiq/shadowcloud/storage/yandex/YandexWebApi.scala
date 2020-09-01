@@ -173,7 +173,7 @@ private[yandex] class YandexWebApi(
 
   private[this] def getCsrfToken() = {
     val passport  = "https://passport.yandex.ru/auth"
-    val csrfR     = "data-csrf=\"(?<csrf>.*?)\"".r
+    val csrfR     = "\"csrf\":\"(?<csrf>.*?)\"".r
     val proccessR = "process_uuid=(?<uuid>[\\w-]+)".r
 
     http

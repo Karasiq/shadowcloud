@@ -133,7 +133,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike with Sequen
     storageSubscribe()
     val diff = FolderIndexDiff.createFolders(folder)
     testRegion ! RegionDispatcher.WriteIndex(diff)
-    receiveWhile(5 seconds) {
+    receiveWhile(25 seconds) {
       case RegionDispatcher.WriteIndex.Success(`diff`, result) ⇒
         result.time shouldBe >(TestUtils.testTimestamp)
         assert(FolderIndexDiff.equalsIgnoreOrder(result.folders, folderDiff))

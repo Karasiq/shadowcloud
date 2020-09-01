@@ -11,7 +11,7 @@ abstract class ActorSpec extends TestKit(ActorSystem("test")) with ImplicitSende
   with Suite with Matchers with ScalaFutures with BeforeAndAfterAll {
 
   override implicit def patienceConfig: PatienceConfig = {
-    PatienceConfig(5 seconds, 50 millis)
+    PatienceConfig(10 seconds, 100 millis)
   }
 
   override protected def afterAll(): Unit = {

@@ -1,6 +1,7 @@
 package com.karasiq.shadowcloud
 
 import java.util.UUID
+import java.util.concurrent.Executors
 
 import akka.Done
 import akka.actor.{ActorContext, ActorRef, ActorSystem, ExtendedActorSystem, Extension, ExtensionId, ExtensionIdProvider}
@@ -182,6 +183,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   object ui extends UIProvider with PasswordProvider {
     private[this] lazy val passProvider: PasswordProvider = provInstantiator.getInstance(config.ui.passwordProvider)
     private[this] lazy val uiProvider: UIProvider         = provInstantiator.getInstance(config.ui.uiProvider)
+    def executionContext                                  = executionContexts.ui
 
     override def askPassword(id: String): String =
       passProvider.askPassword(id)
@@ -270,6 +272,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     val metadata         = _actorSystem.dispatchers.lookup(SCDispatchers.metadata)
     val metadataBlocking = _actorSystem.dispatchers.lookup(SCDispatchers.metadataBlocking)
     val cryptography     = _actorSystem.dispatchers.lookup(SCDispatchers.cryptography)
+    val ui               = ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor())
   }
 
   private[this] object lifecycleHooks extends LifecycleHook {
@@ -285,6 +288,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     def shutdown(): Unit = instances.foreach { hook ⇒
       log.debug("Executing shutdown hook: {}", hook)
       Try(hook.shutdown()).failed.foreach(actorSystem.log.error(_, "Shutdown hook error"))
+      executionContexts.ui.shutdownNow()
     }
   }
 

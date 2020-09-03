@@ -24,22 +24,24 @@ class YandexStoragePlugin extends StoragePlugin {
     val log = Logging(system, context.self)
     val sc  = ShadowCloud()
     val api = new YandexWebApi(solveCaptcha = { imageUrl ⇒
-      sc.ui.showNotification(s"Yandex captcha required for $storageId: $imageUrl")
-      if (Desktop.isDesktopSupported) Desktop.getDesktop.browse(new URI(imageUrl))
-      Future.fromTry(Try(sc.ui.askPassword("Yandex captcha")))
-    }, passChallenge = { url ⇒
-      if (Desktop.isDesktopSupported) Desktop.getDesktop.browse(new URI(url))
       Future {
+        sc.ui.showNotification(s"Yandex captcha required for $storageId: $imageUrl")
+        if (Desktop.isDesktopSupported) Desktop.getDesktop.browse(new URI(imageUrl))
+        sc.ui.askPassword("Yandex captcha")
+      }(sc.ui.executionContext)
+    }, passChallenge = { url ⇒
+      Future {
+        if (Desktop.isDesktopSupported) Desktop.getDesktop.browse(new URI(url))
         sc.ui.showNotification(
           s"Yandex verification required for $storageId: $url\n" +
             "Please complete the verification and then press OK"
         )
         Done
-      }
+      }(sc.ui.executionContext)
     })
 
     implicit val session: YandexSession = {
-      def create() = Await.result(api.createSession(props.credentials.login, props.credentials.password), 10 seconds)
+      def create() = Await.result(api.createSession(props.credentials.login, props.credentials.password), 5 minutes)
 
       Try(sc.sessions.getBlocking[YandexSession](storageId, "yad-session"))
         .map { implicit session ⇒

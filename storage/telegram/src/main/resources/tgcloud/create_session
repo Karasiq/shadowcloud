@@ -1,0 +1,4 @@
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+cd "$DIR"
+sudo pip3 install -r requirements.txt
+python3 telegram_create_session.py

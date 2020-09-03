@@ -81,6 +81,19 @@ shadowcloud.storage.gdrive.oauth.secrets.installed {
 }
 ```
 
+# How to configure Telegram (free+unlimited!) storage
+1. You should have Python 3 installed on your system: https://www.python.org/downloads/ and also the pip package installer: https://pip.pypa.io/en/stable/installing/
+2. Install required packages with pip (executable can be `pip3` or `pip` depending on OS, on Windows it's most likely `pip`):
+    * Linux/MacOS:
+    ```bash
+    sudo pip3 install "Telethon>=1.14.0" "cryptg==0.2.post1" "Quart>=0.12.0" "Hypercorn>=0.9.5" "lz4==3.1.0" "pytz>=2020.1"
+    ```
+    * Windows:
+    ```bash
+    pip install "Telethon>=1.14.0" "cryptg==0.2.post1" "Quart>=0.12.0" "Hypercorn>=0.9.5" "lz4==3.1.0" "pytz>=2020.1"
+    ```
+3. Create storage with `type=telegram` and follow instructions
+
 # Plugins
 Full list of currently supported algorithms (some requires libsodium):
 ```

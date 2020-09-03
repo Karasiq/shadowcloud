@@ -16,8 +16,8 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.utils.StoragePluginBuilder
 
 import scala.collection.JavaConverters._
-import scala.concurrent.Await
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 import scala.sys.ShutdownHookThread
 import scala.util.control.NonFatal
 import scala.util.{Random, Try}
@@ -48,7 +48,10 @@ class TelegramStoragePlugin extends StoragePlugin {
             val session = Try(sc.sessions.getRawBlocking(storageId, "tgcloud-session")).toOption
               .orElse(props.rootConfig.optional(_.getString("session")).map(Base64.decode))
               .filter(_.nonEmpty)
-              .getOrElse(TelegramScripts.createSession(storageId, config.secrets, sc.ui))
+              .getOrElse {
+                val future = Future(TelegramScripts.createSession(storageId, config.secrets, sc.ui))(sc.ui.executionContext)
+                Await.result(future, 5 minutes)
+              }
 
             require(session.nonEmpty, "Session is empty")
             sc.sessions.setRawBlocking(storageId, "tgcloud-session", session)

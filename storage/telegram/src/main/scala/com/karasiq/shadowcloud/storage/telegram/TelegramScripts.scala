@@ -1,16 +1,15 @@
 package com.karasiq.shadowcloud.storage.telegram
 
-import java.io.{InputStream, IOException}
+import java.io.{IOException, InputStream}
 import java.nio.file._
 import java.nio.file.attribute.BasicFileAttributes
 
-import scala.util.Try
-
 import akka.util.ByteString
-
 import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage.telegram.TelegramStorageConfig.Secrets
 import com.karasiq.shadowcloud.ui.UIProvider
+
+import scala.util.Try
 
 object TelegramScripts {
   def createSession(storageId: StorageId, secrets: Secrets, uiProvider: UIProvider): ByteString = {
@@ -19,10 +18,11 @@ object TelegramScripts {
     deleteDir(baseDir)
     extract(baseDir)
     writeSecrets(baseDir, secrets)
+
     uiProvider.showNotification(
-      s"""Please run following command in $baseDir, then press OK
-         |Linux/MacOS: sudo pip3 install -r requirements.txt && python3 telegram_create_session.py
-         |Windows: pip3 install -r requirements.txt && py telegram_create_session.py
+      s"""Please execute the following action depending on your OS, then press OK
+         |Windows: Execute create_session.bat in $baseDir
+         |Linux/MacOS: Run in terminal: $baseDir/create_session
          |""".stripMargin
     )
     val result = readSession(baseDir, secrets.entity)

@@ -5,7 +5,6 @@ import java.net.URI
 
 import akka.Done
 import akka.actor.{ActorContext, ActorRef}
-import akka.event.Logging
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.model.utils.StorageHealth
@@ -21,7 +20,6 @@ import scala.util.Try
 class YandexStoragePlugin extends StoragePlugin {
   override def createStorage(storageId: StorageId, props: StorageProps)(implicit context: ActorContext): ActorRef = {
     import context.{dispatcher, system}
-    val log = Logging(system, context.self)
     val sc  = ShadowCloud()
     val api = new YandexWebApi(solveCaptcha = { imageUrl ⇒
       Future {

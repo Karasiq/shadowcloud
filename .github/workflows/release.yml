@@ -141,9 +141,9 @@ jobs:
         run: |
           curl -s "https://get.sdkman.io" | bash
           source "$HOME/.sdkman/bin/sdkman-init.sh"
-          sdk install java 8.0.262.fx-zulu
+          sdk install java 8.0.265.fx-zulu
           sdk install sbt 1.3.8
-          sdk use java 8.0.262.fx-zulu
+          sdk use java 8.0.265.fx-zulu
           sdk use sbt 1.3.8
 
           Version="${{steps.version.outputs.version}}"

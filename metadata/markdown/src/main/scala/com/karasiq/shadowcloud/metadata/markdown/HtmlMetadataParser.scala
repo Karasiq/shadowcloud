@@ -1,5 +1,7 @@
 package com.karasiq.shadowcloud.metadata.markdown
 
+import java.net.URI
+
 import akka.NotUsed
 import akka.stream.scaladsl.Flow
 import akka.util.ByteString
@@ -12,6 +14,7 @@ import com.typesafe.config.Config
 import org.jsoup.Jsoup
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 object HtmlMetadataParser {
   def apply(config: Config): HtmlMetadataParser = new HtmlMetadataParser(config)
@@ -19,9 +22,10 @@ object HtmlMetadataParser {
 
 class HtmlMetadataParser(config: Config) extends MetadataParser {
   protected object settings {
-    val parserConfig = MetadataParserConfig(config)
-    val sizeLimit    = config.getBytesInt("size-limit")
+    val parserConfig   = MetadataParserConfig(config)
+    val sizeLimit      = config.getBytesInt("size-limit")
     val removeElements = config.getStringList("remove-elements").asScala
+    val allowedHosts   = config.getStringList("img-allowed-hosts").asScala
   }
 
   def canParse(name: String, mime: String): Boolean = {
@@ -35,6 +39,19 @@ class HtmlMetadataParser(config: Config) extends MetadataParser {
       .filter(_.nonEmpty)
       .map { bytes ⇒
         val html = Jsoup.parse(bytes.utf8String).body()
+
+        html
+          .select("img, video")
+          .asScala
+          .filterNot { e ⇒
+            val srcHost = Option(e.attr("src"))
+              .flatMap(url ⇒ Try(new URI(url).getHost).toOption)
+
+            srcHost exists { host ⇒
+              settings.allowedHosts.exists(ah ⇒ host == ah || host.endsWith("." + ah))
+            }
+          }
+          .foreach(_.remove())
 
         html
           .select(settings.removeElements.mkString(", "))

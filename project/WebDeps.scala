@@ -30,6 +30,10 @@ object WebDeps {
         |.sc-main-container {
         |  margin-bottom: 100px;
         |}
+        |
+        |.well img, .modal-body img {
+        |  width: 100% !important;
+        |}
       """.stripMargin
   }
 

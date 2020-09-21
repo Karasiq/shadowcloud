@@ -1,11 +1,11 @@
 package com.karasiq.shadowcloud.console
 
 import akka.actor.ActorSystem
-
 import com.karasiq.common.configs.ConfigImplicits._
 import com.karasiq.shadowcloud.ShadowCloud
 import com.karasiq.shadowcloud.drive.fuse.SCFuseHelper
 import com.typesafe.config.impl.ConfigImpl
+
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
@@ -37,6 +37,5 @@ object SCConsoleMain extends App {
   if (config.optional(_.getBoolean("shadowcloud.drive.fuse.auto-mount")).contains(true)) {
     val eventualDone = SCFuseHelper.mount()
     eventualDone.foreach(_ ⇒ actorSystem.log.info("shadowcloud FUSE filesystem mount success"))
-    eventualDone.failed.foreach(_ => sys.exit(0))
   }
 }

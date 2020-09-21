@@ -7,20 +7,23 @@ import org.scalajs.dom.raw.MessageEvent
 import rx.Var
 import scalaTags.all._
 
+import scala.util.Try
+
 object LogPanel {
   def apply(): Tag = {
     val lines         = Var(Vector.empty[String])
-    val url           = s"ws://${dom.window.location.host}/log"
+    val proto         = if (dom.window.location.protocol == "https:") "wss" else "ws"
+    val url           = s"$proto://${dom.window.location.host}/log"
     var ws: WebSocket = null
     initWebSocket()
 
-    def initWebSocket(): Unit = {
+    def initWebSocket(): Unit = Try {
       ws = new WebSocket(url)
-      ws.onmessage = { (msg: MessageEvent) =>
+      ws.onmessage = { (msg: MessageEvent) ⇒
         lines() = (msg.data.toString +: lines.now).take(200)
       }
-      ws.onclose = { _ =>
-        dom.window.setTimeout(() => initWebSocket(), 5000)
+      ws.onclose = { _ ⇒
+        dom.window.setTimeout(() ⇒ initWebSocket(), 5000)
       }
     }
 

@@ -1,6 +1,6 @@
 import com.typesafe.sbt.packager.docker.Cmd
-import sbtcrossproject.CrossPlugin.autoImport.{crossProject, CrossType}
-  
+import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
+
 val commonSettings = Seq(
   organization := "com.github.karasiq",
   version := "1.2.5",
@@ -83,7 +83,10 @@ lazy val dockerSettings = Seq(
     val injected = Seq(
       Cmd("RUN", "apt update && apt install -y fuse libfuse2 libfuse-dev python3-pip && rm -rf /var/lib/apt/lists/*"), // TODO https://github.com/docker/for-mac/issues/3431
       Cmd("RUN", "echo 'user_allow_other' >> /etc/fuse.conf"),
-      Cmd("RUN", "python3 -m pip install Telethon==1.14.0 cryptg==0.2.post1 Quart==0.12.0 Hypercorn==0.9.5 lz4==3.1.0 pytz>=2020.1")
+      Cmd(
+        "RUN",
+        "python3 -m pip install \"Telethon==1.14.0\" \"cryptg==0.2.post1\" \"Quart==0.12.0\" \"Hypercorn==0.9.5\" \"lz4==3.1.0\" \"pytz>=2020.1\""
+      )
     )
     cmds.takeWhile(!_.makeContent.startsWith("USER 1001:0")) ++ injected ++ cmds.dropWhile(!_.makeContent.startsWith("USER 1001:0"))
   },
@@ -486,7 +489,6 @@ lazy val shadowcloud = (project in file("."))
   )
   //.enablePlugins(com.github.sbtliquibase.SbtLiquibase)
   .aggregate(coreAssembly, `server-api-routes`)
-
 
 lazy val `larray-bytestring` = project
   .settings(

@@ -60,6 +60,12 @@ class StorageConfigView(storageId: StorageId)(implicit context: AppContext, regi
         .foreach(_ ⇒ regionContext.updateAll())
     }
 
+    def doReset() = {
+      context.api
+        .resetStorageSessions(storageId)
+        .foreach(_ ⇒ regionContext.updateStorage(storageId))
+    }
+
     val suspendButton =
       if (storageStatus.suspended)
         Button(ButtonStyle.success, ButtonSize.extraSmall)(AppIcons.resume, context.locale.resume, onclick := Callback.onClick(_ ⇒ doResume()))
@@ -69,7 +75,10 @@ class StorageConfigView(storageId: StorageId)(implicit context: AppContext, regi
     val deleteButton =
       Button(ButtonStyle.danger, ButtonSize.extraSmall)(AppIcons.delete, context.locale.delete, onclick := Callback.onClick(_ ⇒ doDelete()))
 
-    ButtonGroup(ButtonGroupSize.extraSmall, suspendButton, deleteButton)
+    val resetButton =
+      Button(ButtonStyle.info, ButtonSize.extraSmall)(AppIcons.refresh, context.locale.reset, onclick := Callback.onClick(_ => doReset()))
+
+    ButtonGroup(ButtonGroupSize.extraSmall, suspendButton, deleteButton, resetButton)
   }
 
   private[this] def renderConfigField(storageStatus: StorageStatus) = {

@@ -169,6 +169,13 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
     Future.successful(sc.modules.storage.defaultConfig(storageType))
   }
 
+  def resetStorageSessions(storageId: StorageId) =
+    for {
+      _ ← sc.sessions.provider.dropSessions(storageId)
+      _ ← suspendStorage(storageId)
+      _ ← resumeStorage(storageId)
+    } yield Done
+
   // -----------------------------------------------------------------------
   // Keys
   // -----------------------------------------------------------------------

@@ -28,6 +28,7 @@ private[locales] object Russian extends AppLocale {
   val move = "Переместить"
   val copy = "Копировать"
   val rename = "Переименовать"
+  val reset = "Сбросить"
 
   val rootPath = "(Корень)"
   val emptyPath = "(Пусто)"

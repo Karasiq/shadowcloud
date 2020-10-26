@@ -28,6 +28,7 @@ trait AppLocale {
   def move: String
   def copy: String
   def rename: String
+  def reset: String
 
   def rootPath: String
   def emptyPath: String

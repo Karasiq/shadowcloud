@@ -40,6 +40,7 @@ trait ShadowCloudApi {
   def getStorageHealth(storageId: StorageId): Future[StorageHealth]
   def getStorageTypes(): Future[Set[String]]
   def getDefaultStorageConfig(storageType: String): Future[SerializedProps]
+  def resetStorageSessions(storageId: StorageId): Future[Done]
 
   // -----------------------------------------------------------------------
   // Keys

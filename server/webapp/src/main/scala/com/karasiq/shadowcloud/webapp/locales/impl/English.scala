@@ -28,6 +28,7 @@ private[locales] object English extends AppLocale {
   val move = "Move"
   val copy = "Copy"
   val rename = "Rename"
+  val reset = "Reset"
 
   val rootPath = "(Root)"
   val emptyPath = "(Empty)"

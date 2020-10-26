@@ -129,6 +129,10 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
     apiClient.getDefaultStorageConfig(storageType).call()
   }
 
+  def resetStorageSessions(storageId: StorageId): Future[Done] = {
+    apiClient.resetStorageSessions(storageId).call()
+  }
+
   // -----------------------------------------------------------------------
   // Keys
   // -----------------------------------------------------------------------

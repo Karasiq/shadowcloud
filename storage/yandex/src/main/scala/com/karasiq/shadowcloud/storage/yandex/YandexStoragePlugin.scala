@@ -1,8 +1,5 @@
 package com.karasiq.shadowcloud.storage.yandex
 
-import java.awt.Desktop
-import java.net.URI
-
 import akka.Done
 import akka.actor.{ActorContext, ActorRef}
 import com.karasiq.shadowcloud.ShadowCloud
@@ -20,22 +17,15 @@ import scala.util.Try
 class YandexStoragePlugin extends StoragePlugin {
   override def createStorage(storageId: StorageId, props: StorageProps)(implicit context: ActorContext): ActorRef = {
     import context.{dispatcher, system}
-    val sc  = ShadowCloud()
+    val sc = ShadowCloud()
     val api = new YandexWebApi(solveCaptcha = { imageUrl ⇒
-      Future {
-        sc.ui.showNotification(s"Yandex captcha required for $storageId: $imageUrl")
-        if (Desktop.isDesktopSupported) Desktop.getDesktop.browse(new URI(imageUrl))
-        sc.ui.askPassword("Yandex captcha")
-      }(sc.ui.executionContext)
+      sc.challenges
+        .create(s"Yandex captcha ($storageId)", s"""<img src="$imageUrl"/>""")
+        .map(_.utf8String)
     }, passChallenge = { url ⇒
-      Future {
-        if (Desktop.isDesktopSupported) Desktop.getDesktop.browse(new URI(url))
-        sc.ui.showNotification(
-          s"Yandex verification required for $storageId: $url\n" +
-            "Please complete the verification and then press OK"
-        )
-        Done
-      }(sc.ui.executionContext)
+      sc.challenges
+        .create(s"Yandex verification ($storageId)", s"""<a href="$url">Please complete the verification</a>""")
+        .map(_ ⇒ Done)
     })
 
     implicit val session: YandexSession = {

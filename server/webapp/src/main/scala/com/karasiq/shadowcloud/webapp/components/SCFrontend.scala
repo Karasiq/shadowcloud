@@ -1,20 +1,18 @@
 package com.karasiq.shadowcloud.webapp.components
 
-import scala.util.control.NonFatal
-
-import org.scalajs.dom
-
 import com.karasiq.bootstrap.Bootstrap.default._
-import scalaTags.all._
-
 import com.karasiq.shadowcloud.webapp.components.common.AppIcons
 import com.karasiq.shadowcloud.webapp.components.folder.FoldersPanel
 import com.karasiq.shadowcloud.webapp.components.keys.KeysContext
-import com.karasiq.shadowcloud.webapp.components.region.{RegionContext, RegionsStoragesPanel, RegionSwitcher}
+import com.karasiq.shadowcloud.webapp.components.region.{RegionContext, RegionSwitcher, RegionsStoragesPanel}
 import com.karasiq.shadowcloud.webapp.components.themes.ThemeSelector
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 import com.karasiq.shadowcloud.webapp.controllers.{FileController, FolderController}
 import com.karasiq.shadowcloud.webapp.utils.RxLocation
+import org.scalajs.dom
+import scalaTags.all._
+
+import scala.util.control.NonFatal
 
 object SCFrontend {
   def apply()(implicit appContext: AppContext): SCFrontend = {
@@ -67,7 +65,8 @@ class SCFrontend()(implicit val context: AppContext) {
       .withTabs(
         NavigationTab(context.locale.foldersView, "folders", AppIcons.foldersView, renderFoldersPanel()),
         NavigationTab(context.locale.regionsView, "regions", AppIcons.regionsView, renderRegionsPanel()),
-        NavigationTab(context.locale.logs, "logs", AppIcons.logs, LogPanel())
+        NavigationTab(context.locale.logs, "logs", AppIcons.logs, LogPanel()),
+        NavigationTab("Challenges", "challengees", AppIcons.rename, ChallengePanel())
       )
   }
 

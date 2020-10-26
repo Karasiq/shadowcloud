@@ -49,11 +49,11 @@ object ExportImportModal {
             val filteredSnapshot = snapshot.copy(
               snapshot.regions.collect {
                 case (regionId, status) if regions(regionId) ⇒
-                  regionId → status.copy(storages = status.storages.filter(storages))
+                  regionId → status.copy(storages = status.storages)
               },
               snapshot.storages.collect {
                 case (storageId, status) if storages(storageId) ⇒
-                  storageId → status.copy(regions = status.regions.filter(regions))
+                  storageId → status.copy(regions = status.regions)
               }
             )
 

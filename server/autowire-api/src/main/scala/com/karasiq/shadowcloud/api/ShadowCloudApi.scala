@@ -1,11 +1,15 @@
 package com.karasiq.shadowcloud.api
 
+import java.util.UUID
+
 import akka.Done
+import akka.util.ByteString
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.keys.{KeyChain, KeyId, KeySet}
 import com.karasiq.shadowcloud.model.utils._
+import com.karasiq.shadowcloud.ui.Challenge
 
 import scala.concurrent.Future
 
@@ -68,4 +72,10 @@ trait ShadowCloudApi {
   def deleteFiles(regionId: RegionId, path: Path): Future[Set[File]]
   def deleteFile(regionId: RegionId, file: File): Future[File]
   def repairFile(regionId: RegionId, file: File, storages: Seq[StorageId], scope: IndexScope = IndexScope.default): Future[Done]
+
+  // -----------------------------------------------------------------------
+  // Сhallenges
+  // -----------------------------------------------------------------------
+  def getChallenges(): Future[Seq[Challenge]]
+  def solveChallenge(id: UUID, answer: ByteString): Future[Done]
 }

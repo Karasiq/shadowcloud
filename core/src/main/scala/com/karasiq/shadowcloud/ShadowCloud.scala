@@ -27,8 +27,8 @@ import com.karasiq.shadowcloud.streams.chunk.ChunkProcessingStreams
 import com.karasiq.shadowcloud.streams.file.FileStreams
 import com.karasiq.shadowcloud.streams.metadata.MetadataStreams
 import com.karasiq.shadowcloud.streams.region.RegionStreams
-import com.karasiq.shadowcloud.ui.UIProvider
 import com.karasiq.shadowcloud.ui.passwords.PasswordProvider
+import com.karasiq.shadowcloud.ui.{ChallengeHub, UIProvider}
 import com.karasiq.shadowcloud.utils.{ProviderInstantiator, SCProviderInstantiator}
 import com.typesafe.config.Config
 
@@ -180,6 +180,8 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
   // -----------------------------------------------------------------------
   // User interface
   // -----------------------------------------------------------------------
+  object challenges extends ChallengeHub
+
   object ui extends UIProvider with PasswordProvider {
     private[this] lazy val passProvider: PasswordProvider = provInstantiator.getInstance(config.ui.passwordProvider)
     private[this] lazy val uiProvider: UIProvider         = provInstantiator.getInstance(config.ui.uiProvider)

@@ -1,13 +1,14 @@
 package com.karasiq.shadowcloud.webapp.utils
 
-import scala.concurrent.{ExecutionContext, Future, Promise}
-import scala.scalajs.js
-import scala.scalajs.js.typedarray.Uint8Array
+import akka.util.ByteString
+import org.scalajs.dom
+import org.scalajs.dom.raw._
+import org.scalajs.dom.{Blob, Event}
 import scalatags.JsDom.all._
 
-import org.scalajs.dom
-import org.scalajs.dom.{Blob, Event}
-import org.scalajs.dom.raw._
+import scala.concurrent.{ExecutionContext, Future, Promise}
+import scala.scalajs.js
+import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer, Uint8Array}
 
 /**
   * Blob/file utility
@@ -71,6 +72,22 @@ object Blobs {
     reader.readAsText(blob)
     reader.onloadend = (_: ProgressEvent) ⇒ {
       promise.success(reader.result.asInstanceOf[String])
+    }
+
+    reader.onerror = (errorEvent: Event) ⇒ {
+      promise.failure(new IllegalArgumentException(errorEvent.toString))
+    }
+
+    promise.future
+  }
+
+  def toBytes(blob: Blob): Future[ByteString] = {
+    val promise = Promise[ByteString]
+    val reader = new FileReader
+    reader.readAsArrayBuffer(blob)
+    reader.onloadend = (_: ProgressEvent) ⇒ {
+      val buffer = TypedArrayBuffer.wrap(reader.result.asInstanceOf[ArrayBuffer])
+      promise.success(ByteString.fromByteBuffer(buffer))
     }
 
     reader.onerror = (errorEvent: Event) ⇒ {

@@ -1,5 +1,9 @@
 package com.karasiq.shadowcloud.webapp.api
 
+import java.util.UUID
+
+import akka.Done
+import akka.util.ByteString
 import autowire._
 import com.karasiq.shadowcloud.api.js.SCAjaxBooPickleApiClient
 import com.karasiq.shadowcloud.api.{SCApiMeta, ShadowCloudApi}
@@ -9,6 +13,7 @@ import com.karasiq.shadowcloud.metadata.Metadata.Tag
 import com.karasiq.shadowcloud.model._
 import com.karasiq.shadowcloud.model.keys.{KeyId, KeySet}
 import com.karasiq.shadowcloud.model.utils.IndexScope
+import com.karasiq.shadowcloud.ui.Challenge
 import com.karasiq.shadowcloud.webapp.context.AppContext
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -25,9 +30,9 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
   val payloadContentType = clientFactory.payloadContentType
 
   import encoding.implicits._ // Should not be deleted
-
-  private[this] val apiClient                                           = clientFactory[ShadowCloudApi]
   private[this] implicit val implicitExecutionContext: ExecutionContext = AppContext.JsExecutionContext
+
+  private[this] val apiClient = clientFactory[ShadowCloudApi]
 
   // -----------------------------------------------------------------------
   // Regions
@@ -211,5 +216,13 @@ object AjaxApi extends ShadowCloudApi with FileApi with SCApiMeta {
 
   def repairFile(regionId: RegionId, file: File, storages: Seq[StorageId], scope: IndexScope) = {
     apiClient.repairFile(regionId, file, storages, scope).call()
+  }
+
+  override def getChallenges(): Future[Seq[Challenge]] = {
+    apiClient.getChallenges().call()
+  }
+
+  override def solveChallenge(id: UUID, answer: ByteString): Future[Done] = {
+    apiClient.solveChallenge(id, answer).call()
   }
 }

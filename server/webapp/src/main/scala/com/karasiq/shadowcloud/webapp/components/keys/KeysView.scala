@@ -81,27 +81,12 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
         .show()
     }
 
-    def showImportDialog(): Unit = {
-      AppComponents.importDialog(context.locale.importKey) { result =>
-        val key = ExportUtils.decodeKey(result)
-        context.api.addKey(key).foreach(_ ⇒ kc.updateAll())
-      }.show()
-    }
-
     val generateButton = Button(ButtonStyle.success, block = true)(
       context.locale.generateKey,
       onclick := Callback.onClick(_ ⇒ showGenerateDialog())
     )
 
-    val importButton = Button(ButtonStyle.primary, block = true)(
-      context.locale.importKey,
-      onclick := Callback.onClick(_ ⇒ showImportDialog())
-    )
-
-    GridSystem.row(
-      GridSystem.col.md(6)(generateButton),
-      GridSystem.col.md(6)(importButton)
-    )
+    generateButton
   }
 
   private[this] def showExportDialog(key: KeySet): Unit = {

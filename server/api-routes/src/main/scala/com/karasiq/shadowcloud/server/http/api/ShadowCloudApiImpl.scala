@@ -1,7 +1,10 @@
 package com.karasiq.shadowcloud.server.http.api
 
+import java.util.UUID
+
 import akka.Done
 import akka.stream.scaladsl.Sink
+import akka.util.ByteString
 import com.karasiq.shadowcloud.ShadowCloudExtension
 import com.karasiq.shadowcloud.actors.RegionGC.GCStrategy
 import com.karasiq.shadowcloud.actors.internal.RegionTracker
@@ -18,6 +21,7 @@ import com.karasiq.shadowcloud.model.utils.{IndexScope, RegionStateReport}
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.ChunkWriteAffinity
 import com.karasiq.shadowcloud.streams.region.RegionRepairStream
+import com.karasiq.shadowcloud.ui.Challenge
 
 import scala.concurrent.Future
 import scala.language.implicitConversions
@@ -279,6 +283,15 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
       actualFile ← getFullFile(regionId, file, scope) if actualFile.chunks.nonEmpty
       _          ← sc.ops.background.repair(regionId, RegionRepairStream.Strategy.SetAffinity(ChunkWriteAffinity(storages)), actualFile.chunks)
     } yield Done
+  }
+
+  override def getChallenges(): Future[Seq[Challenge]] = Future.successful {
+    sc.challenges.list()
+  }
+
+  override def solveChallenge(id: UUID, answer: ByteString): Future[Done] = Future.successful {
+    sc.challenges.solve(id, answer)
+    Done
   }
 
   // -----------------------------------------------------------------------

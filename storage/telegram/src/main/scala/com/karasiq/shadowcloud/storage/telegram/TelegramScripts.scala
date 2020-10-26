@@ -7,25 +7,31 @@ import java.nio.file.attribute.BasicFileAttributes
 import akka.util.ByteString
 import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.storage.telegram.TelegramStorageConfig.Secrets
-import com.karasiq.shadowcloud.ui.UIProvider
+import com.karasiq.shadowcloud.ui.Challenge.AnswerFormat
+import com.karasiq.shadowcloud.ui.ChallengeHub
 
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 import scala.util.Try
 
 object TelegramScripts {
-  def createSession(storageId: StorageId, secrets: Secrets, uiProvider: UIProvider): ByteString = {
-    require(uiProvider.canBlock, "Please create session manually and paste it as base64 in storage config session key")
-    val baseDir = Paths.get(sys.props("user.home"), s"tgcloud-temp-$storageId")
+  def createSession(storageId: StorageId, secrets: Secrets, tempDir: String, uiProvider: ChallengeHub): ByteString = {
+    val baseDir = Paths.get(tempDir, storageId)
     deleteDir(baseDir)
     extract(baseDir)
     writeSecrets(baseDir, secrets)
 
-    uiProvider.showNotification(
-      s"""Please execute the following action depending on your OS, then press OK
-         |Windows: Execute create_session.bat in $baseDir
-         |Linux/MacOS: Run in terminal: $baseDir/create_session
-         |""".stripMargin
+    val future = uiProvider.create(
+      s"Telegram login ($storageId)",
+      s"""Please execute the following action depending on your OS<br>
+         |<b>Windows</b>: Execute <code>create_session.bat</code> in $baseDir<br>
+         |<b>Linux/MacOS</b>: Run in terminal: <code>bash $baseDir/create_session</code><br>
+         |Then upload created <code>${secrets.entity}.session</code> file
+         |""".stripMargin,
+      AnswerFormat.Binary
     )
-    val result = readSession(baseDir, secrets.entity)
+
+    val result = Await.result(future, Duration.Inf)
     deleteDir(baseDir)
     result
   }
@@ -54,7 +60,9 @@ object TelegramScripts {
     val files = Seq(
       "download_service.py",
       "requirements.txt",
-      "telegram_create_session.py"
+      "telegram_create_session.py",
+      "create_session",
+      "create_session.bat"
     )
     Files.createDirectories(directory)
     files.foreach { f ⇒

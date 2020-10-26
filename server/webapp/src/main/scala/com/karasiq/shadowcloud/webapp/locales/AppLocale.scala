@@ -64,6 +64,7 @@ trait AppLocale {
   def foldersView: String
   def regionsView: String
   def logs: String
+  def challenges: String
 
   def storage: String
   def storages: String

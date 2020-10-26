@@ -66,7 +66,7 @@ class SCFrontend()(implicit val context: AppContext) {
         NavigationTab(context.locale.foldersView, "folders", AppIcons.foldersView, renderFoldersPanel()),
         NavigationTab(context.locale.regionsView, "regions", AppIcons.regionsView, renderRegionsPanel()),
         NavigationTab(context.locale.logs, "logs", AppIcons.logs, LogPanel()),
-        NavigationTab("Challenges", "challengees", AppIcons.rename, ChallengePanel())
+        NavigationTab(context.locale.challenges, "challengees", AppIcons.rename, ChallengePanel())
       )
   }
 

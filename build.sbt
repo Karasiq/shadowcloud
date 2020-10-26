@@ -1,4 +1,3 @@
-import com.karasiq.scalajsbundler.compilers.{AssetCompilers, ConcatCompiler}
 import com.typesafe.sbt.packager.docker.Cmd
 import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
 
@@ -361,15 +360,12 @@ lazy val `server-static-routes` = (project in file("server") / "static-routes")
         WebDeps.toastrJS,
         WebDeps.pellJS,
         WebDeps.multiSelectJS,
-        scalaJsApplication(webapp, fastOpt = true, launcher = false).value
+        scalaJsApplication(webapp, fastOpt = false, launcher = false).value
       )
     },
     scalaJsBundlerCompile in Compile := (scalaJsBundlerCompile in Compile)
-      .dependsOn(fastOptJS in Compile in webapp)
-      .value,
-    scalaJsBundlerCompilers in Compile := AssetCompilers {
-      case com.karasiq.scalajsbundler.dsl.Mimes.javascript ⇒ ConcatCompiler
-    }.<<=(AssetCompilers.default)
+      .dependsOn(fullOptJS in Compile in webapp)
+      .value
   )
   .dependsOn(`server-api-routes`)
   .enablePlugins(SJSAssetBundlerPlugin)

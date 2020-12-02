@@ -48,7 +48,7 @@ val packageSettings = Seq(
     Some(file(s"setup/icon.$iconExt"))
   },
   jdkPackagerType := "installer",
-  jdkPackagerJVMArgs := Seq("-Xmx1G", "-XX:+UseG1GC"),
+  jdkPackagerJVMArgs := Seq("-Xmx1G", "-XX:+UseG1GC", "-XX:+UseStringDeduplication"),
   jdkPackagerProperties := Map(
     "app.name"                 → "shadowcloud",
     "app.version"              → version.value.replace("-SNAPSHOT", ""),

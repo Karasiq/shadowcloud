@@ -25,10 +25,18 @@ jobs:
         with:
           username: karasiq
           password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Cache SBT
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.sbt/boot
+            ~/.cache/coursier
+            **/target
+          key: shadowcloud-sbt-target
       - name: Publish docker image
         run: |
           export JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1"
-          if [[ "${{ github.ref }}" == *"/tags"*]]; then
+          if [[ "${{ github.ref }}" == *"/tags"* ]]; then
             sbt consoleApp/docker:publish
           else
             sbt consoleApp/docker:publishLocal
@@ -57,6 +65,14 @@ jobs:
         with:
           java-version: 1.8
           java-package: jdk+fx
+      - name: Cache SBT
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.sbt/boot
+            ~/.cache/coursier
+            **/target
+          key: shadowcloud-sbt-target
       - name: Package DEB
         run: |
           Version="${{steps.version.outputs.version}}"
@@ -107,6 +123,14 @@ jobs:
         with:
           java-version: 1.8
           java-package: jdk+fx
+      - name: Cache SBT
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.sbt/boot
+            ~/.cache/coursier
+            **/target
+          key: shadowcloud-sbt-target
       - name: Package EXE
         run: |
           choco uninstall -y InnoSetup
@@ -149,6 +173,14 @@ jobs:
             export Version="${VersionTag:1}"
           fi
           echo "::set-output name=version::$Version"
+      - name: Cache SBT
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.sbt/boot
+            ~/.cache/coursier
+            **/target
+          key: shadowcloud-sbt-target
       - name: Package PKG
         run: |
           curl -s "https://get.sdkman.io" | bash

@@ -20,7 +20,7 @@ class YandexStoragePlugin extends StoragePlugin {
     val sc = ShadowCloud()
     val api = new YandexWebApi(solveCaptcha = { imageUrl ⇒
       sc.challenges
-        .create(s"Yandex captcha ($storageId)", s"""<img src="$imageUrl"/>""")
+        .create(s"Yandex captcha ($storageId)", s"""<img class="img-responsive" src="$imageUrl"/>""")
         .map(_.utf8String)
     }, passChallenge = { url ⇒
       sc.challenges

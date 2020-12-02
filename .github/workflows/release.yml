@@ -32,7 +32,9 @@ jobs:
             ~/.sbt/boot
             ~/.cache/coursier
             **/target
-          key: shadowcloud-sbt-target
+          key: shadowcloud-target-${{ hashFiles('**/src/main/**/*.scala', 'build.sbt', 'project/*.scala', 'project/*.sbt') }}
+          restore-keys: |
+            shadowcloud-target-
       - name: Publish docker image
         run: |
           export JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1"
@@ -72,7 +74,9 @@ jobs:
             ~/.sbt/boot
             ~/.cache/coursier
             **/target
-          key: shadowcloud-sbt-target
+          key: shadowcloud-target-${{ hashFiles('**/src/main/**/*.scala', 'build.sbt', 'project/*.scala', 'project/*.sbt') }}
+          restore-keys: |
+            shadowcloud-target-
       - name: Package DEB
         run: |
           Version="${{steps.version.outputs.version}}"
@@ -134,7 +138,9 @@ jobs:
             ~/.sbt/boot
             ~/.cache/coursier
             **/target
-          key: shadowcloud-sbt-target
+          key: shadowcloud-target-${{ hashFiles('**/src/main/**/*.scala', 'build.sbt', 'project/*.scala', 'project/*.sbt') }}
+          restore-keys: |
+            shadowcloud-target-
       - name: Package EXE
         run: |
           choco uninstall -y InnoSetup
@@ -187,7 +193,9 @@ jobs:
             ~/.sbt/boot
             ~/.cache/coursier
             **/target
-          key: shadowcloud-sbt-target
+          key: shadowcloud-target-${{ hashFiles('**/src/main/**/*.scala', 'build.sbt', 'project/*.scala', 'project/*.sbt') }}
+          restore-keys: |
+            shadowcloud-target-
       - name: Package PKG
         run: |
           curl -s "https://get.sdkman.io" | bash

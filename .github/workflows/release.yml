@@ -99,6 +99,10 @@ jobs:
             ${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cleanup
+        run: |
+          rm -f "${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles/*"
+          rm -f "${{github.workspace}}/desktop-app/target/universal/*.zip"
   build-windows:
     runs-on: windows-latest
     steps:
@@ -155,6 +159,9 @@ jobs:
             ${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cleanup
+        run: |
+          del /s /q "${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles/*"
   build-macos:
     runs-on: macos-latest
     steps:
@@ -207,3 +214,6 @@ jobs:
             ${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Cleanup
+        run: |
+          rm -f "${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles/*"

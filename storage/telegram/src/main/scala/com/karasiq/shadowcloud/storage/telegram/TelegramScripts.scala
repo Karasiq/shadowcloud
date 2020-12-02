@@ -27,6 +27,7 @@ object TelegramScripts {
          |<b>Windows</b>: Execute <code>create_session.bat</code> in $baseDir<br>
          |<b>Linux/MacOS</b>: Run in terminal: <code>bash $baseDir/create_session</code><br>
          |Then upload created <code>${secrets.entity}.session</code> file
+         |Also you can use an <a href="https://github.com/Karasiq/shadowcloud/releases/download/v1.2.6/tgcloud_scripts.7z">external scripts package</a> on remote environments
          |""".stripMargin,
       AnswerFormat.Binary
     )

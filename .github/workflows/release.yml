@@ -147,8 +147,10 @@ jobs:
           choco install -y InnoSetup --version=5.6.1
 
           $Version="${{steps.version.outputs.version}}"
-          $Universal="desktop-app/target/universal"
-          $JPBundles="$Universal/jdkpackager/bundles"
+          $Universal="desktop-app\target\universal"
+          $JPBundles="$Universal\jdkpackager\bundles"
+
+          Remove-Item "$JPBundles\*" -ErrorAction SilentlyContinue
 
           $env:JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1"
           sbt desktopApp/jdkPackager:packageBin
@@ -167,7 +169,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Cleanup
         run: |
-          del /s /q "${{github.workspace}}/desktop-app/target/universal/jdkpackager/bundles/*"
+          Remove-Item "${{github.workspace}}\desktop-app\target\universal\jdkpackager\bundles\*" -ErrorAction SilentlyContinue
   build-macos:
     runs-on: macos-latest
     steps:

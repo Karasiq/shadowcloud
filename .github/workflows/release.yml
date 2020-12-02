@@ -1,7 +1,12 @@
 name: Publish release
 
 on:
+  pull_request:
+    branches:
+      - master
   push:
+    branches:
+      - master
     tags:
       - v[0-9].[0-9]+.[0-9]+
 
@@ -16,13 +21,18 @@ jobs:
           java-version: 1.8
           java-package: jdk+fx
       - uses: azure/docker-login@v1
+        if: contains(github.ref, '/tags/')
         with:
           username: karasiq
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Publish docker image
         run: |
           export JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1"
-          sbt consoleApp/docker:publish
+          if [[ "${{ github.ref }}" == *"/tags"*]]; then
+            sbt consoleApp/docker:publish
+          else
+            sbt consoleApp/docker:publishLocal
+          fi
 
   build-linux:
     runs-on: ubuntu-latest
@@ -65,6 +75,7 @@ jobs:
           mv "$JPBundles/shadowcloud-$Version-1.x86_64.rpm" "$JPBundles/shadowcloud-light-$Version-1.x86_64.rpm"
           mv "$Universal/shadowcloud-$Version.zip" "$Universal/shadowcloud-light-$Version.zip"
       - name: Release
+        if: contains(github.ref, '/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: |
@@ -113,6 +124,7 @@ jobs:
           sbt desktopApp/jdkPackager:packageBin
           move "$JPBundles\shadowcloud-$Version.exe" "$JPBundles\shadowcloud-light-$Version.exe"
       - name: Release
+        if: contains(github.ref, '/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: |
@@ -156,6 +168,7 @@ jobs:
           JAVA_OPTS="-Xmx4G -Denable-tika=1 -Denable-javacv=1" sbt "set jdkPackagerType in desktopApp :=\"pkg\"" desktopApp/jdkPackager:packageBin
           mv "$JPBundles/shadowcloud-$Version.pkg" "$JPBundles/shadowcloud-full-$Version.pkg"
       - name: Release
+        if: contains(github.ref, '/tags/')
         uses: softprops/action-gh-release@v1
         with:
           files: |

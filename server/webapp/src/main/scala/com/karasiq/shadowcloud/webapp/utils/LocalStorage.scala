@@ -18,7 +18,7 @@ object LocalStorage {
         val value            = Var(Option(localStorage.getItem(key)).getOrElse(""))
         def updateLS(): Unit = localStorage.setItem(key, value.now)
         value.debounce(5 seconds).triggerLater(updateLS())
-        dom.window.addEventListener("unload", (_: dom.Event) => updateLS())
+        dom.window.addEventListener("unload", (_: dom.Event) ⇒ updateLS())
         value
       }
     )

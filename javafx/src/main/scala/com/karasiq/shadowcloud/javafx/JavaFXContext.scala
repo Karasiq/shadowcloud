@@ -27,7 +27,7 @@ final class JavaFXContextExtension(system: ExtendedActorSystem) extends Extensio
   val initFuture                = initPromise.future
 
   object app extends JFXApp {
-    stage = new PrimaryStage { stage =>
+    stage = new PrimaryStage { stage ⇒
       initStyle(StageStyle.Transparent)
       icons.add(new Image(JFXUtils.getResourcePath("sc-javafx/sc-icon.png")))
       scene = new Scene {
@@ -40,7 +40,8 @@ final class JavaFXContextExtension(system: ExtendedActorSystem) extends Extensio
       }
 
       addEventHandler(
-        WindowEvent.WINDOW_SHOWN, { _: WindowEvent =>
+        WindowEvent.WINDOW_SHOWN,
+        { _: WindowEvent ⇒
           import javafx.stage.Screen
           val screenBounds = Screen.getPrimary.getVisualBounds
           stage.x = (screenBounds.getWidth - stage.width()) / 2

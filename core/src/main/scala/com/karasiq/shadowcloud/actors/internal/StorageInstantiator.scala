@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.actors.internal
 
-
-
 import akka.actor.{ActorContext, ActorRef}
 import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.providers.SCModules

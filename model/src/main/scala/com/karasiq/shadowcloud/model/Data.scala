@@ -1,13 +1,13 @@
 package com.karasiq.shadowcloud.model
 
-
-
 import akka.util.ByteString
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData}
 
 @SerialVersionUID(0L)
 final case class Data(plain: ByteString = ByteString.empty, encrypted: ByteString = ByteString.empty)
-  extends SCEntity with HasEmpty with HasWithoutData {
+    extends SCEntity
+    with HasEmpty
+    with HasWithoutData {
 
   type Repr = Data
 

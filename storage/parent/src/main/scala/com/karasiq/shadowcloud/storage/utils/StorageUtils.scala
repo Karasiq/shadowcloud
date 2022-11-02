@@ -4,7 +4,7 @@ import java.io.FileNotFoundException
 import java.nio.file.FileAlreadyExistsException
 
 import akka.stream.scaladsl.Flow
-import akka.stream.{IOResult => AkkaIOResult}
+import akka.stream.{IOResult ⇒ AkkaIOResult}
 import akka.util.ByteString
 import akka.{Done, NotUsed}
 import com.karasiq.common.encoding.HexString
@@ -77,7 +77,7 @@ object StorageUtils {
   def wrapStream(path: Path = Path.root): Flow[StorageIOResult, StorageIOResult, NotUsed] = {
     Flow[StorageIOResult]
       .recover { case error ⇒ failure(path, error) }
-      // .orElse(Source.single(StorageIOResult.Failure(path, StorageUtils.wrapException(path, new IllegalArgumentException("No data passed")))))
+    // .orElse(Source.single(StorageIOResult.Failure(path, StorageUtils.wrapException(path, new IllegalArgumentException("No data passed")))))
   }
 
   def foldStream(path: Path = Path.root): Flow[StorageIOResult, StorageIOResult, NotUsed] = {
@@ -121,16 +121,14 @@ object StorageUtils {
 
   def foldIOResultsIgnoreErrors(results: StorageIOResult*): StorageIOResult = {
     if (results.isEmpty) return StorageIOResult.empty
-    val path = results.headOption.fold(Path.root)(_.path)
-    val count = results
-      .collect { case StorageIOResult.Success(_, count) ⇒ count }
-      .sum
+    val path  = results.headOption.fold(Path.root)(_.path)
+    val count = results.collect { case StorageIOResult.Success(_, count) ⇒ count }.sum
     StorageIOResult.Success(path, count)
   }
 
   def foldIOResults(results: StorageIOResult*): StorageIOResult = {
     if (results.isEmpty) return StorageIOResult.empty
-    results.find(_.isFailure).getOrElse(foldIOResultsIgnoreErrors(results:_*))
+    results.find(_.isFailure).getOrElse(foldIOResultsIgnoreErrors(results: _*))
   }
 
   def foldIOFutures(fs: Future[StorageIOResult]*)(implicit ec: ExecutionContext): Future[StorageIOResult] = {

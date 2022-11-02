@@ -36,13 +36,11 @@ object RegionsView {
 
 class RegionsView(implicit context: AppContext, regionContext: RegionContext, keysContext: KeysContext) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
-    val regionViewsRx = regionContext.regions.fold(Map.empty[RegionId, Tag]) {
-      case (views, report) ⇒
-        val newMap = report.regions.map {
-          case (regionId, _) ⇒
-            regionId → views.getOrElse(regionId, renderRegion(regionId))
-        }
-        newMap
+    val regionViewsRx = regionContext.regions.fold(Map.empty[RegionId, Tag]) { case (views, report) ⇒
+      val newMap = report.regions.map { case (regionId, _) ⇒
+        regionId → views.getOrElse(regionId, renderRegion(regionId))
+      }
+      newMap
     }
 
     div(
@@ -86,9 +84,12 @@ class RegionsView(implicit context: AppContext, regionContext: RegionContext, ke
             // Utils.toSafeIdentifier(newRegionNameRx.now)
             doCreate(newRegionIdRx.now)
           }),
-          Button(ButtonStyle.info)(context.locale.uniqueRegionId, onclick := Callback.onClick { _ ⇒
-            newRegionIdRx() = RegionsView.uniqueRegionId(newRegionIdRx.now)
-          }),
+          Button(ButtonStyle.info)(
+            context.locale.uniqueRegionId,
+            onclick := Callback.onClick { _ ⇒
+              newRegionIdRx() = RegionsView.uniqueRegionId(newRegionIdRx.now)
+            }
+          ),
           AppComponents.modalClose()
         )
         .show()
@@ -121,9 +122,9 @@ class RegionsView(implicit context: AppContext, regionContext: RegionContext, ke
     Button(ButtonStyle.danger, ButtonSize.small, block = true)(
       AppIcons.suspend,
       context.locale.suspend,
-      onclick := Callback.onClick { _ =>
+      onclick := Callback.onClick { _ ⇒
         val future = Future.sequence(regionContext.regions.now.regions.keys.map(context.api.suspendRegion))
-        future.onComplete(_ => regionContext.updateAll())
+        future.onComplete(_ ⇒ regionContext.updateAll())
       }
     )
   }

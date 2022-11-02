@@ -28,17 +28,17 @@ final class H2KeyProvider(actorSystem: ActorSystem) extends KeyProvider {
     @SerialVersionUID(0L)
     final case class DBKey(id: UUID, regionSet: RegionSet, forEncryption: Boolean, forDecryption: Boolean, key: ByteString)
 
-    implicit val regionsEncoder: Encoder[RegionSet] = encoder(java.sql.Types.ARRAY, (index, value, row) ⇒
-      row.setObject(index, value.toArray, java.sql.Types.ARRAY))
+    implicit val regionsEncoder: Encoder[RegionSet] =
+      encoder(java.sql.Types.ARRAY, (index, value, row) ⇒ row.setObject(index, value.toArray, java.sql.Types.ARRAY))
 
-    implicit val regionsDecoder: Decoder[RegionSet] = decoder(java.sql.Types.ARRAY, (index, row) ⇒
-      row.getArray(index).getArray().asInstanceOf[Array[java.lang.Object]].toSet.asInstanceOf[Set[String]]
+    implicit val regionsDecoder: Decoder[RegionSet] = decoder(
+      java.sql.Types.ARRAY,
+      (index, row) ⇒ row.getArray(index).getArray().asInstanceOf[Array[java.lang.Object]].toSet.asInstanceOf[Set[String]]
     )
 
     //noinspection TypeAnnotation
-    implicit val keySchemaMeta = schemaMeta[DBKey]("sc_keys", _.id → "key_id",
-      _.forEncryption → "for_encryption", _.forDecryption → "for_decryption",
-      _.key → "serialized_key")
+    implicit val keySchemaMeta =
+      schemaMeta[DBKey]("sc_keys", _.id → "key_id", _.forEncryption → "for_encryption", _.forDecryption → "for_decryption", _.key → "serialized_key")
   }
 
   import schema._

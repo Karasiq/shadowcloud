@@ -27,12 +27,14 @@ object StoragePluginBuilder {
   }
 }
 
-case class StoragePluginBuilder(storageId: StorageId,
-                                props: StorageProps,
-                                index: Option[CategorizedRepository[RegionId, SequenceNr]] = None,
-                                chunks: Option[CategorizedRepository[RegionId, ChunkId]] = None,
-                                health: Option[StorageHealthProvider] = None,
-                                lifecycleHook: Option[LifecycleHook] = None) {
+case class StoragePluginBuilder(
+    storageId: StorageId,
+    props: StorageProps,
+    index: Option[CategorizedRepository[RegionId, SequenceNr]] = None,
+    chunks: Option[CategorizedRepository[RegionId, ChunkId]] = None,
+    health: Option[StorageHealthProvider] = None,
+    lifecycleHook: Option[LifecycleHook] = None
+) {
 
   def withIndex(repository: CategorizedRepository[RegionId, SequenceNr]): StoragePluginBuilder = {
     copy(index = Some(repository))
@@ -70,7 +72,7 @@ case class StoragePluginBuilder(storageId: StorageId,
     copy(health = Some(healthProvider))
   }
 
-  def withHealthF(f: () => Future[StorageHealth]): StoragePluginBuilder = {
+  def withHealthF(f: () ⇒ Future[StorageHealth]): StoragePluginBuilder = {
     withHealth(new StorageHealthProvider {
       override def health: Future[StorageHealth] = f()
     })
@@ -87,9 +89,10 @@ case class StoragePluginBuilder(storageId: StorageId,
     // require(health.nonEmpty, "Health provider not provided")
 
     val indexSynchronizer = context.actorOf(StorageIndex.props(storageId, props, index.get), "index")
-    val chunkIO = context.actorOf(ChunkIODispatcher.props(storageId, props, chunks.get), "chunks")
-    val healthProvider = StorageHealthProvider.applyQuota(health.getOrElse(StorageHealthProvider.unlimited), props.quota)
-    val storageDispatcher = context.actorOf(StorageDispatcher.props(storageId, props, indexSynchronizer, chunkIO, healthProvider, lifecycleHook), "storageDispatcher")
+    val chunkIO           = context.actorOf(ChunkIODispatcher.props(storageId, props, chunks.get), "chunks")
+    val healthProvider    = StorageHealthProvider.applyQuota(health.getOrElse(StorageHealthProvider.unlimited), props.quota)
+    val storageDispatcher =
+      context.actorOf(StorageDispatcher.props(storageId, props, indexSynchronizer, chunkIO, healthProvider, lifecycleHook), "storageDispatcher")
     context.watch(indexSynchronizer)
     context.watch(chunkIO)
     context.watch(storageDispatcher)

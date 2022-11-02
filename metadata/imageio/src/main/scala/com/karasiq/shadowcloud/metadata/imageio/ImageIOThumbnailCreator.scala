@@ -30,10 +30,10 @@ private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataP
 
   protected object thumbnailSettings extends ConfigImplicits {
     val parserConfig = MetadataParserConfig(config)
-    val sizeLimit = config.getBytesInt("size-limit")
+    val sizeLimit    = config.getBytesInt("size-limit")
 
-    val size = config.getInt("size")
-    val format = config.getString("format")
+    val size    = config.getInt("size")
+    val format  = config.getString("format")
     val quality = config.getInt("quality")
   }
 
@@ -49,24 +49,28 @@ private[imageio] class ImageIOThumbnailCreator(config: Config) extends MetadataP
       })
 
       val createImageData = builder.add(Flow[BufferedImage].map { image ⇒
-        Metadata(Some(Metadata.Tag(PluginId, ParserId, Disposition.METADATA)),
-          Metadata.Value.ImageData(Metadata.ImageData(image.getWidth, image.getHeight)))
+        Metadata(
+          Some(Metadata.Tag(PluginId, ParserId, Disposition.METADATA)),
+          Metadata.Value.ImageData(Metadata.ImageData(image.getWidth, image.getHeight))
+        )
       })
 
       val resizeImage = builder.add(Flow[BufferedImage].map { originalImage ⇒
-        val image = ImageIOResizer.resize(originalImage, thumbnailSettings.size)
+        val image        = ImageIOResizer.resize(originalImage, thumbnailSettings.size)
         val outputStream = ByteStringOutputStream()
         ImageIOResizer.compress(image, outputStream, thumbnailSettings.format, thumbnailSettings.quality)
         outputStream.toByteString
       })
 
       val createPreview = builder.add(Flow[ByteString].map { data ⇒
-        Metadata(Some(Metadata.Tag(PluginId, ParserId, Disposition.PREVIEW)),
-          Metadata.Value.Thumbnail(Metadata.Thumbnail(thumbnailSettings.format, data)))
+        Metadata(
+          Some(Metadata.Tag(PluginId, ParserId, Disposition.PREVIEW)),
+          Metadata.Value.Thumbnail(Metadata.Thumbnail(thumbnailSettings.format, data))
+        )
       })
 
-      val readImage = builder.add(Flow[ByteString].fold(ByteString.empty)(_ ++ _))
-      val processImage = builder.add(Broadcast[BufferedImage](2))
+      val readImage     = builder.add(Flow[ByteString].fold(ByteString.empty)(_ ++ _))
+      val processImage  = builder.add(Broadcast[BufferedImage](2))
       val writeMetadata = builder.add(Concat[Metadata](2))
 
       readImage ~> loadImage ~> processImage

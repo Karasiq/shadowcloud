@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.webapp.components.metadata
 
-
-
 import com.karasiq.bootstrap.Bootstrap.default._
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.webapp.context.AppContext

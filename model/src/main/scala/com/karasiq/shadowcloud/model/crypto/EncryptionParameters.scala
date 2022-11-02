@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.model.crypto
 
-
-
 import akka.util.ByteString
 import com.karasiq.shadowcloud.index.utils.HasWithoutKeys
 
@@ -11,9 +9,7 @@ sealed trait EncryptionParameters extends CryptoParameters with HasWithoutKeys {
 }
 
 @SerialVersionUID(0L)
-final case class SymmetricEncryptionParameters(method: EncryptionMethod,
-                                               key: ByteString,
-                                               nonce: ByteString) extends EncryptionParameters {
+final case class SymmetricEncryptionParameters(method: EncryptionMethod, key: ByteString, nonce: ByteString) extends EncryptionParameters {
 
   type Repr = SymmetricEncryptionParameters
 
@@ -23,7 +19,7 @@ final case class SymmetricEncryptionParameters(method: EncryptionMethod,
   def isEmpty: Boolean = {
     key.isEmpty
   }
-  
+
   def withoutKeys = {
     copy(key = ByteString.empty, nonce = ByteString.empty)
   }
@@ -38,10 +34,9 @@ final case class SymmetricEncryptionParameters(method: EncryptionMethod,
 }
 
 @SerialVersionUID(0L)
-final case class AsymmetricEncryptionParameters(method: EncryptionMethod,
-                                                publicKey: ByteString,
-                                                privateKey: ByteString)
-  extends EncryptionParameters with HasWithoutKeys {
+final case class AsymmetricEncryptionParameters(method: EncryptionMethod, publicKey: ByteString, privateKey: ByteString)
+    extends EncryptionParameters
+    with HasWithoutKeys {
 
   type Repr = AsymmetricEncryptionParameters
 
@@ -91,7 +86,7 @@ object EncryptionParameters {
   }
 
   def hasKeys(p: EncryptionParameters): Boolean = p match {
-    case SymmetricEncryptionParameters(_, key, _) ⇒ key.nonEmpty
+    case SymmetricEncryptionParameters(_, key, _)           ⇒ key.nonEmpty
     case AsymmetricEncryptionParameters(_, pubKey, privKey) ⇒ pubKey.nonEmpty || privKey.nonEmpty
   }
 }

@@ -10,8 +10,6 @@ import com.karasiq.shadowcloud.server.http.static.SCAkkaHttpStaticRoutes
 import com.karasiq.shadowcloud.server.http.webzinc.SCAkkaHttpWebZincRoutes
 import org.apache.commons.codec.binary.Hex
 
-
-
 object SCAkkaHttpServer {
   def apply(sc: ShadowCloudExtension): SCAkkaHttpServer = {
     new SCAkkaHttpServer(sc)
@@ -29,7 +27,7 @@ class SCAkkaHttpServer(protected val sc: ShadowCloudExtension)
   // Route
   // -----------------------------------------------------------------------
   lazy val scWebAppRoutes: Route = httpServerConfig.passwordHash match {
-    case Some(passHash) =>
+    case Some(passHash) ⇒
       def hashString(str: String) = {
         val sha256      = MessageDigest.getInstance("SHA-256")
         val digestBytes = sha256.digest(str.getBytes)
@@ -37,13 +35,14 @@ class SCAkkaHttpServer(protected val sc: ShadowCloudExtension)
       }
 
       authenticateBasic(
-        "shadowcloud", {
-          case c @ Credentials.Provided("sc") if c.verify(passHash.toLowerCase, hashString) => Some(allRoutes)
-          case _                                                                            => None
+        "shadowcloud",
+        {
+          case c @ Credentials.Provided("sc") if c.verify(passHash.toLowerCase, hashString) ⇒ Some(allRoutes)
+          case _                                                                            ⇒ None
         }
       )(identity)
 
-    case None =>
+    case None ⇒
       allRoutes
   }
 

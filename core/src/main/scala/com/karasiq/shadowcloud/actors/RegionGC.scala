@@ -7,7 +7,7 @@ import akka.pattern.{ask, pipe}
 import akka.util.ByteString
 import com.karasiq.common.memory.MemorySize
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, DeleteChunks => SDeleteChunks}
+import com.karasiq.shadowcloud.actors.ChunkIODispatcher.{ChunkPath, DeleteChunks ⇒ SDeleteChunks}
 import com.karasiq.shadowcloud.actors.RegionIndex.WriteDiff
 import com.karasiq.shadowcloud.actors.internal.GarbageCollectUtil
 import com.karasiq.shadowcloud.actors.utils.MessageStatus
@@ -47,8 +47,11 @@ object RegionGC {
 
   private sealed trait InternalMessage                                           extends Message with PossiblyHarmful
   private final case class StartGCNow(strategy: GCStrategy = GCStrategy.Default) extends InternalMessage
-  private final case class GCResult(regionState: RegionGCState, storageStates: Seq[(RegionStorage, StorageGCState, Set[ChunkId])], affectedFiles: Set[File])
-      extends InternalMessage
+  private final case class GCResult(
+      regionState: RegionGCState,
+      storageStates: Seq[(RegionStorage, StorageGCState, Set[ChunkId])],
+      affectedFiles: Set[File]
+  ) extends InternalMessage
 
   // Props
   private[actors] def props(regionId: RegionId, config: RegionConfig): Props = {
@@ -101,7 +104,7 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
       timeoutSchedule = Some(context.system.scheduler.scheduleOnce(sc.config.timeouts.collectGarbage, self, ReceiveTimeout))
       context.become(receiveCollecting(Set(sender()), gcStrategy))
 
-      val result = sc.ops.region.synchronize(regionId).flatMap { reports =>
+      val result = sc.ops.region.synchronize(regionId).flatMap { reports ⇒
         if (reports.exists(_._2.nonEmpty)) log.warning("Pre-GC sync reports: {}", reports)
         collectGarbage()
       }
@@ -115,14 +118,13 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
   }
 
   def receiveReserve: Receive = {
-    case Reserve(chunks)   => reserved ++= chunks.map(_.withoutData)
-    case UnReserve(chunks) => reserved --= chunks
+    case Reserve(chunks)   ⇒ reserved ++= chunks.map(_.withoutData)
+    case UnReserve(chunks) ⇒ reserved --= chunks
   }
 
   private[this] def finishCollecting(receivers: Set[ActorRef], statesFuture: Future[GCResult]): Unit = {
-    val futureGcResult = statesFuture.map {
-      case GCResult(regionState, storageStates, affectedFiles) ⇒
-        GCReport(regionId, regionState, storageStates.filter(_._2.nonEmpty).map(kv ⇒ kv._1.id → kv._2).toMap, affectedFiles.map(_.withoutChunks))
+    val futureGcResult = statesFuture.map { case GCResult(regionState, storageStates, affectedFiles) ⇒
+      GCReport(regionId, regionState, storageStates.filter(_._2.nonEmpty).map(kv ⇒ kv._1.id → kv._2).toMap, affectedFiles.map(_.withoutChunks))
     }
 
     CollectGarbage.wrapFuture(regionId, futureGcResult).foreach { status ⇒
@@ -151,7 +153,13 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
 
     case GCResult(regionState, storageStates, affectedFiles) ⇒
       val level = if (affectedFiles.nonEmpty) Logging.WarningLevel else Logging.InfoLevel
-      log.log(level, "Region GC states = {}, storages = {}, affected files = {}", regionState, storageStates.map(kv => kv._1.id -> kv._2).toMap, affectedFiles.map(_.path))
+      log.log(
+        level,
+        "Region GC states = {}, storages = {}, affected files = {}",
+        regionState,
+        storageStates.map(kv ⇒ kv._1.id → kv._2).toMap,
+        affectedFiles.map(_.path)
+      )
 
       val delete = gcStrategy match {
         case GCStrategy.Default ⇒ gcConfig.autoDelete
@@ -159,10 +167,9 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
         case GCStrategy.Delete  ⇒ true
       }
       val patchedRegionState = regionState.copy(orphanedChunks = regionState.orphanedChunks -- reserved)
-      val patchedStorageStates = storageStates.map {
-        case (st, ss, chunks) =>
-          val chunkKey = ChunkUtils.getChunkKeyMapper(regionConfig, st.config)
-          (st, ss.copy(ss.notIndexed -- reserved.map(chunkKey), ss.notExisting), chunks)
+      val patchedStorageStates = storageStates.map { case (st, ss, chunks) ⇒
+        val chunkKey = ChunkUtils.getChunkKeyMapper(regionConfig, st.config)
+        (st, ss.copy(ss.notIndexed -- reserved.map(chunkKey), ss.notExisting), chunks)
       }
       val future = deleteGarbage(patchedRegionState, patchedStorageStates, delete)
         .map(_ ⇒ GCResult(patchedRegionState, patchedStorageStates, affectedFiles))
@@ -206,8 +213,8 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
 
     def affectedFiles(files: FolderIndex, storageStates: Seq[StorageGCState]): Set[File] = {
       val chunks = (for {
-        st <- storageStates
-        chunk   <- st.notExisting
+        st    ← storageStates
+        chunk ← st.notExisting
       } yield chunk).toSet
 
       files.filesIterator.filter(_.chunks.exists(chunks)).toSet
@@ -255,28 +262,25 @@ private[actors] final class RegionGC(regionId: RegionId, regionConfig: RegionCon
     }
 
     def deleteFromStorages(chunks: Seq[(RegionStorage, Set[ByteString])]): Future[(Set[ByteString], StorageIOResult)] = {
-      val futures = chunks.map {
-        case (storage, chunks) ⇒
-          val paths = chunks.map(ChunkPath(regionId, _))
-          if (log.isDebugEnabled) log.debug("Deleting chunks from storage {}: [{}]", storage.id, Utils.printHashes(chunks))
-          SDeleteChunks.unwrapFuture((storage.dispatcher ? SDeleteChunks(paths))(sc.config.timeouts.chunksDelete))
+      val futures = chunks.map { case (storage, chunks) ⇒
+        val paths = chunks.map(ChunkPath(regionId, _))
+        if (log.isDebugEnabled) log.debug("Deleting chunks from storage {}: [{}]", storage.id, Utils.printHashes(chunks))
+        SDeleteChunks.unwrapFuture((storage.dispatcher ? SDeleteChunks(paths))(sc.config.timeouts.chunksDelete))
       }
 
-      Future.foldLeft(futures.toVector)((Set.empty[ByteString], StorageIOResult.empty)) {
-        case ((deleted, result), (deleted1, result1)) ⇒
-          (deleted ++ deleted1.map(_.chunkId), StorageUtils.foldIOResultsIgnoreErrors(result, result1))
+      Future.foldLeft(futures.toVector)((Set.empty[ByteString], StorageIOResult.empty)) { case ((deleted, result), (deleted1, result1)) ⇒
+        (deleted ++ deleted1.map(_.chunkId), StorageUtils.foldIOResultsIgnoreErrors(result, result1))
       }
     }
 
     def deleteFromIndexes(chunks: Seq[(RegionStorage, Set[Chunk])]): Future[Done] = {
-      val futures = chunks.map {
-        case (storage, chunks) ⇒
-          import sc.implicits.defaultTimeout
-          if (log.isDebugEnabled) log.debug("Deleting chunks from index {}: [{}]", storage.id, Utils.printChunkHashes(chunks))
-          WriteDiff.unwrapFuture(
-            storage.dispatcher ?
-              StorageIndex.Envelope(regionId, WriteDiff(IndexDiff.deleteChunks(chunks.toSeq: _*)))
-          )
+      val futures = chunks.map { case (storage, chunks) ⇒
+        import sc.implicits.defaultTimeout
+        if (log.isDebugEnabled) log.debug("Deleting chunks from index {}: [{}]", storage.id, Utils.printChunkHashes(chunks))
+        WriteDiff.unwrapFuture(
+          storage.dispatcher ?
+            StorageIndex.Envelope(regionId, WriteDiff(IndexDiff.deleteChunks(chunks.toSeq: _*)))
+        )
       }
       Future.foldLeft(futures.toList)(Done)((_, _) ⇒ Done)
     }

@@ -21,7 +21,7 @@ object UploadForm {
   private def isUrlList(text: String): Boolean =
     text.nonEmpty && text.lines.forall(_.matches("https?://[^\\s]+"))
 
-  private   def newNoteName(text: String): String = {
+  private def newNoteName(text: String): String = {
     val firstLine = text.lines
       .map(_.trim)
       .find(_.nonEmpty)
@@ -37,7 +37,7 @@ object UploadForm {
   private def uploadNoteOrPage(regionId: RegionId, path: Path, text: String, name: String)(implicit appContext: AppContext): Future[Seq[File]] = {
     if (isUrlList(text)) {
       Future
-        .sequence(text.lines.map(appContext.api.saveWebPage(regionId, path, _).map(Some(_)).recover { case _ => None }).toSeq)
+        .sequence(text.lines.map(appContext.api.saveWebPage(regionId, path, _).map(Some(_)).recover { case _ ⇒ None }).toSeq)
         .map(_.flatten)
     } else {
       val fileName =
@@ -61,9 +61,13 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
       Form(
         action := "/",
         `class` := "dropzone",
-        Dropzone(folderContext.regionId, () => path, { file =>
-          folderContext.update(path)
-        })
+        Dropzone(
+          folderContext.regionId,
+          () ⇒ path,
+          { file ⇒
+            folderContext.update(path)
+          }
+        )
       ).render
     )
   }
@@ -101,11 +105,11 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
         FormInput.radio("Markdown", "markdown", "markdown", initialState = true)
       )
       Form(
-        Pell { editor =>
+        Pell { editor ⇒
           editor.submitting() = true
           val extension = formatSelector.value.now match {
-            case "html"     => "html"
-            case "markdown" => "md"
+            case "html"     ⇒ "html"
+            case "markdown" ⇒ "md"
           }
 
           val resultFileName =
@@ -118,13 +122,13 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
             else editor.html.now
 
           val future = appContext.api.uploadFile(folderContext.regionId, folderContext.selected.now / resultFileName, result)._2
-          future.foreach { file =>
+          future.foreach { file ⇒
             Toastr.success(s"${file.path.name} successfully uploaded to ${file.path.parent}")
             fileController.addFile(file)
             editor.html() = ""
             fileName() = ""
           }
-          future.onComplete(_ => editor.submitting() = false)
+          future.onComplete(_ ⇒ editor.submitting() = false)
         },
         formatSelector,
         FormInput.text("", fileName.reactiveInput, placeholder := "test.html")
@@ -150,8 +154,13 @@ class UploadForm(implicit appContext: AppContext, folderContext: FolderContext, 
   }
 
   def renderButton(md: ModifierT*): TagT = {
-    Button(ButtonStyle.info)(AppIcons.upload, appContext.locale.uploadFiles, md, onclick := Callback.onClick { _ ⇒
-      renderModal().show()
-    })
+    Button(ButtonStyle.info)(
+      AppIcons.upload,
+      appContext.locale.uploadFiles,
+      md,
+      onclick := Callback.onClick { _ ⇒
+        renderModal().show()
+      }
+    )
   }
 }

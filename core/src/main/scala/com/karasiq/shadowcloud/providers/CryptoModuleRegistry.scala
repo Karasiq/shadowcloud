@@ -59,18 +59,20 @@ private[shadowcloud] object CryptoModuleRegistry {
   }
 }
 
-private[providers] final class CryptoModuleRegistryImpl(providers: ProvidersConfig[CryptoProvider])
-                                                       (implicit inst: ProviderInstantiator) extends CryptoModuleRegistry {
+private[providers] final class CryptoModuleRegistryImpl(providers: ProvidersConfig[CryptoProvider])(implicit inst: ProviderInstantiator)
+    extends CryptoModuleRegistry {
 
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
-  private[this] case class Context(hashing: PartialFunction[HashingMethod, HashingModule] = PartialFunction.empty,
-                                   encryption: PartialFunction[EncryptionMethod, EncryptionModule] = PartialFunction.empty,
-                                   signing: PartialFunction[SignMethod, SignModule] = PartialFunction.empty)
+  private[this] case class Context(
+      hashing: PartialFunction[HashingMethod, HashingModule] = PartialFunction.empty,
+      encryption: PartialFunction[EncryptionMethod, EncryptionModule] = PartialFunction.empty,
+      signing: PartialFunction[SignMethod, SignModule] = PartialFunction.empty
+  )
 
   private[this] val providerInstances = providers.instances
-  private[this] val providerMap = providerInstances.toMap
+  private[this] val providerMap       = providerInstances.toMap
   private[this] val context = providerInstances.foldLeft(Context()) { case (ctx, (_, pr)) ⇒
     ctx.copy(
       pr.hashing.orElse(ctx.hashing),

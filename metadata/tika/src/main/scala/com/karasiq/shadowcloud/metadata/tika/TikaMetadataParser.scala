@@ -14,8 +14,7 @@ import org.apache.tika.parser.{ParseContext, Parser}
 
 import scala.collection.JavaConverters._
 
-/**
-  * Abstract metadata parser
+/** Abstract metadata parser
   */
 private[tika] trait TikaMetadataParser extends BlockingMetadataParser {
   val parser: Parser

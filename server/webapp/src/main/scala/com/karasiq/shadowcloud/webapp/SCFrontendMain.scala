@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.webapp
 
-
-
 import com.karasiq.shadowcloud.webapp.components.SCFrontend
 import com.karasiq.shadowcloud.webapp.context.AppContext
 import org.scalajs.jquery._

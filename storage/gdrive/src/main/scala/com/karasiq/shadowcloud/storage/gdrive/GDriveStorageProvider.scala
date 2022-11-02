@@ -12,8 +12,7 @@ class GDriveStorageProvider(sc: ShadowCloudExtension) extends StorageProvider {
       GDriveStoragePlugin(sc)
   }
 
-  override def storageConfigs: StorageConfigPF = {
-    case "gdrive" ⇒
-      ConfigProps("type" → "gdrive", "credentials.login" → "example@gmail.com", "team-drive" -> "")
+  override def storageConfigs: StorageConfigPF = { case "gdrive" ⇒
+    ConfigProps("type" → "gdrive", "credentials.login" → "example@gmail.com", "team-drive" → "")
   }
 }

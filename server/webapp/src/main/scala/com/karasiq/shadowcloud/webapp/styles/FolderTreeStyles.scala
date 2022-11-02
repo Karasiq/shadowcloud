@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.webapp.styles
 
-
-
 import com.karasiq.shadowcloud.webapp.context.AppContext.CssSettings._
 
 object FolderTreeStyles extends StyleSheet.Inline {

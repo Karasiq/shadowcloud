@@ -28,7 +28,7 @@ object Shell extends ImplicitConversions {
 
     val state = Await.result(sc.ops.supervisor.getSnapshot(), Duration.Inf)
     if (!state.regions.contains("test") && !state.storages.contains("test")) {
-      val testRegion = createRegion("test")
+      val testRegion  = createRegion("test")
       val testStorage = createStorage("test", StorageProps.fromDirectory(testDirectory))
       testRegion.register(testStorage)
     }
@@ -61,7 +61,7 @@ object Shell extends ImplicitConversions {
   }
 
   def test(): Unit = {
-    val testRegion = openRegion("test")
+    val testRegion  = openRegion("test")
     val testStorage = openStorage("test")
 
     testStorage.sync("test")

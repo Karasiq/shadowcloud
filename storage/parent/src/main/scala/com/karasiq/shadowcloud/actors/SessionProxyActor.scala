@@ -16,7 +16,7 @@ private[shadowcloud] object SessionProxyActor {
 
 private[shadowcloud] class SessionProxyActor[Session](createAuthenticator: ActorContext ⇒ SessionAuthenticator[Session]) extends Actor with Stash {
   import context.dispatcher
-  val state = createAuthenticator(context)
+  val state           = createAuthenticator(context)
   val timeoutSchedule = context.system.scheduler.scheduleOnce(5 minutes, self, ReceiveTimeout)
 
   def receive = {

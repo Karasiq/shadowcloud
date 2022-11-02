@@ -20,7 +20,7 @@ private[actors] final class GarbageCollectUtil(regionConfig: RegionConfig) {
 
   def checkStorage(index: IndexMerger[_], storageConfig: StorageConfig, storageChunks: Set[ByteString]): StorageGCState = {
     val indexPersistedChunks = index.chunks
-    val indexPendingChunks = index.chunks.patch(index.pending.chunks)
+    val indexPendingChunks   = index.chunks.patch(index.pending.chunks)
 
     StorageGCState(
       notIndexedChunks(indexPendingChunks, storageConfig, storageChunks),
@@ -30,7 +30,7 @@ private[actors] final class GarbageCollectUtil(regionConfig: RegionConfig) {
 
   def checkRegion(index: IndexMerger[_]): RegionGCState = {
     val indexPersistedChunks = index.chunks
-    val indexPendingFolders = index.foldersWithPending
+    val indexPendingFolders  = index.foldersWithPending
 
     RegionGCState(
       orphanedChunks(indexPersistedChunks, indexPendingFolders),
@@ -50,7 +50,7 @@ private[actors] final class GarbageCollectUtil(regionConfig: RegionConfig) {
 
     val filesToDelete = filesByPath.flatMap { case (_, files) ⇒
       def isFileRecent(file: File): Boolean = {
-        val now = Utils.timestamp
+        val now       = Utils.timestamp
         val retention = gcConfig.keepRecentFiles.toMillis
         (file.timestamp.lastModified + retention) >= now
       }

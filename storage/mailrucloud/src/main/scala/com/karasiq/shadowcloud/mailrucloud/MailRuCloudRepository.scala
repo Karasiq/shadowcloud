@@ -38,14 +38,15 @@ object MailRuCloudRepository {
     .named("countBytes")
 }
 
-class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, session: Session,
-                                                     token: CsrfToken, ec: ExecutionContext) extends PathTreeRepository {
+class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, session: Session, token: CsrfToken, ec: ExecutionContext)
+    extends PathTreeRepository {
 
   import MailRuCloudRepository._
   private[this] val foldersCache = CacheMap[Path, Path]
 
   def read(path: Path) = {
-    client.download(path)
+    client
+      .download(path)
       .alsoToMat(countBytes(path))(Keep.right)
       .named("mailrucloudRead")
   }
@@ -69,14 +70,18 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
     Flow[Path]
       .flatMapConcat(path ⇒ Source.future(client.file(path)).map((path, _)))
       .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
-      .flatMapMerge(2, { case (path, file) ⇒
-        Source.future(client.delete(path))
-          .map(_ ⇒ file.size)
-          .recover {
-            case ae: ApiException if ae.errorName.contains("not_exists") => 0L
-          }
-          .via(StorageUtils.wrapCountStream(path))
-      })
+      .flatMapMerge(
+        2,
+        { case (path, file) ⇒
+          Source
+            .future(client.delete(path))
+            .map(_ ⇒ file.size)
+            .recover {
+              case ae: ApiException if ae.errorName.contains("not_exists") ⇒ 0L
+            }
+            .via(StorageUtils.wrapCountStream(path))
+        }
+      )
       .via(StorageUtils.foldStream())
       .toMat(Sink.head)(Keep.right)
       .named("mailrucloudDelete")
@@ -90,7 +95,8 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
           offsets.iterator.map(client.folder(path, _, filesPerRequest))
         }
 
-        Source.fromIterator(() ⇒ createFuturesIterator())
+        Source
+          .fromIterator(() ⇒ createFuturesIterator())
           .mapAsync(1)(identity)
           .takeWhile(_.list.nonEmpty)
           .orElse(Source.single(MailCloudTypes.Folder("folder", "folder", path.name, path.toString, 0, "")))
@@ -109,25 +115,29 @@ class MailRuCloudRepository(client: MailCloudClient)(implicit nodes: Nodes, sess
       .recoverWithRetries(1, { case ae: ApiException if ae.errorName.contains("not_exists") ⇒ Source.empty })
       .named("mailrucloudTraverse")
 
-    Source.single(fromPath)
+    Source
+      .single(fromPath)
       .via(traverseFlow)
       .map(_.toRelative(fromPath))
-      .alsoToMat(Flow[Path]
-        .fold(0L)((c, _) ⇒ c + 1)
-        .via(StorageUtils.wrapCountStream(fromPath))
-        .toMat(Sink.head)(Keep.right)
+      .alsoToMat(
+        Flow[Path]
+          .fold(0L)((c, _) ⇒ c + 1)
+          .via(StorageUtils.wrapCountStream(fromPath))
+          .toMat(Sink.head)(Keep.right)
       )(Keep.right)
       .named("mailrucloudKeys")
   }
 
   private[this] def getOrCreateFolder(path: Path): Source[Path, NotUsed] = {
     val future = foldersCache(path) {
-      client.createFolder(path)
+      client
+        .createFolder(path)
         .map(ep ⇒ ep: Path)
         .recover { case ae: ApiException if ae.errorName.contains("exists") ⇒ path }
     }
 
-    Source.future(future)
+    Source
+      .future(future)
       .named("mailrucloudCreateFolder")
-  } 
+  }
 }

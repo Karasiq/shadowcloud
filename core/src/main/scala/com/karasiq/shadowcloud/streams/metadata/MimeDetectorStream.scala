@@ -12,7 +12,8 @@ import com.karasiq.shadowcloud.metadata.MimeDetector
 object MimeDetectorStream {
   def apply(detector: MimeDetector, fileName: String, probeSize: Int): Flow[ByteString, String, NotUsed] = {
     val defaultMimeSource = Source.single(MimeDetector.DefaultMime)
-    Flow.fromGraph(new MimeDetectorStream(detector, fileName, probeSize))
+    Flow
+      .fromGraph(new MimeDetectorStream(detector, fileName, probeSize))
       .recoverWithRetries(1, { case _ ⇒ defaultMimeSource })
       .orElse(defaultMimeSource)
       .withAttributes(ActorAttributes.dispatcher(SCDispatchers.metadata))
@@ -20,19 +21,18 @@ object MimeDetectorStream {
   }
 }
 
-private final class MimeDetectorStream(detector: MimeDetector, fileName: String, probeSize: Int)
-  extends GraphStage[FlowShape[ByteString, String]] {
+private final class MimeDetectorStream(detector: MimeDetector, fileName: String, probeSize: Int) extends GraphStage[FlowShape[ByteString, String]] {
 
-  val inBytes = Inlet[ByteString]("MimeDetectorStream.in")
+  val inBytes        = Inlet[ByteString]("MimeDetectorStream.in")
   val outContentType = Outlet[String]("MimeDetectorStream.out")
-  val shape = FlowShape(inBytes, outContentType)
+  val shape          = FlowShape(inBytes, outContentType)
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
     private[this] var buffer = ByteString.empty
 
     private[this] def pushContentType(): Unit = {
       if (buffer.length >= probeSize || isClosed(inBytes)) {
-        val contentType = detector.getMimeType(fileName, buffer/*.take(probeSize)*/)
+        val contentType = detector.getMimeType(fileName, buffer /*.take(probeSize)*/ )
         buffer = ByteString.empty
         contentType.foreach(push(outContentType, _))
         completeStage()

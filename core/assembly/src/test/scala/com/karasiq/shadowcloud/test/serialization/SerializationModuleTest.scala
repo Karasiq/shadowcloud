@@ -18,19 +18,19 @@ class SerializationModuleTest extends SCExtensionSpec with FlatSpecLike {
   private[this] def testModule(name: String, module: SerializationModule): Unit = {
     s"${name.capitalize} serializer" should "serialize config" in {
       val config = CoreTestUtils.config.rootConfig
-      val bytes = module.toBytes(config)
+      val bytes  = module.toBytes(config)
       module.fromBytes[Config](bytes) shouldBe config
     }
 
     it should "serialize wrapped config" in {
       val config = CoreTestUtils.config
-      val bytes = module.toBytes(config)
+      val bytes  = module.toBytes(config)
       module.fromBytes[SCConfig](bytes) shouldBe config
     }
 
     it should "serialize protobuf message" in {
       val message = SerializedIndexData(data = TestUtils.randomBytes(50))
-      val bytes = module.toBytes(message)
+      val bytes   = module.toBytes(message)
       module.fromBytes[SerializedIndexData](bytes) shouldBe message
     }
 
@@ -41,7 +41,7 @@ class SerializationModuleTest extends SCExtensionSpec with FlatSpecLike {
     }
 
     it should "serialize file" in {
-      val file = CoreTestUtils.randomFile()
+      val file  = CoreTestUtils.randomFile()
       val bytes = module.toBytes(file)
       val file1 = module.fromBytes[File](bytes)
       file1 shouldBe file
@@ -50,20 +50,20 @@ class SerializationModuleTest extends SCExtensionSpec with FlatSpecLike {
 
     it should "serialize folder" in {
       val folder = CoreTestUtils.randomFolder()
-      val bytes = module.toBytes(folder)
+      val bytes  = module.toBytes(folder)
       module.fromBytes[Folder](bytes) shouldBe folder
     }
 
     it should "serialize diff" in {
-      val diff = TestUtils.testDiff
+      val diff  = TestUtils.testDiff
       val bytes = module.toBytes(diff)
       module.fromBytes[IndexDiff](bytes) shouldBe diff
       println(bytes.toHexString)
     }
 
     it should "read test diff" in {
-      val diff = TestUtils.testDiff
-      val bytes = Source.fromResource(s"test-diff-$name.txt").mkString.trim()
+      val diff             = TestUtils.testDiff
+      val bytes            = Source.fromResource(s"test-diff-$name.txt").mkString.trim()
       val deserializedDiff = module.fromBytes[IndexDiff](ByteString.fromHexString(bytes))
       deserializedDiff shouldBe diff
     }

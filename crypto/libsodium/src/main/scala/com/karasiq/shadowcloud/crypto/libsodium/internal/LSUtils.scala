@@ -1,9 +1,8 @@
 package com.karasiq.shadowcloud.crypto.libsodium.internal
 
-
 import org.abstractj.kalium.NaCl
 
-import scala.util.control.{Exception => ExcControl}
+import scala.util.control.{Exception ⇒ ExcControl}
 
 private[libsodium] object LSUtils {
   type LSRandom = org.abstractj.kalium.crypto.Random
@@ -15,7 +14,7 @@ private[libsodium] object LSUtils {
   }
 
   lazy val isLibraryAvailable: Boolean = sodiumInstance.isDefined
-  lazy val isAesAvailable: Boolean = isLibraryAvailable && sodiumInstance.forall(_.crypto_aead_aes256gcm_is_available() == 1)
+  lazy val isAesAvailable: Boolean     = isLibraryAvailable && sodiumInstance.forall(_.crypto_aead_aes256gcm_is_available() == 1)
 
   def createSecureRandom(): LSRandom = {
     new LSRandom

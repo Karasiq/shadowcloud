@@ -1,6 +1,5 @@
 package com.karasiq.shadowcloud.streams.index
 
-
 import akka.NotUsed
 import akka.event.Logging
 import akka.stream._
@@ -56,7 +55,8 @@ final class IndexProcessingStreams(regionId: RegionId)(implicit sc: ShadowCloudE
     .named("indexPostRead")
 
   private[this] object internalStreams {
-    private[this] val keyChainSource = Source.single(NotUsed)
+    private[this] val keyChainSource = Source
+      .single(NotUsed)
       .flatMapConcat(_ ⇒ Source.future(sc.keys.provider.getKeyChain()))
       .map(_.forRegion(regionId))
       .named("keyChainSource")
@@ -94,13 +94,15 @@ final class IndexProcessingStreams(regionId: RegionId)(implicit sc: ShadowCloudE
       .via(StreamSerialization.deframe(sc.config.serialization.frameLimit))
 
     val compress = Flow[ByteString].flatMapConcat { bytes ⇒
-      Source.single(bytes)
+      Source
+        .single(bytes)
         .via(framedCompress)
         .via(ByteStreams.concat)
     }
 
     val decompress = Flow[ByteString].flatMapConcat { compBytes ⇒
-      Source.single(compBytes)
+      Source
+        .single(compBytes)
         .via(framedDecompress)
         .via(ByteStreams.concat)
     }
@@ -118,14 +120,14 @@ final class IndexProcessingStreams(regionId: RegionId)(implicit sc: ShadowCloudE
   // Encryption stages
   // -----------------------------------------------------------------------
   private final class IndexEncryptStage(cryptoModules: CryptoModuleRegistry, config: CryptoConfig, keyChain: KeyChain)
-    extends GraphStage[FlowShape[ByteString, EncryptedIndexData]] {
+      extends GraphStage[FlowShape[ByteString, EncryptedIndexData]] {
 
-    val inlet = Inlet[ByteString]("IndexEncrypt.in")
+    val inlet  = Inlet[ByteString]("IndexEncrypt.in")
     val outlet = Outlet[EncryptedIndexData]("IndexEncrypt.out")
-    val shape = FlowShape(inlet, outlet)
+    val shape  = FlowShape(inlet, outlet)
 
     def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
-      private[this] val log = Logging(sc.implicits.actorSystem, s"IndexEncryptStage($regionId)")
+      private[this] val log        = Logging(sc.implicits.actorSystem, s"IndexEncryptStage($regionId)")
       private[this] val encryption = IndexEncryption(cryptoModules, serialization)
 
       private[this] def encryptData(data: ByteString): Unit = {
@@ -153,14 +155,14 @@ final class IndexProcessingStreams(regionId: RegionId)(implicit sc: ShadowCloudE
   }
 
   private final class IndexDecryptStage(cryptoModules: CryptoModuleRegistry, config: CryptoConfig, keyChain: KeyChain)
-    extends GraphStage[FlowShape[EncryptedIndexData, ByteString]] {
+      extends GraphStage[FlowShape[EncryptedIndexData, ByteString]] {
 
-    val inlet = Inlet[EncryptedIndexData]("IndexDecrypt.in")
+    val inlet  = Inlet[EncryptedIndexData]("IndexDecrypt.in")
     val outlet = Outlet[ByteString]("IndexDecrypt.out")
-    val shape = FlowShape(inlet, outlet)
+    val shape  = FlowShape(inlet, outlet)
 
     def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
-      private[this] val log = Logging(sc.implicits.actorSystem, s"IndexDecryptStage($regionId)")
+      private[this] val log        = Logging(sc.implicits.actorSystem, s"IndexDecryptStage($regionId)")
       private[this] val encryption = IndexEncryption(cryptoModules, serialization)
 
       private[this] def pullInlet(): Unit = {
@@ -176,11 +178,12 @@ final class IndexProcessingStreams(regionId: RegionId)(implicit sc: ShadowCloudE
           log.info("Decrypting index frame {} with keys: {}", data.id, keyChain.decKeys)
           val result = encryption.decrypt(data, keyChain)
           push(outlet, result)
-        } catch { case NonFatal(exc) ⇒
-          log.error(CryptoException.DecryptError(exc), "Index file decrypt error")
-          pullInlet()
+        } catch {
+          case NonFatal(exc) ⇒
+            log.error(CryptoException.DecryptError(exc), "Index file decrypt error")
+            pullInlet()
         }
-      }                                        
+      }
 
       def onPull(): Unit = {
         pullInlet()

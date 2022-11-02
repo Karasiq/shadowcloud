@@ -5,8 +5,7 @@ import com.karasiq.shadowcloud.model.{RegionId, SCEntity}
 import com.karasiq.shadowcloud.model.keys.KeyProps.RegionSet
 
 @SerialVersionUID(1L)
-final case class KeyChain(keys: Seq[KeyProps])
-  extends SCEntity with HasEmpty with HasWithoutKeys {
+final case class KeyChain(keys: Seq[KeyProps]) extends SCEntity with HasEmpty with HasWithoutKeys {
 
   type Repr = KeyChain
   def isEmpty: Boolean = keys.isEmpty

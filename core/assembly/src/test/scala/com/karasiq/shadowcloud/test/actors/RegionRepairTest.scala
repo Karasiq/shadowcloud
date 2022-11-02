@@ -23,14 +23,16 @@ class RegionRepairTest extends SCExtensionSpec with FlatSpecLike with Sequential
     sc.ops.region.writeChunk(testRegionId, chunk).futureValue shouldBe chunk
     sc.ops.region.synchronize(testRegionId).futureValue
 
-    val (repairStream, repairResult) = TestSource.probe[RegionRepairStream.Request]
+    val (repairStream, repairResult) = TestSource
+      .probe[RegionRepairStream.Request]
       .alsoTo(RegionRepairStream(sc.ops.region, sc.config.parallelism, sc.config.chunks.chunkSize))
       .mapAsync(1)(_.result.future)
       .toMat(TestSink.probe)(Keep.both)
       .run()
 
-    repairStream.sendNext(RegionRepairStream.Request(testRegionId,
-      RegionRepairStream.Strategy.SetAffinity(ChunkWriteAffinity(Seq(testStorage1, testStorage2)))))
+    repairStream.sendNext(
+      RegionRepairStream.Request(testRegionId, RegionRepairStream.Strategy.SetAffinity(ChunkWriteAffinity(Seq(testStorage1, testStorage2))))
+    )
 
     val repaired = repairResult.requestNext()
     repaired shouldBe Seq(chunk)
@@ -51,7 +53,8 @@ class RegionRepairTest extends SCExtensionSpec with FlatSpecLike with Sequential
 
   private[this] def registerRegionAndStorages(): Unit = {
     sc.ops.supervisor.createRegion(testRegionId, sc.configs.regionConfig(testRegionId))
-    sc.ops.supervisor.createStorage(testStorage1, StorageProps.inMemory.copy(quota = Quota(ConfigProps.toConfig(ConfigProps("use-space-percent" → 33)))))
+    sc.ops.supervisor
+      .createStorage(testStorage1, StorageProps.inMemory.copy(quota = Quota(ConfigProps.toConfig(ConfigProps("use-space-percent" → 33)))))
     sc.ops.supervisor.createStorage(testStorage2, StorageProps.inMemory)
     sc.ops.supervisor.register(testRegionId, testStorage1)
     sc.ops.supervisor.register(testRegionId, testStorage2)

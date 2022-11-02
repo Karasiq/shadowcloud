@@ -22,7 +22,7 @@ object IndexScopeSelector {
 }
 
 class IndexScopeSelector(implicit context: AppContext) extends BootstrapHtmlComponent {
-  val opened = Var(false)
+  val opened    = Var(false)
   val dateInput = DateInput(context.locale.indexSnapshotDate)
 
   val selectedScope = Rx[IndexScope] {
@@ -42,9 +42,9 @@ class IndexScopeSelector(implicit context: AppContext) extends BootstrapHtmlComp
   def renderTag(md: ModifierT*): TagT = {
     val link = Rx {
       val isOpened = opened()
-      val icon = if (isOpened) AppIcons.historyScope else AppIcons.currentScope
-      val style = if (isOpened) Bootstrap.textStyle.warning else Bootstrap.textStyle.success
-      val title = if (isOpened) context.locale.historyScope else context.locale.currentScope
+      val icon     = if (isOpened) AppIcons.historyScope else AppIcons.currentScope
+      val style    = if (isOpened) Bootstrap.textStyle.warning else Bootstrap.textStyle.success
+      val title    = if (isOpened) context.locale.historyScope else context.locale.currentScope
       AppComponents.iconLink(title, icon, style, onclick := Callback.onClick(_ ⇒ opened() = !opened.now))
     }
 
@@ -57,4 +57,3 @@ class IndexScopeSelector(implicit context: AppContext) extends BootstrapHtmlComp
     )
   }
 }
-

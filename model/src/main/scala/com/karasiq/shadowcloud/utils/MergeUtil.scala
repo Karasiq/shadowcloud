@@ -2,7 +2,6 @@ package com.karasiq.shadowcloud.utils
 
 import scala.collection.mutable
 
-
 object MergeUtil {
   // -----------------------------------------------------------------------
   // Types
@@ -18,18 +17,18 @@ object MergeUtil {
       def right: T
     }
 
-    final case class Left[+T](value: T) extends State[T] with SingleSide[T]
+    final case class Left[+T](value: T)  extends State[T] with SingleSide[T]
     final case class Right[+T](value: T) extends State[T] with SingleSide[T]
     final case class Equal[+T](value: T) extends State[T] with TwoSides[T] {
-      def left = value
+      def left  = value
       def right = value
     }
     final case class Conflict[+T](left: T, right: T) extends State[T] with TwoSides[T]
   }
-  
+
   import State.{Conflict, Equal, Left, Right}
 
-  type Decider[V] = PartialFunction[State[V], Option[V]]
+  type Decider[V]      = PartialFunction[State[V], Option[V]]
   type SplitDecider[V] = Equal[V] ⇒ Option[State[V]]
 
   // -----------------------------------------------------------------------
@@ -76,7 +75,6 @@ object MergeUtil {
   def mergeSets[V](left: Set[V], right: Set[V], func: Decider[V]): Set[V] = {
     compareSets(left, right).flatMap(func.orElse(Decider.default).apply(_))
   }
-
 
   // -----------------------------------------------------------------------
   // Split
@@ -126,9 +124,9 @@ object MergeUtil {
         Some(right)
     }
 
-    def diff[V]: Decider[V] = { case Equal(_) ⇒ None }
-    def dropLeft[V]: Decider[V] = { case Left(_) ⇒ None }
-    def dropRight[V]: Decider[V] = { case Right(_) ⇒ None }
+    def diff[V]: Decider[V]       = { case Equal(_) ⇒ None }
+    def dropLeft[V]: Decider[V]   = { case Left(_) ⇒ None }
+    def dropRight[V]: Decider[V]  = { case Right(_) ⇒ None }
     def dropUnique[V]: Decider[V] = { case Right(_) | Left(_) ⇒ None }
 
     def intersect[V]: Decider[V] = {
@@ -161,8 +159,8 @@ object MergeUtil {
   // -----------------------------------------------------------------------
   object SplitDecider {
     def dropDuplicates[V]: SplitDecider[V] = _ ⇒ None
-    def keepBoth[V]: SplitDecider[V] = Some.apply
-    def keepLeft[V]: SplitDecider[V] = state ⇒ Some(Left(state.value))
-    def keepRight[V]: SplitDecider[V] = state ⇒ Some(Right(state.value))
+    def keepBoth[V]: SplitDecider[V]       = Some.apply
+    def keepLeft[V]: SplitDecider[V]       = state ⇒ Some(Left(state.value))
+    def keepRight[V]: SplitDecider[V]      = state ⇒ Some(Right(state.value))
   }
 }

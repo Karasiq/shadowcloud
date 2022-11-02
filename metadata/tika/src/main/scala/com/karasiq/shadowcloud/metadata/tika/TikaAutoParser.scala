@@ -26,11 +26,10 @@ private[tika] object TikaAutoParser {
   }
 }
 
-/**
-  * Parses file with default Tika parser
- *
+/** Parses file with default Tika parser
+  *
   * @param config Parser config
- */
+  */
 //noinspection ScalaDeprecation
 private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends TikaMetadataParser {
   // -----------------------------------------------------------------------
@@ -108,7 +107,7 @@ private[tika] final class TikaAutoParser(tika: Tika, val config: Config) extends
         parser.parse(inputStream, null, metadata, new ParseContext)
       } catch {
         case NonFatal(_) ⇒
-          // Ignore
+        // Ignore
       }
 
       (parser.getMetadata.asScala.toVector, handlers.toVector)

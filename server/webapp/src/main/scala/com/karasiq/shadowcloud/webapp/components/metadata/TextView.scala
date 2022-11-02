@@ -22,4 +22,3 @@ class TextView(text: Metadata.Text)(implicit context: AppContext) extends Bootst
     }
   }
 }
-

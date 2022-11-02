@@ -132,4 +132,4 @@ object AppLocale {
     val langCode = code.toLowerCase.split("-", 2).headOption
     Locales.all.find(lc ⇒ langCode.contains(lc.languageCode)).getOrElse(Locales.default)
   }
-}                               
+}

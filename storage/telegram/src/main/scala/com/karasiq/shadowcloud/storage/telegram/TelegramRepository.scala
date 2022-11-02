@@ -87,13 +87,12 @@ class TelegramRepository(port: Int)(implicit as: ActorSystem) extends PathTreeRe
       )(Keep.right)
       // .via(ByteStreams.concat)
       .via(AkkaStreamUtils.extractUpstream)
-      .map(
-        upstream ⇒
-          HttpRequest(
-            HttpMethods.POST,
-            Uri("/upload").withQuery(Uri.Query("path" → encodePath(path))),
-            entity = HttpEntity(ContentTypes.`application/octet-stream`, upstream)
-          )
+      .map(upstream ⇒
+        HttpRequest(
+          HttpMethods.POST,
+          Uri("/upload").withQuery(Uri.Query("path" → encodePath(path))),
+          entity = HttpEntity(ContentTypes.`application/octet-stream`, upstream)
+        )
       )
       .via(executeHttpRequest)
       .alsoTo(Sink.foreach(_.discardEntityBytes()))
@@ -103,11 +102,11 @@ class TelegramRepository(port: Int)(implicit as: ActorSystem) extends PathTreeRe
         case r                                     ⇒ StorageIOResult.Failure(path, StorageUtils.wrapException(path, new IOException(s"Request error: $r")))
       }
       .via(StorageUtils.wrapStream(path))
-      .toMat(Sink.headOption) { case (bytesCount, reqResult) =>
+      .toMat(Sink.headOption) { case (bytesCount, reqResult) ⇒
         val result = reqResult.map(_.getOrElse(StorageUtils.failure(path, new IOException)))
         StorageUtils.foldIOFutures(result, bytesCount)
       }
-      //.toMat(Sink.headOption)(Keep.right(_, _).map(_.getOrElse(StorageUtils.failure(path, new IOException))))
+    //.toMat(Sink.headOption)(Keep.right(_, _).map(_.getOrElse(StorageUtils.failure(path, new IOException))))
   }
 
   override def delete: Sink[Path, Result] =

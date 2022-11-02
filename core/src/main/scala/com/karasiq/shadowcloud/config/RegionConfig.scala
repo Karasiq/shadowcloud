@@ -10,19 +10,22 @@ import com.karasiq.shadowcloud.storage.utils.ChunkKeyMapper
 import com.karasiq.shadowcloud.utils.Utils
 
 @SerialVersionUID(0L)
-final case class RegionConfig(rootConfig: Config,
-                              chunkKey: Option[ChunkKeyMapper],
-                              chunkSize: Option[Int],
-                              storageSelector: Class[StorageSelector],
-                              dataReplicationFactor: Int,
-                              indexReplicationFactor: Int,
-                              garbageCollector: GCConfig) extends WrappedConfig
+final case class RegionConfig(
+    rootConfig: Config,
+    chunkKey: Option[ChunkKeyMapper],
+    chunkSize: Option[Int],
+    storageSelector: Class[StorageSelector],
+    dataReplicationFactor: Int,
+    indexReplicationFactor: Int,
+    garbageCollector: GCConfig
+) extends WrappedConfig
 
 object RegionConfig extends WrappedConfigFactory[RegionConfig] with ConfigImplicits {
   val empty = apply(Utils.emptyConfig)
 
   def forId(regionId: RegionId, rootConfig: Config): RegionConfig = {
-    val cfgObject = rootConfig.getConfigOrRef(s"regions.$regionId")
+    val cfgObject = rootConfig
+      .getConfigOrRef(s"regions.$regionId")
       .withFallback(rootConfig.getConfig("default-region"))
     apply(cfgObject)
   }

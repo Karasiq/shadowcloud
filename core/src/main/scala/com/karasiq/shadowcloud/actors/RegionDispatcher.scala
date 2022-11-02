@@ -102,7 +102,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
   import sc.implicits.{defaultTimeout, materializer}
 
   val storageTracker = StorageTracker()
-  val chunksTracker  = ChunksTracker(regionId, regionConfig, storageTracker, () => schedules.scheduleRetry())
+  val chunksTracker  = ChunksTracker(regionId, regionConfig, storageTracker, () ⇒ schedules.scheduleRetry())
   val indexTracker   = RegionIndexTracker(regionId, chunksTracker)
 
   private[this] implicit val regionContext =
@@ -126,7 +126,7 @@ private final class RegionDispatcher(regionId: RegionId, regionConfig: RegionCon
     .log("region-grouped-diff")
     .map(WriteIndexDiff)
     .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
-    .to(Sink.actorRef(self, Kill, _ => Kill))
+    .to(Sink.actorRef(self, Kill, _ ⇒ Kill))
     .named("regionPendingQueue")
     .run()
 

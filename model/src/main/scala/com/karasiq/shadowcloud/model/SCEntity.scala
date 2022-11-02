@@ -1,6 +1,5 @@
 package com.karasiq.shadowcloud.model
 
-/**
-  * Base serializable entity
+/** Base serializable entity
   */
 trait SCEntity

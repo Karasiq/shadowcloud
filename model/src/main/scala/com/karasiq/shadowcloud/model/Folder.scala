@@ -7,11 +7,16 @@ import com.karasiq.shadowcloud.utils.Utils
 import scala.collection.GenTraversableOnce
 
 @SerialVersionUID(0L)
-final case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,
-                        folders: Set[String] = Set.empty, files: Set[File] = Set.empty)
-  extends SCEntity with HasPath with HasEmpty with HasWithoutData with HasWithoutChunks with HasWithoutKeys with Mergeable {
+final case class Folder(path: Path, timestamp: Timestamp = Timestamp.now, folders: Set[String] = Set.empty, files: Set[File] = Set.empty)
+    extends SCEntity
+    with HasPath
+    with HasEmpty
+    with HasWithoutData
+    with HasWithoutChunks
+    with HasWithoutKeys
+    with Mergeable {
 
-  type Repr = Folder
+  type Repr     = Folder
   type DiffRepr = FolderDiff
 
   def addFiles(files: GenTraversableOnce[File]): Folder = {
@@ -59,9 +64,7 @@ final case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,
   }
 
   def patch(diff: FolderDiff): Folder = {
-    copy(path, timestamp.modified(diff.time),
-      folders ++ diff.newFolders -- diff.deletedFolders,
-      files ++ diff.newFiles -- diff.deletedFiles)
+    copy(path, timestamp.modified(diff.time), folders ++ diff.newFolders -- diff.deletedFolders, files ++ diff.newFiles -- diff.deletedFiles)
   }
 
   def withPath(newPath: Path): Folder = {
@@ -93,7 +96,7 @@ final case class Folder(path: Path, timestamp: Timestamp = Timestamp.now,
       f.path == path && f.folders == folders && f.files == files
 
     case _ ⇒
-      false 
+      false
   }
 
   override def toString: String = {

@@ -10,28 +10,28 @@ import com.karasiq.shadowcloud.webapp.controllers.{FileController, FolderControl
 import com.karasiq.shadowcloud.webapp.utils.RxUtils
 
 object FoldersPanel {
-  def apply()(implicit appContext: AppContext,
-              folderContext: FolderContext,
-              folderController: FolderController,
-              fileController: FileController): FoldersPanel = {
+  def apply()(implicit
+      appContext: AppContext,
+      folderContext: FolderContext,
+      folderController: FolderController,
+      fileController: FileController
+  ): FoldersPanel = {
     new FoldersPanel
   }
 }
 
-class FoldersPanel(implicit context: AppContext,
-                   folderContext: FolderContext,
-                   folderController: FolderController,
-                   fileController: FileController) extends BootstrapHtmlComponent {
+class FoldersPanel(implicit context: AppContext, folderContext: FolderContext, folderController: FolderController, fileController: FileController)
+    extends BootstrapHtmlComponent {
 
   lazy val selectedFolder = RxUtils.getSelectedFolderRx
 
-  lazy val folderTree = FolderTree(Path.root)
+  lazy val folderTree  = FolderTree(Path.root)
   lazy val folderFiles = FolderFileList(selectedFolder.map(_.files))
 
   def renderTag(md: ModifierT*): TagT = {
     val currentFileView = folderFiles.selectedFile.map[Frag] {
       case Some(file) ⇒ FileView(file)(context, folderContext, folderFiles.fileController)
-      case None ⇒ ()
+      case None       ⇒ ()
     }
 
     GridSystem.row(
@@ -42,4 +42,3 @@ class FoldersPanel(implicit context: AppContext,
     )
   }
 }
-

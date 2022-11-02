@@ -10,11 +10,11 @@ private[javafx] object JFXUtils {
     getClass.getClassLoader.getResource(fileName).toString
   }
 
-  def runNow[T](f: => T): T = {
+  def runNow[T](f: ⇒ T): T = {
     val promise = Promise[T]
     Platform.runLater {
       try promise.success(f)
-      catch { case err: Throwable => promise.failure(err) }
+      catch { case err: Throwable ⇒ promise.failure(err) }
     }
     Await.result(promise.future, Duration.Inf)
   }

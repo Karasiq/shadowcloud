@@ -9,8 +9,7 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 
 object RegionStorageProvider {
-  case class RegionStorage(id: StorageId, props: StorageProps, config: StorageConfig,
-                           dispatcher: ActorRef, health: StorageHealth)
+  case class RegionStorage(id: StorageId, props: StorageProps, config: StorageConfig, dispatcher: ActorRef, health: StorageHealth)
 }
 
 trait RegionStorageProvider {

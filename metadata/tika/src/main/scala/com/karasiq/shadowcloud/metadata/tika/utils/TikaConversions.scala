@@ -17,7 +17,8 @@ private[tika] class TikaConversions(plugin: String, parser: String) {
     Option(metadata)
       .filter(_.size() > 0)
       .map { metadataMap ⇒
-        val values = metadataMap.names()
+        val values = metadataMap
+          .names()
           .map(name ⇒ (name, Metadata.Table.Values(metadataMap.getValues(name).toVector)))
           .toMap
         Metadata(createTag(MDDisposition.METADATA), Metadata.Value.Table(Metadata.Table(values)))
@@ -33,7 +34,8 @@ private[tika] class TikaConversions(plugin: String, parser: String) {
       Metadata.EmbeddedResources.EmbeddedResource(resourcePath.nodes, metadatas)
     }
 
-    val groupedResources = resources.filter(_.metadata.nonEmpty)
+    val groupedResources = resources
+      .filter(_.metadata.nonEmpty)
       .groupBy(_.path)
       .map { case (path, resources) ⇒
         val allMetadatas = resources.flatMap(_.metadata)
@@ -42,13 +44,12 @@ private[tika] class TikaConversions(plugin: String, parser: String) {
 
     Some(groupedResources)
       .filter(_.nonEmpty)
-      .map(resources ⇒ Metadata(createTag(MDDisposition.CONTENT),
-        Metadata.Value.EmbeddedResources(Metadata.EmbeddedResources(resources.toVector))))
+      .map(resources ⇒ Metadata(createTag(MDDisposition.CONTENT), Metadata.Value.EmbeddedResources(Metadata.EmbeddedResources(resources.toVector))))
   }
 
   def toArchiveTables(subMetadatas: Seq[Metadata], previewSize: Int): Seq[Metadata] = {
     val archiveFiles = for {
-      md ← subMetadatas if md.value.isTable
+      md   ← subMetadatas if md.value.isTable
       path ← TikaAttributes.optional(md, TikaAttributes.ResourceName).map(ps ⇒ Path.fromString(ps).nodes)
       size ← TikaAttributes.optional(md, TikaAttributes.Size).map(_.toLong)
       timestamp = TikaAttributes.optional(md, TikaAttributes.LastModified).fold(0L)(TikaUtils.parseTimeString)
@@ -58,11 +59,9 @@ private[tika] class TikaConversions(plugin: String, parser: String) {
       .filter(_.nonEmpty)
       .toSeq
       .flatMap { files ⇒
-        val preview = Metadata(createTag(MDDisposition.PREVIEW),
-          Metadata.Value.FileList(Metadata.FileList(files.take(previewSize))))
+        val preview = Metadata(createTag(MDDisposition.PREVIEW), Metadata.Value.FileList(Metadata.FileList(files.take(previewSize))))
         if (files.length > previewSize) {
-          val full = Metadata(createTag(MDDisposition.CONTENT),
-            Metadata.Value.FileList(Metadata.FileList(files)))
+          val full = Metadata(createTag(MDDisposition.CONTENT), Metadata.Value.FileList(Metadata.FileList(files)))
           Seq(preview, full)
         } else {
           Seq(preview)
@@ -86,16 +85,15 @@ private[tika] class TikaConversions(plugin: String, parser: String) {
   def toImageData(metadataTable: Metadata): Option[Metadata] = {
     require(metadataTable.value.isTable, s"Not a table: $metadataTable")
     for {
-      width ← TikaAttributes.optional(metadataTable, TikaAttributes.ImageWidth)
+      width  ← TikaAttributes.optional(metadataTable, TikaAttributes.ImageWidth)
       height ← TikaAttributes.optional(metadataTable, TikaAttributes.ImageHeight)
-    } yield Metadata(createTag(MDDisposition.METADATA),
-      Metadata.Value.ImageData(Metadata.ImageData(width.toInt, height.toInt)))
+    } yield Metadata(createTag(MDDisposition.METADATA), Metadata.Value.ImageData(Metadata.ImageData(width.toInt, height.toInt)))
   }
 
   def toDescription(metadataTable: Metadata): Option[Metadata] = {
     require(metadataTable.value.isTable, s"Not a table: $metadataTable")
 
-    val title = TikaAttributes.optional(metadataTable, TikaAttributes.Title)
+    val title       = TikaAttributes.optional(metadataTable, TikaAttributes.Title)
     val description = TikaAttributes.optional(metadataTable, TikaAttributes.Description)
 
     Some((title.toSeq ++ description).mkString("\r\n\r\n").trim)

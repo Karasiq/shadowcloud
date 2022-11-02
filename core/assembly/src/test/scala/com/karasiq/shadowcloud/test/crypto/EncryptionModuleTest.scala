@@ -41,9 +41,9 @@ class EncryptionModuleTest extends FlatSpec with Matchers {
   }
 
   private[this] def testEncryption(module: EncryptionModule): Unit = {
-    val data = TestUtils.randomBytes(100)
+    val data       = TestUtils.randomBytes(100)
     val parameters = module.createParameters()
-    val encrypted = module.encrypt(data, parameters)
+    val encrypted  = module.encrypt(data, parameters)
     // encrypted should not be data
     encrypted.length should be >= data.length
     val decrypted = module.decrypt(encrypted, parameters)
@@ -53,13 +53,13 @@ class EncryptionModuleTest extends FlatSpec with Matchers {
 
   private[this] def runCrossTest(method1: EncryptionMethod, method2: EncryptionMethod): Unit = {
     def toString(m: EncryptionMethod) = s"${m.provider.capitalize} (${m.algorithm})"
-    val module1 = modules.crypto.encryptionModule(method1)
-    val module2 = modules.crypto.encryptionModule(method2)
+    val module1                       = modules.crypto.encryptionModule(method1)
+    val module2                       = modules.crypto.encryptionModule(method2)
     s"${toString(method1)}" should s"create compatible data for ${toString(method2)}" in {
-      val data = TestUtils.randomBytes(100)
+      val data       = TestUtils.randomBytes(100)
       val parameters = module1.createParameters()
-      val encrypted = module1.encrypt(data, parameters)
-      val decrypted = module2.decrypt(encrypted, parameters)
+      val encrypted  = module1.encrypt(data, parameters)
+      val decrypted  = module2.decrypt(encrypted, parameters)
       decrypted shouldBe data
     }
   }

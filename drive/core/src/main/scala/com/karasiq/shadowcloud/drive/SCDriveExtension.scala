@@ -20,6 +20,6 @@ object SCDrive extends ExtensionId[SCDriveExtension] with ExtensionIdProvider {
 }
 
 class SCDriveExtension(system: ExtendedActorSystem) extends Extension {
-  val config = SCDriveConfig(system.settings.config.getConfig("shadowcloud.drive"))
+  val config          = SCDriveConfig(system.settings.config.getConfig("shadowcloud.drive"))
   lazy val dispatcher = system.actorOf(VirtualFSDispatcher.props(config), "sc-drive-dispatcher")
 }

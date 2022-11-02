@@ -14,9 +14,8 @@ object ThumbnailImage {
 
 class ThumbnailImage(thumbnail: Metadata.Thumbnail) extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
-    val blob = Blobs.fromBytes(thumbnail.data.toArray)
+    val blob     = Blobs.fromBytes(thumbnail.data.toArray)
     val imageUrl = Blobs.getUrl(blob)
     img(src := imageUrl, alt := "Preview image")
   }
 }
-

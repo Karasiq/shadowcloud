@@ -11,8 +11,7 @@ class WebDavStorageProvider extends StorageProvider {
       WebDavStoragePlugin()
   }
 
-  override def storageConfigs = {
-    case "webdav" ⇒
-      ConfigProps("type" → "webdav", "address.uri" → "https://example.com/dir", "credentials.login" → "example", "credentials.password" → "123456")
+  override def storageConfigs = { case "webdav" ⇒
+    ConfigProps("type" → "webdav", "address.uri" → "https://example.com/dir", "credentials.login" → "example", "credentials.password" → "123456")
   }
 }

@@ -7,13 +7,15 @@ import com.typesafe.config.Config
 import com.karasiq.common.configs.ConfigImplicits
 
 @SerialVersionUID(0L)
-final case class StorageIndexConfig(rootConfig: Config,
-                                    syncInterval: FiniteDuration,
-                                    snapshotThreshold: Int,
-                                    snapshotClearHistory: Boolean,
-                                    compactThreshold: Int,
-                                    compactDeleteOld: Boolean,
-                                    keepDeleted: Boolean)
+final case class StorageIndexConfig(
+    rootConfig: Config,
+    syncInterval: FiniteDuration,
+    snapshotThreshold: Int,
+    snapshotClearHistory: Boolean,
+    compactThreshold: Int,
+    compactDeleteOld: Boolean,
+    keepDeleted: Boolean
+)
 
 object StorageIndexConfig extends ConfigImplicits {
   def apply(config: Config): StorageIndexConfig = {

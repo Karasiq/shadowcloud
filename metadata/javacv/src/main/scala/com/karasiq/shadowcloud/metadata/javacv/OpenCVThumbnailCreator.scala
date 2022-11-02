@@ -17,7 +17,7 @@ private[javacv] object OpenCVThumbnailCreator {
   }
 
   def getScaledDimension(width: Int, height: Int, widthConstraint: Int, heightConstraint: Int): (Int, Int) = {
-    var newWidth: Int = width
+    var newWidth: Int  = width
     var newHeight: Int = height
     if (width > widthConstraint) {
       newWidth = widthConstraint
@@ -32,7 +32,7 @@ private[javacv] object OpenCVThumbnailCreator {
 
   def resizeIplImage(image: IplImage, widthConstraint: Int, heightConstraint: Int): IplImage = {
     val (newWidth, newHeight) = getScaledDimension(image.width(), image.height(), widthConstraint, heightConstraint)
-    val thumb = cvCreateImage(cvSize(newWidth, newHeight), image.depth(), image.nChannels())
+    val thumb                 = cvCreateImage(cvSize(newWidth, newHeight), image.depth(), image.nChannels())
     cvResize(image, thumb)
     thumb
   }
@@ -40,9 +40,9 @@ private[javacv] object OpenCVThumbnailCreator {
 
 private[javacv] class OpenCVThumbnailCreator(config: Config) extends MetadataParser {
   protected object settings {
-    val parserConfig = MetadataParserConfig(config)
-    val sizeLimit = config.getBytes("size-limit")
-    val thumbnailSize = config.getInt("thumbnail-size")
+    val parserConfig     = MetadataParserConfig(config)
+    val sizeLimit        = config.getBytes("size-limit")
+    val thumbnailSize    = config.getInt("thumbnail-size")
     val thumbnailQuality = config.getInt("thumbnail-quality")
   }
 
@@ -56,13 +56,16 @@ private[javacv] class OpenCVThumbnailCreator(config: Config) extends MetadataPar
       .via(ByteStreams.concat)
       .map { bytes ⇒
         require(bytes.nonEmpty, "Image is empty")
-        val image = new IplImage(imdecode(new Mat(bytes:_*), CV_LOAD_IMAGE_UNCHANGED)) // cvDecodeImage(new CvMat(new Mat(bytes:_*)), CV_LOAD_IMAGE_UNCHANGED)
+        val image =
+          new IplImage(imdecode(new Mat(bytes: _*), CV_LOAD_IMAGE_UNCHANGED)) // cvDecodeImage(new CvMat(new Mat(bytes:_*)), CV_LOAD_IMAGE_UNCHANGED)
         try {
           val thumb = OpenCVThumbnailCreator.resizeIplImage(image, settings.thumbnailSize, settings.thumbnailSize)
           try {
             val jpegBytes = ByteString.fromArrayUnsafe(JavaCV.asJpeg(thumb, settings.thumbnailQuality))
-            Metadata(Some(Metadata.Tag("javacv", "opencv", Metadata.Tag.Disposition.PREVIEW)),
-              Metadata.Value.Thumbnail(Metadata.Thumbnail("jpeg", jpegBytes)))
+            Metadata(
+              Some(Metadata.Tag("javacv", "opencv", Metadata.Tag.Disposition.PREVIEW)),
+              Metadata.Value.Thumbnail(Metadata.Thumbnail("jpeg", jpegBytes))
+            )
           } finally thumb.release()
         } finally image.release()
       }

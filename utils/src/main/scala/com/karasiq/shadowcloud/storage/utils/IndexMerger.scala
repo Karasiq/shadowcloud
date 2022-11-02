@@ -54,15 +54,13 @@ private[shadowcloud] object IndexMerger {
     restore(createState(index))
   }
 
-  /**
-    * Sequential index merger
+  /** Sequential index merger
     */
   def sequential(): IndexMerger[SequenceNr] = {
     this.apply[SequenceNr]
   }
 
-  /**
-    * Multi-sequence index merger
+  /** Multi-sequence index merger
     */
   def region(): IndexMerger[RegionKey] = {
     this.apply[RegionKey]
@@ -77,12 +75,12 @@ private[shadowcloud] object IndexMerger {
       this.restore(filteredState)
 
     case IndexScope.UntilSequenceNr(sequenceNr) ⇒
-      val state = this.createState(index)
+      val state         = this.createState(index)
       val filteredState = state.copy(diffs = state.diffs.filter(kv ⇒ ko.sequenceNr(kv._1) <= sequenceNr), pending = IndexDiff.empty)
       this.restore(filteredState)
 
     case IndexScope.UntilTime(timestamp) ⇒
-      val state = this.createState(index)
+      val state         = this.createState(index)
       val filteredState = state.copy(diffs = state.diffs.filter(kv ⇒ ko.timestamp(kv._1) <= timestamp), pending = IndexDiff.empty)
       this.restore(filteredState)
   }
@@ -113,7 +111,7 @@ private[shadowcloud] object IndexMerger {
 
   object RegionKey {
     implicit val ordering: Ordering[RegionKey] = Ordering.by(key ⇒ (key.timestamp, key.storageId, key.sequenceNr))
-    val zero: RegionKey = RegionKey()
+    val zero: RegionKey                        = RegionKey()
   }
 
   @SerialVersionUID(0L)
@@ -133,16 +131,16 @@ private[shadowcloud] object IndexMerger {
   object IndexKeyOrdering {
     implicit val sequenceNrOrdering: IndexKeyOrdering[SequenceNr] = new IndexKeyOrdering[SequenceNr] {
       implicit val ordering: Ordering[SequenceNr] = Ordering.Long
-      def zero: SequenceNr = SequenceNr.zero
+      def zero: SequenceNr                        = SequenceNr.zero
       def sequenceNr(key: SequenceNr): SequenceNr = key
-      def timestamp(key: SequenceNr): SequenceNr = key
+      def timestamp(key: SequenceNr): SequenceNr  = key
     }
 
     implicit val regionKeyOrdering: IndexKeyOrdering[RegionKey] = new IndexKeyOrdering[RegionKey] {
       implicit def ordering: Ordering[RegionKey] = RegionKey.ordering
-      def zero = RegionKey.zero
-      def sequenceNr(key: RegionKey) = key.sequenceNr
-      def timestamp(key: RegionKey) = key.timestamp
+      def zero                                   = RegionKey.zero
+      def sequenceNr(key: RegionKey)             = key.sequenceNr
+      def timestamp(key: RegionKey)              = key.timestamp
     }
   }
 }

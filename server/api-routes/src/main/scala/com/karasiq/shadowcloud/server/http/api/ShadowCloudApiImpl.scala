@@ -53,14 +53,12 @@ private[server] final class ShadowCloudApiImpl(sc: ShadowCloudExtension) extends
     }
 
     sc.ops.supervisor.getSnapshot().map { snapshot ⇒
-      val storages = snapshot.storages.map {
-        case (storageId, storage) ⇒
-          (storageId, toSerializableStorageStatus(storage))
+      val storages = snapshot.storages.map { case (storageId, storage) ⇒
+        (storageId, toSerializableStorageStatus(storage))
       }
 
-      val regions = snapshot.regions.map {
-        case (regionId, region) ⇒
-          (regionId, toSerializableRegionStatus(region))
+      val regions = snapshot.regions.map { case (regionId, region) ⇒
+        (regionId, toSerializableRegionStatus(region))
       }
 
       RegionStateReport(regions, storages)

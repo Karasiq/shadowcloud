@@ -31,21 +31,23 @@ object PathTreeRepository {
   def traverse(repository: PathTreeRepository, path: Path): PathTreeRepository = {
     new RepositoryKeyMapper[Path, Path](repository, _.toRelative(path), path / _) with PathTreeRepository {
       override def subKeys(fromPath: Path): Source[Path, Result] = repository.subKeys(path / fromPath)
-      override def keys: Source[Path, Result] = repository.subKeys(path)
-      override def toString: String = s"Traverse($repository [$path])"
+      override def keys: Source[Path, Result]                    = repository.subKeys(path)
+      override def toString: String                              = s"Traverse($repository [$path])"
     }
   }
 
   def toCategorized(repository: PathTreeRepository, path: Path = Path.root): CategorizedRepository[String, String] = {
-    new RepositoryKeyMapper[Path, (String, String)](repository,
-      path ⇒ (path.parent.name, path.name), { case (s1, s2) ⇒ path / s1 / s2 }) with CategorizedRepository[String, String] {
+    new RepositoryKeyMapper[Path, (String, String)](repository, path ⇒ (path.parent.name, path.name), { case (s1, s2) ⇒ path / s1 / s2 })
+      with CategorizedRepository[String, String] {
 
-      override def keys: Source[(String, String), Result] = repository.subKeys(path)
+      override def keys: Source[(String, String), Result] = repository
+        .subKeys(path)
         .filter(_.nodes.length == 2) // .filterNot(p ⇒ p.isRoot || p.parent.isRoot)
         .map(path ⇒ (path.parent.name, path.name))
 
       override def subKeys(seq: String): Source[String, Result] = {
-        repository.subKeys(path / seq)
+        repository
+          .subKeys(path / seq)
           .filter(_.nodes.length == 1)
           .map(_.name)
       }
@@ -58,7 +60,8 @@ object PathTreeRepository {
 
   def toKeyValue(repository: PathTreeRepository, path: Path = Path.root): KeyValueRepository = {
     new RepositoryKeyMapper[Path, String](repository, _.name, path / _) {
-      override def keys: Source[String, Result] = repository.subKeys(path)
+      override def keys: Source[String, Result] = repository
+        .subKeys(path)
         .filter(_.nodes.length == 1)
         .map(_.name)
 

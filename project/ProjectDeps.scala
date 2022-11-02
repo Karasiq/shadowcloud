@@ -79,8 +79,8 @@ object ProjectDeps {
 
   // http://h2database.com/html/main.html
   def h2: Deps = Seq(
-    "com.h2database" % "h2"          % "1.4.192",
-    "io.getquill"    %% "quill-jdbc" % "1.2.1"
+    "com.h2database" % "h2"         % "1.4.192",
+    "io.getquill"   %% "quill-jdbc" % "1.2.1"
   )
 
   // https://tika.apache.org/
@@ -207,10 +207,10 @@ object ProjectDeps {
   def webzinc: Deps = {
     val version = "1.0.10"
     Seq(
-      "net.sourceforge.htmlunit" % "htmlunit"          % "2.40.0",
-      "com.github.karasiq"       %% "commons-network"  % "1.0.10",
-      "com.github.karasiq"       %% "webzinc"          % version,
-      "com.github.karasiq"       %% "webzinc-htmlunit" % version
+      "net.sourceforge.htmlunit" % "htmlunit"         % "2.40.0",
+      "com.github.karasiq"      %% "commons-network"  % "1.0.10",
+      "com.github.karasiq"      %% "webzinc"          % version,
+      "com.github.karasiq"      %% "webzinc-htmlunit" % version
     )
   }
 

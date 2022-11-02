@@ -10,19 +10,20 @@ object SCConsoleConfig {
   def load(): Config = {
     val autoParallelismConfig = {
       val cpuAvailable = Runtime.getRuntime.availableProcessors()
-      val parallelism = math.max(8, math.min(1, cpuAvailable / 2))
+      val parallelism  = math.max(8, math.min(1, cpuAvailable / 2))
       ConfigFactory.parseString(s"shadowcloud.parallelism.default = $parallelism")
     }
 
     val substitutionsConfig = ConfigFactory.parseResourcesAnySyntax("sc-substitutions")
 
-    val defaultConfig = ConfigFactory.defaultOverrides()
+    val defaultConfig = ConfigFactory
+      .defaultOverrides()
       .withFallback(ConfigFactory.defaultApplication())
       .withFallback(ConfigFactory.defaultReference())
 
     val serverAppConfig = {
       val fileConfig = {
-        val configFilePath = sys.props.getOrElse("shadowcloud.external-config", "shadowcloud.conf")
+        val configFilePath   = sys.props.getOrElse("shadowcloud.external-config", "shadowcloud.conf")
         val optionalConfFile = Paths.get(configFilePath)
         if (Files.isRegularFile(optionalConfFile))
           ConfigFactory.parseFile(optionalConfFile.toFile)

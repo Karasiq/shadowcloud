@@ -9,8 +9,8 @@ import com.karasiq.shadowcloud.metadata.MetadataProvider
 
 class TikaMetadataProvider(rootConfig: Config) extends MetadataProvider {
   protected object tikaConfig extends ConfigImplicits {
-    val config = rootConfig.getConfig("metadata.tika")
-    val xmlConfigFile = config.optional(_.getString("xml-config-file"))
+    val config           = rootConfig.getConfig("metadata.tika")
+    val xmlConfigFile    = config.optional(_.getString("xml-config-file"))
     val autoParserConfig = config.getConfig("auto-parser")
   }
 

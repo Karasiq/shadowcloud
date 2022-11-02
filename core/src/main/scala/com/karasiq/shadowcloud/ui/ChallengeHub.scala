@@ -41,10 +41,9 @@ class ChallengeHub(implicit as: ActorSystem) {
     promise.future
   }
 
-  def solve(id: UUID, response: ByteString = ByteString.empty): Unit = challenges.remove(id).foreach {
-    case (challenge, promise, _) ⇒
-      log.info("Challenge solved: {}", challenge.title)
-      promise.trySuccess(response)
+  def solve(id: UUID, response: ByteString = ByteString.empty): Unit = challenges.remove(id).foreach { case (challenge, promise, _) ⇒
+    log.info("Challenge solved: {}", challenge.title)
+    promise.trySuccess(response)
   }
 
   override def finalize(): Unit = {

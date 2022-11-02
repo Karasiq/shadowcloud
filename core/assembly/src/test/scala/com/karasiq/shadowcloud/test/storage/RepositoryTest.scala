@@ -26,11 +26,12 @@ class RepositoryTest extends SCExtensionSpec with FlatSpecLike {
   } */
 
   private[this] def testRepository(repository: KeyValueRepository): Unit = {
-    val chunk = CoreTestUtils.randomChunk
+    val chunk          = CoreTestUtils.randomChunk
     val testRepository = RepositoryKeys.toHexString(repository)
 
     // Write chunk
-    val (write, writeResult) = TestSource.probe[ByteString]
+    val (write, writeResult) = TestSource
+      .probe[ByteString]
       .toMat(testRepository.write(chunk.checksum.hash))(Keep.both)
       .run()
     write.sendNext(chunk.data.plain)
@@ -47,7 +48,8 @@ class RepositoryTest extends SCExtensionSpec with FlatSpecLike {
     keys.expectComplete()
 
     // Read chunk
-    val read = testRepository.read(chunk.checksum.hash)
+    val read = testRepository
+      .read(chunk.checksum.hash)
       .via(ByteStreams.concat)
       .runWith(TestSink.probe)
 
@@ -56,7 +58,8 @@ class RepositoryTest extends SCExtensionSpec with FlatSpecLike {
 
     // Rewrite error
     val rewriteBytes = TestUtils.randomBytes(chunk.data.plain.length)
-    val rewriteResult = Source.single(rewriteBytes)
+    val rewriteResult = Source
+      .single(rewriteBytes)
       .runWith(testRepository.write(chunk.checksum.hash))
 
     whenReady(rewriteResult) { result ⇒

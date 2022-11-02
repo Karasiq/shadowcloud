@@ -5,8 +5,8 @@ import com.typesafe.config.Config
 
 import scala.concurrent.duration.{FiniteDuration, _}
 
-case class GCConfig(rootConfig: Config, runOnLowSpace: Option[Long], autoDelete: Boolean,
-                    keepFileRevisions: Int, keepRecentFiles: FiniteDuration) extends WrappedConfig
+case class GCConfig(rootConfig: Config, runOnLowSpace: Option[Long], autoDelete: Boolean, keepFileRevisions: Int, keepRecentFiles: FiniteDuration)
+    extends WrappedConfig
 
 object GCConfig extends WrappedConfigFactory[GCConfig] with ConfigImplicits {
   def apply(config: Config): GCConfig = {

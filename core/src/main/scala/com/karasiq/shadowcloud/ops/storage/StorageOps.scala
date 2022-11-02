@@ -76,14 +76,15 @@ final class StorageOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig)(imp
     askStorage(storageId, StorageDispatcher.GetHealth, StorageDispatcher.GetHealth(checkNow))
   }
 
-  private[this] def askStorage[V](storageId: StorageId, status: MessageStatus[_, V], message: Any)
-                                 (implicit timeout: Timeout = timeouts.query): Future[V] = {
+  private[this] def askStorage[V](storageId: StorageId, status: MessageStatus[_, V], message: Any)(implicit
+      timeout: Timeout = timeouts.query
+  ): Future[V] = {
     status.unwrapFuture(regionSupervisor ? StorageEnvelope(storageId, message))
   }
 
-  private[this] def askStorageIndex[V](storageId: StorageId, regionId: RegionId,
-                                       status: MessageStatus[_, V], message: RegionIndex.Message)
-                                      (implicit timeout: Timeout = timeouts.query): Future[V] = {
+  private[this] def askStorageIndex[V](storageId: StorageId, regionId: RegionId, status: MessageStatus[_, V], message: RegionIndex.Message)(implicit
+      timeout: Timeout = timeouts.query
+  ): Future[V] = {
     askStorage(storageId, status, StorageIndex.Envelope(regionId, message))(timeout)
   }
 }

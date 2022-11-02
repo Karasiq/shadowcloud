@@ -39,7 +39,7 @@ object SCDesktopConfig {
         "shadowcloud.conf"
       ) ++ sys.props.get("shadowcloud.external-config")).map(new File(_)).filter(_.isFile)
 
-      val fileConfig = files.foldLeft(ConfigUtils.emptyConfig) { (conf, f) =>
+      val fileConfig = files.foldLeft(ConfigUtils.emptyConfig) { (conf, f) ⇒
         ConfigFactory.parseFile(f).withFallback(conf)
       }
 

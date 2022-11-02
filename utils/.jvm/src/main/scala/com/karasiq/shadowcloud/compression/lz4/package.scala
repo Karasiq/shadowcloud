@@ -12,7 +12,7 @@ import com.karasiq.shadowcloud.utils.ByteStringOutputStream
 
 package object lz4 {
   // TODO: LZ4FrameInputStream, customize compression level
-  private type LZ4InputStream = net.jpountz.lz4.LZ4BlockInputStream
+  private type LZ4InputStream  = net.jpountz.lz4.LZ4BlockInputStream
   private type LZ4OutputStream = net.jpountz.lz4.LZ4BlockOutputStream
 
   object LZ4Streams {
@@ -37,12 +37,12 @@ package object lz4 {
   }
 
   private final class LZ4Compress extends GraphStage[FlowShape[ByteString, ByteString]] {
-    val inlet = Inlet[ByteString]("LZ4Compress.in")
+    val inlet  = Inlet[ByteString]("LZ4Compress.in")
     val outlet = Outlet[ByteString]("LZ4Compress.out")
-    val shape = FlowShape(inlet, outlet)
+    val shape  = FlowShape(inlet, outlet)
 
     def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
-      private[this] val bsOutputStream = ByteStringOutputStream()
+      private[this] val bsOutputStream  = ByteStringOutputStream()
       private[this] val lz4OutputStream = new LZ4OutputStream(bsOutputStream)
 
       def onPull(): Unit = {
@@ -66,7 +66,7 @@ package object lz4 {
       override def onUpstreamFinish(): Unit = {
         lz4OutputStream.close()
         val lastBlock = bsOutputStream.toByteString
-        if(lastBlock.nonEmpty) {
+        if (lastBlock.nonEmpty) {
           bsOutputStream.clear()
           emit(outlet, lastBlock, () ⇒ complete(outlet))
         } else {

@@ -9,12 +9,20 @@ final case class RegionStateReport(regions: Map[RegionId, RegionStatus], storage
 
 object RegionStateReport {
   @SerialVersionUID(0L)
-  final case class RegionStatus(regionId: RegionId, regionConfig: SerializedProps = SerializedProps.empty,
-                                suspended: Boolean = false, storages: Set[String] = Set.empty)
+  final case class RegionStatus(
+      regionId: RegionId,
+      regionConfig: SerializedProps = SerializedProps.empty,
+      suspended: Boolean = false,
+      storages: Set[String] = Set.empty
+  )
 
   @SerialVersionUID(0L)
-  final case class StorageStatus(storageId: StorageId, storageProps: SerializedProps = SerializedProps.empty,
-                                 suspended: Boolean = false, regions: Set[String] = Set.empty)
+  final case class StorageStatus(
+      storageId: StorageId,
+      storageProps: SerializedProps = SerializedProps.empty,
+      suspended: Boolean = false,
+      regions: Set[String] = Set.empty
+  )
 
   val empty = new RegionStateReport(Map.empty, Map.empty)
 }

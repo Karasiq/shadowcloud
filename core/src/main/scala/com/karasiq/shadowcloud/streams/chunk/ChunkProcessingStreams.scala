@@ -14,8 +14,8 @@ import com.karasiq.shadowcloud.streams.file.FileIndexer
 import scala.concurrent.{ExecutionContext, Future}
 
 object ChunkProcessingStreams {
-  def apply(cryptoModules: CryptoModuleRegistry, chunks: ChunksConfig, crypto: CryptoConfig, parallelism: ParallelismConfig)(
-      implicit ec: ExecutionContext
+  def apply(cryptoModules: CryptoModuleRegistry, chunks: ChunksConfig, crypto: CryptoConfig, parallelism: ParallelismConfig)(implicit
+      ec: ExecutionContext
   ): ChunkProcessingStreams = {
     new ChunkProcessingStreams(cryptoModules, chunks, crypto, parallelism)
   }
@@ -105,8 +105,10 @@ final class ChunkProcessingStreams(cryptoModules: CryptoModuleRegistry, chunks: 
 
       val hasher = cryptoModules.hashingModule(chunk.checksum.method)
 
-      if ((chunk.data.plain.nonEmpty && chunk.checksum.size != chunk.data.plain.length) ||
-          (chunk.data.encrypted.nonEmpty && chunk.checksum.encSize != chunk.data.encrypted.length)) {
+      if (
+        (chunk.data.plain.nonEmpty && chunk.checksum.size != chunk.data.plain.length) ||
+        (chunk.data.encrypted.nonEmpty && chunk.checksum.encSize != chunk.data.encrypted.length)
+      ) {
         throw SCExceptions.ChunkVerifyError(chunk, new IllegalArgumentException("Chunk sizes not match"))
       }
 
@@ -122,7 +124,7 @@ final class ChunkProcessingStreams(cryptoModules: CryptoModuleRegistry, chunks: 
       encHashing: HashingMethod = crypto.hashing.chunksEncrypted
   ): ChunkFlow = {
     generateKeys(encryption)
-    // .buffer(10, OverflowStrategy.backpressure)
+      // .buffer(10, OverflowStrategy.backpressure)
       .via(encrypt)
       .via(createHashes(hashing, encHashing))
   }

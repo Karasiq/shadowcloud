@@ -16,11 +16,11 @@ final class H2AkkaJournal extends AsyncWriteJournal {
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
-  private[this] val h2DB = H2DB(context.system)
+  private[this] val h2DB                  = H2DB(context.system)
   private[this] implicit val materializer = Materializer.matFromSystem(context.system)
 
   import context.dispatcher
-  import h2DB.context.{run => runQuery, _}
+  import h2DB.context.{run ⇒ runQuery, _}
 
   // -----------------------------------------------------------------------
   // Schema
@@ -29,11 +29,12 @@ final class H2AkkaJournal extends AsyncWriteJournal {
     @SerialVersionUID(0L)
     final case class DBMessage(persistenceId: String, sequenceNr: Long, ordering: Long, tags: Set[String], message: ByteString)
 
-    implicit val tagsEncoder: Encoder[Set[String]] = encoder(java.sql.Types.ARRAY, (index, value, row) ⇒
-      row.setObject(index, value.toArray, java.sql.Types.ARRAY))
+    implicit val tagsEncoder: Encoder[Set[String]] =
+      encoder(java.sql.Types.ARRAY, (index, value, row) ⇒ row.setObject(index, value.toArray, java.sql.Types.ARRAY))
 
-    implicit val tagsDecoder: Decoder[Set[String]] = decoder(java.sql.Types.ARRAY, (index, row) ⇒
-      row.getArray(index).getArray().asInstanceOf[Array[java.lang.Object]].toSet.asInstanceOf[Set[String]]
+    implicit val tagsDecoder: Decoder[Set[String]] = decoder(
+      java.sql.Types.ARRAY,
+      (index, row) ⇒ row.getArray(index).getArray().asInstanceOf[Array[java.lang.Object]].toSet.asInstanceOf[Set[String]]
     )
 
     implicit val journalRowSchemaMeta = schemaMeta[DBMessage]("sc_akka_journal")
@@ -110,11 +111,13 @@ final class H2AkkaJournal extends AsyncWriteJournal {
     Future.fromTry(Try(runQuery(query)))
   }
 
-  def asyncReplayMessages(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Long)
-                         (recoveryCallback: (PersistentRepr) ⇒ Unit): Future[Unit] = {
+  def asyncReplayMessages(persistenceId: String, fromSequenceNr: Long, toSequenceNr: Long, max: Long)(
+      recoveryCallback: (PersistentRepr) ⇒ Unit
+  ): Future[Unit] = {
     val maxInt = Math.min(max, Int.MaxValue).toInt
     val query = quote {
-      queries.messagesForPersistenceId(persistenceId, fromSequenceNr, toSequenceNr)
+      queries
+        .messagesForPersistenceId(persistenceId, fromSequenceNr, toSequenceNr)
         .take(lift(maxInt))
         .map(_.message)
     }

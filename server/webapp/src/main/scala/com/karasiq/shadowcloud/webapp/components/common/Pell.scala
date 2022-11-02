@@ -24,7 +24,7 @@ class TurndownService(options: js.Dynamic) extends js.Object {
 object Pell {
   abstract class Editor(implicit ac: AppContext) extends BootstrapHtmlComponent {
     val submitting = Var(false)
-    val html = Var("")
+    val html       = Var("")
 
     def onSubmit(): Unit
 
@@ -35,31 +35,34 @@ object Pell {
 
       val options = js.Dynamic.literal(
         element = container,
-        onChange = (s: String) => html() = s
+        onChange = (s: String) ⇒ html() = s
       )
 
-      dom.window.setTimeout(() => {
-        PellJS.init(options)
-        val editor = container.asInstanceOf[js.Dynamic].content.asInstanceOf[dom.Element]
+      dom.window.setTimeout(
+        () ⇒ {
+          PellJS.init(options)
+          val editor = container.asInstanceOf[js.Dynamic].content.asInstanceOf[dom.Element]
 
-        html.trigger {
-          if (editor.innerHTML != html.now)
-            editor.innerHTML = html.now
-        }
-      }, 0)
+          html.trigger {
+            if (editor.innerHTML != html.now)
+              editor.innerHTML = html.now
+          }
+        },
+        0
+      )
 
       div(
         parent,
         Button(ButtonStyle.success, block = true)(
           ac.locale.submit,
-          onclick := Callback.onClick(_ => if (!submitting.now) onSubmit()),
+          onclick := Callback.onClick(_ ⇒ if (!submitting.now) onSubmit()),
           "disabled".classIf(submitting)
         )
       )
     }
   }
 
-  def apply(f: Editor => Unit)(implicit ac: AppContext): Editor = new Editor {
+  def apply(f: Editor ⇒ Unit)(implicit ac: AppContext): Editor = new Editor {
     override def onSubmit(): Unit = f(this)
   }
 

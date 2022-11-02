@@ -10,7 +10,7 @@ private[tika] object TikaUtils {
   val PluginId = "tika"
 
   def getHtmlContent(xhtml: String): String = {
-    val document = Jsoup.parse(xhtml)
+    val document     = Jsoup.parse(xhtml)
     val documentBody = document.body()
     documentBody.html()
   }
@@ -18,7 +18,10 @@ private[tika] object TikaUtils {
   def getHtmlMetaValue(xhtml: String, name: String): Option[String] = {
     import scala.collection.JavaConverters._
     val document = Jsoup.parse(xhtml)
-    val element = document.head().children().asScala
+    val element = document
+      .head()
+      .children()
+      .asScala
       .find(e ⇒ e.tagName() == "meta" && e.attr("name") == name)
     element.map(_.attr("content")).filter(_.nonEmpty)
   }
@@ -44,25 +47,22 @@ private[tika] object TikaUtils {
 
   def parseTimeString(timeString: String): Long = {
     import java.time.ZonedDateTime
-    ZonedDateTime.parse(timeString)
-      .toInstant
-      .toEpochMilli
+    ZonedDateTime.parse(timeString).toInstant.toEpochMilli
   }
 
   object ContentWrapper {
     def apply(parserId: String, textLimit: Int, xhtmlEnabled: Boolean) = {
       new TikaUtils.ContentWrapper(
-        TikaUtils.PluginId, parserId,
+        TikaUtils.PluginId,
+        parserId,
         Some(new BodyContentHandler(textLimit)).filter(_ ⇒ textLimit > 0),
         Some(new ToXMLContentHandler()).filter(_ ⇒ xhtmlEnabled)
       )
     }
   }
 
-  final class ContentWrapper(plugin: String, parser: String,
-                             textHandler: Option[ContentHandler],
-                             xhtmlHandler: Option[ContentHandler]) {
-    private[this] final class TeeContentHandlerWrapper(subHandlers: Seq[ContentHandler]) extends TeeContentHandler(subHandlers:_*) {
+  final class ContentWrapper(plugin: String, parser: String, textHandler: Option[ContentHandler], xhtmlHandler: Option[ContentHandler]) {
+    private[this] final class TeeContentHandlerWrapper(subHandlers: Seq[ContentHandler]) extends TeeContentHandler(subHandlers: _*) {
       override def toString: String = "" // RecursiveParserWrapper fix
     }
 
@@ -76,8 +76,9 @@ private[tika] object TikaUtils {
         handler
           .map(_.toString)
           .filter(TikaUtils.hasContent(_, format))
-          .map(result ⇒ Metadata(Some(Metadata.Tag(plugin, parser, Metadata.Tag.Disposition.CONTENT)),
-            Metadata.Value.Text(Metadata.Text(format, result))))
+          .map(result ⇒
+            Metadata(Some(Metadata.Tag(plugin, parser, Metadata.Tag.Disposition.CONTENT)), Metadata.Value.Text(Metadata.Text(format, result)))
+          )
       }
 
       Seq(

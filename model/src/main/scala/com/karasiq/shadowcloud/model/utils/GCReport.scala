@@ -13,14 +13,13 @@ final case class GCReport(regionId: RegionId, regionState: RegionGCState, storag
 
 object GCReport {
   @SerialVersionUID(0L)
-  final case class RegionGCState(orphanedChunks: Set[Chunk],
-                                 oldFiles: Set[File],
-                                 expiredMetadata: Set[FileId]) extends HasEmpty {
+  final case class RegionGCState(orphanedChunks: Set[Chunk], oldFiles: Set[File], expiredMetadata: Set[FileId]) extends HasEmpty {
 
     def isEmpty: Boolean = orphanedChunks.isEmpty && oldFiles.isEmpty && expiredMetadata.isEmpty
 
     override def toString: String = {
-      s"RegionGCState(orphaned chunks = [${Utils.printChunkHashes(orphanedChunks)}], old files = [${Utils.printValues(oldFiles)}], expired metadata = [${Utils.printValues(expiredMetadata)}])"
+      s"RegionGCState(orphaned chunks = [${Utils
+        .printChunkHashes(orphanedChunks)}], old files = [${Utils.printValues(oldFiles)}], expired metadata = [${Utils.printValues(expiredMetadata)}])"
     }
   }
 

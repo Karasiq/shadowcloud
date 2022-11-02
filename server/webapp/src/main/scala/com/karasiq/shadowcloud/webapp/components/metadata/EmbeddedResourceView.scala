@@ -16,17 +16,21 @@ object EmbeddedResourceView {
 }
 
 class EmbeddedResourceView(path: String, metadatas: Seq[Metadata])(implicit context: AppContext) extends BootstrapHtmlComponent {
-  val opened = Var(false)
+  val opened           = Var(false)
   val selectedMetadata = Var(None: Option[Metadata])
 
   def renderTag(md: ModifierT*): TagT = {
-    val returnToTableLink = AppComponents.iconLink(context.locale.close, AppIcons.close,
-      Bootstrap.textStyle.danger, fontWeight.bold, onclick := Callback.onClick(_ ⇒ selectedMetadata() = None))
+    val returnToTableLink = AppComponents.iconLink(
+      context.locale.close,
+      AppIcons.close,
+      Bootstrap.textStyle.danger,
+      fontWeight.bold,
+      onclick := Callback.onClick(_ ⇒ selectedMetadata() = None)
+    )
 
     div(
       // Link
       AppComponents.dropdownLink(s"$path (${context.locale.entries(metadatas.length)})", opened),
-
       // Content
       Rx[Frag] {
         if (opened()) {

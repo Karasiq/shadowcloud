@@ -18,9 +18,10 @@ private[shadowcloud] final class SCProviderInstantiator(sc: ShadowCloudExtension
   def getInstance[T](pClass: Class[T]): T = {
     def tryCreate(argsClasses: Seq[Class[_]], args: Seq[AnyRef]): Option[T] = {
       try {
-        Some(pClass.getConstructor(argsClasses:_*).newInstance(args:_*))
-      } catch { case _: NoSuchMethodException ⇒
-        None
+        Some(pClass.getConstructor(argsClasses: _*).newInstance(args: _*))
+      } catch {
+        case _: NoSuchMethodException ⇒
+          None
       }
     }
 

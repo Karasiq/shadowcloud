@@ -50,19 +50,27 @@ object AppComponents {
         super.closeButton(onclick := Callback.onClick(_ ⇒ onClose()))
     }.renderTag(md: _*))
 
-  def exportDialog(title: String, fileName: String, content: String, contentType: String = "application/json")(
-      implicit context: AppContext
+  def exportDialog(title: String, fileName: String, content: String, contentType: String = "application/json")(implicit
+      context: AppContext
   ): Modal = {
     def download(): Unit =
       Blobs.saveBlob(Blobs.fromString(content, contentType), fileName)
 
     Modal()
       .withTitle(title)
-      .withBody(FormInput.textArea("", content, rows := 30, readonly, onclick := { (e: MouseEvent) ⇒
-        val textArea = e.target.asInstanceOf[TextArea]
-        textArea.focus()
-        textArea.select()
-      }))
+      .withBody(
+        FormInput.textArea(
+          "",
+          content,
+          rows := 30,
+          readonly,
+          onclick := { (e: MouseEvent) ⇒
+            val textArea = e.target.asInstanceOf[TextArea]
+            textArea.focus()
+            textArea.select()
+          }
+        )
+      )
       .withButtons(
         Button(ButtonStyle.success)(context.locale.downloadFile, onclick := Callback.onClick(_ ⇒ download())),
         AppComponents.modalClose()
@@ -75,28 +83,33 @@ object AppComponents {
       .withTitle(title)
       .withBody(Form(FormInput.textArea("", rows := 30, result.reactiveInput)))
       .withButtons(
-        AppComponents.modalSubmit(result.map(_.isEmpty).reactiveHide, onclick := Callback.onClick { _ ⇒
-          submit(result.now)
-          result.kill()
-        }),
+        AppComponents.modalSubmit(
+          result.map(_.isEmpty).reactiveHide,
+          onclick := Callback.onClick { _ ⇒
+            submit(result.now)
+            result.kill()
+          }
+        ),
         AppComponents.modalClose()
       )
   }
 
   def disabledIf(rx: Rx[Boolean]): Modifier = (t: Element) ⇒ {
-    rx.foreach(
-      value ⇒
-        if (value) t.setAttribute("disabled", "")
-        else t.removeAttribute("disabled")
+    rx.foreach(value ⇒
+      if (value) t.setAttribute("disabled", "")
+      else t.removeAttribute("disabled")
     )
   }
 
   def idSelect(title: String, ids: Iterable[String], selected: Iterable[String] = Nil): (FormSelect, Element) = {
     lazy val select: FormSelect = FormInput.multipleSelect(
-      a(title, onclick := Callback.onClick { _ ⇒
-        if (select.selected.now.toSet == ids.toSet) select.selected() = Nil
-        else select.selected() = ids.toVector
-      }),
+      a(
+        title,
+        onclick := Callback.onClick { _ ⇒
+          if (select.selected.now.toSet == ids.toSet) select.selected() = Nil
+          else select.selected() = ids.toVector
+        }
+      ),
       ids.map(id ⇒ FormSelectOption(id, id)).toVector
     )
     select.selected() = selected.toVector

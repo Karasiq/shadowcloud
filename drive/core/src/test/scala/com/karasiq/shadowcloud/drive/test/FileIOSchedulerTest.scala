@@ -74,16 +74,15 @@ final class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
     flushResult.writes shouldBe Seq(write: ChunkPatch)
     flushResult.ops.sortBy(_.range.start) match {
       case ChunkIOOperation.ChunkRewritten(ChunkRanges.Range(0, 20), oldChunk, chunk) +:
-            ChunkIOOperation.ChunkAppended(ChunkRanges.Range(20, 30), newChunk) +: Nil ⇒
+          ChunkIOOperation.ChunkAppended(ChunkRanges.Range(20, 30), newChunk) +: Nil ⇒
         oldChunk.checksum.size shouldBe 20
         chunk.checksum.size shouldBe 20
         newChunk.checksum.size shouldBe 10
     }
 
-    testChunks {
-      case chunk +: newChunk +: Nil ⇒
-        chunk.checksum.size shouldBe 20
-        newChunk.checksum.size shouldBe 10
+    testChunks { case chunk +: newChunk +: Nil ⇒
+      chunk.checksum.size shouldBe 20
+      newChunk.checksum.size shouldBe 10
     }
 
     testRead(testData ++ zeroes ++ testData)
@@ -102,9 +101,8 @@ final class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
         newChunk.checksum.size shouldBe 40
     }
 
-    testChunks {
-      case newChunk +: Nil ⇒
-        newChunk.checksum.size shouldBe 40
+    testChunks { case newChunk +: Nil ⇒
+      newChunk.checksum.size shouldBe 40
     }
 
     testRead(testData ++ zeroes ++ testData ++ testData)
@@ -122,9 +120,8 @@ final class FileIOSchedulerTest extends SCExtensionSpec with FlatSpecLike {
         newChunk.checksum.size shouldBe 25
     }
 
-    testChunks {
-      case newChunk +: Nil ⇒
-        newChunk.checksum.size shouldBe 25
+    testChunks { case newChunk +: Nil ⇒
+      newChunk.checksum.size shouldBe 25
     }
     testRead(testData ++ zeroes ++ testData.take(5))
   }

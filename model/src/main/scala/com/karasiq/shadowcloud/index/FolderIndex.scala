@@ -10,9 +10,12 @@ import scala.collection.{GenTraversableOnce, mutable}
 
 @SerialVersionUID(0L)
 final case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Folder(Path.root)))
-  extends SCEntity with Mergeable with HasEmpty with HasWithoutData {
+    extends SCEntity
+    with Mergeable
+    with HasEmpty
+    with HasWithoutData {
 
-  type Repr = FolderIndex
+  type Repr     = FolderIndex
   type DiffRepr = FolderIndexDiff
   require(folders.contains(Path.root), "No root directory")
 
@@ -48,8 +51,8 @@ final case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Fold
   def addFolders(folders: GenTraversableOnce[Folder]): FolderIndex = {
     val diffs = folders.toIterator.flatMap { folder ⇒
       val existing = this.folders.get(folder.path)
-      val diff = if (existing.isEmpty) FolderDiff.create(folder) else folder.diff(existing.get)
-      val parent = this.folders.get(folder.path.parent)
+      val diff     = if (existing.isEmpty) FolderDiff.create(folder) else folder.diff(existing.get)
+      val parent   = this.folders.get(folder.path.parent)
       if (folder.path.isRoot || parent.exists(_.folders.contains(folder.path.name))) {
         Iterator.single(diff)
       } else {
@@ -115,12 +118,13 @@ final case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Fold
 
   private[this] def applyDiffs(diffs: GenTraversableOnce[FolderDiff]): FolderIndex = {
     if (diffs.isEmpty) return this
-    
+
     val modified = mutable.AnyRefMap[Path, Folder]()
-    val deleted = mutable.Set[Path]()
+    val deleted  = mutable.Set[Path]()
 
     def getFolder(path: Path) = {
-      modified.get(path)
+      modified
+        .get(path)
         .orElse(this.get(path))
     }
 
@@ -164,7 +168,6 @@ final case class FolderIndex(folders: Map[Path, Folder] = Map(Path.root → Fold
         modified += diff.path → folder.patch(diff)
       }
 
-
       diff.newFolders
         .map(diff.path / _)
         .filterNot(path ⇒ folders.contains(path) || modified.contains(path))
@@ -197,7 +200,9 @@ object FolderIndex {
       Iterator.single(folder) ++ subFolders.flatMap(traverseFolderTreeRec(index, _))
     }
 
-    index.get(path).iterator
+    index
+      .get(path)
+      .iterator
       .flatMap(traverseFolderTreeRec(index, _))
   }
 }

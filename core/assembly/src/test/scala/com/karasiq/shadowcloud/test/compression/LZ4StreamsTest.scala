@@ -11,7 +11,8 @@ class LZ4StreamsTest extends ActorSpec with ActorSpecImplicits with FlatSpecLike
   val testBytes = TestUtils.indexedBytes._1
 
   "LZ4" should "compress bytes" in {
-    val futureCompressed = Source.fromIterator(() ⇒ testBytes.grouped(100))
+    val futureCompressed = Source
+      .fromIterator(() ⇒ testBytes.grouped(100))
       .via(LZ4Streams.compress)
       .via(ByteStreams.concat)
       .runWith(Sink.head)
@@ -19,7 +20,8 @@ class LZ4StreamsTest extends ActorSpec with ActorSpecImplicits with FlatSpecLike
     val compressed = futureCompressed.futureValue
     compressed should not be empty
 
-    val futureUncompressed = Source.fromIterator(() ⇒ compressed.grouped(33))
+    val futureUncompressed = Source
+      .fromIterator(() ⇒ compressed.grouped(33))
       .via(LZ4Streams.decompress)
       .via(ByteStreams.concat)
       .runWith(Sink.head)

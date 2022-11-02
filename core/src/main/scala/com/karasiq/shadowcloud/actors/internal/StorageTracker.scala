@@ -21,7 +21,7 @@ private[actors] final class StorageTracker(implicit context: ActorContext) exten
   // -----------------------------------------------------------------------
   // State
   // -----------------------------------------------------------------------
-  private[this] val sc = ShadowCloud()
+  private[this] val sc           = ShadowCloud()
   private[this] val storagesById = mutable.AnyRefMap[String, RegionStorage]()
   private[this] val storagesByAR = mutable.AnyRefMap[ActorRef, RegionStorage]()
 
@@ -42,7 +42,7 @@ private[actors] final class StorageTracker(implicit context: ActorContext) exten
   def register(storageId: StorageId, props: StorageProps, dispatcher: ActorRef, health: StorageHealth): Unit = {
     context.watch(dispatcher)
     val storage = RegionStorage(storageId, props, sc.configs.storageConfig(storageId, props), dispatcher, health)
-    storagesById += storageId → storage
+    storagesById += storageId  → storage
     storagesByAR += dispatcher → storage
     sc.eventStreams.storage.subscribe(context.self, storageId)
   }
@@ -84,7 +84,7 @@ private[actors] final class StorageTracker(implicit context: ActorContext) exten
   def updateHealth(storageId: StorageId, health: StorageHealth): Unit = {
     storagesById.get(storageId).foreach { storage ⇒
       val newStatus = storage.copy(health = health)
-      storagesById += storageId → newStatus
+      storagesById += storageId          → newStatus
       storagesByAR += storage.dispatcher → newStatus
     }
   }

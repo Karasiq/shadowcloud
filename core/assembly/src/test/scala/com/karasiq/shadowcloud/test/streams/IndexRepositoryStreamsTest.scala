@@ -37,12 +37,13 @@ class IndexRepositoryStreamsTest extends SCExtensionSpec with FlatSpecLike {
   }
 
   private[this] def testRepository(repository: KeyValueRepository): Unit = {
-    val diff = CoreTestUtils.randomDiff
+    val diff           = CoreTestUtils.randomDiff
     val testRepository = RepositoryKeys.toLong(repository)
 
     // Write diff
     val streams = IndexRepositoryStreams("testRegion", CoreTestUtils.storageConfig("testStorage"), system)
-    val (write, writeResult) = TestSource.probe[(Long, IndexData)]
+    val (write, writeResult) = TestSource
+      .probe[(Long, IndexData)]
       .via(streams.write(testRepository))
       .toMat(TestSink.probe)(Keep.both)
       .run()
@@ -59,7 +60,8 @@ class IndexRepositoryStreamsTest extends SCExtensionSpec with FlatSpecLike {
     keys.expectComplete()
 
     // Read diff
-    val (read, readResult) = TestSource.probe[Long]
+    val (read, readResult) = TestSource
+      .probe[Long]
       .via(streams.read(testRepository))
       .toMat(TestSink.probe)(Keep.both)
       .run()
@@ -70,19 +72,21 @@ class IndexRepositoryStreamsTest extends SCExtensionSpec with FlatSpecLike {
     readResult.expectComplete()
 
     // Rewrite error
-    val rewriteResult = Source.single(TestUtils.randomBytes(200))
+    val rewriteResult = Source
+      .single(TestUtils.randomBytes(200))
       .runWith(testRepository.write(diff.time))
 
     whenReady(rewriteResult) { result ⇒
       result.isFailure shouldBe true
     }
 
-    val deleteResult = Source.single(diff.time)
+    val deleteResult = Source
+      .single(diff.time)
       .via(streams.delete(testRepository))
       .runWith(Sink.head)
 
     whenReady(deleteResult) { result ⇒
-      val IndexIOResult(key, _, StorageIOResult.Success(_, count)) = result 
+      val IndexIOResult(key, _, StorageIOResult.Success(_, count)) = result
       key shouldBe diff.time
       count shouldBe diffBytes
       val keys = testRepository.keys.runWith(TestSink.probe)

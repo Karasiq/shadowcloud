@@ -11,8 +11,7 @@ import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 
 private[shadowcloud] object StorageHealthProviders {
-  def fromDirectory(directory: Path, quota: StorageProps.Quota = StorageProps.Quota.empty)
-                   (implicit ec: ExecutionContext): StorageHealthProvider = {
+  def fromDirectory(directory: Path, quota: StorageProps.Quota = StorageProps.Quota.empty)(implicit ec: ExecutionContext): StorageHealthProvider = {
 
     if (quota.isEmpty) {
       // Quickly checks drive free space
@@ -28,6 +27,6 @@ private[shadowcloud] object StorageHealthProviders {
   }
 
   def fromMaps(maps: mutable.Map[_, ByteString]*): StorageHealthProvider = {
-    fromMaps(StorageProps.Quota.empty, maps:_*)
+    fromMaps(StorageProps.Quota.empty, maps: _*)
   }
 }

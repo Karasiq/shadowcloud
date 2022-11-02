@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.sign
 
-
-
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.BCDigests
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.RSAUtils

@@ -126,10 +126,11 @@ class VirtualFSDispatcher(config: SCDriveConfig) extends Actor with ActorLogging
         for {
           regions ← sc.ops.supervisor.getSnapshot()
           regionIsActive = regions.regions.get(regionId).exists(_.actorState.isActive)
-          folder ← if (regionIsActive)
-            sc.ops.region.getFolder(regionId, regionPath)
-          else
-            Future.successful(Folder.create(regionPath))
+          folder ←
+            if (regionIsActive)
+              sc.ops.region.getFolder(regionId, regionPath)
+            else
+              Future.successful(Folder.create(regionPath))
           files ← Future.sequence(virtualFiles)
           fileNameSet = files.flatten.map(_.path.name).toSet
         } yield folder.copy(files = folder.files.filterNot(f ⇒ fileNameSet.contains(f.path.name)) ++ files.flatten)

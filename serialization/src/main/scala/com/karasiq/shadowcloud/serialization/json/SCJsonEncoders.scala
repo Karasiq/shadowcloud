@@ -34,12 +34,11 @@ trait SCJsonEncoders {
   implicit val symmetricEncryptionParametersFormat  = Json.format[SymmetricEncryptionParameters]
   implicit val asymmetricEncryptionParametersFormat = Json.format[AsymmetricEncryptionParameters]
   implicit val encryptionParametersFormat = Format[EncryptionParameters](
-    Reads(
-      value ⇒
-        (value \ "_key_type").as[String] match {
-          case "symmetric"  ⇒ symmetricEncryptionParametersFormat.reads(value)
-          case "asymmetric" ⇒ asymmetricEncryptionParametersFormat.reads(value)
-        }
+    Reads(value ⇒
+      (value \ "_key_type").as[String] match {
+        case "symmetric"  ⇒ symmetricEncryptionParametersFormat.reads(value)
+        case "asymmetric" ⇒ asymmetricEncryptionParametersFormat.reads(value)
+      }
     ),
     Writes {
       case s: SymmetricEncryptionParameters   ⇒ symmetricEncryptionParametersFormat.writes(s) + ("_key_type"   → JsString("symmetric"))

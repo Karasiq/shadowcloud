@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.config
 
-
-
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.model.crypto.{HashingMethod, SignMethod}
 import com.typesafe.config.{Config, ConfigException}
@@ -19,9 +17,10 @@ object SigningConfig extends WrappedConfigFactory[SigningConfig] with ConfigImpl
   private[this] def getSignMethod(config: Config, path: String): SignMethod = {
     try {
       CryptoProps.signing(config.getConfigOrRef(path))
-    } catch { case _: ConfigException.Missing ⇒
-      val alg = config.getString(path)
-      SignMethod(alg, HashingMethod.default)
+    } catch {
+      case _: ConfigException.Missing ⇒
+        val alg = config.getString(path)
+        SignMethod(alg, HashingMethod.default)
     }
   }
 }

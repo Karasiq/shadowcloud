@@ -11,6 +11,5 @@ private[drive] sealed trait PendingChunkIO {
 
 private[drive] object PendingChunkIO {
   final case class Rewrite(range: ChunkRanges.Range, chunk: Chunk, patches: ChunkPatchList) extends PendingChunkIO
-  final case class Append(range: ChunkRanges.Range, newData: ByteString) extends PendingChunkIO
+  final case class Append(range: ChunkRanges.Range, newData: ByteString)                    extends PendingChunkIO
 }
-

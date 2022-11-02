@@ -10,10 +10,9 @@ object RxWithUpdate {
   }
 }
 
-class RxWithUpdate[T](initial: T, getValue: T ⇒ Future[T])
-                     (implicit ctx: Ctx.Owner, ec: ExecutionContext) extends HasUpdate {
+class RxWithUpdate[T](initial: T, getValue: T ⇒ Future[T])(implicit ctx: Ctx.Owner, ec: ExecutionContext) extends HasUpdate {
 
-  final val counter = Var(0)
+  final val counter         = Var(0)
   protected final val value = Var(initial)
 
   counter.trigger {

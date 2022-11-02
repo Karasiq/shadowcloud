@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.test.crypto
 
-
-
 import com.karasiq.shadowcloud.crypto.SignModule
 import com.karasiq.shadowcloud.model.crypto.{HashingMethod, SignMethod}
 import com.karasiq.shadowcloud.test.utils.CoreTestUtils.modules
@@ -9,7 +7,7 @@ import com.karasiq.shadowcloud.test.utils.TestUtils
 import org.scalatest.{FlatSpec, Matchers}
 
 class SignModuleTest extends FlatSpec with Matchers {
-   val hashingMethod = HashingMethod("SHA-512")
+  val hashingMethod = HashingMethod("SHA-512")
 
   runTest("RSA", 1024)
 
@@ -30,21 +28,21 @@ class SignModuleTest extends FlatSpec with Matchers {
   }
 
   private[this] def testSignature(module: SignModule): Unit = {
-    val data = TestUtils.randomBytes(100)
+    val data       = TestUtils.randomBytes(100)
     val parameters = module.createParameters()
-    val signature = module.sign(data, parameters)
+    val signature  = module.sign(data, parameters)
     module.verify(data, signature, parameters) shouldBe true
   }
 
   private[this] def runCrossTest(method1: SignMethod, method2: SignMethod): Unit = {
     def toString(m: SignMethod) = s"${m.provider.capitalize} (${m.algorithm})"
-    val module1 = modules.crypto.signModule(method1)
-    val module2 = modules.crypto.signModule(method2)
+    val module1                 = modules.crypto.signModule(method1)
+    val module2                 = modules.crypto.signModule(method2)
     s"${toString(method1)}" should s"create compatible signature for ${toString(method2)}" in {
-      val data = TestUtils.randomBytes(100)
+      val data       = TestUtils.randomBytes(100)
       val parameters = module1.createParameters()
-      val signature = module1.sign(data, parameters)
-      val result = module2.verify(data, signature, parameters)
+      val signature  = module1.sign(data, parameters)
+      val result     = module2.verify(data, signature, parameters)
       result shouldBe true
     }
   }

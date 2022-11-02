@@ -38,12 +38,12 @@ class ImageIOMetadataProviderTest extends ActorSpec with ActorSpecImplicits with
       .via(thumbnailCreator.parseMetadata(name, s"image/$imageType"))
       .runWith(TestSink.probe)
 
-    val imageData = testStream.requestNext(5 seconds)
+    val imageData      = testStream.requestNext(5 seconds)
     val imageDataValue = imageData.value.imageData.get
     imageDataValue.width shouldBe width
     imageDataValue.height shouldBe height
 
-    val thumb = testStream.requestNext(5 seconds)
+    val thumb      = testStream.requestNext(5 seconds)
     val thumbImage = extractThumbnail(thumb)
     thumbImage.getWidth shouldBe tWidth
     thumbImage.getHeight shouldBe tHeight
@@ -57,7 +57,8 @@ class ImageIOMetadataProviderTest extends ActorSpec with ActorSpecImplicits with
   }
 
   private[this] def createResourceStream(name: String): Source[ByteString, NotUsed] = {
-    StreamConverters.fromInputStream(() ⇒ getClass.getClassLoader.getResourceAsStream(name))
+    StreamConverters
+      .fromInputStream(() ⇒ getClass.getClassLoader.getResourceAsStream(name))
       .mapMaterializedValue(_ ⇒ NotUsed)
   }
 

@@ -1,12 +1,9 @@
 package com.karasiq.shadowcloud.model.crypto
 
-
-
 import com.karasiq.shadowcloud.config.SerializedProps
 
 @SerialVersionUID(0L)
-final case class HashingMethod(algorithm: String, config: SerializedProps = SerializedProps.empty,
-                               provider: String = "") extends CryptoMethod {
+final case class HashingMethod(algorithm: String, config: SerializedProps = SerializedProps.empty, provider: String = "") extends CryptoMethod {
 
   @transient
   private[this] lazy val _hashCode = scala.util.hashing.MurmurHash3.productHash(this)
@@ -25,6 +22,6 @@ final case class HashingMethod(algorithm: String, config: SerializedProps = Seri
 }
 
 object HashingMethod {
-  val none = HashingMethod("")
+  val none    = HashingMethod("")
   val default = HashingMethod("Blake2b")
 }

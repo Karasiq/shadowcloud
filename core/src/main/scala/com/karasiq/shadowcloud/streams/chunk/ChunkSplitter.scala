@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.streams.chunk
 
-
-
 import akka.NotUsed
 import akka.stream.scaladsl.Flow
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
@@ -16,15 +14,14 @@ private[shadowcloud] object ChunkSplitter {
   }
 }
 
-/**
-  * Splits input data to fixed size chunks
+/** Splits input data to fixed size chunks
   * @param chunkSize Output chunk size
   */
 private[shadowcloud] final class ChunkSplitter(chunkSize: Int) extends GraphStage[FlowShape[ByteString, Chunk]] {
   require(chunkSize > 0)
-  val inBytes = Inlet[ByteString]("FileSplitter.inBytes")
+  val inBytes   = Inlet[ByteString]("FileSplitter.inBytes")
   val outChunks = Outlet[Chunk]("FileSplitter.outChunks")
-  val shape = FlowShape(inBytes, outChunks)
+  val shape     = FlowShape(inBytes, outChunks)
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
     private[this] var buffer = ByteString.empty

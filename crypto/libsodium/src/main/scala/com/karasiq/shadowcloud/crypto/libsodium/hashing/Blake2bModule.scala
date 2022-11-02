@@ -22,18 +22,21 @@ private[libsodium] object Blake2bModule {
   private case class DigestOptions(method: HashingMethod) {
     import ConfigImplicits._
     private[this] val config = ConfigProps.toConfig(method.config)
-    val digestSize = config.withDefault(256, _.getInt("digest-size"))
-    val digestKey = config.withDefault(ByteString.empty, _.getHexString("digest-key"))
+    val digestSize           = config.withDefault(256, _.getInt("digest-size"))
+    val digestKey            = config.withDefault(ByteString.empty, _.getHexString("digest-key"))
 
-    require(digestKey.isEmpty || (digestKey.length >= NaCl.Sodium.CRYPTO_GENERICHASH_KEYBYTES_MIN &&
-      digestKey.length <= NaCl.Sodium.CRYPTO_GENERICHASH_KEYBYTES_MAX), "Invalid digest key")
+    require(
+      digestKey.isEmpty || (digestKey.length >= NaCl.Sodium.CRYPTO_GENERICHASH_KEYBYTES_MIN &&
+        digestKey.length <= NaCl.Sodium.CRYPTO_GENERICHASH_KEYBYTES_MAX),
+      "Invalid digest key"
+    )
   }
 }
 
 private[libsodium] final class Blake2bModule(options: DigestOptions) extends StreamHashingModule {
-  val method: HashingMethod = options.method
+  val method: HashingMethod  = options.method
   private[this] val outBytes = options.digestSize / 8
-  private[this] val sodium = NaCl.sodium()
+  private[this] val sodium   = NaCl.sodium()
 
   def createStreamer(): HashingModuleStreamer = {
     new Blake2bStreamer
@@ -42,9 +45,12 @@ private[libsodium] final class Blake2bModule(options: DigestOptions) extends Str
   def createHash(data: ByteString): ByteString = {
     val outArray = new Array[Byte](outBytes)
     sodium.crypto_generichash(
-      outArray, outArray.length,
-      ByteStringUnsafe.getArray(data), data.length,
-      ByteStringUnsafe.getArray(options.digestKey), options.digestKey.length
+      outArray,
+      outArray.length,
+      ByteStringUnsafe.getArray(data),
+      data.length,
+      ByteStringUnsafe.getArray(options.digestKey),
+      options.digestKey.length
     )
     ByteString.fromArrayUnsafe(outArray)
   }

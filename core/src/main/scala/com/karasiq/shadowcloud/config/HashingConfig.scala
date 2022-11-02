@@ -1,14 +1,16 @@
 package com.karasiq.shadowcloud.config
 
-
-
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.model.crypto.HashingMethod
 import com.typesafe.config.{Config, ConfigException}
 
-private[shadowcloud] case class HashingConfig(rootConfig: Config, chunks: HashingMethod,
-                                              chunksEncrypted: HashingMethod, files: HashingMethod,
-                                              filesEncrypted: HashingMethod) extends WrappedConfig
+private[shadowcloud] case class HashingConfig(
+    rootConfig: Config,
+    chunks: HashingMethod,
+    chunksEncrypted: HashingMethod,
+    files: HashingMethod,
+    filesEncrypted: HashingMethod
+) extends WrappedConfig
 
 private[shadowcloud] object HashingConfig extends WrappedConfigFactory[HashingConfig] with ConfigImplicits {
   def apply(config: Config): HashingConfig = {
@@ -24,9 +26,10 @@ private[shadowcloud] object HashingConfig extends WrappedConfigFactory[HashingCo
   private[this] def getHashingMethod(config: Config, path: String): HashingMethod = {
     try {
       CryptoProps.hashing(config.getConfigOrRef(path))
-    } catch { case _: ConfigException.Missing ⇒
-      val alg = config.getString(path)
-      HashingMethod(alg)
+    } catch {
+      case _: ConfigException.Missing ⇒
+        val alg = config.getString(path)
+        HashingMethod(alg)
     }
   }
 }

@@ -24,7 +24,7 @@ private[shadowcloud] object IndexSerialization {
   }
 }
 
-private[shadowcloud] final class DefaultIndexSerialization(implicit sc: ShadowCloudExtension) extends IndexSerialization  {
+private[shadowcloud] final class DefaultIndexSerialization(implicit sc: ShadowCloudExtension) extends IndexSerialization {
   def wrapIndexFrame(data: IndexData): SerializedIndexData = {
     val format = sc.config.serialization.indexFormat
     val bytes = format match {

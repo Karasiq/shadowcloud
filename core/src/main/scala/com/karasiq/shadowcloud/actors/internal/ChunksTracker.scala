@@ -21,10 +21,9 @@ import com.karasiq.shadowcloud.storage.replication.ChunkStatusProvider.{ChunkSta
 import com.karasiq.shadowcloud.storage.replication.RegionStorageProvider.RegionStorage
 import com.karasiq.shadowcloud.utils.{ChunkUtils, Utils}
 
-
 private[actors] object ChunksTracker {
-  def apply(regionId: RegionId, config: RegionConfig, storageTracker: StorageTracker, scheduleRetry: () ⇒ Unit)(
-      implicit context: ActorContext,
+  def apply(regionId: RegionId, config: RegionConfig, storageTracker: StorageTracker, scheduleRetry: () ⇒ Unit)(implicit
+      context: ActorContext,
       sc: ShadowCloudExtension
   ): ChunksTracker = {
     new ChunksTracker(regionId, config, storageTracker, scheduleRetry)
@@ -34,8 +33,8 @@ private[actors] object ChunksTracker {
 }
 
 // Internal region logic
-private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConfig, storageTracker: StorageTracker, scheduleRetry: () ⇒ Unit)(
-    implicit context: ActorContext,
+private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConfig, storageTracker: StorageTracker, scheduleRetry: () ⇒ Unit)(implicit
+    context: ActorContext,
     sc: ShadowCloudExtension
 ) {
   import context.dispatcher
@@ -151,8 +150,8 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
       }
     }
 
-    def repairChunk(chunk: Chunk, newAffinity: Option[ChunkWriteAffinity], receiver: ActorRef)(
-        implicit storageSelector: StorageSelector
+    def repairChunk(chunk: Chunk, newAffinity: Option[ChunkWriteAffinity], receiver: ActorRef)(implicit
+        storageSelector: StorageSelector
     ): Option[ChunkStatus] = {
 
       val available = storageSelector.available(chunk.checksum.encSize).map(_.id).toSet
@@ -288,12 +287,11 @@ private[actors] final class ChunksTracker(regionId: RegionId, config: RegionConf
         status
       } else {
         log.debug("Writing chunk to {}: {}", writtenStorages, status.chunk)
-        writes.foreach {
-          case (storage, future) ⇒
-            future
-              .map(ChunkWriteSuccess(storage.id, _))
-              .recover { case error ⇒ ChunkWriteFailed(storage.id, status.chunk, error) }
-              .pipeTo(context.self)
+        writes.foreach { case (storage, future) ⇒
+          future
+            .map(ChunkWriteSuccess(storage.id, _))
+            .recover { case error ⇒ ChunkWriteFailed(storage.id, status.chunk, error) }
+            .pipeTo(context.self)
         }
         storages.state.markAsWriting(status, writtenStorages.map(_.id): _*)
       }

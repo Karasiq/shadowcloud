@@ -6,13 +6,13 @@ trait LifecycleHook {
 }
 
 object LifecycleHook {
-  def initialize(f: => Unit): LifecycleHook = new LifecycleHook {
+  def initialize(f: ⇒ Unit): LifecycleHook = new LifecycleHook {
     override def initialize(): Unit = f
-    override def shutdown(): Unit = ()
+    override def shutdown(): Unit   = ()
   }
 
-  def shutdown(f: => Unit): LifecycleHook = new LifecycleHook {
+  def shutdown(f: ⇒ Unit): LifecycleHook = new LifecycleHook {
     override def initialize(): Unit = ()
-    override def shutdown(): Unit = f
+    override def shutdown(): Unit   = f
   }
 }

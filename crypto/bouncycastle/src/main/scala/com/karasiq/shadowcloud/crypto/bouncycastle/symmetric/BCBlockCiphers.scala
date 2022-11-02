@@ -21,20 +21,21 @@ private[bouncycastle] object BCBlockCiphers {
 
   private[this] val blockCipherSpecs = {
     def baseCipher(_algorithm: String, _createInstance: ⇒ BlockCipher, _keySize: Int, _blockSize: Int): BlockCipherSpec = new BlockCipherSpec {
-      def algorithm: String = _algorithm
-      def createInstance(): BlockCipher = _createInstance
+      def algorithm: String                                        = _algorithm
+      def createInstance(): BlockCipher                            = _createInstance
       def createInstanceWithBlockSize(blockSize: Int): BlockCipher = throw new NotImplementedError()
-      def keySize: Int = _keySize
-      def blockSize: Int = _blockSize
+      def keySize: Int                                             = _keySize
+      def blockSize: Int                                           = _blockSize
     }
 
-    def tweakableCipher(_algorithm: String, _createInstance: Int ⇒ BlockCipher, _keySize: Int, _blockSize: Int): BlockCipherSpec = new BlockCipherSpec {
-      def algorithm: String = _algorithm
-      def createInstance(): BlockCipher = createInstanceWithBlockSize(this.blockSize)
-      def createInstanceWithBlockSize(blockSize: Int): BlockCipher = _createInstance(blockSize)
-      def keySize: Int = _keySize
-      def blockSize: Int = _blockSize
-    }
+    def tweakableCipher(_algorithm: String, _createInstance: Int ⇒ BlockCipher, _keySize: Int, _blockSize: Int): BlockCipherSpec =
+      new BlockCipherSpec {
+        def algorithm: String                                        = _algorithm
+        def createInstance(): BlockCipher                            = createInstanceWithBlockSize(this.blockSize)
+        def createInstanceWithBlockSize(blockSize: Int): BlockCipher = _createInstance(blockSize)
+        def keySize: Int                                             = _keySize
+        def blockSize: Int                                           = _blockSize
+      }
 
     // https://www.bouncycastle.org/specifications.html
     // (\w+)Engine\t(?:[0 ,..]+)?([\d]+)(?:[\d ,..]+)?\t(\d+)(?:.*) => baseCipher("$1", new $1Engine, $2, $3),
@@ -74,7 +75,7 @@ private[bouncycastle] object BCBlockCiphers {
 
   val algorithms: Set[String] = blockCipherSpecs.keySet
   val blockModes: Set[String] = Set("CBC", "CFB", "OFB", "CTR")
-  val aeadModes: Set[String] = Set("GCM", "CCM", "EAX", "OCB")
+  val aeadModes: Set[String]  = Set("GCM", "CCM", "EAX", "OCB")
 
   val blockAlgorithms: Set[String] =
     for (alg ← algorithms; mode ← blockModes)
@@ -92,8 +93,7 @@ private[bouncycastle] object BCBlockCiphers {
     aeadAlgorithms.contains(algorithm)
   }
 
-  /**
-    * @see [[org.bouncycastle.jce.provider.BouncyCastleProvider#SYMMETRIC_CIPHERS]]
+  /** @see [[org.bouncycastle.jce.provider.BouncyCastleProvider#SYMMETRIC_CIPHERS]]
     *     [[https://www.bouncycastle.org/specifications.html]]
     */
   def createBaseEngine(algorithm: String, blockSize: Option[Int] = None): BlockCipher = {
@@ -141,7 +141,7 @@ private[bouncycastle] object BCBlockCiphers {
 
   def getAeadMacSize(algorithm: String, blockSize: Option[Int] = None): Int = {
     val (baseAlgorithm, mode) = BCUtils.algorithmAndMode(algorithm)
-    val cipherBlockBits = blockSize.getOrElse(getBlockSize(baseAlgorithm))
+    val cipherBlockBits       = blockSize.getOrElse(getBlockSize(baseAlgorithm))
     mode match {
       case "CCM" | "EAX" ⇒
         cipherBlockBits / 2

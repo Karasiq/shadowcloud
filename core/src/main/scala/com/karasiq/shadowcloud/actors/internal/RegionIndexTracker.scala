@@ -21,21 +21,19 @@ import com.karasiq.shadowcloud.storage.utils.IndexMerger.RegionKey
 import com.karasiq.shadowcloud.utils.Utils
 
 private[actors] object RegionIndexTracker {
-  def apply(regionId: RegionId, chunksTracker: ChunksTracker)
-           (implicit sc: ShadowCloudExtension): RegionIndexTracker = {
+  def apply(regionId: RegionId, chunksTracker: ChunksTracker)(implicit sc: ShadowCloudExtension): RegionIndexTracker = {
     new RegionIndexTracker(regionId, chunksTracker)
   }
 }
 
-private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker: ChunksTracker)
-                                              (implicit sc: ShadowCloudExtension) {
+private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker: ChunksTracker)(implicit sc: ShadowCloudExtension) {
   import sc.implicits.{defaultTimeout, executionContext}
 
   // -----------------------------------------------------------------------
   // Context
   // -----------------------------------------------------------------------
   private[this] val log = Logging(sc.implicits.actorSystem, s"$regionId-index")
-  val globalIndex = IndexMerger.region()
+  val globalIndex       = IndexMerger.region()
 
   // -----------------------------------------------------------------------
   // Storages
@@ -43,8 +41,9 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
   object storages {
     object state {
       def extractDiffs(storageId: StorageId): Seq[(SequenceNr, IndexDiff)] = {
-        val diffs = for ((RegionKey(_, `storageId`, sequenceNr), diff) ← globalIndex.diffs)
-          yield (sequenceNr, diff)
+        val diffs =
+          for ((RegionKey(_, `storageId`, sequenceNr), diff) ← globalIndex.diffs)
+            yield (sequenceNr, diff)
         diffs.toVector
       }
 
@@ -90,8 +89,10 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
       }
 
       def getIndex(storage: RegionStorage): Future[IndexMerger.State[SequenceNr]] = {
-        RegionIndex.GetIndex.unwrapFuture(storage.dispatcher ?
-          StorageIndex.Envelope(regionId, RegionIndex.GetIndex))
+        RegionIndex.GetIndex.unwrapFuture(
+          storage.dispatcher ?
+            StorageIndex.Envelope(regionId, RegionIndex.GetIndex)
+        )
       }
 
       def writeIndex(storage: RegionStorage, diff: IndexDiff): Unit = {
@@ -106,8 +107,7 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
           log.warning("No index storages available on {}", regionId)
         } else {
           if (log.isDebugEnabled) {
-            log.debug("Writing to virtual region [{}] index: {} (storages = [{}])",
-              regionId, diff, Utils.printValues(storages.map(_.id)))
+            log.debug("Writing to virtual region [{}] index: {} (storages = [{}])", regionId, diff, Utils.printValues(storages.map(_.id)))
           }
 
           storages.foreach(_.dispatcher ! StorageIndex.Envelope(regionId, WriteDiff(diff)))
@@ -163,7 +163,8 @@ private[actors] final class RegionIndexTracker(regionId: RegionId, chunksTracker
 
     def getFileAvailability(file: File): FileAvailability = {
       val chunkStoragePairs = file.chunks.flatMap { chunk ⇒
-        chunksTracker.chunks.getChunkStatus(chunk)
+        chunksTracker.chunks
+          .getChunkStatus(chunk)
           .toSeq
           .flatMap(_.availability.hasChunk)
           .map(_ → chunk)

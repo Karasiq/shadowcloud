@@ -2,7 +2,7 @@ package com.karasiq.shadowcloud.actors.internal
 
 import akka.actor.ActorContext
 import com.karasiq.shadowcloud.ShadowCloud
-import com.karasiq.shadowcloud.actors.utils.{ActorState => State}
+import com.karasiq.shadowcloud.actors.utils.{ActorState ⇒ State}
 import com.karasiq.shadowcloud.actors.{RegionContainer, RegionDispatcher, StorageContainer, StorageIndex}
 import com.karasiq.shadowcloud.config.RegionConfig
 import com.karasiq.shadowcloud.model.utils.StorageHealth
@@ -157,16 +157,18 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
   // -----------------------------------------------------------------------
   def deleteRegion(regionId: RegionId): RegionStatus = {
     require(containsRegion(regionId))
-    storages.foreach {
-      case (storageId, storage) ⇒
-        if (storage.regions.contains(regionId))
-          storages += storageId → storage.copy(regions = storage.regions - regionId)
+    storages.foreach { case (storageId, storage) ⇒
+      if (storage.regions.contains(regionId))
+        storages += storageId → storage.copy(regions = storage.regions - regionId)
     }
     val status = regions.remove(regionId).get
-    State.ifActive(status.actorState, { dispatcher ⇒
-      context.unwatch(dispatcher)
-      context.stop(dispatcher)
-    })
+    State.ifActive(
+      status.actorState,
+      { dispatcher ⇒
+        context.unwatch(dispatcher)
+        context.stop(dispatcher)
+      }
+    )
     status.storages.flatMap(storages.get).foreach { storage ⇒
       State.ifActive(storage.actorState, _ ! StorageIndex.CloseIndex(regionId, clear = true))
     }
@@ -175,26 +177,33 @@ private[actors] final class RegionTracker(implicit context: ActorContext) {
 
   def deleteStorage(storageId: StorageId): StorageStatus = {
     require(containsStorage(storageId))
-    regions.foreach {
-      case (regionId, region) ⇒
-        if (region.storages.contains(storageId)) {
-          regions += regionId → region.copy(storages = region.storages - storageId)
-          State.ifActive(region.actorState, _ ! RegionDispatcher.DetachStorage(storageId))
-        }
+    regions.foreach { case (regionId, region) ⇒
+      if (region.storages.contains(storageId)) {
+        regions += regionId → region.copy(storages = region.storages - storageId)
+        State.ifActive(region.actorState, _ ! RegionDispatcher.DetachStorage(storageId))
+      }
     }
     val status = storages.remove(storageId).get
-    State.ifActive(status.actorState, { dispatcher ⇒
-      context.unwatch(dispatcher)
-      context.stop(dispatcher)
-    })
+    State.ifActive(
+      status.actorState,
+      { dispatcher ⇒
+        context.unwatch(dispatcher)
+        context.stop(dispatcher)
+      }
+    )
     status
   }
 
   def clear(): Unit = {
-    (regions.values.map(_.actorState) ++ storages.values.map(_.actorState)).foreach(State.ifActive(_, { dispatcher ⇒
-      context.unwatch(dispatcher)
-      context.stop(dispatcher)
-    }))
+    (regions.values.map(_.actorState) ++ storages.values.map(_.actorState)).foreach(
+      State.ifActive(
+        _,
+        { dispatcher ⇒
+          context.unwatch(dispatcher)
+          context.stop(dispatcher)
+        }
+      )
+    )
     regions.clear()
     storages.clear()
   }

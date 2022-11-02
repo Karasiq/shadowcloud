@@ -15,8 +15,8 @@ import com.karasiq.taboverridejs.TabOverride
 
 object AppContext {
   implicit val JsExecutionContext = scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-  val BootstrapContext = Bootstrap.default
-  val CssSettings = scalacss.devOrProdDefaults
+  val BootstrapContext            = Bootstrap.default
+  val CssSettings                 = scalacss.devOrProdDefaults
 
   def apply(): AppContext = {
     new DefaultAppContext()
@@ -52,8 +52,8 @@ trait AppContext {
 }
 
 class DefaultAppContext extends AppContext {
-  lazy val api = AjaxApi
-  lazy val locale: AppLocale = AppLocale.forCode(Option(dom.window.navigator.language).getOrElse("en"))
-  lazy val timeFormat: TimeFormat = TimeFormat.forLocale("en" /* locale.languageCode*/)
-  lazy val styles = Seq(FolderTreeStyles)
+  lazy val api                    = AjaxApi
+  lazy val locale: AppLocale      = AppLocale.forCode(Option(dom.window.navigator.language).getOrElse("en"))
+  lazy val timeFormat: TimeFormat = TimeFormat.forLocale("en" /* locale.languageCode*/ )
+  lazy val styles                 = Seq(FolderTreeStyles)
 }

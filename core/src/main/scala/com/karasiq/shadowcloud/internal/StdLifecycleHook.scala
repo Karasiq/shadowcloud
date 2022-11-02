@@ -15,16 +15,16 @@ private class StdLifecycleHook(sc: ShadowCloudExtension) extends LifecycleHook {
     import sc.implicits.executionContext
 
     val syncFuture = if (sc.config.misc.syncOnExit) {
-     for {
-       regions <- sc.ops.supervisor.getSnapshot()
-       _ <- Future.sequence(
-         regions.regions.filter(_._2.actorState.isInstanceOf[ActorState.Active]).keys.map(regionId => sc.ops.region.synchronize(regionId))
-       )
-     } yield Done
+      for {
+        regions ← sc.ops.supervisor.getSnapshot()
+        _ ← Future.sequence(
+          regions.regions.filter(_._2.actorState.isInstanceOf[ActorState.Active]).keys.map(regionId ⇒ sc.ops.region.synchronize(regionId))
+        )
+      } yield Done
     } else Future.successful(Done)
 
     val future = for {
-      _ <- syncFuture
+      _ ← syncFuture
       _ = sc.implicits.actorSystem.stop(sc.actors.regionSupervisor)
     } yield NotUsed
 

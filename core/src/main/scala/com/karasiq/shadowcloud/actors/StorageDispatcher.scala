@@ -78,9 +78,8 @@ private final class StorageDispatcher(
     .queue[(ChunkPath, Chunk)](sc.config.queues.chunksIndex, OverflowStrategy.dropNew)
     .via(AkkaStreamUtils.groupedOrInstant(sc.config.queues.chunksIndex, sc.config.queues.chunksIndexTime))
     .filter(_.nonEmpty)
-    .mapConcat(_.groupBy(_._1.regionId).map {
-      case (regionId, chunks) ⇒
-        StorageIndex.Envelope(regionId, RegionIndex.WriteDiff(IndexDiff.newChunks(chunks.map(_._2): _*)))
+    .mapConcat(_.groupBy(_._1.regionId).map { case (regionId, chunks) ⇒
+      StorageIndex.Envelope(regionId, RegionIndex.WriteDiff(IndexDiff.newChunks(chunks.map(_._2): _*)))
     })
     .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
     .to(Sink.actorRef(index, Status.Failure(new IllegalStateException("Queue stopped"))))

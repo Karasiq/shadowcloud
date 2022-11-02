@@ -15,14 +15,14 @@ private[drive] object WritesOptimizeStage {
 }
 
 private[drive] class WritesOptimizeStage(chunkSize: Long) extends GraphStage[FlowShape[PendingChunkIO, PendingChunkIO]] {
-  val inlet = Inlet[PendingChunkIO]("WritesFoldStage.in")
+  val inlet  = Inlet[PendingChunkIO]("WritesFoldStage.in")
   val outlet = Outlet[PendingChunkIO]("WritesFoldStage.out")
-  val shape = FlowShape(inlet, outlet)
+  val shape  = FlowShape(inlet, outlet)
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with InHandler with OutHandler {
-    var appendOffset = 0L
+    var appendOffset  = 0L
     var currentOffset = 0L
-    var appendBuffer = ByteString.empty
+    var appendBuffer  = ByteString.empty
 
     def addAppendBytes(bs: ByteString): Unit = {
       if (appendBuffer.isEmpty) appendOffset = currentOffset
@@ -34,7 +34,7 @@ private[drive] class WritesOptimizeStage(chunkSize: Long) extends GraphStage[Flo
       if (appendBuffer.isEmpty || appendBuffer.length < threshold) return
 
       val (drop, keep) = appendBuffer.splitAt(splitSize)
-      val appendOp = PendingChunkIO.Append(ChunkRanges.Range(appendOffset, appendOffset + drop.length), drop)
+      val appendOp     = PendingChunkIO.Append(ChunkRanges.Range(appendOffset, appendOffset + drop.length), drop)
       appendBuffer = keep
       appendOffset += drop.length
 
@@ -53,7 +53,8 @@ private[drive] class WritesOptimizeStage(chunkSize: Long) extends GraphStage[Flo
     def onPush(): Unit = {
       val element = grab(inlet)
       element match {
-        case PendingChunkIO.Rewrite(range, _, patches) if element.range.start == currentOffset && range.size < chunkSize && patches.canReplace(range.size) ⇒
+        case PendingChunkIO.Rewrite(range, _, patches)
+            if element.range.start == currentOffset && range.size < chunkSize && patches.canReplace(range.size) ⇒
           addAppendBytes(patches.toBytes(range.size.toInt))
           emitFullAppends()
 
@@ -74,8 +75,7 @@ private[drive] class WritesOptimizeStage(chunkSize: Long) extends GraphStage[Flo
       emitAppends()
       super.onUpstreamFinish()
     }
-    
+
     setHandlers(inlet, outlet, this)
   }
 }
-

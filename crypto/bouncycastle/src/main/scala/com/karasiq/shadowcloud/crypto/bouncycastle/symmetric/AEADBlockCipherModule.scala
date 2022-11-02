@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.symmetric
 
-
-
 import akka.util.ByteString
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.config.ConfigProps
@@ -39,10 +37,10 @@ private[bouncycastle] object AEADBlockCipherModule {
   private case class AEADCipherOptions(method: EncryptionMethod) {
     import ConfigImplicits._
     private[this] val config = ConfigProps.toConfig(method.config)
-    val customBlockSize = config.optional(_.getInt("block-size"))
-    val nonceSize = config.withDefault(BCBlockCiphers.getNonceSize(method.algorithm, customBlockSize), _.getInt("nonce-size"))
-    val additionalDataSize = config.withDefault(0, _.getInt("ad-size"))
-    val macSize = config.withDefault(BCBlockCiphers.getAeadMacSize(method.algorithm, customBlockSize), _.getInt("mac-size"))
+    val customBlockSize      = config.optional(_.getInt("block-size"))
+    val nonceSize            = config.withDefault(BCBlockCiphers.getNonceSize(method.algorithm, customBlockSize), _.getInt("nonce-size"))
+    val additionalDataSize   = config.withDefault(0, _.getInt("ad-size"))
+    val macSize              = config.withDefault(BCBlockCiphers.getAeadMacSize(method.algorithm, customBlockSize), _.getInt("mac-size"))
   }
 
   private def toAEADParameters(parameters: EncryptionParameters): AEADParameters = {
@@ -51,12 +49,13 @@ private[bouncycastle] object AEADBlockCipherModule {
     @inline
     def splitNonce(value: ByteString): (ByteString, ByteString) = value.splitAt(options.nonceSize)
 
-    val symmetricParameters = EncryptionParameters.symmetric(parameters)
+    val symmetricParameters     = EncryptionParameters.symmetric(parameters)
     val (nonce, additionalData) = splitNonce(symmetricParameters.nonce)
 
     new AEADParameters(
       new KeyParameter(symmetricParameters.key.toArrayUnsafe),
-      options.macSize, nonce.toArrayUnsafe,
+      options.macSize,
+      nonce.toArrayUnsafe,
       if (additionalData.nonEmpty) additionalData.toArrayUnsafe else null
     )
   }
@@ -67,8 +66,7 @@ private[bouncycastle] object AEADBlockCipherModule {
   }
 }
 
-private[bouncycastle] class AEADBlockCipherModule(defaultOptions: AEADCipherOptions)
-  extends OnlyStreamEncryptionModule with BCSymmetricKeys {
+private[bouncycastle] class AEADBlockCipherModule(defaultOptions: AEADCipherOptions) extends OnlyStreamEncryptionModule with BCSymmetricKeys {
 
   val method: EncryptionMethod = defaultOptions.method
   protected val nonceSize: Int = defaultOptions.nonceSize + defaultOptions.additionalDataSize

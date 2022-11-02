@@ -18,7 +18,7 @@ private[libsodium] object MultiPartHashModule {
 }
 
 private[libsodium] final class MultiPartHashModule(val method: HashingMethod, newInstance: Hash ⇒ Hash.MultiPartHash)
-  extends OnlyStreamHashingModule {
+    extends OnlyStreamHashingModule {
 
   def createStreamer(): HashingModuleStreamer = {
     new MultiPartHashStreamer(new Hash(), newInstance)

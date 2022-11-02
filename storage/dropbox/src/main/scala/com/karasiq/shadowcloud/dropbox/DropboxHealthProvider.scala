@@ -14,7 +14,7 @@ object DropboxHealthProvider {
 
 class DropboxHealthProvider(dropboxClient: DropboxClient)(implicit ec: ExecutionContext) extends StorageHealthProvider {
   def health = dropboxClient.spaceUsage().map { spaceUsage ⇒
-    val used = spaceUsage.getUsed
+    val used  = spaceUsage.getUsed
     val total = spaceUsage.getAllocation.getIndividualValue.getAllocated
     StorageHealth.normalized(total - used, total, used)
   }

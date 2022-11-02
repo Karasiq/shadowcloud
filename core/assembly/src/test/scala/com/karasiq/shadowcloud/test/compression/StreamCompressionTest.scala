@@ -19,7 +19,8 @@ class StreamCompressionTest extends ActorSpec with ActorSpecImplicits with FlatS
     val testBytes = TestUtils.indexedBytes._1
 
     def testCompression(uncompressed: ByteString): ByteString = {
-      val futureCompressed = Source.fromIterator(() ⇒ uncompressed.grouped(100))
+      val futureCompressed = Source
+        .fromIterator(() ⇒ uncompressed.grouped(100))
         .via(StreamCompression.compress(compType))
         .via(ByteStreams.concat)
         .runWith(Sink.head)
@@ -30,7 +31,8 @@ class StreamCompressionTest extends ActorSpec with ActorSpecImplicits with FlatS
     }
 
     def testDecompression(compressed: ByteString, expected: ByteString): Unit = {
-      val futureUncompressed = Source.fromIterator(() ⇒ compressed.grouped(33))
+      val futureUncompressed = Source
+        .fromIterator(() ⇒ compressed.grouped(33))
         .via(StreamCompression.decompress)
         .via(ByteStreams.concat)
         .runWith(Sink.head)
@@ -60,10 +62,10 @@ object StreamCompressionTest {
   def readTestVector(compType: CompressionType.Value): (ByteString, ByteString) = {
     ResourceUtils.getPathOption(s"compression-vectors/$compType") match {
       case Some(path) ⇒
-        val inputStream = Files.newInputStream(path)
+        val inputStream       = Files.newInputStream(path)
         val objectInputStream = new ObjectInputStream(inputStream)
-        val uncompressed = objectInputStream.readObject().asInstanceOf[ByteString]
-        val compressed = objectInputStream.readObject().asInstanceOf[ByteString]
+        val uncompressed      = objectInputStream.readObject().asInstanceOf[ByteString]
+        val compressed        = objectInputStream.readObject().asInstanceOf[ByteString]
         objectInputStream.close()
         (uncompressed, compressed)
 
@@ -76,7 +78,7 @@ object StreamCompressionTest {
     val fileName = testVectorsFolder.resolve(compType.toString)
     if (!Files.exists(fileName)) {
       if (!Files.isDirectory(testVectorsFolder)) Files.createDirectories(testVectorsFolder)
-      val outputStream = Files.newOutputStream(fileName)
+      val outputStream       = Files.newOutputStream(fileName)
       val objectOutputStream = new ObjectOutputStream(outputStream)
       objectOutputStream.writeObject(uncompressed)
       objectOutputStream.writeObject(compressed)

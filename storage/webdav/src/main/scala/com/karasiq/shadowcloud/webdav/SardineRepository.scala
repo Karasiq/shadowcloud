@@ -32,9 +32,9 @@ object SardineRepository {
     new SardineRepository(props, sardine)
   }
 
-   def getResourceURL(baseUrl: String, path: Path): String = {
+  def getResourceURL(baseUrl: String, path: Path): String = {
     val urlWithSlash = if (baseUrl.endsWith("/")) baseUrl else baseUrl + "/"
-    val encodedPath = path.nodes.map(URLEncoder.encode(_, "UTF-8"))
+    val encodedPath  = path.nodes.map(URLEncoder.encode(_, "UTF-8"))
     urlWithSlash + encodedPath.mkString("/")
   }
 
@@ -45,7 +45,7 @@ object SardineRepository {
           val uri = new URI(if (ps.contains("://")) ps else "http://" + ps)
           val proxyType = uri.getScheme match {
             case "socks" | "socks4" | "socks5" ⇒ net.Proxy.Type.SOCKS
-            case _ ⇒ net.Proxy.Type.HTTP
+            case _                             ⇒ net.Proxy.Type.HTTP
           }
           new net.Proxy(proxyType, InetSocketAddress.createUnresolved(uri.getHost, uri.getPort))
         }
@@ -53,14 +53,14 @@ object SardineRepository {
       }
 
       new ProxySelector {
-        def select(uri: URI): util.List[Proxy] = proxies.asJava
+        def select(uri: URI): util.List[Proxy]                                 = proxies.asJava
         def connectFailed(uri: URI, sa: SocketAddress, ioe: IOException): Unit = ()
       }
     }
 
-    val sardineConfig = props.rootConfig.getConfigIfExists("sardine")
+    val sardineConfig  = props.rootConfig.getConfigIfExists("sardine")
     val maxConnections = sardineConfig.withDefault(8, _.getInt("max-connections"))
-    val proxySelector = createProxySelector(sardineConfig)
+    val proxySelector  = createProxySelector(sardineConfig)
 
     val sardine = new SardineImpl(props.credentials.login, props.credentials.password, proxySelector) {
       override def createDefaultConnectionManager(schemeRegistry: Registry[ConnectionSocketFactory]): HttpClientConnectionManager = {
@@ -77,12 +77,13 @@ object SardineRepository {
 }
 
 class SardineRepository(props: StorageProps, sardine: Sardine)(implicit dispatcher: MessageDispatcher) extends PathTreeRepository {
-  private[this] val rootUrl = props.address.uri.map(_.toString).getOrElse(throw new IllegalArgumentException("No WebDav URL"))
-  private[this] val baseUrl = SardineRepository.getResourceURL(rootUrl, props.address.path)
+  private[this] val rootUrl           = props.address.uri.map(_.toString).getOrElse(throw new IllegalArgumentException("No WebDav URL"))
+  private[this] val baseUrl           = SardineRepository.getResourceURL(rootUrl, props.address.path)
   private[this] val cachedDirectories = TrieMap.empty[Path, DavResource]
 
   def read(path: Path) = {
-    Source.single(path)
+    Source
+      .single(path)
       .viaMat(AkkaStreamUtils.flatMapConcatMat { path ⇒
         val resourceUrl = SardineRepository.getResourceURL(baseUrl, path)
         StreamConverters.fromInputStream(() ⇒ sardine.get(resourceUrl))
@@ -121,7 +122,7 @@ class SardineRepository(props: StorageProps, sardine: Sardine)(implicit dispatch
     Flow[Path]
       .map { path ⇒
         val resourceUrl = SardineRepository.getResourceURL(baseUrl, path)
-        val size = sardine.list(resourceUrl, 0).asScala.head.getContentLength
+        val size        = sardine.list(resourceUrl, 0).asScala.head.getContentLength
         sardine.delete(resourceUrl)
         StorageIOResult.Success(path, size)
       }
@@ -161,7 +162,8 @@ class SardineRepository(props: StorageProps, sardine: Sardine)(implicit dispatch
         .named("webdavTraverse")
     }
 
-    Source.single(fromPath)
+    Source
+      .single(fromPath)
       .via(traverseDirectory)
       .map(_.toRelative(fromPath))
       .alsoToMat(StorageUtils.countPassedElements(fromPath).toMat(Sink.head)(Keep.right))(Keep.right)

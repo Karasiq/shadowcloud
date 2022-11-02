@@ -10,12 +10,15 @@ object ChunkStatusProvider {
 
   object WriteStatus {
     case class Pending(affinity: ChunkWriteAffinity) extends WriteStatus
-    case object Finished extends WriteStatus
+    case object Finished                             extends WriteStatus
   }
 
-  case class ChunkStatus(writeStatus: WriteStatus, chunk: Chunk,
-                         availability: ChunkAvailability = ChunkAvailability.empty,
-                         waitingChunk: Set[ActorRef] = Set.empty) {
+  case class ChunkStatus(
+      writeStatus: WriteStatus,
+      chunk: Chunk,
+      availability: ChunkAvailability = ChunkAvailability.empty,
+      waitingChunk: Set[ActorRef] = Set.empty
+  ) {
     def finished: ChunkStatus = {
       copy(writeStatus = WriteStatus.Finished, chunk = chunk.withoutData)
     }

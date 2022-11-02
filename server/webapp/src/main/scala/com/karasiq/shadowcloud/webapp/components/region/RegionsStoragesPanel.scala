@@ -21,14 +21,12 @@ class RegionsStoragesPanel(implicit context: AppContext, regionContext: RegionCo
         RegionsView(),
         GridSystem.col.responsive(12, 12, 6, 4)
       ),
-
       div(
         h3(context.locale.storages),
         hr,
         StoragesView(),
         GridSystem.col.responsive(12, 12, 6, 4)
       ),
-
       div(
         h3(context.locale.keys),
         hr,
@@ -38,4 +36,3 @@ class RegionsStoragesPanel(implicit context: AppContext, regionContext: RegionCo
     )
   }
 }
-

@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.internal
 
-
-
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.EncryptionModule
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters, SymmetricEncryptionParameters}

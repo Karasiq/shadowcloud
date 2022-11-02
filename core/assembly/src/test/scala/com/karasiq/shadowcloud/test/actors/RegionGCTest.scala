@@ -13,7 +13,7 @@ import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
 import scala.concurrent.duration._
 
 class RegionGCTest extends SCExtensionSpec with FlatSpecLike with SequentialNestedSuiteExecution {
-  val testRegionId = "regionGCTest"
+  val testRegionId  = "regionGCTest"
   val testStorageId = "regionGCTest"
 
   "Region GC" should "delete broken chunks" in {
@@ -58,7 +58,6 @@ class RegionGCTest extends SCExtensionSpec with FlatSpecLike with SequentialNest
       storageState.notIndexed shouldBe Set(chunk.checksum.hash)
     }
   }
-
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()

@@ -29,4 +29,3 @@ class EmbeddedResourcesView(resources: Metadata.EmbeddedResources)(implicit cont
     )
   }
 }
-

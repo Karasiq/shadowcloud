@@ -12,10 +12,10 @@ import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParamet
 import com.karasiq.shadowcloud.utils.ByteStringUnsafe
 
 private[libsodium] object AEADCipherModule extends SymmetricConstants {
-  val AESKeyBytes: Int = Sodium.CRYPTO_AEAD_AES256GCM_KEYBYTES
+  val AESKeyBytes: Int   = Sodium.CRYPTO_AEAD_AES256GCM_KEYBYTES
   val AESNonceBytes: Int = Sodium.CRYPTO_AEAD_AES256GCM_NPUBBYTES
-  val KeyBytes: Int = Sodium.CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES
-  val NonceBytes: Int = Sodium.CRYPTO_AEAD_CHACHA20POLY1305_NPUBBYTES
+  val KeyBytes: Int      = Sodium.CRYPTO_AEAD_CHACHA20POLY1305_KEYBYTES
+  val NonceBytes: Int    = Sodium.CRYPTO_AEAD_CHACHA20POLY1305_NPUBBYTES
 
   def apply(method: EncryptionMethod): AEADCipherModule = {
     new AEADCipherModule(AEADCipherOptions(method))
@@ -32,22 +32,22 @@ private[libsodium] object AEADCipherModule extends SymmetricConstants {
   private case class AEADCipherOptions(method: EncryptionMethod) {
     import ConfigImplicits._
     private[this] val config = ConfigProps.toConfig(method.config)
-    val useAes = method.algorithm == "AES/GCM"
-    val additionalDataSize = config.withDefault(0, _.getInt("ad-size"))
+    val useAes               = method.algorithm == "AES/GCM"
+    val additionalDataSize   = config.withDefault(0, _.getInt("ad-size"))
 
-    val keySize: Int = if (useAes) AESKeyBytes else KeyBytes
+    val keySize: Int   = if (useAes) AESKeyBytes else KeyBytes
     val nonceSize: Int = if (useAes) AESNonceBytes else NonceBytes
   }
 }
 
 private[libsodium] final class AEADCipherModule(defaultOptions: AEADCipherOptions) extends SymmetricCipherModule {
   val method: EncryptionMethod = defaultOptions.method
-  protected val keySize: Int = defaultOptions.keySize
+  protected val keySize: Int   = defaultOptions.keySize
   protected val nonceSize: Int = defaultOptions.nonceSize + defaultOptions.additionalDataSize
 
   def encrypt(data: ByteString, parameters: EncryptionParameters): ByteString = {
     val symmetricParameters = EncryptionParameters.symmetric(parameters)
-    val aeadOptions = AEADCipherOptions(symmetricParameters.method)
+    val aeadOptions         = AEADCipherOptions(symmetricParameters.method)
 
     val cipher = new Aead(symmetricParameters.key.toArrayUnsafe)
     if (aeadOptions.useAes) cipher.useAesGcm()
@@ -59,7 +59,7 @@ private[libsodium] final class AEADCipherModule(defaultOptions: AEADCipherOption
 
   def decrypt(data: ByteString, parameters: EncryptionParameters): ByteString = {
     val symmetricParameters = EncryptionParameters.symmetric(parameters)
-    val aeadOptions = AEADCipherOptions(symmetricParameters.method)
+    val aeadOptions         = AEADCipherOptions(symmetricParameters.method)
 
     val cipher = new Aead(symmetricParameters.key.toArrayUnsafe)
     if (aeadOptions.useAes) cipher.useAesGcm()

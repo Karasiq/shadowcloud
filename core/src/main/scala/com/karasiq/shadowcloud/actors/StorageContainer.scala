@@ -29,11 +29,10 @@ private[actors] final class StorageContainer(instantiator: StorageInstantiator, 
 
   private[this] var storageProps: StorageProps = StorageProps.inMemory
 
-  def receive: Receive = {
-    case SetProps(props) ⇒
-      log.info("Storage props changed: {}", props)
-      this.storageProps = props
-      restartActor()
+  def receive: Receive = { case SetProps(props) ⇒
+    log.info("Storage props changed: {}", props)
+    this.storageProps = props
+    restartActor()
   }
 
   def startActor(): Unit = {

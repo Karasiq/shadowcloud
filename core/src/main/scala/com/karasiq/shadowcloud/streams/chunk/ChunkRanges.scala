@@ -34,7 +34,7 @@ object ChunkRanges {
         data
       } else {
         val start = math.max(this.start, 0L)
-        val end = math.min(this.end, data.length)
+        val end   = math.min(this.end, data.length)
         data.slice(start.toInt, end.toInt) // data.drop(start.toInt).take((end - start).toInt)
       }
     }
@@ -42,7 +42,7 @@ object ChunkRanges {
 
   object Range {
     implicit val ordering = Ordering.by((r: Range) ⇒ (r.start, r.end))
-    
+
     implicit def fromScalaRange(range: scala.Range): Range = {
       Range(range.start, if (range.isInclusive) range.end + 1 else range.end)
     }
@@ -119,7 +119,7 @@ object ChunkRanges {
 
       for (chunk ← chunkStream) {
         val chunkSize = chunk.checksum.size
-        val range = Range(position, position + chunkSize)
+        val range     = Range(position, position + chunkSize)
         rangedChunks += (chunk → range)
         position += chunkSize
       }
@@ -128,8 +128,11 @@ object ChunkRanges {
 
     def mapChunkStream(ranges: RangeList, chunkStream: Seq[Chunk]): Seq[(Chunk, RangeList)] = {
       @tailrec
-      def groupRanges(ranges: Seq[(Chunk, Range)], currentChunk: Option[(Chunk, RangeList)],
-                      result: Seq[(Chunk, RangeList)]): Seq[(Chunk, RangeList)] = ranges match {
+      def groupRanges(
+          ranges: Seq[(Chunk, Range)],
+          currentChunk: Option[(Chunk, RangeList)],
+          result: Seq[(Chunk, RangeList)]
+      ): Seq[(Chunk, RangeList)] = ranges match {
         case (chunk, range) +: tail ⇒
           if (currentChunk.exists(_._1 == chunk)) {
             groupRanges(tail, currentChunk.map { case (c, ranges) ⇒ (c, ranges + range) }, result)

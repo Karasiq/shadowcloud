@@ -20,14 +20,50 @@ object TextFileView {
   private[this] val TextFormats = Set("txt", "ini", "csv", "log")
 
   private[this] val CodeFormats = Set(
-    "sh", "clojure", "coffee", "c", "h", "cpp", "hpp", "cs", "d", "pas", "erl",
-    "fs", "go", "groovy", "hs", "java", "js", "json", "lua", "lisp", "md", "m",
-    "pl", "php", "py", "rb", "rust", "scala", "ss", "sql", "swift", "ts", "css",
-    "xml", "html", "xhtml", "conf"
+    "sh",
+    "clojure",
+    "coffee",
+    "c",
+    "h",
+    "cpp",
+    "hpp",
+    "cs",
+    "d",
+    "pas",
+    "erl",
+    "fs",
+    "go",
+    "groovy",
+    "hs",
+    "java",
+    "js",
+    "json",
+    "lua",
+    "lisp",
+    "md",
+    "m",
+    "pl",
+    "php",
+    "py",
+    "rb",
+    "rust",
+    "scala",
+    "ss",
+    "sql",
+    "swift",
+    "ts",
+    "css",
+    "xml",
+    "html",
+    "xhtml",
+    "conf"
   )
 
   private[this] val RenderableFormats = Set(
-    "html", "htm", "xhtml", "md"
+    "html",
+    "htm",
+    "xhtml",
+    "md"
   )
 
   def apply(file: File)(implicit context: AppContext, folderContext: FolderContext, fileController: FileController): TextFileView = {
@@ -55,17 +91,17 @@ object TextFileView {
   }
 }
 
-class TextFileView(_file: File)(implicit context: AppContext, folderContext: FolderContext,
-                                fileController: FileController) extends BootstrapHtmlComponent {
+class TextFileView(_file: File)(implicit context: AppContext, folderContext: FolderContext, fileController: FileController)
+    extends BootstrapHtmlComponent {
 
   val editorOpened = Var(false)
-  val fileRx = Var(_file)
-  val contentRx = Var("")
+  val fileRx       = Var(_file)
+  val contentRx    = Var("")
   fileRx.trigger(fetchFileContent())
 
   def renderTag(md: ModifierT*): TagT = {
     val field = Rx {
-      val file = fileRx()
+      val file    = fileRx()
       val content = contentRx()
 
       if (editorOpened()) {
@@ -85,22 +121,27 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
     }
 
     div(
-      AppComponents.iconLink(context.locale.edit, AppIcons.editText, onclick := Callback.onClick { _ ⇒
-        editorOpened() = !editorOpened.now
-      }),
+      AppComponents.iconLink(
+        context.locale.edit,
+        AppIcons.editText,
+        onclick := Callback.onClick { _ ⇒
+          editorOpened() = !editorOpened.now
+        }
+      ),
       div(field)
     )
   }
 
   private[this] def fetchFileContent(): Unit = {
-    context.api.downloadFile(folderContext.regionId, fileRx.now.path, fileRx.now.id, folderContext.scope.now)
+    context.api
+      .downloadFile(folderContext.regionId, fileRx.now.path, fileRx.now.id, folderContext.scope.now)
       .map(_.utf8String)
       .foreach(contentRx.update)
   }
 
-  private[this] def editorOnSubmit[T](getText: T => String, submitting: T => Var[Boolean])(editor: T): Unit = {
+  private[this] def editorOnSubmit[T](getText: T ⇒ String, submitting: T ⇒ Var[Boolean])(editor: T): Unit = {
     submitting(editor)() = true
-    val oldFile = fileRx.now
+    val oldFile     = fileRx.now
     val (_, future) = context.api.uploadFile(folderContext.regionId, oldFile.path, getText(editor))
     future.onComplete(_ ⇒ submitting(editor)() = false)
     future.foreach { newFile ⇒
@@ -147,7 +188,7 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
         lang.fold(HighlightJS.highlightAuto(source))(HighlightJS.highlight(_, source)).value
       },
       renderer = MarkedRenderer(table = { (header: String, body: String) ⇒
-        import scalatags.Text.all.{body => _, header => _, _}
+        import scalatags.Text.all.{body ⇒ _, header ⇒ _, _}
         table(`class` := "table table-striped", thead(raw(header)), tbody(raw(body))).render
       }),
       breaks = true,
@@ -158,4 +199,3 @@ class TextFileView(_file: File)(implicit context: AppContext, folderContext: Fol
     div(raw(Marked(content, options)))
   }
 }
-

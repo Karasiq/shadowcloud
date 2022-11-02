@@ -30,12 +30,21 @@ private[markdown] class FlexmarkMetadataParser(config: Config) extends MetadataP
 
   private[this] val options = {
     val options = new MutableDataSet
-    options.set(Parser.EXTENSIONS, util.Arrays.asList(TablesExtension.create(), StrikethroughExtension.create(), TaskListExtension.create(), WikiLinkExtension.create(), AutolinkExtension.create()))
+    options.set(
+      Parser.EXTENSIONS,
+      util.Arrays.asList(
+        TablesExtension.create(),
+        StrikethroughExtension.create(),
+        TaskListExtension.create(),
+        WikiLinkExtension.create(),
+        AutolinkExtension.create()
+      )
+    )
     options.set(HtmlRenderer.SOFT_BREAK, "<br />\n")
     options
   }
 
-  private[this] val parser = Parser.builder(options).build
+  private[this] val parser   = Parser.builder(options).build
   private[this] val renderer = HtmlRenderer.builder(options).build
 
   def canParse(name: String, mime: String) = {
@@ -48,7 +57,7 @@ private[markdown] class FlexmarkMetadataParser(config: Config) extends MetadataP
       .filter(_.nonEmpty)
       .map { bytes ⇒
         val markdownStr = bytes.utf8String
-        val html = renderer.render(parser.parse(markdownStr))
+        val html        = renderer.render(parser.parse(markdownStr))
         Metadata(Some(Metadata.Tag("markdown", "flexmark", Metadata.Tag.Disposition.PREVIEW)), Metadata.Value.Text(Metadata.Text("text/html", html)))
       }
       .named("flexmarkParse")

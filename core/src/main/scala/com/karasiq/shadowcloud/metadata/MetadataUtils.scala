@@ -25,7 +25,8 @@ private[shadowcloud] object MetadataUtils {
   }
 
   def expiredFileIds(index: FolderIndex): Set[FileId] = {
-    val metadataFolders = index.get(MetadataFolder)
+    val metadataFolders = index
+      .get(MetadataFolder)
       .map(_.folders)
       .getOrElse(Set.empty)
 

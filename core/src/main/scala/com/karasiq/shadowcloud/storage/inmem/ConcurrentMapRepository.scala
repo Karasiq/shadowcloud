@@ -5,10 +5,9 @@ import akka.util.ByteString
 import com.karasiq.shadowcloud.storage.repository.Repository
 import com.karasiq.shadowcloud.streams.utils.ByteStreams
 
-import scala.collection.concurrent.{Map => CMap}
+import scala.collection.concurrent.{Map ⇒ CMap}
 
-/**
-  * Stores data in [[scala.collection.concurrent.TrieMap TrieMap]]
+/** Stores data in [[scala.collection.concurrent.TrieMap TrieMap]]
   */
 private[storage] final class ConcurrentMapRepository[Key](storage: CMap[Key, ByteString]) extends Repository[Key] {
   private[this] val underlying = new ConcurrentMapStreams[Key, ByteString](storage, _.length)

@@ -21,8 +21,8 @@ object FileRevisionsView {
   }
 }
 
-class FileRevisionsView(path: Path)(implicit context: AppContext, folderContext: FolderContext,
-                                    _fileController: FileController) extends BootstrapHtmlComponent {
+class FileRevisionsView(path: Path)(implicit context: AppContext, folderContext: FolderContext, _fileController: FileController)
+    extends BootstrapHtmlComponent {
 
   lazy val filesRx = FileRevisionsView.getFilesRx(path)
 
@@ -51,7 +51,6 @@ class FileRevisionsView(path: Path)(implicit context: AppContext, folderContext:
   }
 
   def renderTag(md: ModifierT*): TagT = {
-    fileList.renderTag(md:_*)
+    fileList.renderTag(md: _*)
   }
 }
-

@@ -29,12 +29,11 @@ class HealthView(healthStatusRx: Rx[HealthStatus])(implicit context: AppContext)
         // div(b(context.locale.freeSpace, ": ", MemorySize.toString(storageHealth.freeSpace))),
         div(b(context.locale.usedSpace, ": ", MemorySize.toString(hs.usedSpace))),
         div(b(context.locale.totalSpace, ": ", MemorySize.toString(hs.totalSpace))),
-
-        ProgressBar.basic(Var(HealthStatus.getUsedPercentage(hs)))
+        ProgressBar
+          .basic(Var(HealthStatus.getUsedPercentage(hs)))
           .renderTag(progressBarStyle, ProgressBarStyle.striped)
       )
     }
     div(progressBarRx, healthStatusRx.map(_.totalSpace == 0).reactiveHide)
   }
 }
-

@@ -1,6 +1,5 @@
 package com.karasiq.shadowcloud.webapp.components.metadata
 
-
 import com.karasiq.bootstrap.Bootstrap.default._
 import com.karasiq.shadowcloud.metadata.Metadata
 import com.karasiq.shadowcloud.model.{File, RegionId}
@@ -38,12 +37,13 @@ object MetadataListView {
   }
 }
 
-final class MetadataListView(regionId: RegionId, file: File, available: Rx[Set[Metadata.Tag.Disposition]])(implicit context: AppContext) extends BootstrapHtmlComponent {
+final class MetadataListView(regionId: RegionId, file: File, available: Rx[Set[Metadata.Tag.Disposition]])(implicit context: AppContext)
+    extends BootstrapHtmlComponent {
   import MetadataListView.utils
 
   def renderTag(md: ModifierT*): TagT = {
     def renderDisposition(disposition: Metadata.Tag.Disposition): Tag = {
-      val opened = Var(false)
+      val opened      = Var(false)
       val isAvailable = available.map(_.contains(disposition))
       div(
         isAvailable.reactiveShow,
@@ -64,4 +64,3 @@ final class MetadataListView(regionId: RegionId, file: File, available: Rx[Set[M
     )
   }
 }
-

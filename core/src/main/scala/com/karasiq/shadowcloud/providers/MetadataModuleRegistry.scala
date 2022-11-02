@@ -20,8 +20,8 @@ private[shadowcloud] object MetadataModuleRegistry {
   }
 }
 
-private[shadowcloud] final class MetadataModuleRegistryImpl(providers: ProvidersConfig[MetadataProvider])
-                                                           (implicit inst: ProviderInstantiator) extends MetadataModuleRegistry {
+private[shadowcloud] final class MetadataModuleRegistryImpl(providers: ProvidersConfig[MetadataProvider])(implicit inst: ProviderInstantiator)
+    extends MetadataModuleRegistry {
 
   private[this] val (plugins, detectors, parsers) = {
     val (detectors, parsers) = providers.instances
@@ -50,7 +50,7 @@ private[shadowcloud] final class MetadataModuleRegistryImpl(providers: Providers
     val graph = GraphDSL.create() { implicit builder ⇒
       import GraphDSL.Implicits._
       val broadcast = builder.add(Broadcast[ByteString](availableParsers.length))
-      val merge = builder.add(Merge[Metadata](availableParsers.length))
+      val merge     = builder.add(Merge[Metadata](availableParsers.length))
       availableParsers.foreach { parser ⇒
         val parse = builder.add(parser.parseMetadata(name, mime).withAttributes(parserAttributes))
         broadcast ~> parse ~> merge

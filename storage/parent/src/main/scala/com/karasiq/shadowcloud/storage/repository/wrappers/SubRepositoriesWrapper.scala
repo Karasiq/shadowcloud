@@ -10,11 +10,12 @@ import com.karasiq.shadowcloud.streams.utils.AkkaStreamUtils
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success}
 
-private[repository] final class SubRepositoriesWrapper[CatKey, Key](pathString: String,
-                                                                    subRepositories: () ⇒ Source[(CatKey, Repository[Key]), NotUsed])
-                                                                   (implicit ec: ExecutionContext)
-  extends CategorizedRepository[CatKey, Key] {
-  
+private[repository] final class SubRepositoriesWrapper[CatKey, Key](
+    pathString: String,
+    subRepositories: () ⇒ Source[(CatKey, Repository[Key]), NotUsed]
+)(implicit ec: ExecutionContext)
+    extends CategorizedRepository[CatKey, Key] {
+
   override def subRepository(categoryKey: CatKey): Repository[Key] = {
     new Repository[Key] {
       private[this] def openSubStream[T, M](extractSource: Repository[Key] ⇒ Source[T, M]): Source[T, Future[M]] = {
@@ -34,7 +35,7 @@ private[repository] final class SubRepositoriesWrapper[CatKey, Key](pathString: 
       }
 
       def keys: Source[Key, Result] = {
-        val promise = Promise[StorageIOResult]
+        val promise      = Promise[StorageIOResult]
         val repositories = subRepositories()
         repositories
           .filter(_._1 == categoryKey)
@@ -80,7 +81,7 @@ private[repository] final class SubRepositoriesWrapper[CatKey, Key](pathString: 
             Flow[(Source[Key, NotUsed], Result)]
               .mapAsync(1)(_._2)
               .fold(Seq.empty[StorageIOResult])(_ :+ _)
-              .map(results ⇒ StorageUtils.foldIOResultsIgnoreErrors(results:_*))
+              .map(results ⇒ StorageUtils.foldIOResultsIgnoreErrors(results: _*))
               .toMat(Sink.head)(Keep.right)
           )(Keep.right)
           .flatMapConcat(_._1)
@@ -90,7 +91,7 @@ private[repository] final class SubRepositoriesWrapper[CatKey, Key](pathString: 
   }
 
   def keys: Source[(CatKey, Key), Result] = {
-    val promise = Promise[StorageIOResult]
+    val promise      = Promise[StorageIOResult]
     val repositories = subRepositories()
     repositories
       .flatMapConcat { case (ck, repo) ⇒
@@ -119,9 +120,10 @@ private[repository] final class SubRepositoriesWrapper[CatKey, Key](pathString: 
       .groupBy(100, _._1)
       .prefixAndTail(1)
       .map { case (head +: Nil, source) ⇒
-        val promise = Promise[StorageIOResult]
+        val promise    = Promise[StorageIOResult]
         val repository = subRepository(head._1)
-        val stream = Source.single(head)
+        val stream = Source
+          .single(head)
           .concat(source)
           .map(_._2)
           .alsoToMat(repository.delete)(Keep.right)
@@ -134,7 +136,7 @@ private[repository] final class SubRepositoriesWrapper[CatKey, Key](pathString: 
         Flow[(Source[Key, NotUsed], Result)]
           .mapAsync(1)(_._2)
           .fold(Seq.empty[StorageIOResult])(_ :+ _)
-          .map(results ⇒ StorageUtils.foldIOResultsIgnoreErrors(results:_*))
+          .map(results ⇒ StorageUtils.foldIOResultsIgnoreErrors(results: _*))
           .toMat(Sink.head)(Keep.right)
       )(Keep.right)
       .flatMapConcat(_._1)

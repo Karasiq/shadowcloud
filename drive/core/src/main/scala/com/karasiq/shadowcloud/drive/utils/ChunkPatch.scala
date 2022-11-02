@@ -31,11 +31,10 @@ private[drive] final case class ChunkPatchList(patches: Seq[ChunkPatch]) {
   }
 
   def patchChunk(dataRange: ChunkRanges.Range, data: ByteString) = {
-    patches.foldLeft(data) {
-      case (data, write) ⇒
-        val relRange = write.range.relativeTo(dataRange)
-        val offset   = dataRange.relativeTo(write.range)
-        ChunkRanges.Range.patch(data, relRange, offset.slice(write.data))
+    patches.foldLeft(data) { case (data, write) ⇒
+      val relRange = write.range.relativeTo(dataRange)
+      val offset   = dataRange.relativeTo(write.range)
+      ChunkRanges.Range.patch(data, relRange, offset.slice(write.data))
     }
   }
 }

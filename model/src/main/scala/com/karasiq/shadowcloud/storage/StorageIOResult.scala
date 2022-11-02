@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.storage
 
-
-
 import com.karasiq.shadowcloud.exceptions.StorageException
 import com.karasiq.shadowcloud.model.Path
 
@@ -18,7 +16,7 @@ object StorageIOResult {
   }
 
   final case class Failure(path: Path, error: StorageException) extends StorageIOResult {
-    val count: Long = 0L
+    val count: Long        = 0L
     val isSuccess: Boolean = false
   }
 

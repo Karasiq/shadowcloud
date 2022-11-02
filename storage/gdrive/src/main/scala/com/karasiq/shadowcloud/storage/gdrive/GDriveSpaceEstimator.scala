@@ -31,10 +31,9 @@ private[gdrive] class GDriveSpaceEstimator(drive: GDriveService, rootPath: Path)
     ec.execute { () ⇒
       var size = 0L
 
-      Try(drive.traverseFolder(rootPath.nodes).foreach {
-        case (_, file) ⇒
-          size += file.size
-          if (size > lastEstimated) lastEstimated = size
+      Try(drive.traverseFolder(rootPath.nodes).foreach { case (_, file) ⇒
+        size += file.size
+        if (size > lastEstimated) lastEstimated = size
       })
       lastEstimated = size
     }

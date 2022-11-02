@@ -1,6 +1,5 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.internal
 
-
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.model.crypto.{CryptoMethod, EncryptionMethod, SignMethod}
 import org.bouncycastle.crypto.AsymmetricCipherKeyPairGenerator
@@ -34,12 +33,14 @@ private[bouncycastle] object ECUtils {
       getCurveForSize(keySize)
     }
 
-    val curveName = try {
-      val config = ConfigProps.toConfig(method.config)
-      Some(config.getString("curve"))
-    } catch { case NonFatal(_) ⇒
-      None
-    }
+    val curveName =
+      try {
+        val config = ConfigProps.toConfig(method.config)
+        Some(config.getString("curve"))
+      } catch {
+        case NonFatal(_) ⇒
+          None
+      }
 
     curveName.getOrElse(getDefaultCurve(method))
   }
@@ -61,9 +62,9 @@ private[bouncycastle] object ECUtils {
   }
 
   def createKeyGenerator(method: CryptoMethod): AsymmetricCipherKeyPairGenerator = {
-    val generator = new ECKeyPairGenerator
+    val generator        = new ECKeyPairGenerator
     val domainParameters = ECUtils.getCurveDomainParameters(method)
-    val secureRandom = BCUtils.createSecureRandom()
+    val secureRandom     = BCUtils.createSecureRandom()
     generator.init(new ECKeyGenerationParameters(domainParameters, secureRandom))
     generator
   }

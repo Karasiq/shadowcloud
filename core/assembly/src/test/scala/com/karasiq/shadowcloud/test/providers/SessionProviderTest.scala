@@ -8,8 +8,8 @@ import com.karasiq.shadowcloud.test.utils.{SCExtensionSpec, TestUtils}
 
 class SessionProviderTest extends SCExtensionSpec with FlatSpecLike {
   val storageId = "testStorage"
-  val testKey = "test_session"
-  val testData = TestUtils.randomBytes(10)
+  val testKey   = "test_session"
+  val testData  = TestUtils.randomBytes(10)
   val testValue = TestUtils.testDiff
 
   "Session provider" should "create session" in {

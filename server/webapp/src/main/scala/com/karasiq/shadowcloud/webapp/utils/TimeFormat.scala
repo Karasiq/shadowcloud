@@ -36,7 +36,8 @@ private[utils] class DefaultTimeFormat(locale: String) extends TimeFormat {
     .toFormatter(Locale.forLanguageTag(locale))
 
   def timestamp(ts: Long) = {
-    ZonedDateTime.ofInstant(Instant.ofEpochMilli(ts), ZoneId.systemDefault)
+    ZonedDateTime
+      .ofInstant(Instant.ofEpochMilli(ts), ZoneId.systemDefault)
       .format(timestampFormat)
   }
 }

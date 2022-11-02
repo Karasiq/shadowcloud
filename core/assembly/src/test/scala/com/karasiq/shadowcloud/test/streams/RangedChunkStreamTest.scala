@@ -11,7 +11,7 @@ import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
 import scala.concurrent.duration._
 
 class RangedChunkStreamTest extends SCExtensionSpec with FlatSpecLike with SequentialNestedSuiteExecution {
-  val testRegion = "testRegion"
+  val testRegion            = "testRegion"
   val (testBytes, testFile) = TestUtils.indexedBytes
 
   "Ranged chunk stream" should "be read" in {

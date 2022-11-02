@@ -22,13 +22,14 @@ class FileListView(files: Metadata.FileList)(implicit context: AppContext) exten
       context.locale.modifiedDate
     )
     val rows = files.files.map { file ⇒
-      TableRow(Seq(
-        file.path.mkString(Path.Delimiter),
-        MemorySize.toString(file.size),
-        context.timeFormat.timestamp(file.timestamp)
-      ))
+      TableRow(
+        Seq(
+          file.path.mkString(Path.Delimiter),
+          MemorySize.toString(file.size),
+          context.timeFormat.timestamp(file.timestamp)
+        )
+      )
     }
-    PagedTable.static(tableHeading, rows, 10).renderTag(md:_*)
+    PagedTable.static(tableHeading, rows, 10).renderTag(md: _*)
   }
 }
-

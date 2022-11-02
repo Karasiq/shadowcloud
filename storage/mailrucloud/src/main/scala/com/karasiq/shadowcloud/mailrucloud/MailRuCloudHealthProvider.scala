@@ -13,7 +13,8 @@ object MailRuCloudHealthProvider {
   }
 }
 
-class MailRuCloudHealthProvider(client: MailCloudClient)(implicit ec: ExecutionContext, session: Session, token: CsrfToken) extends StorageHealthProvider {
+class MailRuCloudHealthProvider(client: MailCloudClient)(implicit ec: ExecutionContext, session: Session, token: CsrfToken)
+    extends StorageHealthProvider {
   def health = {
     client.space.map(spc ⇒ StorageHealth.normalized(spc.total - spc.used, spc.total, spc.used))
   }

@@ -3,8 +3,12 @@ package com.karasiq.shadowcloud.storage.repository.wrappers
 import com.karasiq.shadowcloud.storage.repository.{CategorizedRepository, KeyValueRepository}
 
 private[repository] final class PrefixedRepositoryWrapper(repository: KeyValueRepository, delimiter: String)
-  extends RepositoryKeyMapper[String, (String, String)](repository, PrefixedRepositoryWrapper.split(_, delimiter),
-    PrefixedRepositoryWrapper.combine(_, delimiter)) with CategorizedRepository[String, String]
+    extends RepositoryKeyMapper[String, (String, String)](
+      repository,
+      PrefixedRepositoryWrapper.split(_, delimiter),
+      PrefixedRepositoryWrapper.combine(_, delimiter)
+    )
+    with CategorizedRepository[String, String]
 
 private object PrefixedRepositoryWrapper {
   def split(str: String, delimiter: String): (String, String) = {

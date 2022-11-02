@@ -120,7 +120,7 @@ object ProjectDeps {
 
   // https://github.com/lookfirst/sardine/
   def sardine: Deps = Seq(
-    "com.github.lookfirst" % "sardine" % "5.9"
+    "com.github.lookfirst" % "sardine" % "5.10"
   )
 
   def logback: Deps = Seq(

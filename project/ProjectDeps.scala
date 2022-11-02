@@ -128,7 +128,7 @@ object ProjectDeps {
   )
 
   object javacv {
-    private val JavaCVVersion = "1.4.2"
+    private val JavaCVVersion = "1.4.4"
     private val OpenCVVersion = "3.4.2"
     private val FFMpegVersion = "4.0.1"
 

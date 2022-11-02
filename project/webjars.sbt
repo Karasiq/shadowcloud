@@ -1,5 +1,5 @@
 libraryDependencies ++= Seq(
-  "com.lihaoyi"       %% "scalatags"  % "0.6.7",
+  "com.lihaoyi"       %% "scalatags"  % "0.6.8",
   "org.webjars.bower" % "marked"      % "0.3.5",
   "org.webjars"       % "highlightjs" % "9.2.0",
   "org.webjars"       % "dropzone"    % "5.5.0",

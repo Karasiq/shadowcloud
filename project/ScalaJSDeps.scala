@@ -9,14 +9,14 @@ object ScalaJSDeps {
 
     def actors: Deps = {
       libraryDependencies ++= Seq(
-        "org.akka-js" %%% "akkajsactor" % version,
+        "org.akka-js" %%% "akkajsactor"   % version,
         "org.akka-js" %%% "akkajstestkit" % version % "test"
       )
     }
 
     def streams: Deps = {
       libraryDependencies ++= Seq(
-        "org.akka-js" %%% "akkajsactorstream" % version,
+        "org.akka-js" %%% "akkajsactorstream"   % version,
         "org.akka-js" %%% "akkajsstreamtestkit" % version % "test"
       )
     }
@@ -28,9 +28,9 @@ object ScalaJSDeps {
 
   def bootstrap: Deps = {
     libraryDependencies ++= Seq(
-      "com.lihaoyi" %%% "scalatags" % "0.6.7",
-      "com.github.karasiq" %%% "scalajs-bootstrap" % "2.3.4",
-      "org.querki" %%% "bootstrap-datepicker-facade" % "0.9"
+      "com.lihaoyi"        %%% "scalatags"                   % "0.6.8",
+      "com.github.karasiq" %%% "scalajs-bootstrap"           % "2.3.4",
+      "org.querki"         %%% "bootstrap-datepicker-facade" % "0.9"
     )
   }
 

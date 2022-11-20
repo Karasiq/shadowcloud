@@ -100,7 +100,7 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike with Sequen
 
   it should "create availability report" in {
     val report = (testRegion ? GetFileAvailability(folder.files.head.copy(chunks = Seq(chunk)))).mapTo[GetFileAvailability.Success].futureValue
-    report.result.chunksByStorage shouldBe Map(testStorageId      → Set(chunk))
+    report.result.chunksByStorage shouldBe Map(testStorageId → Set(chunk))
     report.result.percentagesByStorage shouldBe Map(testStorageId → 100.0)
   }
 
@@ -231,12 +231,15 @@ class RegionDispatcherTest extends SCExtensionSpec with FlatSpecLike with Sequen
     resultDiff.time should be > oldDiff.time
   }
 
-
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     storage ! StorageIndex.OpenIndex(testRegionId)
     testRegion ! RegionDispatcher.AttachStorage(testStorageId, storageProps, storage, initialHealth)
-    awaitAssert(RegionDispatcher.GetHealth.unwrapFuture(testRegion ? RegionDispatcher.GetHealth).futureValue shouldBe 'fullyOnline, 30 seconds, 1 second)
+    awaitAssert(
+      RegionDispatcher.GetHealth.unwrapFuture(testRegion ? RegionDispatcher.GetHealth).futureValue shouldBe 'fullyOnline,
+      30 seconds,
+      1 second
+    )
   }
 
   private def storageUnsubscribe(): Unit = {

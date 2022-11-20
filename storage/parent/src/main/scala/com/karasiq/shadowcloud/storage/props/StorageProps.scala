@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.storage.props
 
 import java.net.URI
-import java.nio.file.{Path => FSPath}
+import java.nio.file.{Path ⇒ FSPath}
 
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.common.memory.MemorySize
@@ -11,8 +11,6 @@ import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.props.StorageProps.{Address, Credentials, Quota}
 import com.karasiq.shadowcloud.utils.Utils
 import com.typesafe.config.Config
-
-
 
 @SerialVersionUID(0L)
 final case class StorageProps(

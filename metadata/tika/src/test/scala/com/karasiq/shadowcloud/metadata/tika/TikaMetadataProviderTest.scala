@@ -14,11 +14,11 @@ import org.scalatest.{FlatSpecLike, SequentialNestedSuiteExecution}
 import scala.concurrent.duration._
 
 class TikaMetadataProviderTest extends ActorSpec with ActorSpecImplicits with FlatSpecLike with SequentialNestedSuiteExecution {
-  val testPdfName = "TypeClasses.pdf"
-  val testPdfFile = new File(getClass.getClassLoader.getResource(testPdfName).toURI)
+  val testPdfName  = "TypeClasses.pdf"
+  val testPdfFile  = new File(getClass.getClassLoader.getResource(testPdfName).toURI)
   val testPdfBytes = ByteString.fromArrayUnsafe(FileUtils.readFileToByteArray(testPdfFile))
 
-  val tika = new Tika()
+  val tika     = new Tika()
   val detector = TikaMimeDetector(tika)
 
   "Mime detector" should "detect PDF" in {
@@ -26,10 +26,11 @@ class TikaMetadataProviderTest extends ActorSpec with ActorSpecImplicits with Fl
   }
 
   val autoParserConfig = system.settings.config.getConfig("shadowcloud.metadata.tika.auto-parser")
-  val autoParser = TikaAutoParser(tika, autoParserConfig)
+  val autoParser       = TikaAutoParser(tika, autoParserConfig)
 
   "Parser" should "extract text" in {
-    val stream = FileIO.fromPath(testPdfFile.toPath)
+    val stream = FileIO
+      .fromPath(testPdfFile.toPath)
       .via(autoParser.parseMetadata(testPdfName, "application/pdf"))
       .toMat(TestSink.probe)(Keep.right)
       .run()

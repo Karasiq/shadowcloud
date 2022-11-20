@@ -11,22 +11,26 @@ trait FileController {
 }
 
 object FileController {
-  def apply(onAddFile: File ⇒ Unit,
-            onDeleteFile: File ⇒ Unit,
-            onUpdateFile: (File, File) ⇒ Unit,
-            onRenameFile: (File, String) ⇒ Unit): FileController = {
+  def apply(
+      onAddFile: File ⇒ Unit,
+      onDeleteFile: File ⇒ Unit,
+      onUpdateFile: (File, File) ⇒ Unit,
+      onRenameFile: (File, String) ⇒ Unit
+  ): FileController = {
     new FileController {
-      def addFile(file: File): Unit = onAddFile(file)
-      def deleteFile(file: File): Unit = onDeleteFile(file)
+      def addFile(file: File): Unit                      = onAddFile(file)
+      def deleteFile(file: File): Unit                   = onDeleteFile(file)
       def updateFile(oldFile: File, newFile: File): Unit = onUpdateFile(oldFile, newFile)
-      def renameFile(file: File, newName: String): Unit = onRenameFile(file, newName)
+      def renameFile(file: File, newName: String): Unit  = onRenameFile(file, newName)
     }
   }
 
-  def inherit(onAddFile: File ⇒ Unit = _ ⇒ (),
-              onDeleteFile: File ⇒ Unit = _ ⇒ (),
-              onUpdateFile: (File, File) ⇒ Unit = (_, _) ⇒ (),
-              onRenameFile: (File, String) ⇒ Unit = (_, _) ⇒ ())(implicit fc: FileController): FileController = {
+  def inherit(
+      onAddFile: File ⇒ Unit = _ ⇒ (),
+      onDeleteFile: File ⇒ Unit = _ ⇒ (),
+      onUpdateFile: (File, File) ⇒ Unit = (_, _) ⇒ (),
+      onRenameFile: (File, String) ⇒ Unit = (_, _) ⇒ ()
+  )(implicit fc: FileController): FileController = {
     apply(
       file ⇒ { fc.addFile(file); onAddFile(file) },
       file ⇒ { fc.deleteFile(file); onDeleteFile(file) },

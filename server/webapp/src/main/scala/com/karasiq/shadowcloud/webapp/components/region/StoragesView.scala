@@ -48,7 +48,7 @@ class StoragesView(implicit context: AppContext, regionContext: RegionContext) e
 
     def showCreateDialog() = {
       val newStorageIdRx = Var(StoragesView.newStorageId())
-      val propsRx = Var("")
+      val propsRx        = Var("")
 
       val storageTypeSelect = {
         val storageTypesRx = context.api.getStorageTypes().toRx(Set.empty).map(_.toSeq.sorted)
@@ -57,22 +57,24 @@ class StoragesView(implicit context: AppContext, regionContext: RegionContext) e
 
       storageTypeSelect.selected.map(_.headOption).foreach {
         case Some(storageType) ⇒
-          context.api.getDefaultStorageConfig(storageType)
+          context.api
+            .getDefaultStorageConfig(storageType)
             .map(_.data.utf8String)
             .foreach(propsRx.update)
 
         case None ⇒
-          // Ignore
+        // Ignore
       }
 
       Modal()
         .withTitle(context.locale.createStorage)
-        .withBody(Form(
-          FormInput.text(context.locale.storageId, newStorageIdRx.reactiveInput),
-          storageTypeSelect,
-          FormInput.textArea(context.locale.config, rows := 10, Rx(placeholder := propsRx()).auto,
-            AppComponents.tabOverride, propsRx.reactiveInput)
-        ))
+        .withBody(
+          Form(
+            FormInput.text(context.locale.storageId, newStorageIdRx.reactiveInput),
+            storageTypeSelect,
+            FormInput.textArea(context.locale.config, rows := 10, Rx(placeholder := propsRx()).auto, AppComponents.tabOverride, propsRx.reactiveInput)
+          )
+        )
         .withButtons(
           AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ doCreate(newStorageIdRx.now, propsRx.now))),
           AppComponents.modalClose()
@@ -81,7 +83,8 @@ class StoragesView(implicit context: AppContext, regionContext: RegionContext) e
     }
 
     Button(ButtonStyle.primary, ButtonSize.small, block = true)(
-      AppIcons.create, context.locale.createStorage,
+      AppIcons.create,
+      context.locale.createStorage,
       onclick := Callback.onClick(_ ⇒ showCreateDialog())
     )
   }
@@ -93,4 +96,3 @@ class StoragesView(implicit context: AppContext, regionContext: RegionContext) e
     }
   }
 }
-

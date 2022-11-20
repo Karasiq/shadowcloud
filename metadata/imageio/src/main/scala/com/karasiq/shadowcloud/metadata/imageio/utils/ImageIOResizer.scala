@@ -18,38 +18,38 @@ object ImageIOResizer {
 
   object Quality {
     import RenderingHints._
-    
+
     def apply(values: (RenderingHints.Key, AnyRef)*): Quality = {
       Quality(values.toMap)
     }
 
     val fast = Quality(
-      KEY_RENDERING → VALUE_RENDER_SPEED,
-      KEY_COLOR_RENDERING → VALUE_COLOR_RENDER_SPEED,
-      KEY_ANTIALIASING → VALUE_ANTIALIAS_OFF,
+      KEY_RENDERING           → VALUE_RENDER_SPEED,
+      KEY_COLOR_RENDERING     → VALUE_COLOR_RENDER_SPEED,
+      KEY_ANTIALIASING        → VALUE_ANTIALIAS_OFF,
       KEY_ALPHA_INTERPOLATION → VALUE_ALPHA_INTERPOLATION_SPEED,
-      KEY_INTERPOLATION → VALUE_INTERPOLATION_NEAREST_NEIGHBOR
+      KEY_INTERPOLATION       → VALUE_INTERPOLATION_NEAREST_NEIGHBOR
     )
 
     val default = Quality(
-      KEY_RENDERING → VALUE_RENDER_SPEED,
-      KEY_COLOR_RENDERING → VALUE_COLOR_RENDER_SPEED,
-      KEY_ANTIALIASING → VALUE_ANTIALIAS_ON,
+      KEY_RENDERING           → VALUE_RENDER_SPEED,
+      KEY_COLOR_RENDERING     → VALUE_COLOR_RENDER_SPEED,
+      KEY_ANTIALIASING        → VALUE_ANTIALIAS_ON,
       KEY_ALPHA_INTERPOLATION → VALUE_ALPHA_INTERPOLATION_SPEED,
-      KEY_INTERPOLATION → VALUE_INTERPOLATION_BILINEAR
+      KEY_INTERPOLATION       → VALUE_INTERPOLATION_BILINEAR
     )
 
     val highQuality = Quality(
-      KEY_RENDERING → VALUE_RENDER_QUALITY,
-      KEY_COLOR_RENDERING → VALUE_COLOR_RENDER_QUALITY,
-      KEY_ANTIALIASING → VALUE_ANTIALIAS_ON,
+      KEY_RENDERING           → VALUE_RENDER_QUALITY,
+      KEY_COLOR_RENDERING     → VALUE_COLOR_RENDER_QUALITY,
+      KEY_ANTIALIASING        → VALUE_ANTIALIAS_ON,
       KEY_ALPHA_INTERPOLATION → VALUE_ALPHA_INTERPOLATION_QUALITY,
-      KEY_INTERPOLATION → VALUE_INTERPOLATION_BICUBIC
+      KEY_INTERPOLATION       → VALUE_INTERPOLATION_BICUBIC
     )
   }
 
   private[this] def getScaledDimension(imgSize: Dimension, boundary: Dimension): Dimension = {
-    var newWidth: Int = imgSize.width
+    var newWidth: Int  = imgSize.width
     var newHeight: Int = imgSize.height
     if (imgSize.width > boundary.width) {
       newWidth = boundary.width
@@ -64,7 +64,7 @@ object ImageIOResizer {
 
   private[this] def redrawImage(image: Image, size: Dimension, quality: Quality): BufferedImage = {
     val outputImage = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_RGB)
-    val graphics = outputImage.createGraphics()
+    val graphics    = outputImage.createGraphics()
     try {
       // Max quality settings
       graphics.setRenderingHints(quality.toJavaMap)
@@ -79,7 +79,7 @@ object ImageIOResizer {
   def loadImage(bytes: Array[Byte]): BufferedImage = {
     val image = Toolkit.getDefaultToolkit.createImage(bytes)
 
-    val rgbMasks: Array[Int] = Array(0xFF0000, 0xFF00, 0xFF)
+    val rgbMasks: Array[Int]       = Array(0xff0000, 0xff00, 0xff)
     val rgbOpaqueModel: ColorModel = new DirectColorModel(32, rgbMasks(0), rgbMasks(1), rgbMasks(2))
 
     val pg = new PixelGrabber(image, 0, 0, -1, -1, true)
@@ -96,11 +96,10 @@ object ImageIOResizer {
     }
   }
 
-  def compress(image: BufferedImage, outputStream: OutputStream,
-               format: String = "jpeg", saveQuality: Int = 80): Unit = {
+  def compress(image: BufferedImage, outputStream: OutputStream, format: String = "jpeg", saveQuality: Int = 80): Unit = {
     val imageOutputStream = ImageIO.createImageOutputStream(outputStream)
     try {
-      val writer: ImageWriter = ImageIO.getImageWritersByFormatName(format).next
+      val writer: ImageWriter  = ImageIO.getImageWritersByFormatName(format).next
       val iwp: ImageWriteParam = writer.getDefaultWriteParam
       if (iwp.canWriteCompressed) {
         iwp.setCompressionMode(ImageWriteParam.MODE_EXPLICIT)
@@ -116,9 +115,9 @@ object ImageIOResizer {
   }
 
   def resize(image: BufferedImage, size: Int, quality: Quality = Quality.default): BufferedImage = {
-    val imgSize = new Dimension(image.getWidth, image.getHeight)
+    val imgSize  = new Dimension(image.getWidth, image.getHeight)
     val boundary = new Dimension(size, size)
-    val newSize = getScaledDimension(imgSize, boundary)
+    val newSize  = getScaledDimension(imgSize, boundary)
     redrawImage(image, newSize, quality)
   }
 }

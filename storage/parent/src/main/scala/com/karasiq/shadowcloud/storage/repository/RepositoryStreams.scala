@@ -38,7 +38,8 @@ object RepositoryStreams {
   def readWithRetries[K](repository: Repository[K], key: K, retries: Int = DefaultRetries): Source[repository.Data, repository.Result] = {
     def openStream() = {
       val promise = Promise[StorageIOResult]()
-      repository.read(key)
+      repository
+        .read(key)
         .mapMaterializedValue(promise.completeWith)
         .alsoTo(Sink.onComplete(_.failed.foreach(promise.tryFailure)))
         .via(AkkaStreamUtils.extractUpstream)
@@ -46,7 +47,8 @@ object RepositoryStreams {
         .mapMaterializedValue(_ ⇒ NotUsed)
     }
 
-    openStream().recoverWithRetries(retries, { case _ ⇒ openStream() })
+    openStream()
+      .recoverWithRetries(retries, { case _ ⇒ openStream() })
       .alsoToMat {
         Flow[(Source[ByteString, NotUsed], Future[StorageIOResult])]
           .flatMapConcat { case (_, future) ⇒ Source.future(future) }

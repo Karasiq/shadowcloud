@@ -1,14 +1,16 @@
 package com.karasiq.shadowcloud.config
 
-
-
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.model.crypto.EncryptionMethod
 import com.typesafe.config.{Config, ConfigException}
 
-private[shadowcloud] case class EncryptionConfig(rootConfig: Config, chunks: EncryptionMethod,
-                                                 index: EncryptionMethod, keys: EncryptionMethod,
-                                                 maxKeyReuse: Int) extends WrappedConfig
+private[shadowcloud] case class EncryptionConfig(
+    rootConfig: Config,
+    chunks: EncryptionMethod,
+    index: EncryptionMethod,
+    keys: EncryptionMethod,
+    maxKeyReuse: Int
+) extends WrappedConfig
 
 private[shadowcloud] object EncryptionConfig extends WrappedConfigFactory[EncryptionConfig] with ConfigImplicits {
   def apply(config: Config): EncryptionConfig = {
@@ -24,9 +26,10 @@ private[shadowcloud] object EncryptionConfig extends WrappedConfigFactory[Encryp
   private[this] def getEncryptionMethod(config: Config, path: String): EncryptionMethod = {
     try {
       CryptoProps.encryption(config.getConfigOrRef(path))
-    } catch { case _: ConfigException.Missing ⇒
-      val alg = config.getString(path)
-      EncryptionMethod(alg)
+    } catch {
+      case _: ConfigException.Missing ⇒
+        val alg = config.getString(path)
+        EncryptionMethod(alg)
     }
   }
 }

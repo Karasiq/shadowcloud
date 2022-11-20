@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric
 
-
-
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.RSAUtils
 import com.karasiq.shadowcloud.crypto.{EncryptionModule, EncryptionModuleStreamer}
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters}

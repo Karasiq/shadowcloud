@@ -11,8 +11,7 @@ class MailRuCloudStorageProvider extends StorageProvider {
       MailRuCloudStoragePlugin()
   }
 
-  override def storageConfigs = {
-    case "mailrucloud" ⇒
-      ConfigProps("type" → "mailrucloud", "credentials.login" → "example@mail.ru", "credentials.password" → "123456")
+  override def storageConfigs = { case "mailrucloud" ⇒
+    ConfigProps("type" → "mailrucloud", "credentials.login" → "example@mail.ru", "credentials.password" → "123456")
   }
 }

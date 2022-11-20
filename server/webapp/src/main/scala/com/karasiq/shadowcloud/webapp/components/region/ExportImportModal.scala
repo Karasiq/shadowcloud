@@ -27,41 +27,40 @@ object ExportImportModal {
       keyChain ← context.api.getKeys()
     } yield (snapshot, keyChain)
 
-    future.foreach {
-      case (snapshot, keyChain) ⇒
-        val (storagesSelect, storagesSelectRendered) = AppComponents.idSelect(context.locale.storages, snapshot.storages.keys)
-        val (regionsSelect, regionsSelectRendered)   = AppComponents.idSelect(context.locale.regions, snapshot.regions.keys)
-        val (keysSelect, keysSelectRendered)         = AppComponents.idSelect(context.locale.keys, keyChain.keys.map(_.key.id.toString))
+    future.foreach { case (snapshot, keyChain) ⇒
+      val (storagesSelect, storagesSelectRendered) = AppComponents.idSelect(context.locale.storages, snapshot.storages.keys)
+      val (regionsSelect, regionsSelectRendered)   = AppComponents.idSelect(context.locale.regions, snapshot.regions.keys)
+      val (keysSelect, keysSelectRendered)         = AppComponents.idSelect(context.locale.keys, keyChain.keys.map(_.key.id.toString))
 
-        Modal(context.locale.export)
-          .withBody(
-            Form(
-              storagesSelectRendered,
-              regionsSelectRendered,
-              keysSelectRendered
-            )
+      Modal(context.locale.export)
+        .withBody(
+          Form(
+            storagesSelectRendered,
+            regionsSelectRendered,
+            keysSelectRendered
           )
-          .withButtons(AppComponents.modalSubmit(onclick := Callback.onClick { _ ⇒
-            val regions  = regionsSelect.selected.now.toSet
-            val storages = storagesSelect.selected.now.toSet
-            val keys     = keysSelect.selected.now.toSet
+        )
+        .withButtons(AppComponents.modalSubmit(onclick := Callback.onClick { _ ⇒
+          val regions  = regionsSelect.selected.now.toSet
+          val storages = storagesSelect.selected.now.toSet
+          val keys     = keysSelect.selected.now.toSet
 
-            val filteredSnapshot = snapshot.copy(
-              snapshot.regions.collect {
-                case (regionId, status) if regions(regionId) ⇒
-                  regionId → status.copy(storages = status.storages)
-              },
-              snapshot.storages.collect {
-                case (storageId, status) if storages(storageId) ⇒
-                  storageId → status.copy(regions = status.regions)
-              }
-            )
+          val filteredSnapshot = snapshot.copy(
+            snapshot.regions.collect {
+              case (regionId, status) if regions(regionId) ⇒
+                regionId → status.copy(storages = status.storages)
+            },
+            snapshot.storages.collect {
+              case (storageId, status) if storages(storageId) ⇒
+                storageId → status.copy(regions = status.regions)
+            }
+          )
 
-            val filteredKeys = keyChain.copy(keyChain.keys.filter(k ⇒ keys(k.key.id.toString)))
-            val json         = Json.prettyPrint(Json.toJson(ExportEntity(filteredSnapshot, filteredKeys)))
-            AppComponents.exportDialog(context.locale.export, "sc-export.json", json).show()
-          }))
-          .show()
+          val filteredKeys = keyChain.copy(keyChain.keys.filter(k ⇒ keys(k.key.id.toString)))
+          val json         = Json.prettyPrint(Json.toJson(ExportEntity(filteredSnapshot, filteredKeys)))
+          AppComponents.exportDialog(context.locale.export, "sc-export.json", json).show()
+        }))
+        .show()
     }
   }
 
@@ -77,22 +76,20 @@ object ExportImportModal {
           })
 
         def createStorages() =
-          Future.sequence(regions.storages.map {
-            case (id, storage) ⇒
-              for {
-                st ← context.api.createStorage(id, storage.storageProps)
-                _  ← if (storage.suspended) context.api.suspendStorage(id) else Future.successful(())
-              } yield st
+          Future.sequence(regions.storages.map { case (id, storage) ⇒
+            for {
+              st ← context.api.createStorage(id, storage.storageProps)
+              _  ← if (storage.suspended) context.api.suspendStorage(id) else Future.successful(())
+            } yield st
           })
 
         def createRegions() =
-          Future.sequence(regions.regions.map {
-            case (id, region) ⇒
-              for {
-                st ← context.api.createRegion(id, region.regionConfig)
-                _  ← context.api.suspendRegion(id) // Always suspend
-                _  ← Future.sequence(region.storages.map(storageId ⇒ context.api.registerStorage(id, storageId)))
-              } yield st
+          Future.sequence(regions.regions.map { case (id, region) ⇒
+            for {
+              st ← context.api.createRegion(id, region.regionConfig)
+              _  ← context.api.suspendRegion(id) // Always suspend
+              _  ← Future.sequence(region.storages.map(storageId ⇒ context.api.registerStorage(id, storageId)))
+            } yield st
           })
 
         for {

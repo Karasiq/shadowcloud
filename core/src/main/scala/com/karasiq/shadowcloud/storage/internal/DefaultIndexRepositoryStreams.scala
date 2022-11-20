@@ -20,10 +20,12 @@ private[storage] final class DefaultIndexRepositoryStreams(
     extends IndexRepositoryStreams {
 
   def write[Key](repository: Repository[Key]): Flow[(Key, IndexData), IndexIOResult[Key], NotUsed] = {
-    Flow[(Key, IndexData)].flatMapMerge(breadth, {
-      case (key, value) ⇒
+    Flow[(Key, IndexData)].flatMapMerge(
+      breadth,
+      { case (key, value) ⇒
         Source.single(value).via(writeAndReturn(repository, key))
-    })
+      }
+    )
   }
 
   def read[Key](repository: Repository[Key]): Flow[Key, IndexIOResult[Key], NotUsed] = {
@@ -34,7 +36,8 @@ private[storage] final class DefaultIndexRepositoryStreams(
     if (immutable) return Flow.fromSinkAndSource(Sink.ignore, Source.failed(new IllegalStateException("Storage is immutable")))
 
     Flow[Key].flatMapMerge(
-      breadth, { key ⇒
+      breadth,
+      { key ⇒
         val graph = GraphDSL.create(repository.delete) { implicit builder ⇒ deleteSink ⇒
           import GraphDSL.Implicits._
           val broadcast       = builder.add(Broadcast[Key](2))
@@ -54,11 +57,10 @@ private[storage] final class DefaultIndexRepositoryStreams(
       import GraphDSL.Implicits._
       val broadcast = builder.add(Broadcast[IndexData](2))
       val compose   = builder.add(ZipWith((diff: IndexData, result: Future[StorageIOResult]) ⇒ (key, diff, result)))
-      val unwrap = builder.add(Flow[(Key, IndexData, Future[StorageIOResult])].flatMapConcat {
-        case (key, diff, future) ⇒
-          Source
-            .future(StorageUtils.wrapFuture(repository.toString, future))
-            .map(IndexIOResult(key, diff, _))
+      val unwrap = builder.add(Flow[(Key, IndexData, Future[StorageIOResult])].flatMapConcat { case (key, diff, future) ⇒
+        Source
+          .future(StorageUtils.wrapFuture(repository.toString, future))
+          .map(IndexIOResult(key, diff, _))
       })
       broadcast ~> compose.in0
       broadcast ~> writeFlow ~> repository
@@ -79,11 +81,10 @@ private[storage] final class DefaultIndexRepositoryStreams(
     val graph = GraphDSL.create(repository.read(key)) { implicit builder ⇒ repository ⇒
       import GraphDSL.Implicits._
       val compose = builder.add(ZipWith((diff: IndexData, result: Future[StorageIOResult]) ⇒ (key, diff, result)))
-      val unwrap = builder.add(Flow[(Key, IndexData, Future[StorageIOResult])].flatMapConcat {
-        case (key, diff, future) ⇒
-          Source
-            .future(StorageUtils.wrapFuture(repository.toString, future))
-            .map(IndexIOResult(key, diff, _))
+      val unwrap = builder.add(Flow[(Key, IndexData, Future[StorageIOResult])].flatMapConcat { case (key, diff, future) ⇒
+        Source
+          .future(StorageUtils.wrapFuture(repository.toString, future))
+          .map(IndexIOResult(key, diff, _))
       })
       repository.out ~> readFlow ~> compose.in0
       builder.materializedValue ~> compose.in1

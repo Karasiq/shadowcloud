@@ -6,6 +6,6 @@ final case class FolderDiffDecider(files: DiffMergeDecider[File], folders: DiffM
 
 object FolderDiffDecider {
   val idempotent = FolderDiffDecider(DiffMergeDecider.idempotent, DiffMergeDecider.idempotent)
-  val leftWins = FolderDiffDecider(DiffMergeDecider.leftWins, DiffMergeDecider.leftWins)
-  val rightWins = FolderDiffDecider(DiffMergeDecider.rightWins, DiffMergeDecider.rightWins)
+  val leftWins   = FolderDiffDecider(DiffMergeDecider.leftWins, DiffMergeDecider.leftWins)
+  val rightWins  = FolderDiffDecider(DiffMergeDecider.rightWins, DiffMergeDecider.rightWins)
 }

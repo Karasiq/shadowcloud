@@ -19,15 +19,15 @@ class Dropzone(element: js.Any, options: js.Object) extends js.Object {
 }
 
 object Dropzone {
-  def apply(regionId: RegionId, path: () => Path, onSuccess: dom.File => Unit): Modifier = { element: dom.Element =>
+  def apply(regionId: RegionId, path: () ⇒ Path, onSuccess: dom.File ⇒ Unit): Modifier = { element: dom.Element ⇒
     val dz = new Dropzone(
       element,
       js.Dynamic
         .literal(
-          url = { _: js.Any =>
+          url = { _: js.Any ⇒
             URLPath(Path.root / "upload_form" / regionId / SCApiEncoding.toUrlSafe(AjaxApi.encoding.encodePath(path()))).toString
           },
-          headers = js.Dynamic.literal("X-Requested-With" -> SCApiUtils.RequestedWith, "Accept" -> AjaxApi.payloadContentType),
+          headers = js.Dynamic.literal("X-Requested-With" → SCApiUtils.RequestedWith, "Accept" → AjaxApi.payloadContentType),
           maxFilesize = null,
           timeout = -1,
           parallelUploads = 4

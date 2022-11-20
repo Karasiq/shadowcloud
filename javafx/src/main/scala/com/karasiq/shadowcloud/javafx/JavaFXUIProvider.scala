@@ -6,7 +6,7 @@ import akka.actor.ActorSystem
 import com.karasiq.shadowcloud.ui.UIProvider
 
 private[javafx] final class JavaFXUIProvider(actorSystem: ActorSystem) extends UIProvider {
-  private[this] lazy val context = JavaFXContext(actorSystem)
+  private[this] lazy val context                  = JavaFXContext(actorSystem)
   @volatile private[this] var notificationPresent = false
 
   override def showErrorMessage(error: Throwable): Unit = {

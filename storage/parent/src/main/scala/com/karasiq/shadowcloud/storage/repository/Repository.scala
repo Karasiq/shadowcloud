@@ -10,10 +10,15 @@ import akka.util.ByteString
 import com.karasiq.common.encoding.{ByteStringEncoding, HexString}
 import com.karasiq.shadowcloud.model.{ChunkId, SequenceNr}
 import com.karasiq.shadowcloud.storage.StorageIOResult
-import com.karasiq.shadowcloud.storage.repository.wrappers.{CategorizedRepositoryKeyMapper, RepositoryKeyMapper, RepositoryWrapper, SubRepositoriesWrapper}
+import com.karasiq.shadowcloud.storage.repository.wrappers.{
+  CategorizedRepositoryKeyMapper,
+  RepositoryKeyMapper,
+  RepositoryWrapper,
+  SubRepositoriesWrapper
+}
 
 trait Repository[Key] {
-  final type Data = ByteString
+  final type Data   = ByteString
   final type Result = Future[StorageIOResult]
 
   def keys: Source[Key, Result]
@@ -23,23 +28,30 @@ trait Repository[Key] {
 }
 
 object Repository {
-  def mapKeys[OldKey, NewKey](repository: Repository[OldKey], toNew: OldKey ⇒ NewKey,
-                              toOld: NewKey ⇒ OldKey): Repository[NewKey] = {
+  def mapKeys[OldKey, NewKey](repository: Repository[OldKey], toNew: OldKey ⇒ NewKey, toOld: NewKey ⇒ OldKey): Repository[NewKey] = {
     new RepositoryKeyMapper(repository, toNew, toOld)
   }
 
-  def mapCategoryKeys[OldKey, NewKey, ItemKey](repository: CategorizedRepository[OldKey, ItemKey], toNew: OldKey ⇒ NewKey,
-                                         toOld: NewKey ⇒ OldKey): CategorizedRepository[NewKey, ItemKey] = {
+  def mapCategoryKeys[OldKey, NewKey, ItemKey](
+      repository: CategorizedRepository[OldKey, ItemKey],
+      toNew: OldKey ⇒ NewKey,
+      toOld: NewKey ⇒ OldKey
+  ): CategorizedRepository[NewKey, ItemKey] = {
     new CategorizedRepositoryKeyMapper[OldKey, ItemKey, NewKey, ItemKey](repository, toNew, identity, toOld, identity)
   }
 
-  def mapItemKeys[CatKey, OldKey, NewKey](repository: CategorizedRepository[CatKey, OldKey], toNew: OldKey ⇒ NewKey,
-                                          toOld: NewKey ⇒ OldKey): CategorizedRepository[CatKey, NewKey] = {
+  def mapItemKeys[CatKey, OldKey, NewKey](
+      repository: CategorizedRepository[CatKey, OldKey],
+      toNew: OldKey ⇒ NewKey,
+      toOld: NewKey ⇒ OldKey
+  ): CategorizedRepository[CatKey, NewKey] = {
     new CategorizedRepositoryKeyMapper[CatKey, OldKey, CatKey, NewKey](repository, identity, toNew, identity, toOld)
   }
 
-  def forChunks[CatKey](repository: CategorizedRepository[CatKey, String],
-                        encoding: ByteStringEncoding = HexString): CategorizedRepository[CatKey, ChunkId] = {
+  def forChunks[CatKey](
+      repository: CategorizedRepository[CatKey, String],
+      encoding: ByteStringEncoding = HexString
+  ): CategorizedRepository[CatKey, ChunkId] = {
     mapItemKeys(repository, encoding.decode, encoding.encode)
   }
 
@@ -63,8 +75,10 @@ object Repository {
       new RepositoryWrapper(repository) with CategorizedRepository[CatKey, Key]
   }
 
-  def fromSubRepositories[CatKey, Key](pathString: String, subRepositories: () ⇒ Source[(CatKey, Repository[Key]), NotUsed])
-                                      (implicit ec: ExecutionContext, mat: Materializer): CategorizedRepository[CatKey, Key] = {
+  def fromSubRepositories[CatKey, Key](pathString: String, subRepositories: () ⇒ Source[(CatKey, Repository[Key]), NotUsed])(implicit
+      ec: ExecutionContext,
+      mat: Materializer
+  ): CategorizedRepository[CatKey, Key] = {
     new SubRepositoriesWrapper(pathString, subRepositories)
   }
 

@@ -11,8 +11,7 @@ class DropboxStorageProvider extends StorageProvider {
       DropboxStoragePlugin()
   }
 
-  override val storageConfigs: StorageConfigPF = {
-    case "dropbox" ⇒
-      ConfigProps("type" → "dropbox", "credentials.login" → "example@mail.com")
+  override val storageConfigs: StorageConfigPF = { case "dropbox" ⇒
+    ConfigProps("type" → "dropbox", "credentials.login" → "example@mail.com")
   }
 }

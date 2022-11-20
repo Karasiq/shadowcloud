@@ -84,11 +84,10 @@ class MediaFileView(file: File, useId: Boolean)(implicit context: AppContext, fo
         renderAudioPlayer()
       else if (MediaFileView.isImageFile(file))
         renderImage()
-      else 
+      else
         renderVideoPlayer()
     }
 
     div(renderPlayer())
   }
 }
-

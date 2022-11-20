@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric
 
-
-
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto.{EncryptionModuleStreamer, OnlyStreamEncryptionModule}
 import com.karasiq.shadowcloud.utils.ByteStringUnsafe
@@ -20,7 +18,8 @@ private[bouncycastle] trait BCAsymmetricBlockCipherStreamer extends EncryptionMo
       ByteString.fromArrayUnsafe(cipher.processBlock(ByteStringUnsafe.getArray(data), 0, data.length))
     } else {
       // Split to blocks
-      data.grouped(blockSize)
+      data
+        .grouped(blockSize)
         .map(block ⇒ ByteString.fromArrayUnsafe(cipher.processBlock(block.toArray, 0, block.length)))
         .fold(ByteString.empty)(_ ++ _)
     }

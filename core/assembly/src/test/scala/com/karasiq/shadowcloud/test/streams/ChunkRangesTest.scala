@@ -56,7 +56,7 @@ class ChunkRangesTest extends FlatSpec with Matchers {
 
   it should "split byte string" in {
     val range1 = ChunkRanges.Range(10, 20)
-    val bytes = TestUtils.randomBytes(20)
+    val bytes  = TestUtils.randomBytes(20)
     range1.slice(bytes) shouldBe bytes.drop(10).take(10)
   }
 

@@ -100,7 +100,7 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
 
   private[this] def copyFile(file: File, readScope: IndexScope): Unit = {
     val newFileSet = context.api.copyFile(regionId, file, file.path.withParent(path), readScope)
-    newFileSet.foreach{ _ ⇒
+    newFileSet.foreach { _ ⇒
       folderController.update(path)
       Toastr.success(s"${file.path} successfully copied to $path")
     }
@@ -181,10 +181,16 @@ class FolderTree(val path: Path)(implicit context: AppContext, folderContext: Fo
 
       span(
         a(href := "#", icon, styles, marginRight := 2.px, onclick := Callback.onClick(_ ⇒ opened() = !opened.now)),
-        a(href := "#", FolderTree.toPathString(path), styles, dragAndDropHandlers, onclick := Callback.onClick { _ ⇒
-          folderContext.selected() = path
-          opened() = true
-        }),
+        a(
+          href := "#",
+          FolderTree.toPathString(path),
+          styles,
+          dragAndDropHandlers,
+          onclick := Callback.onClick { _ ⇒
+            folderContext.selected() = path
+            opened() = true
+          }
+        ),
         actions
       )
     }

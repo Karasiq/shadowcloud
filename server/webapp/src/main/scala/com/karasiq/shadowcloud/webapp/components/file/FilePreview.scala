@@ -14,9 +14,7 @@ import scala.concurrent.Future
 import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 object FilePreview {
-  case class PreviewVariants(image: Option[Metadata.Thumbnail] = None,
-                             text: Option[Metadata.Text] = None,
-                             files: Option[Metadata.FileList] = None)
+  case class PreviewVariants(image: Option[Metadata.Thumbnail] = None, text: Option[Metadata.Text] = None, files: Option[Metadata.FileList] = None)
 
   object PreviewVariants {
     val empty = PreviewVariants()
@@ -46,18 +44,17 @@ class FilePreview(regionId: RegionId, file: File)(implicit context: AppContext) 
 
   def renderTag(md: ModifierT*): TagT = {
     val image = Rx(previewsRx().image.map(MetadataView.thumbnail))
-    val text = Rx(previewsRx().text.map(MetadataView.text))
+    val text  = Rx(previewsRx().text.map(MetadataView.text))
     val files = Rx(previewsRx().files.map(MetadataView.fileList))
 
     div(
-      for (preview ← Seq(
-        image,
-        text,
-        files
-      )) yield preview.map(_.fold((): Frag)(GridSystem.mkRow(_)))
-    )(md:_*)
+      for (
+        preview ← Seq(
+          image,
+          text,
+          files
+        )
+      ) yield preview.map(_.fold((): Frag)(GridSystem.mkRow(_)))
+    )(md: _*)
   }
 }
-
-
-

@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.model
 
-
-
 import com.karasiq.shadowcloud.utils.Utils
 
 @SerialVersionUID(0L)

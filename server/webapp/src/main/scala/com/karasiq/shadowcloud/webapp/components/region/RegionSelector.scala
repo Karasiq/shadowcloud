@@ -17,13 +17,14 @@ object RegionSelector {
   private def getRegionIds(state: RegionStateReport): Seq[RegionId] = {
     state.regions
       .filterNot(_._2.suspended)
-      .keys.toSeq
+      .keys
+      .toSeq
       .sorted
   }
 }
 
 class RegionSelector(implicit context: AppContext, regionContext: RegionContext) extends BootstrapHtmlComponent {
-  val selectedRegion = Var(RegionSelector.getRegionIds(regionContext.regions.now).headOption)
+  val selectedRegion            = Var(RegionSelector.getRegionIds(regionContext.regions.now).headOption)
   private[this] val selectField = renderSelectField()
 
   selectedRegion.triggerLater {
@@ -45,7 +46,8 @@ class RegionSelector(implicit context: AppContext, regionContext: RegionContext)
 
   private[this] def renderSelectField(): FormSelect = {
     val options = regionContext.regions.map { state ⇒
-      RegionSelector.getRegionIds(state)
+      RegionSelector
+        .getRegionIds(state)
         .map(id ⇒ FormSelectOption(id, id))
     }
 

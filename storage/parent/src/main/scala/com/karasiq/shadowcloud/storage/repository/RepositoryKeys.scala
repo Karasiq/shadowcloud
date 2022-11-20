@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.storage.repository
 
-
-
 import akka.util.ByteString
 import com.karasiq.common.encoding.HexString
 import com.karasiq.shadowcloud.storage.repository.wrappers.LongSeqRepositoryWrapper

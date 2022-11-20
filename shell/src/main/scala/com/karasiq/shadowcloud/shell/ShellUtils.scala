@@ -15,7 +15,7 @@ private[shell] object ShellUtils {
 
   def toStrings(folder: Folder): Seq[String] = {
     Seq("Folders:") ++ folder.folders.toSeq.sorted.map("  - " + _) ++
-    Seq("Files:") ++ folder.files.toSeq.sortBy(f ⇒ (f.path.name, f.timestamp.lastModified)).map(f ⇒ s"  - ${ShellUtils.toString(f)}")
+      Seq("Files:") ++ folder.files.toSeq.sortBy(f ⇒ (f.path.name, f.timestamp.lastModified)).map(f ⇒ s"  - ${ShellUtils.toString(f)}")
   }
 
   def print[T](future: Future[T])(toStrings: T ⇒ GenTraversableOnce[String])(implicit ec: ExecutionContext): Unit = {

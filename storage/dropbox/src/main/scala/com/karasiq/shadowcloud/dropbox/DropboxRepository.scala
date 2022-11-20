@@ -21,7 +21,8 @@ object DropboxRepository {
 class DropboxRepository(dropboxClient: DropboxClient)(implicit ec: ExecutionContext) extends PathTreeRepository {
   def subKeys(fromPath: Path) = {
     require(Path.isConventional(fromPath), s"Non-conventional: $fromPath")
-    dropboxClient.list(fromPath.toString, recursive = true)
+    dropboxClient
+      .list(fromPath.toString, recursive = true)
       .map(metadata ⇒ Path.fromString(metadata.getPathDisplay))
       .alsoToMat(StorageUtils.countPassedElements(fromPath).toMat(Sink.head)(Keep.right))(Keep.right)
       .recoverWithRetries(1, { case e: ListFolderErrorException if e.errorValue.getPathValue.isNotFound ⇒ Source.empty })
@@ -30,7 +31,8 @@ class DropboxRepository(dropboxClient: DropboxClient)(implicit ec: ExecutionCont
 
   def read(path: Path) = {
     require(Path.isConventional(path), s"Non-conventional: $path")
-    dropboxClient.download(path.toString)
+    dropboxClient
+      .download(path.toString)
       .alsoToMat(StorageUtils.countPassedBytes(path).toMat(Sink.head)(Keep.right))(Keep.right)
   }
 

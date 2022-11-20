@@ -49,13 +49,19 @@ private[javafx] class PasswordDialog(passwordId: String) extends Dialog[String] 
 
   dialogPane().content = gridPane
 
-  dialogPane().scene().window().addEventHandler(WindowEvent.WINDOW_SHOWN, { e: WindowEvent =>
-    import javafx.stage.{Screen, Window}
-    val window = e.getSource.asInstanceOf[Window]
-    val screenBounds = Screen.getPrimary.getVisualBounds
-    window.setX((screenBounds.getWidth - window.getWidth) / 2)
-    window.setY((screenBounds.getHeight - window.getHeight) / 2)
-  })
+  dialogPane()
+    .scene()
+    .window()
+    .addEventHandler(
+      WindowEvent.WINDOW_SHOWN,
+      { e: WindowEvent ⇒
+        import javafx.stage.{Screen, Window}
+        val window       = e.getSource.asInstanceOf[Window]
+        val screenBounds = Screen.getPrimary.getVisualBounds
+        window.setX((screenBounds.getWidth - window.getWidth) / 2)
+        window.setY((screenBounds.getHeight - window.getHeight) / 2)
+      }
+    )
 
   dialogPane().scene().window().asInstanceOf[Stage].setAlwaysOnTop(true)
 }

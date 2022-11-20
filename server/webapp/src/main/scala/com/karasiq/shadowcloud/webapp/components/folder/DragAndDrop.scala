@@ -99,11 +99,11 @@ private[folder] object DragAndDrop {
   }
 
   private[this] object Attributes {
-    val path = "path"
-    val file = "file"
-    val folder = "folder"
+    val path       = "path"
+    val file       = "file"
+    val folder     = "folder"
     val entityType = "entityType"
-    val regionId = "regionId"
-    val scope = "scope"
+    val regionId   = "regionId"
+    val scope      = "scope"
   }
 }

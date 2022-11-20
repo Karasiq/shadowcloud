@@ -30,19 +30,20 @@ class SCHttpServerTest extends FlatSpec with Matchers with ScalatestRouteTest wi
 
   implicit val routeTimeout = RouteTestTimeout(30 seconds)
 
-  val testRegionId = "testRegion"
+  val testRegionId  = "testRegion"
   val testStorageId = "testStorage"
 
-  val route = Route.seal(TestServer.scRoutes)
+  val route                       = Route.seal(TestServer.scRoutes)
   val (testFileContent, testFile) = TestUtils.indexedBytes
-  val encodedPath = SCApiEncoding.toUrlSafe(apiEncoding.encodePath(testFile.path))
+  val encodedPath                 = SCApiEncoding.toUrlSafe(apiEncoding.encodePath(testFile.path))
 
   "Test server" should "upload file" in {
     val request = Post(s"/upload/$testRegionId/$encodedPath", HttpEntity(testFileContent))
       .copy(headers = List(RawHeader("X-Requested-With", SCApiUtils.RequestedWith)))
 
     request ~> route ~> check {
-      val file = apiEncoding.decodeFile(entityAs[ByteString](implicitly[FromEntityUnmarshaller[ByteString]], implicitly[ClassTag[ByteString]], 30 seconds))
+      val file =
+        apiEncoding.decodeFile(entityAs[ByteString](implicitly[FromEntityUnmarshaller[ByteString]], implicitly[ClassTag[ByteString]], 30 seconds))
       file.path shouldBe testFile.path
       file.revision shouldBe 0
       file.checksum.size shouldBe testFileContent.length
@@ -64,7 +65,7 @@ class SCHttpServerTest extends FlatSpec with Matchers with ScalatestRouteTest wi
     request ~> route ~> check {
       val expectedContent =
         testFileContent.slice(0, 100) ++
-        testFileContent.slice(100, 200)
+          testFileContent.slice(100, 200)
 
       entityAs[ByteString] shouldBe expectedContent
     }

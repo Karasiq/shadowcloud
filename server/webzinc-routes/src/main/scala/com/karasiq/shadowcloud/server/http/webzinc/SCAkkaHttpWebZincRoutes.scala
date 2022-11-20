@@ -37,8 +37,8 @@ trait SCAkkaHttpWebZincRoutes { self: SCAkkaHttpFileRoutes with SCAkkaHttpApiRou
 
     private[this] implicit val config = WebZincConfig(sc.config.rootConfig.getConfigIfExists("webzinc"))
     private[this] implicit val client = WebClient()
-    private[this] val fetcher = HtmlUnitWebResourceFetcher() // TODO: https://github.com/akka/akka-http/issues/86
-    private[this] val inliner = WebResourceInliner()
+    private[this] val fetcher         = HtmlUnitWebResourceFetcher() // TODO: https://github.com/akka/akka-http/issues/86
+    private[this] val inliner         = WebResourceInliner()
 
     def fetchWebPage(url: String): PageFuture = {
       val pageFuture = fetcher.getWebPage(url).flatMap((inliner.inline _).tupled)
@@ -47,7 +47,8 @@ trait SCAkkaHttpWebZincRoutes { self: SCAkkaHttpFileRoutes with SCAkkaHttpApiRou
 
     def fetchHttpFile(url: String): PageFuture = {
       client.doHttpRequest(url).map { response ⇒
-        val fileName = response.header[`Content-Disposition`]
+        val fileName = response
+          .header[`Content-Disposition`]
           .flatMap(_.params.get("filename"))
           .orElse(new URI(url).getPath.split('/').lastOption)
           .map(URLDecoder.decode(_, "UTF-8"))

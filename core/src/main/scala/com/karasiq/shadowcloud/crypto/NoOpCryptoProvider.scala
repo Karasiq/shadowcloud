@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto
 
-
-
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.internal.{NoOpEncryptionModule, NoOpHashingModule, NoOpSignModule}
 import com.karasiq.shadowcloud.model.crypto.CryptoMethod

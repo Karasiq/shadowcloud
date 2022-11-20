@@ -64,16 +64,20 @@ object RegionRepairStream {
             Flow[ChunkStatus]
               .map(status ⇒ status → createNewAffinity(status, request.strategy))
               .filterNot { case (status, newAffinity) ⇒ newAffinity.exists(_.isFinished(status)) }
-              .flatMapMerge(parallelism.read, {
-                case (status, newAffinity) ⇒
+              .flatMapMerge(
+                parallelism.read,
+                { case (status, newAffinity) ⇒
                   futureWithRetry(regionOps.readChunkEncrypted(request.regionId, status.chunk).map(_ → newAffinity))
-              })
+                }
+              )
               .log("region-repair-read", chunk ⇒ s"${chunk._1.hashString} at ${request.regionId}")
               .via(ByteStreams.bufferT(_._1.data.encrypted.length, bufferSize))
-              .flatMapMerge(parallelism.write, {
-                case (chunk, newAffinity) ⇒
+              .flatMapMerge(
+                parallelism.write,
+                { case (chunk, newAffinity) ⇒
                   futureWithRetry(regionOps.rewriteChunk(request.regionId, chunk, newAffinity))
-              })
+                }
+              )
               .log("region-repair-write", chunk ⇒ s"${chunk.hashString} at ${request.regionId}")
               // .withAttributes(ActorAttributes.logLevels(onElement = Logging.InfoLevel))
               .map(_.withoutData)

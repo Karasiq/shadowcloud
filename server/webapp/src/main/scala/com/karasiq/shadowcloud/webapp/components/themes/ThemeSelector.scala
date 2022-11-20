@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.webapp.components.themes
 
-
-
 import com.karasiq.bootstrap.Bootstrap.default._
 import com.karasiq.shadowcloud.webapp.utils.StorageBind
 import rx.{Rx, Var}
@@ -9,8 +7,23 @@ import scalaTags.all._
 
 object ThemeSelector {
   val Themes = Vector(
-    "Default", "Cerulean", "Cosmo", "Cyborg", "Darkly", "Flatly", "Journal", "Lumen", "Paper", "Readable",
-    "Sandstone", "Simplex", "Slate", "Spacelab", "Superhero", "United", "Yeti"
+    "Default",
+    "Cerulean",
+    "Cosmo",
+    "Cyborg",
+    "Darkly",
+    "Flatly",
+    "Journal",
+    "Lumen",
+    "Paper",
+    "Readable",
+    "Sandstone",
+    "Simplex",
+    "Slate",
+    "Spacelab",
+    "Superhero",
+    "United",
+    "Yeti"
   )
 
   lazy val CurrentTheme = StorageBind.LS("bootstrap-theme", Themes.head)
@@ -20,8 +33,7 @@ object ThemeSelector {
   }
 }
 
-class ThemeSelector(themes: IndexedSeq[String], currentTheme: Var[String])
-  extends BootstrapHtmlComponent {
+class ThemeSelector(themes: IndexedSeq[String], currentTheme: Var[String]) extends BootstrapHtmlComponent {
 
   def setTheme(theme: String): Unit = {
     currentTheme() = theme
@@ -29,7 +41,7 @@ class ThemeSelector(themes: IndexedSeq[String], currentTheme: Var[String])
 
   def nextTheme(): Unit = {
     val currentIndex = themes.indexOf(currentTheme.now)
-    val nextIndex = (currentIndex + 1) % themes.length
+    val nextIndex    = (currentIndex + 1) % themes.length
     setTheme(themes(nextIndex))
   }
 

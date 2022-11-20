@@ -179,19 +179,17 @@ private[yandex] class YandexWebApi(
     http
       .singleRequest(HttpRequest(HttpMethods.GET, passport, stdHeaders), settings = poolSettings)
       .flatMap(entityWithCookies)
-      .map {
-        case (entity, cookies) ⇒
-          val str     = entity.data.utf8String
-          val csrf    = csrfR.findFirstMatchIn(str).map(_.group("csrf")).get
-          val process = proccessR.findFirstMatchIn(str).map(_.group("uuid")).get
-          (csrf, process, cookies)
+      .map { case (entity, cookies) ⇒
+        val str     = entity.data.utf8String
+        val csrf    = csrfR.findFirstMatchIn(str).map(_.group("csrf")).get
+        val process = proccessR.findFirstMatchIn(str).map(_.group("uuid")).get
+        (csrf, process, cookies)
       }
   }
 
   private[this] def entityWithCookies(resp: HttpResponse) = {
-    val cookies = resp.headers.collect {
-      case `Set-Cookie`(cookie) ⇒
-        cookie
+    val cookies = resp.headers.collect { case `Set-Cookie`(cookie) ⇒
+      cookie
     }
     resp.entity.toStrict(5 seconds).map(_ → cookies)
   }
@@ -292,38 +290,35 @@ private[yandex] class YandexWebApi(
         .flatMap(entityWithCookies)
 
     executePasswordRequest()
-      .flatMap {
-        case (response, cookies) ⇒
-          val json = Json.parse(response.data.toArray)
-          if ((json \ "errors" \ 0).asOpt[String].contains("captcha.required")) {
-            for {
-              (image, key) ← getCaptcha()
-              answer       ← solveCaptcha(image)
-              Done         ← checkCaptcha(key, answer)
-              result       ← executePasswordRequest()
-            } yield result
-          } else if ((json \ "redirect_url").asOpt[String].isDefined) {
-            val url = s"https://passport.yandex.ru${(json \ "redirect_url").as[String]}"
-            passChallenge(url).map(_ ⇒ (response → cookies))
-          } else {
-            Future.successful(response → cookies)
-          }
+      .flatMap { case (response, cookies) ⇒
+        val json = Json.parse(response.data.toArray)
+        if ((json \ "errors" \ 0).asOpt[String].contains("captcha.required")) {
+          for {
+            (image, key) ← getCaptcha()
+            answer       ← solveCaptcha(image)
+            Done         ← checkCaptcha(key, answer)
+            result       ← executePasswordRequest()
+          } yield result
+        } else if ((json \ "redirect_url").asOpt[String].isDefined) {
+          val url = s"https://passport.yandex.ru${(json \ "redirect_url").as[String]}"
+          passChallenge(url).map(_ ⇒ (response → cookies))
+        } else {
+          Future.successful(response → cookies)
+        }
       }
-      .flatMap {
-        case (response, sessCookies) ⇒
-          val json = Json.parse(response.data.toArray)
-          require((json \ "status").as[String] == "ok", s"Not ok: $json")
-          val validateUrl = "https://passport.yandex.ru/registration-validations/auth/accounts"
-          val headers = List(
-            Cookie((cookies ++ sessCookies).map(_.pair()).toList)
-          )
-          http
-            .singleRequest(HttpRequest(HttpMethods.POST, validateUrl, headers, FormData("csrf_token" → csrf).toEntity), settings = poolSettings)
-            .flatMap(entityWithCookies)
-            .map {
-              case (entity, authCookies) ⇒
-                Json.parse(entity.data.toArray).as[JsObject] → (cookies ++ sessCookies ++ authCookies)
-            }
+      .flatMap { case (response, sessCookies) ⇒
+        val json = Json.parse(response.data.toArray)
+        require((json \ "status").as[String] == "ok", s"Not ok: $json")
+        val validateUrl = "https://passport.yandex.ru/registration-validations/auth/accounts"
+        val headers = List(
+          Cookie((cookies ++ sessCookies).map(_.pair()).toList)
+        )
+        http
+          .singleRequest(HttpRequest(HttpMethods.POST, validateUrl, headers, FormData("csrf_token" → csrf).toEntity), settings = poolSettings)
+          .flatMap(entityWithCookies)
+          .map { case (entity, authCookies) ⇒
+            Json.parse(entity.data.toArray).as[JsObject] → (cookies ++ sessCookies ++ authCookies)
+          }
       }
   }
 
@@ -343,12 +338,11 @@ private[yandex] class YandexWebApi(
     http
       .singleRequest(HttpRequest(HttpMethods.GET, "https://disk.yandex.ru/client/disk", headers ++ userAgentHeaders), settings = poolSettings)
       .flatMap(entityWithCookies)
-      .map {
-        case (entity, _) ⇒
-          regex
-            .findFirstMatchIn(entity.data.utf8String)
-            .map(_.group("sk"))
-            .getOrElse(throw new IllegalArgumentException("No sk found"))
+      .map { case (entity, _) ⇒
+        regex
+          .findFirstMatchIn(entity.data.utf8String)
+          .map(_.group("sk"))
+          .getOrElse(throw new IllegalArgumentException("No sk found"))
       }
   }
 

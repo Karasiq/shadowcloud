@@ -8,7 +8,7 @@ import org.scalajs.dom.XMLHttpRequest
 
 object AjaxUtils {
   implicit val AjaxExecutionContext: ExecutionContext = scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
-  val BytesResponseType = "arraybuffer"
+  val BytesResponseType                               = "arraybuffer"
 
   implicit class AjaxResultOps(private val future: Future[XMLHttpRequest]) extends AnyVal {
     def responseBytes: Future[ByteString] = {

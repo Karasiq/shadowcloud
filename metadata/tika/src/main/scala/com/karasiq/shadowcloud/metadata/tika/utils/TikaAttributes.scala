@@ -5,13 +5,13 @@ import com.karasiq.shadowcloud.metadata.tika.TikaMetadata
 
 private[tika] object TikaAttributes {
   val ResourceName = "resourceName"
-  val Size = "Content-Length"
+  val Size         = "Content-Length"
   val LastModified = "Last-Modified"
 
-  val ImageWidth = "tiff:ImageWidth"
+  val ImageWidth  = "tiff:ImageWidth"
   val ImageHeight = "tiff:ImageLength"
 
-  val Title = "dc:title"
+  val Title       = "dc:title"
   val Description = "dc:description"
 
   def optional(md: TikaMetadata, name: String): Option[String] = {

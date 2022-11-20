@@ -141,14 +141,13 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
   // -----------------------------------------------------------------------
   // Idle state
   // -----------------------------------------------------------------------
-  def receiveWait: Receive = {
-    case Synchronize ⇒
-      log.debug("Starting synchronization")
+  def receiveWait: Receive = { case Synchronize ⇒
+    log.debug("Starting synchronization")
 
-      if (sender() != self && sender() != Actor.noSender)
-        state.pendingSync.addWaiter(state.indexId, sender())
+    if (sender() != self && sender() != Actor.noSender)
+      state.pendingSync.addWaiter(state.indexId, sender())
 
-      deferAsync(NotUsed)(_ ⇒ synchronization.start())
+    deferAsync(NotUsed)(_ ⇒ synchronization.start())
   }
 
   // -----------------------------------------------------------------------
@@ -335,9 +334,8 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
 
           Source
             .single((newSequenceNr, diff))
-            .alsoTo(Sink.foreach {
-              case (sequenceNr, diff) ⇒
-                log.info("Writing diff #{}: {}", sequenceNr, diff)
+            .alsoTo(Sink.foreach { case (sequenceNr, diff) ⇒
+              log.info("Writing diff #{}: {}", sequenceNr, diff)
             })
             .via(toIndexDataWithKey)
             .via(state.streams.write(repository))
@@ -413,22 +411,21 @@ private[actors] final class RegionIndex(storageId: StorageId, regionId: RegionId
             .log("compact-write")
         }
 
-        writeResult.flatMapConcat(
-          wr ⇒
-            wr.ioResult match {
-              case StorageIOResult.Success(_, _) ⇒
-                Source(diffsToDelete)
-                  .via(state.streams.delete(repository))
-                  .log("compact-delete")
-                  .withAttributes(ActorAttributes.logLevels(onElement = Logging.InfoLevel))
-                  .filter(_.ioResult.isSuccess)
-                  .map(_.key)
-                  .fold(Set.empty[SequenceNr])(_ + _)
-                  .map(CompactSuccess(_, Some(wr).filterNot(_.diff.isEmpty)))
+        writeResult.flatMapConcat(wr ⇒
+          wr.ioResult match {
+            case StorageIOResult.Success(_, _) ⇒
+              Source(diffsToDelete)
+                .via(state.streams.delete(repository))
+                .log("compact-delete")
+                .withAttributes(ActorAttributes.logLevels(onElement = Logging.InfoLevel))
+                .filter(_.ioResult.isSuccess)
+                .map(_.key)
+                .fold(Set.empty[SequenceNr])(_ + _)
+                .map(CompactSuccess(_, Some(wr).filterNot(_.diff.isEmpty)))
 
-              case StorageIOResult.Failure(_, error) ⇒
-                Source.failed(error)
-            }
+            case StorageIOResult.Failure(_, error) ⇒
+              Source.failed(error)
+          }
         )
       }
 

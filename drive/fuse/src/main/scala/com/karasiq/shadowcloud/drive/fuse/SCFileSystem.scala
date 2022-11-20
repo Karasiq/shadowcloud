@@ -103,26 +103,27 @@ class SCFileSystem(config: SCDriveConfig, fsDispatcher: ActorRef, actorSystem: A
     mount(Paths.get(mountPath), blocking, debug, Array("-o", options.mkString(",")))
   }
 
-  protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T], critical: Boolean = false, handle: Long = 0)(
-      implicit timeout: Timeout
+  protected def dispatch[T](message: AnyRef, status: MessageStatus[_, T], critical: Boolean = false, handle: Long = 0)(implicit
+      timeout: Timeout
   ): T = {
     // if (critical) log.info(s"IO operation requested: $message")
 
     def getResult() = Await.result(status.unwrapFuture(fsDispatcher ? message), timeout.duration)
     val start       = System.nanoTime()
-    val result = try {
-      if (critical && settings.synchronizedMode) {
-        val fh = if (handle == 0) null else fileHandles.get(handle).orNull
-        if (fh eq null) synchronized(getResult())
-        else fh.synchronized(getResult())
-      } else {
-        getResult()
+    val result =
+      try {
+        if (critical && settings.synchronizedMode) {
+          val fh = if (handle == 0) null else fileHandles.get(handle).orNull
+          if (fh eq null) synchronized(getResult())
+          else fh.synchronized(getResult())
+        } else {
+          getResult()
+        }
+      } catch {
+        case NonFatal(error) ⇒
+          if (critical || settings.debug) log.error(error, "IO operation failed: {}", message)
+          throw error
       }
-    } catch {
-      case NonFatal(error) ⇒
-        if (critical || settings.debug) log.error(error, "IO operation failed: {}", message)
-        throw error
-    }
     val elapsed = (System.nanoTime() - start).nanos
     if (settings.debug || elapsed >= (5 seconds)) log.info("IO operation completed in {} ms: {} -> {}", elapsed.toMillis, message, result)
     result

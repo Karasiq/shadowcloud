@@ -27,20 +27,18 @@ import com.karasiq.shadowcloud.streams.chunk.ChunkProcessingStreams
 import scala.concurrent.{ExecutionContext, Future}
 
 object RegionOps {
-  def apply(regionSupervisor: ActorRef,
-            timeouts: TimeoutsConfig,
-            chunkCache: ChunkCache,
-            chunkProcessing: ChunkProcessingStreams)
-           (implicit ec: ExecutionContext, mat: Materializer): RegionOps = {
+  def apply(regionSupervisor: ActorRef, timeouts: TimeoutsConfig, chunkCache: ChunkCache, chunkProcessing: ChunkProcessingStreams)(implicit
+      ec: ExecutionContext,
+      mat: Materializer
+  ): RegionOps = {
     new RegionOps(regionSupervisor, timeouts, chunkCache, chunkProcessing)
   }
 }
 
-final class RegionOps(regionSupervisor: ActorRef,
-                      timeouts: TimeoutsConfig,
-                      chunkCache: ChunkCache,
-                      chunkProcessing: ChunkProcessingStreams)
-                     (implicit ec: ExecutionContext, mat: Materializer) {
+final class RegionOps(regionSupervisor: ActorRef, timeouts: TimeoutsConfig, chunkCache: ChunkCache, chunkProcessing: ChunkProcessingStreams)(implicit
+    ec: ExecutionContext,
+    mat: Materializer
+) {
 
   // -----------------------------------------------------------------------
   // Index
@@ -146,11 +144,15 @@ final class RegionOps(regionSupervisor: ActorRef,
 
   // TODO: Fix crypto parallelism not applied
   def readChunk(regionId: RegionId, chunk: Chunk): Future[Chunk] = {
-    chunkCache.readCached(chunk, { () ⇒
-      Source.future(readChunkEncrypted(regionId, chunk))
-        .via(chunkProcessing.afterRead)
-        .runWith(Sink.head)
-    })
+    chunkCache.readCached(
+      chunk,
+      { () ⇒
+        Source
+          .future(readChunkEncrypted(regionId, chunk))
+          .via(chunkProcessing.afterRead)
+          .runWith(Sink.head)
+      }
+    )
   }
 
   def rewriteChunk(regionId: RegionId, chunk: Chunk, newAffinity: Option[ChunkWriteAffinity]): Future[Chunk] = {
@@ -178,8 +180,9 @@ final class RegionOps(regionSupervisor: ActorRef,
   // -----------------------------------------------------------------------
   // Utils
   // -----------------------------------------------------------------------
-  private[this] def askRegion[V](regionId: RegionId, status: MessageStatus[_, V], message: Any)
-                                (implicit timeout: Timeout = timeouts.query): Future[V] = {
+  private[this] def askRegion[V](regionId: RegionId, status: MessageStatus[_, V], message: Any)(implicit
+      timeout: Timeout = timeouts.query
+  ): Future[V] = {
     status.unwrapFuture(regionSupervisor ? RegionEnvelope(regionId, message))
   }
 }

@@ -20,10 +20,11 @@ object MetadataStreamsTest {
 
 class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike with SequentialNestedSuiteExecution {
   "Mime detector" should "detect mime type" in {
-    val testOut = MetadataStreamsTest.testJpegStream()
+    val testOut = MetadataStreamsTest
+      .testJpegStream()
       .via(MimeDetectorStream(sc.modules.metadata, "14935431092820.jpg", 10000))
       .runWith(TestSink.probe)
-    
+
     val mimeType = testOut.requestNext()
     mimeType shouldBe "image/jpeg"
 
@@ -31,14 +32,17 @@ class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike with Sequent
     testOut.expectComplete()
   }
 
-  val testRegionId = "metadataStreamsTest"
+  val testRegionId  = "metadataStreamsTest"
   val testStorageId = "metadataStreamsTest"
-  val testFileId = FileId.create()
-  val testMetadata = Metadata(Some(Metadata.Tag("test", "test", Metadata.Tag.Disposition.PREVIEW)),
-    Metadata.Value.Thumbnail(Metadata.Thumbnail("random", TestUtils.randomBytes(100))))
+  val testFileId    = FileId.create()
+  val testMetadata = Metadata(
+    Some(Metadata.Tag("test", "test", Metadata.Tag.Disposition.PREVIEW)),
+    Metadata.Value.Thumbnail(Metadata.Thumbnail("random", TestUtils.randomBytes(100)))
+  )
 
   "Metadata streams" should "write metadata" in {
-    val (testIn, testOut) = TestSource.probe[Metadata]
+    val (testIn, testOut) = TestSource
+      .probe[Metadata]
       .via(sc.streams.metadata.writeAll(testRegionId, testFileId))
       .toMat(TestSink.probe)(Keep.both)
       .run()
@@ -55,7 +59,8 @@ class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike with Sequent
   }
 
   it should "read metadata" in {
-    val testOut = sc.streams.metadata.read(testRegionId, testFileId, Metadata.Tag.Disposition.PREVIEW)
+    val testOut = sc.streams.metadata
+      .read(testRegionId, testFileId, Metadata.Tag.Disposition.PREVIEW)
       .runWith(TestSink.probe)
 
     testOut.request(2)
@@ -66,7 +71,8 @@ class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike with Sequent
   it should "delete metadata" in {
     sc.streams.metadata.delete(testRegionId, testFileId).futureValue.files should not be empty
 
-    val testOut = sc.streams.metadata.read(testRegionId, testFileId, Metadata.Tag.Disposition.PREVIEW)
+    val testOut = sc.streams.metadata
+      .read(testRegionId, testFileId, Metadata.Tag.Disposition.PREVIEW)
       .runWith(TestSink.probe)
 
     testOut.request(1)
@@ -74,7 +80,8 @@ class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike with Sequent
   }
 
   it should "create metadata" in {
-    val testTags = MetadataStreamsTest.testJpegStream()
+    val testTags = MetadataStreamsTest
+      .testJpegStream()
       .via(sc.streams.metadata.create("test.jpg"))
       .runWith(Sink.seq)
       .futureValue(Timeout(10 seconds))
@@ -89,7 +96,8 @@ class MetadataStreamsTest extends SCExtensionSpec with FlatSpecLike with Sequent
   }
 
   it should "write metadata on the fly" in {
-    val testFileStream = MetadataStreamsTest.testJpegStream()
+    val testFileStream = MetadataStreamsTest
+      .testJpegStream()
       .via(sc.streams.metadata.writeFileAndMetadata(testRegionId, Path.root / "test.jpg"))
       .runWith(TestSink.probe)
 

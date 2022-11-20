@@ -1,13 +1,10 @@
 package com.karasiq.shadowcloud.model.crypto
 
-
-
 import com.karasiq.shadowcloud.config.SerializedProps
 
 @SerialVersionUID(0L)
-final case class EncryptionMethod(algorithm: String, keySize: Int = 256,
-                                  config: SerializedProps = SerializedProps.empty,
-                                  provider: String = "") extends CryptoMethod {
+final case class EncryptionMethod(algorithm: String, keySize: Int = 256, config: SerializedProps = SerializedProps.empty, provider: String = "")
+    extends CryptoMethod {
 
   @transient
   private[this] lazy val _hashCode = scala.util.hashing.MurmurHash3.productHash(this)
@@ -26,6 +23,6 @@ final case class EncryptionMethod(algorithm: String, keySize: Int = 256,
 }
 
 object EncryptionMethod {
-  val none = EncryptionMethod("", 0)
+  val none    = EncryptionMethod("", 0)
   val default = EncryptionMethod("ChaCha20", 256)
 }

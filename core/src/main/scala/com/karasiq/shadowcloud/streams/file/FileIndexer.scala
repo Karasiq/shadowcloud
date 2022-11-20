@@ -18,16 +18,17 @@ import scala.util.{Failure, Success, Try}
 private[shadowcloud] object FileIndexer {
   case class Result(checksum: Checksum, chunks: Seq[Chunk], ioResult: IOResult)
 
-  def apply(registry: CryptoModuleRegistry, plainHashing: HashingMethod = HashingMethod.default,
-            encryptedHashing: HashingMethod = HashingMethod.default): Sink[Chunk, Future[Result]] = {
+  def apply(
+      registry: CryptoModuleRegistry,
+      plainHashing: HashingMethod = HashingMethod.default,
+      encryptedHashing: HashingMethod = HashingMethod.default
+  ): Sink[Chunk, Future[Result]] = {
     Sink.fromGraph(new FileIndexer(registry, plainHashing, encryptedHashing)).named("fileIndexer")
   }
 }
 
-private[shadowcloud] final class FileIndexer(cryptoModules: CryptoModuleRegistry,
-                                             plainHashing: HashingMethod,
-                                             encryptedHashing: HashingMethod)
-  extends GraphStageWithMaterializedValue[SinkShape[Chunk], Future[FileIndexer.Result]] {
+private[shadowcloud] final class FileIndexer(cryptoModules: CryptoModuleRegistry, plainHashing: HashingMethod, encryptedHashing: HashingMethod)
+    extends GraphStageWithMaterializedValue[SinkShape[Chunk], Future[FileIndexer.Result]] {
 
   val inlet = Inlet[Chunk]("FileIndexer.in")
   val shape = SinkShape(inlet)
@@ -46,9 +47,9 @@ private[shadowcloud] final class FileIndexer(cryptoModules: CryptoModuleRegistry
         .map(CryptoModuleRegistry.streamHashingModule(cryptoModules, _))
         .map(_.createStreamer())
 
-      private[this] var plainSize = 0L
+      private[this] var plainSize     = 0L
       private[this] var encryptedSize = 0L
-      private[this] val chunks = Vector.newBuilder[Chunk]
+      private[this] val chunks        = Vector.newBuilder[Chunk]
 
       private[this] def update(chunk: Chunk): Unit = {
         hasher.foreach { module ⇒
@@ -67,9 +68,14 @@ private[shadowcloud] final class FileIndexer(cryptoModules: CryptoModuleRegistry
       }
 
       private[this] def finish(status: Try[Done]): Unit = {
-        val checksum = Checksum(plainHashing, encryptedHashing,
-          plainSize, hasher.fold(ByteString.empty)(_.finish()),
-          encryptedSize, encHasher.fold(ByteString.empty)(_.finish()))
+        val checksum = Checksum(
+          plainHashing,
+          encryptedHashing,
+          plainSize,
+          hasher.fold(ByteString.empty)(_.finish()),
+          encryptedSize,
+          encHasher.fold(ByteString.empty)(_.finish())
+        )
 
         val indexedFile = FileIndexer.Result(checksum, chunks.result(), IOResult(plainSize, status))
         promise.trySuccess(indexedFile)
@@ -85,7 +91,6 @@ private[shadowcloud] final class FileIndexer(cryptoModules: CryptoModuleRegistry
         finish(Success(Done))
         completeStage()
       }
-
 
       override def onUpstreamFailure(ex: Throwable): Unit = {
         finish(Failure(ex))

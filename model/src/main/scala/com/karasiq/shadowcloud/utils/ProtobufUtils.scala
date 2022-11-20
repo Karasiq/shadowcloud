@@ -4,7 +4,7 @@ import java.nio.ByteBuffer
 import java.util.UUID
 
 import akka.util.ByteString
-import com.google.protobuf.{ByteString => PBByteString}
+import com.google.protobuf.{ByteString ⇒ PBByteString}
 import com.karasiq.shadowcloud.model.Path
 import scalapb.TypeMapper
 
@@ -16,7 +16,7 @@ object ProtobufUtils {
   } { bs ⇒
     if (bs.isEmpty) PBByteString.EMPTY else PBByteString.copyFrom(bs.toArray)
   }
-  
+
   implicit val uuidMapper = TypeMapper[PBByteString, UUID] { bs ⇒
     if (bs.isEmpty) {
       emptyUUID

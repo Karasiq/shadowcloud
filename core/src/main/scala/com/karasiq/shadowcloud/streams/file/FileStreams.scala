@@ -15,8 +15,8 @@ import com.karasiq.shadowcloud.streams.utils.AkkaStreamUtils
 import scala.concurrent.Future
 
 object FileStreams {
-  def apply(regionStreams: RegionStreams, chunkProcessing: ChunkProcessingStreams, supervisorOps: RegionSupervisorOps)(
-      implicit m: Materializer
+  def apply(regionStreams: RegionStreams, chunkProcessing: ChunkProcessingStreams, supervisorOps: RegionSupervisorOps)(implicit
+      m: Materializer
   ): FileStreams = {
     new FileStreams(regionStreams, chunkProcessing, supervisorOps)
   }
@@ -93,26 +93,25 @@ final class FileStreams(regionStreams: RegionStreams, chunkProcessing: ChunkProc
     Flow[ByteString]
       .via(AkkaStreamUtils.extractUpstream)
       .zip(Source.future(supervisorOps.getRegionConfig(regionId)))
-      .flatMapConcat {
-        case (stream, config) ⇒
-          val matSink = Flow
-            .fromGraph(chunkProcessing.split(config.chunkSize.getOrElse(chunkProcessing.defaultChunkSize)))
-            .via(chunkProcessing.beforeWrite())
-            // .map(c ⇒ c.copy(data = c.data.copy(plain = ByteString.empty))) // Memory optimization
-            .map((regionId, _))
-            .via(regionStreams.writeChunks)
-            // .log("chunk-stream-write")
-            .toMat(chunkProcessing.index())(Keep.right)
+      .flatMapConcat { case (stream, config) ⇒
+        val matSink = Flow
+          .fromGraph(chunkProcessing.split(config.chunkSize.getOrElse(chunkProcessing.defaultChunkSize)))
+          .via(chunkProcessing.beforeWrite())
+          // .map(c ⇒ c.copy(data = c.data.copy(plain = ByteString.empty))) // Memory optimization
+          .map((regionId, _))
+          .via(regionStreams.writeChunks)
+          // .log("chunk-stream-write")
+          .toMat(chunkProcessing.index())(Keep.right)
 
-          val graph = GraphDSL.create(matSink) { implicit builder ⇒ matSink ⇒
-            import GraphDSL.Implicits._
-            val extractResult = builder.add(Flow[Future[FileIndexer.Result]].flatMapConcat(Source.future))
+        val graph = GraphDSL.create(matSink) { implicit builder ⇒ matSink ⇒
+          import GraphDSL.Implicits._
+          val extractResult = builder.add(Flow[Future[FileIndexer.Result]].flatMapConcat(Source.future))
 
-            builder.materializedValue ~> extractResult
-            FlowShape(matSink.in, extractResult.out)
-          }
+          builder.materializedValue ~> extractResult
+          FlowShape(matSink.in, extractResult.out)
+        }
 
-          stream.via(graph)
+        stream.via(graph)
       }
       .named("writeChunkStream")
   }

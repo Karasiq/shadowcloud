@@ -76,7 +76,7 @@ class StorageConfigView(storageId: StorageId)(implicit context: AppContext, regi
       Button(ButtonStyle.danger, ButtonSize.extraSmall)(AppIcons.delete, context.locale.delete, onclick := Callback.onClick(_ ⇒ doDelete()))
 
     val resetButton =
-      Button(ButtonStyle.info, ButtonSize.extraSmall)(AppIcons.refresh, context.locale.reset, onclick := Callback.onClick(_ => doReset()))
+      Button(ButtonStyle.info, ButtonSize.extraSmall)(AppIcons.refresh, context.locale.reset, onclick := Callback.onClick(_ ⇒ doReset()))
 
     ButtonGroup(ButtonGroupSize.extraSmall, suspendButton, deleteButton, resetButton)
   }

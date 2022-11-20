@@ -3,10 +3,9 @@ package com.karasiq.shadowcloud.crypto.libsodium.symmetric
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.model.crypto.EncryptionMethod
 
-private[libsodium] abstract class StreamCipherModule(val method: EncryptionMethod,
-                                                     protected val keySize: Int,
-                                                     protected val nonceSize: Int)
-  extends SymmetricCipherModule with OnlyStreamEncryptionModule {
+private[libsodium] abstract class StreamCipherModule(val method: EncryptionMethod, protected val keySize: Int, protected val nonceSize: Int)
+    extends SymmetricCipherModule
+    with OnlyStreamEncryptionModule {
 
   protected def process(key: Array[Byte], nonce: Array[Byte], inArray: Array[Byte], outArray: Array[Byte]): Unit
 
@@ -22,8 +21,8 @@ private[libsodium] abstract class StreamCipherModule(val method: EncryptionMetho
 }
 
 private[libsodium] trait StreamCipherStreamer extends EncryptionModuleStreamer with SymmetricCipherStreaming {
-  protected var encrypt = true
-  protected var key: Array[Byte] = Array.emptyByteArray
+  protected var encrypt            = true
+  protected var key: Array[Byte]   = Array.emptyByteArray
   protected var nonce: Array[Byte] = Array.emptyByteArray
 
   protected def process(inArray: Array[Byte], outArray: Array[Byte]): Unit

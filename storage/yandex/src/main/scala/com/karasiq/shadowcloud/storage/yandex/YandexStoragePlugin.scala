@@ -18,15 +18,18 @@ class YandexStoragePlugin extends StoragePlugin {
   override def createStorage(storageId: StorageId, props: StorageProps)(implicit context: ActorContext): ActorRef = {
     import context.{dispatcher, system}
     val sc = ShadowCloud()
-    val api = new YandexWebApi(solveCaptcha = { imageUrl ⇒
-      sc.challenges
-        .create(s"Yandex captcha ($storageId)", s"""<img class="img-responsive" src="$imageUrl"/>""")
-        .map(_.utf8String)
-    }, passChallenge = { url ⇒
-      sc.challenges
-        .create(s"Yandex verification ($storageId)", s"""<a href="$url">Please complete the verification</a>""")
-        .map(_ ⇒ Done)
-    })
+    val api = new YandexWebApi(
+      solveCaptcha = { imageUrl ⇒
+        sc.challenges
+          .create(s"Yandex captcha ($storageId)", s"""<img class="img-responsive" src="$imageUrl"/>""")
+          .map(_.utf8String)
+      },
+      passChallenge = { url ⇒
+        sc.challenges
+          .create(s"Yandex verification ($storageId)", s"""<a href="$url">Please complete the verification</a>""")
+          .map(_ ⇒ Done)
+      }
+    )
 
     implicit val session: YandexSession = {
       def create() = Await.result(api.createSession(props.credentials.login, props.credentials.password), 5 minutes)
@@ -50,9 +53,8 @@ class YandexStoragePlugin extends StoragePlugin {
       .withIndexTree(repository)
       .withHealth(new StorageHealthProvider {
         override def health: Future[StorageHealth] =
-          api.usedSpace().map {
-            case YandexUsedSpace(used, free, limit) ⇒
-              StorageHealth.normalized(free, limit, used)
+          api.usedSpace().map { case YandexUsedSpace(used, free, limit) ⇒
+            StorageHealth.normalized(free, limit, used)
           }
       })
       .createStorage()

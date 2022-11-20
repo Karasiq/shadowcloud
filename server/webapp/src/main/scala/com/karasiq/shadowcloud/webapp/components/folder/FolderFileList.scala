@@ -21,8 +21,8 @@ object FolderFileList {
   }
 }
 
-class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(
-    implicit context: AppContext,
+class FolderFileList(filesRx: Rx[Set[File]], flat: Boolean)(implicit
+    context: AppContext,
     folderContext: FolderContext,
     _fileController: FileController
 ) extends BootstrapHtmlComponent {

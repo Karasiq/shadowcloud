@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.index.diffs
 
-
-
 import com.karasiq.shadowcloud.index.ChunkIndex
 import com.karasiq.shadowcloud.index.utils.{HasEmpty, HasWithoutData, MergeableDiff}
 import com.karasiq.shadowcloud.model.{Chunk, SCEntity}
@@ -10,20 +8,21 @@ import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 
 @SerialVersionUID(0L)
 final case class ChunkIndexDiff(newChunks: Set[Chunk] = Set.empty, deletedChunks: Set[Chunk] = Set.empty)
-  extends SCEntity with MergeableDiff with HasEmpty with HasWithoutData {
-  
+    extends SCEntity
+    with MergeableDiff
+    with HasEmpty
+    with HasWithoutData {
+
   type Repr = ChunkIndexDiff
 
   // Delete wins by default
   def mergeWith(diff: ChunkIndexDiff, decider: SplitDecider[Chunk] = SplitDecider.dropDuplicates): ChunkIndexDiff = {
-    val (newChunks, deletedChunks) = MergeUtil.splitSets(this.newChunks ++ diff.newChunks,
-      this.deletedChunks ++ diff.deletedChunks, decider)
+    val (newChunks, deletedChunks) = MergeUtil.splitSets(this.newChunks ++ diff.newChunks, this.deletedChunks ++ diff.deletedChunks, decider)
     withChunks(newChunks, deletedChunks)
   }
 
   def diffWith(diff: ChunkIndexDiff, decider: Decider[Chunk] = Decider.diff): ChunkIndexDiff = {
-    withChunks(MergeUtil.mergeSets(this.newChunks, diff.newChunks, decider),
-      MergeUtil.mergeSets(this.deletedChunks, diff.deletedChunks, decider))
+    withChunks(MergeUtil.mergeSets(this.newChunks, diff.newChunks, decider), MergeUtil.mergeSets(this.deletedChunks, diff.deletedChunks, decider))
   }
 
   def merge(right: ChunkIndexDiff): ChunkIndexDiff = {
@@ -41,7 +40,7 @@ final case class ChunkIndexDiff(newChunks: Set[Chunk] = Set.empty, deletedChunks
   def deletes: ChunkIndexDiff = {
     withChunks(newChunks = Set.empty)
   }
-  
+
   def creates: ChunkIndexDiff = {
     withChunks(deletedChunks = Set.empty)
   }

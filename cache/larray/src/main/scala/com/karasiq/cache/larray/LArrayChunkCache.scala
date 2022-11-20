@@ -7,7 +7,7 @@ import com.karasiq.shadowcloud.cache.ChunkCache
 import com.karasiq.shadowcloud.model.Chunk
 
 private[cache] class LArrayChunkCache(size: Int)(implicit ec: ExecutionContext) extends ChunkCache {
-  protected val cache = LArrayAsyncLRUCache[Chunk](size)
+  protected val cache            = LArrayAsyncLRUCache[Chunk](size)
   protected var lastChunk: Chunk = _
 
   def readCached(chunk: Chunk, getChunk: () ⇒ Future[Chunk]): Future[Chunk] = {

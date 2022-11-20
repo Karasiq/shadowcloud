@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.model.crypto
 
-
-
 import akka.util.ByteString
 import com.karasiq.shadowcloud.index.utils.HasWithoutKeys
 

@@ -83,38 +83,40 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
   private[this] val writeQueue = Source
     .queue[(ChunkPath, Chunk, Promise[StorageIOResult])](config.chunkIO.writeQueueSize, OverflowStrategy.dropNew)
     .flatMapMerge(
-      config.chunkIO.writeParallelism, {
-        case (path, chunk, promise) ⇒
-          val repository = subRepository(path.regionId)
-          val writeSource = Source
-            .single(chunk.data.encrypted)
-            .alsoToMat(repository.write(path.chunkId))(Keep.right) //.alsoToMat(RepositoryStreams.writeWithRetries(repository, path.chunkId))(Keep.right)
+      config.chunkIO.writeParallelism,
+      { case (path, chunk, promise) ⇒
+        val repository = subRepository(path.regionId)
+        val writeSource = Source
+          .single(chunk.data.encrypted)
+          .alsoToMat(repository.write(path.chunkId))(
+            Keep.right
+          ) //.alsoToMat(RepositoryStreams.writeWithRetries(repository, path.chunkId))(Keep.right)
 
-          writeSource.extractMatFuture
-            .flatMapConcat {
-              case res @ StorageIOResult.Failure(_, StorageException.AlreadyExists(sp, _)) ⇒
-                log.warning("Chunk already exists: {}", sp)
+        writeSource.extractMatFuture
+          .flatMapConcat {
+            case res @ StorageIOResult.Failure(_, StorageException.AlreadyExists(sp, _)) ⇒
+              log.warning("Chunk already exists: {}", sp)
 
-                if (config.immutable)
-                  Source.single(res)
-                else
-                  Source
-                    .single(path.chunkId)
-                    .mapAsync(1)(repository.delete(_))
-                    .flatMapConcatMatRight(_ ⇒ writeSource)
-                    .extractMatFuture
-                    .map(_.last)
+              if (config.immutable)
+                Source.single(res)
+              else
+                Source
+                  .single(path.chunkId)
+                  .mapAsync(1)(repository.delete(_))
+                  .flatMapConcatMatRight(_ ⇒ writeSource)
+                  .extractMatFuture
+                  .map(_.last)
 
-              case otherResult ⇒
-                Source.single(otherResult)
-            }
-            .completionTimeout(config.chunkIO.writeTimeout)
-            .alsoTo(AkkaStreamUtils.successPromiseOnFirst(promise))
-            .viaMat(AkkaStreamUtils.ignoreUpstream(Source.future(promise.future)))(Keep.right)
-            .log("storage-chunkio-write")
-            .map(_ ⇒ NotUsed)
-            .recoverWithRetries(1, { case _ ⇒ Source.empty })
-            .named("storageWrite")
+            case otherResult ⇒
+              Source.single(otherResult)
+          }
+          .completionTimeout(config.chunkIO.writeTimeout)
+          .alsoTo(AkkaStreamUtils.successPromiseOnFirst(promise))
+          .viaMat(AkkaStreamUtils.ignoreUpstream(Source.future(promise.future)))(Keep.right)
+          .log("storage-chunkio-write")
+          .map(_ ⇒ NotUsed)
+          .recoverWithRetries(1, { case _ ⇒ Source.empty })
+          .named("storageWrite")
       }
     )
     .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
@@ -125,39 +127,39 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
   private[this] val readQueue = Source
     .queue[(ChunkPath, Chunk, Promise[(Chunk, StorageIOResult)])](config.chunkIO.readQueueSize, OverflowStrategy.dropNew)
     .flatMapMerge(
-      config.chunkIO.readParallelism, {
-        case (path, chunk, promise) ⇒
-          val repository = subRepository(path.regionId)
-          val readSource = repository
-            .read(path.chunkId) // RepositoryStreams.readWithRetries(repository, path.chunkId)
-            .via(ByteStreams.limit(chunk.checksum.encSize))
-            .via(ByteStreams.concat)
-            .map(ChunkUtils.chunkWithData(chunk, _))
-            // .orElse(Source.failed(new IllegalArgumentException("No data read")))
-            .named("storageRead")
+      config.chunkIO.readParallelism,
+      { case (path, chunk, promise) ⇒
+        val repository = subRepository(path.regionId)
+        val readSource = repository
+          .read(path.chunkId) // RepositoryStreams.readWithRetries(repository, path.chunkId)
+          .via(ByteStreams.limit(chunk.checksum.encSize))
+          .via(ByteStreams.concat)
+          .map(ChunkUtils.chunkWithData(chunk, _))
+          // .orElse(Source.failed(new IllegalArgumentException("No data read")))
+          .named("storageRead")
 
-          val readGraph = GraphDSL.create(readSource) { implicit builder ⇒ readSource ⇒
-            import GraphDSL.Implicits._
-            val zipResults = builder.add(Zip[Chunk, StorageIOResult]())
+        val readGraph = GraphDSL.create(readSource) { implicit builder ⇒ readSource ⇒
+          import GraphDSL.Implicits._
+          val zipResults = builder.add(Zip[Chunk, StorageIOResult]())
 
-            readSource ~> zipResults.in0
-            builder.materializedValue.flatMapConcat(Source.future) ~> zipResults.in1
+          readSource ~> zipResults.in0
+          builder.materializedValue.flatMapConcat(Source.future) ~> zipResults.in1
 
-            SourceShape(zipResults.out)
+          SourceShape(zipResults.out)
+        }
+
+        Source
+          .fromGraph(readGraph)
+          // .log("storage-read-results")
+          .alsoToMat(Sink.head)(Keep.right)
+          .mapMaterializedValue { f ⇒
+            promise.completeWith(f)
+            NotUsed
           }
-
-          Source
-            .fromGraph(readGraph)
-            // .log("storage-read-results")
-            .alsoToMat(Sink.head)(Keep.right)
-            .mapMaterializedValue { f ⇒
-              promise.completeWith(f)
-              NotUsed
-            }
-            .completionTimeout(config.chunkIO.readTimeout)
-            .alsoTo(AkkaStreamUtils.failPromiseOnFailure(promise))
-            .recoverWithRetries(1, { case _ ⇒ Source.empty })
-            .named("storageReadGraph")
+          .completionTimeout(config.chunkIO.readTimeout)
+          .alsoTo(AkkaStreamUtils.failPromiseOnFailure(promise))
+          .recoverWithRetries(1, { case _ ⇒ Source.empty })
+          .named("storageReadGraph")
       }
     )
     .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
@@ -207,11 +209,11 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
   }
 
   override def postStop(): Unit = {
-    chunksWrite.finishAll(
-      key ⇒ WriteChunk.Failure(key, StorageException.IOFailure(key._1.toStoragePath, new RuntimeException("Chunk IO dispatcher stopped")))
+    chunksWrite.finishAll(key ⇒
+      WriteChunk.Failure(key, StorageException.IOFailure(key._1.toStoragePath, new RuntimeException("Chunk IO dispatcher stopped")))
     )
-    chunksRead.finishAll(
-      key ⇒ ReadChunk.Failure(key, StorageException.IOFailure(key._1.toStoragePath, new RuntimeException("Chunk IO dispatcher stopped")))
+    chunksRead.finishAll(key ⇒
+      ReadChunk.Failure(key, StorageException.IOFailure(key._1.toStoragePath, new RuntimeException("Chunk IO dispatcher stopped")))
     )
     writeQueue.complete()
     readQueue.complete()
@@ -282,25 +284,23 @@ private final class ChunkIODispatcher(storageId: StorageId, storageProps: Storag
   }
 
   private[this] def deleteChunks(paths: Set[ChunkPath]): Future[DeleteChunks.Status] = {
-    val pathsByRegion = paths.groupBy(_.regionId).toVector.map {
-      case (region, chunks) ⇒
-        val localRepository = subRepository(region)
-        localRepository → chunks
+    val pathsByRegion = paths.groupBy(_.regionId).toVector.map { case (region, chunks) ⇒
+      val localRepository = subRepository(region)
+      localRepository → chunks
     }
 
     val (ioResult, deleted) = Source(pathsByRegion)
-      .viaMat(AkkaStreamUtils.flatMapConcatMat {
-        case (repository, chunks) ⇒
-          val deleteSink = Flow[ChunkPath]
-            .map(_.chunkId)
-            .toMat(repository.delete)(Keep.right)
+      .viaMat(AkkaStreamUtils.flatMapConcatMat { case (repository, chunks) ⇒
+        val deleteSink = Flow[ChunkPath]
+          .map(_.chunkId)
+          .toMat(repository.delete)(Keep.right)
 
-          Source(chunks)
-            .log("chunks-delete")
-            .alsoToMat(deleteSink)(Keep.right)
-            .withAttributes(
-              Attributes.logLevels(onElement = Logging.WarningLevel) and ActorAttributes.supervisionStrategy(Supervision.resumingDecider)
-            )
+        Source(chunks)
+          .log("chunks-delete")
+          .alsoToMat(deleteSink)(Keep.right)
+          .withAttributes(
+            Attributes.logLevels(onElement = Logging.WarningLevel) and ActorAttributes.supervisionStrategy(Supervision.resumingDecider)
+          )
       })(Keep.right)
       .mapMaterializedValue(_.map(StorageUtils.foldIOResultsIgnoreErrors))
       .idleTimeout(sc.config.timeouts.chunksDelete)

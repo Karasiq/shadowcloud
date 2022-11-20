@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle
 
-
-
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.crypto.bouncycastle.asymmetric.{ECIESCipherModule, RSACipherModule}
 import com.karasiq.shadowcloud.crypto.bouncycastle.hashing.{BCDigestModule, BCDigests}
@@ -21,9 +19,9 @@ final class BouncyCastleCryptoProvider extends CryptoProvider with ConfigImplici
 
   override val encryptionAlgorithms: Set[String] = {
     BCBlockCiphers.blockAlgorithms ++
-    BCBlockCiphers.aeadAlgorithms ++
-    BCStreamCiphers.algorithms ++
-    Set("ECIES", "RSA")
+      BCBlockCiphers.aeadAlgorithms ++
+      BCStreamCiphers.algorithms ++
+      Set("ECIES", "RSA")
   }
 
   // TODO: AESFastEngine, Poly1305

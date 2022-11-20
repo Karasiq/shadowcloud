@@ -41,7 +41,7 @@ private[webapp] class SCContextBinding()(implicit ctxOwner: Ctx.Owner) {
 
   def bindToString(value: Var[Option[String]]): Unit = {
     value.foreach {
-      case Some(encoded) if encoded.startsWith("/") =>
+      case Some(encoded) if encoded.startsWith("/") ⇒
         val Array(regionId, nodes @ _*) = encoded.tail.split("/")
         context() = EncodedContext(Some(regionId), Path(nodes))
 
@@ -49,11 +49,11 @@ private[webapp] class SCContextBinding()(implicit ctxOwner: Ctx.Owner) {
         val encodedContext = Json.parse(encoded).as[EncodedContext]
         context() = encodedContext
 
-      case Some("") =>
+      case Some("") ⇒
         context() = EncodedContext(None, Path.root)
 
       case _ ⇒
-        // Ignore
+      // Ignore
     }
 
     context.triggerLater {

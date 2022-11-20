@@ -93,13 +93,16 @@ final class MetadataTable(metadatas: Seq[Metadata])(implicit controller: Metadat
       appContext.locale.content
     )
 
-    val rows = metadatas.map(metadata ⇒ TableRow(Seq(
-      utils.metadataTagString(metadata),
-      utils.metadataTypeString(metadata),
-      utils.metadataContent(metadata),
-    )))
+    val rows = metadatas.map(metadata ⇒
+      TableRow(
+        Seq(
+          utils.metadataTagString(metadata),
+          utils.metadataTypeString(metadata),
+          utils.metadataContent(metadata)
+        )
+      )
+    )
 
     PagedTable.static(heading, rows)
   }
 }
-

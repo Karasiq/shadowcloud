@@ -8,7 +8,7 @@ import com.karasiq.shadowcloud.model.Timestamp
 
 private[kryo] final class TimestampSerializer extends chill.KSerializer[Timestamp](false, true) {
   def read(kryo: Kryo, input: Input, `type`: Class[Timestamp]): Timestamp = {
-    val created = input.readLong(true)
+    val created        = input.readLong(true)
     val modifiedOffset = input.readLong(true)
     Timestamp(created, created + modifiedOffset)
   }

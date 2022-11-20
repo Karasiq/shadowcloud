@@ -39,7 +39,9 @@ class FileView(file: File, useId: Boolean)(implicit context: AppContext, folderC
       val preview = Some(NavigationTab(context.locale.preview, "preview", AppIcons.preview, FilePreview(folderContext.regionId, file)))
         .filter(_ ⇒ isPreviewAvailable)
 
-      val metadata = Some(NavigationTab(context.locale.metadata, "metadata", AppIcons.metadata, MetadataListView(folderContext.regionId, file, metadatasAvailable)))
+      val metadata = Some(
+        NavigationTab(context.locale.metadata, "metadata", AppIcons.metadata, MetadataListView(folderContext.regionId, file, metadatasAvailable))
+      )
         .filter(_ ⇒ metadatasAvailable().nonEmpty)
 
       preview.toSeq ++ metadata ++ Seq(

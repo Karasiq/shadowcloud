@@ -16,7 +16,7 @@ private[shadowcloud] trait IndexSignatures {
 
 private[shadowcloud] object IndexSignatures {
   type PayloadT = EncryptedIndexData
-  type HeaderT = EncryptedIndexData.Header
+  type HeaderT  = EncryptedIndexData.Header
 
   def createPayload(data: EncryptedIndexData, header: EncryptedIndexData.Header): ByteString = {
     UUIDEncoding.toBytes(data.id) ++ header.nonce ++ header.data ++ data.data
@@ -33,7 +33,7 @@ private[shadowcloud] object IndexSignatures {
 
 private[shadowcloud] final class DefaultIndexSignatures(signModule: SignModule) extends IndexSignatures {
   def sign(data: PayloadT, header: HeaderT, signParameters: SignParameters): HeaderT = {
-    val payload = IndexSignatures.createPayload(data, header)
+    val payload   = IndexSignatures.createPayload(data, header)
     val signature = signModule.sign(payload, signParameters)
     header.copy(signature = signature)
   }

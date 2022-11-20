@@ -16,40 +16,42 @@ private[mailrucloud] object MailRuCloudProxyActor {
   final case class MailCloudSession(session: Session, token: CsrfToken, nodes: Nodes)
 
   def props(storageId: StorageId, props: StorageProps): Props = {
-    SessionProxyActor.props(implicit context ⇒ new SessionAuthenticator[MailCloudSession] {
-      import context.dispatcher
-      implicit val sc = ShadowCloud()
-      val client = MailCloudClient()(context.system)
+    SessionProxyActor.props(implicit context ⇒
+      new SessionAuthenticator[MailCloudSession] {
+        import context.dispatcher
+        implicit val sc = ShadowCloud()
+        val client      = MailCloudClient()(context.system)
 
-      override def getSession(): Future[MailCloudSession] = {
-        def getSessionCached() = {
-          for {
-            session ← sc.sessions.get[Session](storageId, "mailcloud-session")
-            token ← client.csrfToken(session)
-            nodes ← client.nodes(session, token)
-          } yield MailCloudSession(session, token, nodes)
+        override def getSession(): Future[MailCloudSession] = {
+          def getSessionCached() = {
+            for {
+              session ← sc.sessions.get[Session](storageId, "mailcloud-session")
+              token   ← client.csrfToken(session)
+              nodes   ← client.nodes(session, token)
+            } yield MailCloudSession(session, token, nodes)
+          }
+
+          def getSession() = {
+            for {
+              session ← client.login(props.credentials.login, props.credentials.password)
+              _       ← sc.sessions.set(storageId, "mailcloud-session", session)
+              token   ← client.csrfToken(session)
+              nodes   ← client.nodes(session, token)
+            } yield MailCloudSession(session, token, nodes)
+          }
+
+          getSessionCached().recoverWith { case _ ⇒ getSession() }
         }
 
-        def getSession() = {
-          for {
-            session ← client.login(props.credentials.login, props.credentials.password)
-            _ ← sc.sessions.set(storageId, "mailcloud-session", session)
-            token ← client.csrfToken(session)
-            nodes ← client.nodes(session, token)
-          } yield MailCloudSession(session, token, nodes)
+        def createDispatcher(_session: MailCloudSession) = {
+          implicit val MailCloudSession(session, token, nodes) = _session
+          StoragePluginBuilder(storageId, props)
+            .withChunksTree(MailRuCloudRepository(client))
+            .withIndexTree(MailRuCloudRepository(client))
+            .withHealth(MailRuCloudHealthProvider(client))
+            .createStorage()
         }
-
-        getSessionCached().recoverWith { case _ ⇒ getSession() }
       }
-
-      def createDispatcher(_session: MailCloudSession) = {
-        implicit val MailCloudSession(session, token, nodes) = _session
-        StoragePluginBuilder(storageId, props)
-          .withChunksTree(MailRuCloudRepository(client))
-          .withIndexTree(MailRuCloudRepository(client))
-          .withHealth(MailRuCloudHealthProvider(client))
-          .createStorage()
-      }
-    })
+    )
   }
 }

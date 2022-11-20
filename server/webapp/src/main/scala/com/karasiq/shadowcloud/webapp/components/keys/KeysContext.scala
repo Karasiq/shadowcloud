@@ -15,7 +15,7 @@ trait KeysContext {
 object KeysContext {
   def apply()(implicit appContext: AppContext, ctxOwner: Ctx.Owner): KeysContext = new KeysContext {
     private[this] val _keys = RxWithUpdate(KeyChain.empty)(_ ⇒ appContext.api.getKeys())
-    def keys: Rx[KeyChain] = _keys.toRx
-    def updateAll(): Unit = _keys.update()
+    def keys: Rx[KeyChain]  = _keys.toRx
+    def updateAll(): Unit   = _keys.update()
   }
 }

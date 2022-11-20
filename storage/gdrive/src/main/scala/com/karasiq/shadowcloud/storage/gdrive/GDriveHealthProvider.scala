@@ -15,7 +15,8 @@ private[gdrive] object GDriveHealthProvider {
   }
 }
 
-private[gdrive] class GDriveHealthProvider(service: GDriveService, props: StorageProps)(implicit ec: ExecutionContext, td: TeamDriveId) extends StorageHealthProvider {
+private[gdrive] class GDriveHealthProvider(service: GDriveService, props: StorageProps)(implicit ec: ExecutionContext, td: TeamDriveId)
+    extends StorageHealthProvider {
   lazy val estimator = GDriveSpaceEstimator(service, StoragePluginBuilder.getRootPath(props))
 
   def health = {

@@ -28,13 +28,13 @@ trait SCWebSocketRoutes { self: SCAkkaHttpApiRoutes with SCHttpServerSettings wi
 
     Source
       .actorRef[LogEvent](PartialFunction.empty, PartialFunction.empty, 100, OverflowStrategy.dropBuffer)
-      .mapMaterializedValue { actor =>
+      .mapMaterializedValue { actor ⇒
         Seq(classOf[Info], classOf[Warning], classOf[Error]).foreach(as.eventStream.subscribe(actor, _))
         NotUsed
       }
       .filterNot(_.level == LogLevels.Debug)
       .collect {
-        case e: LogEventWithCause if e.cause != null =>
+        case e: LogEventWithCause if e.cause != null ⇒
           val stack = {
             val sw = new StringWriter()
             val pw = new PrintWriter(sw)
@@ -44,13 +44,13 @@ trait SCWebSocketRoutes { self: SCAkkaHttpApiRoutes with SCHttpServerSettings wi
           }
           s"${formatTime(e.timestamp)} (${e.logSource}) - ${e.message}\n$stack"
 
-        case e: LogEvent if !blacklist.exists(e.message.toString.contains) =>
+        case e: LogEvent if !blacklist.exists(e.message.toString.contains) ⇒
           s"${formatTime(e.timestamp)} (${e.logSource}) - ${e.message}"
       }
   }
 
   def scWebSocketRoutes: Route = path("log") {
-    extractActorSystem { implicit as =>
+    extractActorSystem { implicit as ⇒
       val flow = Flow.fromSinkAndSource(Sink.ignore, createLogStream).map(TextMessage(_))
       handleWebSocketMessages(flow)
     }

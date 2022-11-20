@@ -24,7 +24,7 @@ class SCGDriveStore(storageId: StorageId, userId: String)(implicit sc: ShadowClo
   }
 
   private final class SCStore[V <: AnyRef with Serializable](id: String) extends AbstractDataStore[V](SCGDriveStore.this, id) {
-    private[this] val prefix = "gdrive_" + userId + "_" + id + "_"
+    private[this] val prefix  = "gdrive_" + userId + "_" + id + "_"
     private[this] val timeout = 10 seconds
 
     def set(key: String, value: V): DataStore[V] = {
@@ -59,7 +59,8 @@ class SCGDriveStore(storageId: StorageId, userId: String)(implicit sc: ShadowClo
     }
 
     def get(key: String): V = {
-      val future = sc.sessions.provider.loadSession(storageId, prefix + key)
+      val future = sc.sessions.provider
+        .loadSession(storageId, prefix + key)
         .map(deserialize)
         .recover { case _ ⇒ null.asInstanceOf[V] }
 
@@ -67,7 +68,8 @@ class SCGDriveStore(storageId: StorageId, userId: String)(implicit sc: ShadowClo
     }
 
     private[this] def prefixedKeys() = {
-      sc.sessions.provider.getSessions(storageId)
+      sc.sessions.provider
+        .getSessions(storageId)
         .map(keys ⇒ keys.filter(_.startsWith(prefix)))
     }
 

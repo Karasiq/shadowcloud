@@ -13,19 +13,21 @@ import com.karasiq.shadowcloud.ShadowCloud
 
 object MetadataParserApp extends App {
   val actorSystem = ActorSystem("metadata-parser")
-  val sc = ShadowCloud(actorSystem)
-  val parser = sc.modules.metadata
+  val sc          = ShadowCloud(actorSystem)
+  val parser      = sc.modules.metadata
   import sc.implicits._
 
   if (args.isEmpty) sys.error("No files specified.")
   Source(args.toVector)
     .flatMapConcat { file ⇒
-      val mime = parser.getMimeType(file, ByteString(FileUtils.readFileToByteArray(new File(file))))
+      val mime = parser
+        .getMimeType(file, ByteString(FileUtils.readFileToByteArray(new File(file))))
         .getOrElse(MimeDetector.DefaultMime)
       println(s"File: $file")
       println(s"Mime type: $mime")
 
-      FileIO.fromPath(Paths.get(file))
+      FileIO
+        .fromPath(Paths.get(file))
         .via(parser.parseMetadata(file, mime))
         .alsoTo(Sink.foreach { value ⇒
           val (extension, bytes) = value.value match {
@@ -42,7 +44,7 @@ object MetadataParserApp extends App {
               (thumbnail.format, thumbnail.data)
 
             case Metadata.Value.Table(table) ⇒
-              ("table.txt", ByteString(table.values.map { case (key, vs) ⇒ s"$key: ${vs.values.mkString(", ")}"}.mkString("\n")))
+              ("table.txt", ByteString(table.values.map { case (key, vs) ⇒ s"$key: ${vs.values.mkString(", ")}" }.mkString("\n")))
 
             case Metadata.Value.EmbeddedResources(resources) ⇒
               ("embedded.txt", ByteString(resources.toString))
@@ -50,8 +52,8 @@ object MetadataParserApp extends App {
             case unknown ⇒
               (s"${unknown.getClass.getSimpleName}.txt", ByteString(value.toString))
           }
-          val fileName = FilenameUtils.getName(file) + "_" + value.tag.fold("unk")(t ⇒
-            s"${t.plugin}_${t.parser}_${t.disposition.toString().toLowerCase}.$extension")
+          val fileName = FilenameUtils.getName(file) + "_" + value.tag
+            .fold("unk")(t ⇒ s"${t.plugin}_${t.parser}_${t.disposition.toString().toLowerCase}.$extension")
           FileUtils.writeByteArrayToFile(new File(fileName), bytes.toArray)
           println(s"Metadata saved: $fileName")
         })

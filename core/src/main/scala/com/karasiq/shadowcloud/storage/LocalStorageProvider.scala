@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.storage
 
-
-
 import com.karasiq.shadowcloud.config.ConfigProps
 import com.karasiq.shadowcloud.providers.StorageProvider
 import com.karasiq.shadowcloud.storage.files.FileStoragePlugin

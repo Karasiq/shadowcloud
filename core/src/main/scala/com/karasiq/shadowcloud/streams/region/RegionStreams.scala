@@ -40,12 +40,11 @@ final class RegionStreams(regionOps: RegionOps, parallelism: ParallelismConfig, 
     .named("readChunksNonBuffered")
 
   val findFiles = Flow[(RegionId, Path)]
-    .mapAsync(parallelism.query) {
-      case (regionId, path) ⇒
-        regionOps
-          .getFiles(regionId, path)
-          .map((path, _))
-          .recover { case error if SCException.isNotFound(error) ⇒ (path, Set.empty[File]) }
+    .mapAsync(parallelism.query) { case (regionId, path) ⇒
+      regionOps
+        .getFiles(regionId, path)
+        .map((path, _))
+        .recover { case error if SCException.isNotFound(error) ⇒ (path, Set.empty[File]) }
     }
     .named("findFiles")
 
@@ -54,18 +53,16 @@ final class RegionStreams(regionOps: RegionOps, parallelism: ParallelismConfig, 
     .named("findFile")
 
   val getFolder = Flow[(RegionId, Path)]
-    .mapAsync(parallelism.query) {
-      case (regionId, path) ⇒
-        regionOps.getFolder(regionId, path)
+    .mapAsync(parallelism.query) { case (regionId, path) ⇒
+      regionOps.getFolder(regionId, path)
     }
     .named("getFolder")
 
   val createFile: Flow[(RegionId, Path, FileIndexer.Result), File, NotUsed] = {
     Flow[(String, Path, FileIndexer.Result)]
-      .flatMapConcat {
-        case (regionId, path, result) ⇒
-          val future = regionOps.createFile(regionId, File.create(path, result.checksum, result.chunks))
-          Source.future(future)
+      .flatMapConcat { case (regionId, path, result) ⇒
+        val future = regionOps.createFile(regionId, File.create(path, result.checksum, result.chunks))
+        Source.future(future)
       }
       .named("createFile")
   }

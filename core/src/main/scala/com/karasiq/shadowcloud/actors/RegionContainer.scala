@@ -21,11 +21,10 @@ private[actors] final class RegionContainer(regionId: RegionId) extends Actor wi
   private[this] val sc           = ShadowCloud()
   var regionConfig: RegionConfig = sc.configs.regionConfig(regionId)
 
-  def receive: Receive = {
-    case SetConfig(rc) ⇒
-      log.info("Region config changed: {}", rc)
-      this.regionConfig = sc.configs.regionConfig(regionId, rc)
-      restartActor()
+  def receive: Receive = { case SetConfig(rc) ⇒
+    log.info("Region config changed: {}", rc)
+    this.regionConfig = sc.configs.regionConfig(regionId, rc)
+    restartActor()
   }
 
   def startActor(): Unit = {

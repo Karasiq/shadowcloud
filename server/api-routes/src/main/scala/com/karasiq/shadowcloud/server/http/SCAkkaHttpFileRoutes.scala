@@ -34,17 +34,16 @@ trait SCAkkaHttpFileRoutes { self: SCAkkaHttpApiRoutes with SCHttpServerSettings
 
         SCFileDirectives.writeFile(regionId, path, dataStream)
       } ~
-        (pathPrefix("upload_form") & extractMaterializer) { implicit m =>
+        (pathPrefix("upload_form") & extractMaterializer) { implicit m ⇒
           (path(Segment / SCPath) & entity(as[Multipart.FormData])) { (regionId, path, entity) ⇒
             val fileEntity = entity.parts
               .filter(_.name == "file")
-              .map(p => (p.filename.getOrElse("default"), p.entity.withoutSizeLimit().dataBytes.mapMaterializedValue(_ => NotUsed)))
+              .map(p ⇒ (p.filename.getOrElse("default"), p.entity.withoutSizeLimit().dataBytes.mapMaterializedValue(_ ⇒ NotUsed)))
               .mapMaterializedValue(_ ⇒ NotUsed)
               .runWith(Sink.head)
 
-            onSuccess(fileEntity) {
-              case (name, bytes) =>
-                SCFileDirectives.writeFile(regionId, path / name, bytes)
+            onSuccess(fileEntity) { case (name, bytes) ⇒
+              SCFileDirectives.writeFile(regionId, path / name, bytes)
             }
           }
         }
@@ -98,44 +97,44 @@ trait SCAkkaHttpFileRoutes { self: SCAkkaHttpApiRoutes with SCHttpServerSettings
     }
 
     def writeFiles(regionId: RegionId, path: Path, stream: Source[(String, Source[ByteString, NotUsed]), NotUsed]): Route =
-      extractMaterializer { implicit m =>
+      extractMaterializer { implicit m ⇒
         val resultStream = stream
-          .flatMapConcat {
-            case (name, bytes) =>
-              bytes
-                .via(sc.streams.metadata.writeFileAndMetadata(regionId, path / name))
-                .log("uploaded-files")
-                .map(_._1)
+          .flatMapConcat { case (name, bytes) ⇒
+            bytes
+              .via(sc.streams.metadata.writeFileAndMetadata(regionId, path / name))
+              .log("uploaded-files")
+              .map(_._1)
           }
           .fold(Vector.empty[File])(_ :+ _)
           .map(SCApiInternals.apiEncoding.encodeFiles(_))
           .runWith(Sink.head)
 
-        onSuccess(resultStream) { result =>
+        onSuccess(resultStream) { result ⇒
           complete(StatusCodes.OK, HttpEntity(SCApiInternals.apiContentType, result))
         }
       }
 
-    def writeFile(regionId: RegionId, path: Path, stream: Source[ByteString, NotUsed]): Route = extractMaterializer{ implicit m =>
+    def writeFile(regionId: RegionId, path: Path, stream: Source[ByteString, NotUsed]): Route = extractMaterializer { implicit m ⇒
       val resultStream = stream
         .via(sc.streams.metadata.writeFileAndMetadata(regionId, path))
         .log("uploaded-files")
         .map(_._1)
         .runWith(Sink.head)
 
-      onSuccess(resultStream) { file =>
+      onSuccess(resultStream) { file ⇒
         complete(StatusCodes.OK, HttpEntity(SCApiInternals.apiContentType, SCApiInternals.apiEncoding.encodeFile(file)))
       }
     }
 
     def readChunkStream(regionId: RegionId, chunks: Seq[Chunk], fileName: String = ""): Route = {
-      val contentType = try {
-        ContentType(MediaTypes.forExtension(Utils.getFileExtensionLowerCase(fileName)), () ⇒ HttpCharsets.`UTF-8`)
-      } catch {
-        case NonFatal(_) ⇒
-          ContentTypes.NoContentType
-        // ContentTypes.`application/octet-stream`
-      }
+      val contentType =
+        try {
+          ContentType(MediaTypes.forExtension(Utils.getFileExtensionLowerCase(fileName)), () ⇒ HttpCharsets.`UTF-8`)
+        } catch {
+          case NonFatal(_) ⇒
+            ContentTypes.NoContentType
+          // ContentTypes.`application/octet-stream`
+        }
 
       def createEntity(dataStream: Source[ByteString, NotUsed], contentLength: Long) = {
         if (contentLength > 0) {

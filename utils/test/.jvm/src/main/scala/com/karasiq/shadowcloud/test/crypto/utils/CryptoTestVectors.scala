@@ -44,7 +44,7 @@ class CryptoTestVectors(testVectorsFolder: FSPath) {
   }
 
   private[this] def writeTestVector(parameters: EncryptionParameters, plain: ByteString, encrypted: ByteString): ByteString = {
-    val bsOutput = ByteStringOutputStream()
+    val bsOutput  = ByteStringOutputStream()
     val objOutput = new ObjectOutputStream(bsOutput)
     objOutput.writeObject(parameters)
     objOutput.writeObject(plain)
@@ -55,11 +55,11 @@ class CryptoTestVectors(testVectorsFolder: FSPath) {
   }
 
   private[this] def readTestVector(str: ByteString): (EncryptionParameters, ByteString, ByteString) = {
-    val bsInput = ByteStringInputStream(str)
-    val objInput = new ObjectInputStream(bsInput)
+    val bsInput    = ByteStringInputStream(str)
+    val objInput   = new ObjectInputStream(bsInput)
     val parameters = objInput.readObject().asInstanceOf[EncryptionParameters]
-    val plain = objInput.readObject().asInstanceOf[ByteString]
-    val encrypted = objInput.readObject().asInstanceOf[ByteString]
+    val plain      = objInput.readObject().asInstanceOf[ByteString]
+    val encrypted  = objInput.readObject().asInstanceOf[ByteString]
     objInput.close()
     (parameters, plain, encrypted)
   }

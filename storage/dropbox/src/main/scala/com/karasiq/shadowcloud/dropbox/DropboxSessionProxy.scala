@@ -38,49 +38,47 @@ object DropboxSessionProxy {
 
     val appKeys = Dropbox.AppKeys(config.getConfigIfExists("app-keys"))
 
-    SessionProxyActor.props(
-      implicit context ⇒
-        new SessionAuthenticator[UserToken] {
-          import context.{dispatcher, system}
-          import sc.implicits.materializer
+    SessionProxyActor.props(implicit context ⇒
+      new SessionAuthenticator[UserToken] {
+        import context.{dispatcher, system}
+        import sc.implicits.materializer
 
-          def getSession(): Future[UserToken] = {
-            def checkConnection(): Future[Done] =
-              Http()
-                .singleRequest(HttpRequest(uri = "https://dropbox.com/"))
-                .filter(_.status.isSuccess())
-                .recover { case _ ⇒ throw new IllegalStateException("No connection") }
-                .map(_ ⇒ Done)
+        def getSession(): Future[UserToken] = {
+          def checkConnection(): Future[Done] =
+            Http()
+              .singleRequest(HttpRequest(uri = "https://dropbox.com/"))
+              .filter(_.status.isSuccess())
+              .recover { case _ ⇒ throw new IllegalStateException("No connection") }
+              .map(_ ⇒ Done)
 
-            val cachedToken = for {
-              _token ← sc.sessions.get[UserToken](storageId, "oauth")
-              _      ← { implicit val token = _token; DropboxClient(SCDropbox.DispatcherId).spaceUsage() }
-            } yield _token
+          val cachedToken = for {
+            _token ← sc.sessions.get[UserToken](storageId, "oauth")
+            _      ← { implicit val token = _token; DropboxClient(SCDropbox.DispatcherId).spaceUsage() }
+          } yield _token
 
-            cachedToken.recoverWith {
-              case _: NoSuchElementException ⇒
-                val oauth = DropboxOAuth()
-                for {
-                  _ ← checkConnection()
-                  _ = sc.ui.showNotification(
-                    s"Please authorize shadowcloud in your Dropbox acc: $storageId (${props.credentials.login})\nPress OK to open OAuth web page"
-                  )
-                  token ← oauth.authenticate(appKeys)
-                  Done  ← sc.sessions.set(storageId, "oauth", token)
-                } yield token
-            }
-          }
-
-          def createDispatcher(_token: UserToken): ActorRef = {
-            implicit val token = _token
-            val client         = DropboxClient(SCDropbox.DispatcherId)
-            StoragePluginBuilder(storageId, props)
-              .withIndexTree(DropboxRepository(client))
-              .withChunksTree(DropboxRepository(client))
-              .withHealth(DropboxHealthProvider(client)(context.dispatcher))
-              .createStorage()
+          cachedToken.recoverWith { case _: NoSuchElementException ⇒
+            val oauth = DropboxOAuth()
+            for {
+              _ ← checkConnection()
+              _ = sc.ui.showNotification(
+                s"Please authorize shadowcloud in your Dropbox acc: $storageId (${props.credentials.login})\nPress OK to open OAuth web page"
+              )
+              token ← oauth.authenticate(appKeys)
+              Done  ← sc.sessions.set(storageId, "oauth", token)
+            } yield token
           }
         }
+
+        def createDispatcher(_token: UserToken): ActorRef = {
+          implicit val token = _token
+          val client         = DropboxClient(SCDropbox.DispatcherId)
+          StoragePluginBuilder(storageId, props)
+            .withIndexTree(DropboxRepository(client))
+            .withChunksTree(DropboxRepository(client))
+            .withHealth(DropboxHealthProvider(client)(context.dispatcher))
+            .createStorage()
+        }
+      }
     )
   }
 }

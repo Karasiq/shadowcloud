@@ -31,8 +31,9 @@ private[webapp] object RxUtils {
     }
   }
 
-  private[this] def createFolderRx(regionId: RegionId, pathRx: Rx[Path], scopeRx: Rx[IndexScope])
-                                  (implicit ac: AppContext): RxWithKey[(Path, IndexScope), Folder] = {
+  private[this] def createFolderRx(regionId: RegionId, pathRx: Rx[Path], scopeRx: Rx[IndexScope])(implicit
+      ac: AppContext
+  ): RxWithKey[(Path, IndexScope), Folder] = {
     val folderRx = RxWithKey(Rx((pathRx(), scopeRx())), Folder.create(pathRx.now)) { case (path, scope) ⇒
       ac.api.getFolder(regionId, path, dropChunks = true, scope)
     }
@@ -40,15 +41,19 @@ private[webapp] object RxUtils {
     folderRx
   }
 
-  private[this] def createContextFolderRx(regionId: RegionId, pathRx: Rx[Path], scopeRx: Rx[IndexScope])
-                                         (implicit fc: FolderContext, ac: AppContext): RxWithKey[(Path, IndexScope), Folder] = {
+  private[this] def createContextFolderRx(regionId: RegionId, pathRx: Rx[Path], scopeRx: Rx[IndexScope])(implicit
+      fc: FolderContext,
+      ac: AppContext
+  ): RxWithKey[(Path, IndexScope), Folder] = {
     val folderRx = createFolderRx(regionId, pathRx, scopeRx)
     fc.updates.filter(_._1 == pathRx.now).triggerLater(folderRx.update()) // Subscribe to updates
     folderRx
   }
 
-  private[this] def createContextFilesRx(regionId: RegionId, pathRx: Rx[Path], scopeRx: Rx[IndexScope])
-                                        (implicit fc: FolderContext, ac: AppContext): RxWithKey[(Path, IndexScope), Set[File]] = {
+  private[this] def createContextFilesRx(regionId: RegionId, pathRx: Rx[Path], scopeRx: Rx[IndexScope])(implicit
+      fc: FolderContext,
+      ac: AppContext
+  ): RxWithKey[(Path, IndexScope), Set[File]] = {
     val filesRx = RxWithKey(Rx(pathRx(), scopeRx()), Set.empty[File]) { case (path, scope) ⇒
       ac.api.getFiles(regionId, path, dropChunks = true, scope = scope)
     }

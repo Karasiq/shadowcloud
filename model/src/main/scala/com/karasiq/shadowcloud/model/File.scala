@@ -1,23 +1,30 @@
 package com.karasiq.shadowcloud.model
 
-
-
 import com.karasiq.shadowcloud.config.SerializedProps
 import com.karasiq.shadowcloud.index.utils._
 import com.karasiq.shadowcloud.utils.Utils
 
 @SerialVersionUID(0L)
-final case class File(path: Path, id: FileId = FileId.create(),
-                      revision: Long = 0, timestamp: Timestamp = Timestamp.now,
-                      props: SerializedProps = SerializedProps.empty,
-                      checksum: Checksum = Checksum.empty, chunks: Seq[Chunk] = Nil)
-  extends SCEntity with HasPath with HasEmpty with HasWithoutData with HasWithoutChunks with HasWithoutKeys {
+final case class File(
+    path: Path,
+    id: FileId = FileId.create(),
+    revision: Long = 0,
+    timestamp: Timestamp = Timestamp.now,
+    props: SerializedProps = SerializedProps.empty,
+    checksum: Checksum = Checksum.empty,
+    chunks: Seq[Chunk] = Nil
+) extends SCEntity
+    with HasPath
+    with HasEmpty
+    with HasWithoutData
+    with HasWithoutChunks
+    with HasWithoutKeys {
 
   type Repr = File
   require(!path.isRoot, "Root can not be a file")
 
   @transient
-  private[this] lazy val _hashCode = (path, id/*, revision, checksum, chunks*/).hashCode()
+  private[this] lazy val _hashCode = (path, id /*, revision, checksum, chunks*/ ).hashCode()
 
   def withoutData: File = {
     copy(chunks = chunks.map(_.withoutData))

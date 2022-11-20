@@ -179,10 +179,9 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
           val appendsRange = ChunkRanges.Range(chunksEnd, range.end)
           Source
             .fromIterator(() ⇒ dataUtils.pendingAppends(currentWrites, chunksEnd))
-            .map {
-              case (range, chunk) ⇒
-                val selectedRange = range.relativeTo(appendsRange).fitToSize(appendsRange.size)
-                selectedRange.slice(chunk.data.plain)
+            .map { case (range, chunk) ⇒
+              val selectedRange = range.relativeTo(appendsRange).fitToSize(appendsRange.size)
+              selectedRange.slice(chunk.data.plain)
             }
             .named("scDriveReadAppends")
         }
@@ -412,7 +411,8 @@ class FileIOScheduler(config: SCDriveConfig, regionId: RegionId, file: File) ext
     case Flush ⇒
       actorState.pendingFlush.addWaiter(
         NotUsed,
-        sender(), { () ⇒
+        sender(),
+        { () ⇒
           log.info("Flushing writes: {}", dataState.pendingWrites) // MemorySize(dataState.pendingWrites.map(_.range.size).sum)
           Flush.wrapFuture(file, dataIO.flush()).pipeTo(self)
         }

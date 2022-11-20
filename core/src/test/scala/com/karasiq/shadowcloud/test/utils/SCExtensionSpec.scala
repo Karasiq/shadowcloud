@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.test.utils
 
-
-
 import com.karasiq.shadowcloud.{ShadowCloud, ShadowCloudExtension}
 
 abstract class SCExtensionSpec extends ActorSpec with ActorSpecImplicits with ByteStringImplicits {

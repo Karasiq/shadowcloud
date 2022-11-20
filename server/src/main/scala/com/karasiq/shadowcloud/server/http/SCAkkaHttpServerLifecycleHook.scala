@@ -6,7 +6,6 @@ import com.karasiq.shadowcloud.providers.LifecycleHook
 
 import scala.concurrent.Await
 
-
 private[http] final class SCAkkaHttpServerLifecycleHook(sc: ShadowCloudExtension) extends LifecycleHook {
   @volatile
   private[this] var serverBinding: Http.ServerBinding = _

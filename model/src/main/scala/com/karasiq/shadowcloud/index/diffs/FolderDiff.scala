@@ -1,22 +1,31 @@
 package com.karasiq.shadowcloud.index.diffs
 
-
-
 import com.karasiq.shadowcloud.index.utils._
 import com.karasiq.shadowcloud.model.{File, Folder, Path, SCEntity}
 import com.karasiq.shadowcloud.utils.MergeUtil.SplitDecider
 import com.karasiq.shadowcloud.utils.{MergeUtil, Utils}
 
 @SerialVersionUID(0L)
-final case class FolderDiff(path: Path, time: Long = 0, newFiles: Set[File] = Set.empty,
-                            deletedFiles: Set[File] = Set.empty, newFolders: Set[String] = Set.empty,
-                            deletedFolders: Set[String] = Set.empty)
-  extends SCEntity with HasPath with MergeableDiff with HasEmpty with HasWithoutData {
+final case class FolderDiff(
+    path: Path,
+    time: Long = 0,
+    newFiles: Set[File] = Set.empty,
+    deletedFiles: Set[File] = Set.empty,
+    newFolders: Set[String] = Set.empty,
+    deletedFolders: Set[String] = Set.empty
+) extends SCEntity
+    with HasPath
+    with MergeableDiff
+    with HasEmpty
+    with HasWithoutData {
 
   type Repr = FolderDiff
 
-  def mergeWith(diff: FolderDiff, diffDecider: FolderDiffDecider = FolderDiffDecider.rightWins,
-                folderDecider: FolderDecider = FolderDecider.mutualExclude): FolderDiff = {
+  def mergeWith(
+      diff: FolderDiff,
+      diffDecider: FolderDiffDecider = FolderDiffDecider.rightWins,
+      folderDecider: FolderDecider = FolderDecider.mutualExclude
+  ): FolderDiff = {
     def unifyPaths(files: Set[File]): Set[File] = files.map(f ⇒ f.copy(path = f.path.withParent(this.path)))
 
     require(diff.path == path, "Invalid path")
@@ -31,9 +40,11 @@ final case class FolderDiff(path: Path, time: Long = 0, newFiles: Set[File] = Se
     copy(path, newTimestamp, unifyPaths(newFiles), unifyPaths(deletedFiles), newFolders, deletedFolders)
   }
 
-  def diffWith(oldDiff: FolderDiff,
-               diffDecider: FolderDiffDecider = FolderDiffDecider.idempotent,
-               folderDecider: FolderDecider = FolderDecider.mutualExclude): FolderDiff = {
+  def diffWith(
+      oldDiff: FolderDiff,
+      diffDecider: FolderDiffDecider = FolderDiffDecider.idempotent,
+      folderDecider: FolderDecider = FolderDecider.mutualExclude
+  ): FolderDiff = {
     require(oldDiff.path == path, "Invalid path")
     mergeWith(oldDiff.reverse, diffDecider, folderDecider)
   }
@@ -68,7 +79,8 @@ final case class FolderDiff(path: Path, time: Long = 0, newFiles: Set[File] = Se
 
   override def toString: String = {
     if (nonEmpty) {
-      s"FolderDiff($path, $time, new files = [${Utils.printValues(newFiles, 5)}], deleted files = [${Utils.printValues(deletedFiles, 10)}], new folders = [${Utils.printValues(newFolders, 10)}], deleted folders = [${Utils.printValues(deletedFolders, 10)}])"
+      s"FolderDiff($path, $time, new files = [${Utils.printValues(newFiles, 5)}], deleted files = [${Utils.printValues(deletedFiles, 10)}], new folders = [${Utils
+        .printValues(newFolders, 10)}], deleted folders = [${Utils.printValues(deletedFolders, 10)}])"
     } else {
       s"FolderDiff.empty($path)"
     }
@@ -78,7 +90,7 @@ final case class FolderDiff(path: Path, time: Long = 0, newFiles: Set[File] = Se
 object FolderDiff {
   def apply(oldFolder: Folder, newFolder: Folder): FolderDiff = {
     require(oldFolder.path == newFolder.path, "Invalid path")
-    val (leftFiles, rightFiles) = MergeUtil.splitSets(oldFolder.files, newFolder.files, SplitDecider.dropDuplicates)
+    val (leftFiles, rightFiles)     = MergeUtil.splitSets(oldFolder.files, newFolder.files, SplitDecider.dropDuplicates)
     val (leftFolders, rightFolders) = MergeUtil.splitSets(oldFolder.folders, newFolder.folders, SplitDecider.dropDuplicates)
     FolderDiff(oldFolder.path, newFolder.timestamp.lastModified, rightFiles, leftFiles, rightFolders, leftFolders)
   }

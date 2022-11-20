@@ -31,16 +31,22 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
       val (activeKeys, disabledKeys) = keyChain.keys.partition(kp ⇒ kp.forEncryption || kp.forDecryption)
 
       val activeRows = activeKeys.map { kp ⇒
-        val key = kp.key
+        val key   = kp.key
         val style = if (kp.regionSet.isEmpty) TableRowStyle.active else TableRowStyle.info
-        TableRow(Seq(key.id.toString, key.encryption.method.algorithm, key.signing.method.algorithm), style,
-          onclick := Callback.onClick(_ ⇒ showKeyDialog(key, kp.regionSet, kp.forEncryption, kp.forDecryption)))
+        TableRow(
+          Seq(key.id.toString, key.encryption.method.algorithm, key.signing.method.algorithm),
+          style,
+          onclick := Callback.onClick(_ ⇒ showKeyDialog(key, kp.regionSet, kp.forEncryption, kp.forDecryption))
+        )
       }
 
       val nonActiveRows = disabledKeys.map { kp ⇒
         val key = kp.key
-        TableRow(Seq(key.id.toString, key.encryption.method.algorithm, key.signing.method.algorithm), textDecoration.`line-through`,
-          onclick := Callback.onClick(_ ⇒ showKeyDialog(key, kp.regionSet, kp.forEncryption, kp.forDecryption)))
+        TableRow(
+          Seq(key.id.toString, key.encryption.method.algorithm, key.signing.method.algorithm),
+          textDecoration.`line-through`,
+          onclick := Callback.onClick(_ ⇒ showKeyDialog(key, kp.regionSet, kp.forEncryption, kp.forDecryption))
+        )
       }
 
       activeRows ++ nonActiveRows
@@ -73,7 +79,11 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
       val propsRx = Var("")
       Modal()
         .withTitle(context.locale.generateKey)
-        .withBody(Form(FormInput.textArea(context.locale.config, placeholder := propsPlaceholder, rows := 20, AppComponents.tabOverride, propsRx.reactiveInput)))
+        .withBody(
+          Form(
+            FormInput.textArea(context.locale.config, placeholder := propsPlaceholder, rows := 20, AppComponents.tabOverride, propsRx.reactiveInput)
+          )
+        )
         .withButtons(
           AppComponents.modalSubmit(onclick := Callback.onClick(_ ⇒ doGenerate(propsRx.now))),
           AppComponents.modalClose()
@@ -90,7 +100,8 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
   }
 
   private[this] def showExportDialog(key: KeySet): Unit = {
-    AppComponents.exportDialog(context.locale.exportKey, s"${key.id}.json", ExportUtils.encodeKey(key))
+    AppComponents
+      .exportDialog(context.locale.exportKey, s"${key.id}.json", ExportUtils.encodeKey(key))
       .show(backdrop = false)
   }
 
@@ -100,14 +111,14 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
     }
 
     def renderPermissions() = {
-      val forEncryptionRx = Var(forEncryption)
-      val forDecryptionRx = Var(forDecryption)
-      val allIds = rc.regions.now.regions.keys.toVector
+      val forEncryptionRx              = Var(forEncryption)
+      val forDecryptionRx              = Var(forDecryption)
+      val allIds                       = rc.regions.now.regions.keys.toVector
       val (idSelect, idSelectRendered) = AppComponents.idSelect(context.locale.regions, allIds, regionSet.toVector)
 
       Rx((forEncryptionRx(), forDecryptionRx(), idSelect.selected()))
         .triggerLater(updatePermissions(idSelect.selected.now.toSet, forEncryptionRx.now, forDecryptionRx.now))
-      
+
       Form(
         FormInput.checkbox(context.locale.keyForEncryption, forEncryptionRx.reactiveInput),
         FormInput.checkbox(context.locale.keyForDecryption, forDecryptionRx.reactiveInput),
@@ -131,4 +142,3 @@ class KeysView()(implicit context: AppContext, kc: KeysContext, rc: RegionContex
       .show()
   }
 }
-

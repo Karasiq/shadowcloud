@@ -6,7 +6,7 @@ import com.karasiq.shadowcloud.metadata.{MetadataParser, MetadataProvider, MimeD
 
 class ImageIOMetadataProvider(rootConfig: Config) extends MetadataProvider {
   protected object imageioConfig {
-    val config = rootConfig.getConfig("metadata.imageio")
+    val config           = rootConfig.getConfig("metadata.imageio")
     val thumbnailsConfig = config.getConfig("thumbnails")
   }
 

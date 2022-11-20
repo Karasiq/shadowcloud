@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto.libsodium
 
-
-
 import com.karasiq.shadowcloud.crypto.libsodium.asymmetric.SealedBoxModule
 import com.karasiq.shadowcloud.crypto.libsodium.hashing.{Blake2bModule, MultiPartHashModule}
 import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
@@ -11,7 +9,7 @@ import com.karasiq.shadowcloud.providers.CryptoProvider
 
 final class LibSodiumCryptoProvider extends CryptoProvider {
   private[this] val libraryLoaded = LSUtils.isLibraryAvailable
-  private[this] val aesAvailable = LSUtils.isAesAvailable
+  private[this] val aesAvailable  = LSUtils.isAesAvailable
 
   override val hashingAlgorithms: Set[String] = ifLoaded(super.hashingAlgorithms) {
     Set("SHA256", "SHA512", "Blake2b")

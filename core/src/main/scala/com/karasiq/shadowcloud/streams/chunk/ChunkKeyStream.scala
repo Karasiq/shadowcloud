@@ -9,9 +9,7 @@ import com.karasiq.shadowcloud.model.crypto._
 import com.karasiq.shadowcloud.providers.CryptoModuleRegistry
 
 private[shadowcloud] object ChunkKeyStream {
-  def apply(cryptoModules: CryptoModuleRegistry,
-            method: EncryptionMethod,
-            maxKeyReuse: Int = 256): ChunkKeyStream = {
+  def apply(cryptoModules: CryptoModuleRegistry, method: EncryptionMethod, maxKeyReuse: Int = 256): ChunkKeyStream = {
     new ChunkKeyStream(cryptoModules, method, maxKeyReuse)
   }
 
@@ -42,17 +40,17 @@ private[shadowcloud] object ChunkKeyStream {
 }
 
 private[shadowcloud] final class ChunkKeyStream(cryptoModules: CryptoModuleRegistry, method: EncryptionMethod, maxKeyReuse: Int)
-  extends GraphStage[SourceShape[EncryptionParameters]] {
+    extends GraphStage[SourceShape[EncryptionParameters]] {
 
   val outlet = Outlet[EncryptionParameters]("ChunkKeyStream.out")
-  val shape = SourceShape(outlet)
+  val shape  = SourceShape(outlet)
 
   def createLogic(inheritedAttributes: Attributes) = new GraphStageLogic(shape) with OutHandler {
-    private[this] val encryptionModule = cryptoModules.encryptionModule(method)
-    private[this] var secureRandom: SecureRandom = _
+    private[this] val encryptionModule                    = cryptoModules.encryptionModule(method)
+    private[this] var secureRandom: SecureRandom          = _
     private[this] var keyParameters: EncryptionParameters = _
-    private[this] var encryptedCount: Int = _
-    private[this] var changeKeyIn: Int = _
+    private[this] var encryptedCount: Int                 = _
+    private[this] var changeKeyIn: Int                    = _
 
     private[this] def resetParametersAndCounter(): Unit = { // TODO: Log key changes
       this.keyParameters = encryptionModule.createParameters()

@@ -8,9 +8,8 @@ import com.karasiq.shadowcloud.storage.props.StorageProps.Quota
 
 import scala.concurrent.Future
 
-private[storage] final class JVMHeapHealthProvider(dataIterator: () ⇒ Iterator[ByteString],
-                                                   quota: StorageProps.Quota = StorageProps.Quota.empty)
-  extends StorageHealthProvider {
+private[storage] final class JVMHeapHealthProvider(dataIterator: () ⇒ Iterator[ByteString], quota: StorageProps.Quota = StorageProps.Quota.empty)
+    extends StorageHealthProvider {
 
   def health: Future[StorageHealth] = {
     val total = Quota.limitTotalSpace(quota, sys.runtime.maxMemory())

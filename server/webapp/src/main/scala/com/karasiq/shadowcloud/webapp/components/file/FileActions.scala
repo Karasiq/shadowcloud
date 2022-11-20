@@ -17,16 +17,17 @@ import com.karasiq.shadowcloud.webapp.controllers.FileController
 import com.karasiq.shadowcloud.webapp.utils.ExportUtils
 
 object FileActions {
-  def apply(file: File, useId: Boolean = false)(implicit context: AppContext,
-                                                folderContext: FolderContext,
-                                                fileController: FileController): FileActions = {
+  def apply(file: File, useId: Boolean = false)(implicit
+      context: AppContext,
+      folderContext: FolderContext,
+      fileController: FileController
+  ): FileActions = {
     new FileActions(file, useId)
   }
 }
 
-final class FileActions(file: File, useId: Boolean)(implicit context: AppContext,
-                                                    folderContext: FolderContext,
-                                                    fileController: FileController) extends BootstrapHtmlComponent {
+final class FileActions(file: File, useId: Boolean)(implicit context: AppContext, folderContext: FolderContext, fileController: FileController)
+    extends BootstrapHtmlComponent {
 
   private[this] val deleted = Var(false)
 
@@ -46,14 +47,18 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
   }
 
   private[this] def renderEditor(): TagT = {
-    renderAction(context.locale.viewTextFile, AppIcons.viewText, onclick := Callback.onClick { _ ⇒
-      Modal()
-        .withTitle(context.locale.viewTextFile)
-        .withBody(TextFileView(file))
-        .withButtons(AppComponents.modalClose())
-        .withDialogStyle(ModalDialogSize.large)
-        .show(backdrop = false)
-    })
+    renderAction(
+      context.locale.viewTextFile,
+      AppIcons.viewText,
+      onclick := Callback.onClick { _ ⇒
+        Modal()
+          .withTitle(context.locale.viewTextFile)
+          .withBody(TextFileView(file))
+          .withButtons(AppComponents.modalClose())
+          .withDialogStyle(ModalDialogSize.large)
+          .show(backdrop = false)
+      }
+    )
   }
 
   private[this] def renderPlayer(): TagT = {
@@ -128,7 +133,7 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
 
     def undeleteFile(): Unit = {
       val createdFiles = deletedFiles.toVector
-      val result = Future.sequence(createdFiles.map(context.api.createFile(folderContext.regionId, _)))
+      val result       = Future.sequence(createdFiles.map(context.api.createFile(folderContext.regionId, _)))
       result.foreach { _ ⇒
         deleted() = false
         createdFiles.foreach(fileController.addFile)
@@ -148,7 +153,7 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
       } else {
         context.api.getFiles(folderContext.regionId, file.path, dropChunks = false, folderContext.scope.now).map(FileVersions.mostRecent)
       } */
-      val jsonRx = fileFuture.map(ExportUtils.encodeFile).toRx("")
+      val jsonRx     = fileFuture.map(ExportUtils.encodeFile).toRx("")
       Modal(context.locale.inspectFile, pre(jsonRx), AppComponents.modalClose(), dialogStyle = ModalDialogSize.large).show()
     }
 
@@ -156,7 +161,6 @@ final class FileActions(file: File, useId: Boolean)(implicit context: AppContext
   }
 
   private[this] def renderAction(title: ModifierT, icon: IconModifier, linkMd: ModifierT*): TagT = {
-    div(AppComponents.iconLink(title, icon, linkMd:_*))
+    div(AppComponents.iconLink(title, icon, linkMd: _*))
   }
 }
-

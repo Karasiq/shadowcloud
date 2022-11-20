@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto.libsodium.symmetric
 
-
-
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.libsodium.internal.LSUtils
@@ -16,14 +14,14 @@ private[libsodium] object SymmetricCipherModule {
 }
 
 private[libsodium] trait SymmetricCipherModule extends EncryptionModule {
-  protected final val sodium = NaCl.sodium()
+  protected final val sodium       = NaCl.sodium()
   protected final val secureRandom = LSUtils.createSecureRandom()
 
   protected val keySize: Int
   protected val nonceSize: Int
 
   def createParameters(): EncryptionParameters = {
-    val key = secureRandom.randomBytes(keySize)
+    val key   = secureRandom.randomBytes(keySize)
     val nonce = secureRandom.randomBytes(nonceSize)
     SymmetricEncryptionParameters(method, ByteString.fromArrayUnsafe(key), ByteString.fromArrayUnsafe(nonce))
   }

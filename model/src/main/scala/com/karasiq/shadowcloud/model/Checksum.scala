@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.model
 
-
-
 import akka.util.ByteString
 import com.karasiq.common.encoding.HexString
 import com.karasiq.common.memory.MemorySize
@@ -9,9 +7,15 @@ import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.model.crypto.HashingMethod
 
 @SerialVersionUID(0L)
-final case class Checksum(method: HashingMethod = HashingMethod.default, encMethod: HashingMethod = HashingMethod.default,
-                          size: Long = 0, hash: ByteString = ByteString.empty, encSize: Long = 0,
-                          encHash: ByteString = ByteString.empty) extends SCEntity with HasEmpty {
+final case class Checksum(
+    method: HashingMethod = HashingMethod.default,
+    encMethod: HashingMethod = HashingMethod.default,
+    size: Long = 0,
+    hash: ByteString = ByteString.empty,
+    encSize: Long = 0,
+    encHash: ByteString = ByteString.empty
+) extends SCEntity
+    with HasEmpty {
 
   @transient
   private[this] lazy val _hashCode = (size, hash).hashCode()
@@ -47,7 +51,7 @@ final case class Checksum(method: HashingMethod = HashingMethod.default, encMeth
     } else {
       Seq(method.toString, encMethod.toString)
     }
-    val plain = sizeAndHash("plain", size, hash)
+    val plain     = sizeAndHash("plain", size, hash)
     val encrypted = sizeAndHash("encrypted", encSize, encHash)
 
     s"Checksum(${(methods ++ Seq(plain, encrypted)).filter(_.nonEmpty).mkString(", ")})"

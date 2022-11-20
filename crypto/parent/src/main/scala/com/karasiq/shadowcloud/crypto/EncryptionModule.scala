@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto
 
-
-
 import akka.util.ByteString
 import com.karasiq.shadowcloud.model.crypto.{EncryptionMethod, EncryptionParameters}
 

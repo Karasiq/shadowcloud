@@ -21,9 +21,9 @@ object FolderContext {
   def apply(_regionId: RegionId): FolderContext = {
     new FolderContext {
       val regionId = _regionId
-      val scope = Var(IndexScope.default)
+      val scope    = Var(IndexScope.default)
       val selected = Var(Path.root)
-      val updates = Var(Path.root, 0)
+      val updates  = Var(Path.root, 0)
     }
   }
 }

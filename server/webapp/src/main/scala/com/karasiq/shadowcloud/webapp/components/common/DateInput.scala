@@ -17,8 +17,7 @@ object DateInput {
   }
 
   def toTimestamp(date: LocalDate): Long = {
-    date
-      .atStartOfDay
+    date.atStartOfDay
       .atZone(ZoneId.systemDefault)
       .toInstant
       .toEpochMilli
@@ -83,4 +82,3 @@ private[components] class DatePickerPopup(val selectedDate: Var[Option[LocalDate
     selectedDate.foreach(writeDate(elem, _))
   }
 }
-

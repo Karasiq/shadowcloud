@@ -13,9 +13,9 @@ import scala.concurrent.duration._
 class RegionSupervisorTest extends SCExtensionSpec with FlatSpecLike with Matchers {
   import RegionSupervisor._
 
-  val testRegion = "testRegion"
+  val testRegion  = "testRegion"
   val testStorage = "testStorage"
-  val supervisor = system.actorOf(props, "supervisor")
+  val supervisor  = system.actorOf(props, "supervisor")
 
   "Region supervisor" should "add region" in {
     supervisor ! CreateRegion(testRegion, CoreTestUtils.regionConfig("testRegion"))
@@ -78,7 +78,7 @@ class RegionSupervisorTest extends SCExtensionSpec with FlatSpecLike with Matche
 
   it should "resume storage" in {
     supervisor ! ResumeStorage(testStorage)
-    val (regions, storages) = requestState()
+    val (regions, storages)                                                   = requestState()
     val StorageStatus(`testStorage`, _, ActorState.Active(_), storageRegions) = storages(testStorage)
     storageRegions shouldBe Set(testRegion)
     regions.keySet shouldBe Set(testRegion)
@@ -95,7 +95,7 @@ class RegionSupervisorTest extends SCExtensionSpec with FlatSpecLike with Matche
 
   it should "resume region" in {
     supervisor ! ResumeRegion(testRegion)
-    val (regions, storages) = requestState()
+    val (regions, storages)                                                 = requestState()
     val RegionStatus(`testRegion`, _, ActorState.Active(_), regionStorages) = regions(testRegion)
     regionStorages shouldBe Set(testStorage)
     storages.keySet shouldBe Set(testStorage)
@@ -116,4 +116,3 @@ class RegionSupervisorTest extends SCExtensionSpec with FlatSpecLike with Matche
     (regions, storages)
   }
 }
-

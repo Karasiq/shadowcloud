@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.index.utils
 
-
-
 trait Mergeable {
   type Repr
   type DiffRepr

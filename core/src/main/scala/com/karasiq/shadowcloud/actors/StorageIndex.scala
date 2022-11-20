@@ -12,7 +12,7 @@ import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.repository.CategorizedRepository
 import com.karasiq.shadowcloud.storage.utils.{IndexMerger, StorageUtils}
 
-import scala.collection.mutable.{AnyRefMap => MMap}
+import scala.collection.mutable.{AnyRefMap ⇒ MMap}
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -59,9 +59,8 @@ private[actors] final class StorageIndex(storageId: StorageId, storageProps: Sto
 
     case SynchronizeAll ⇒
       log.debug("Synchronizing all indexes")
-      val futures = subIndexes.map {
-        case (regionId, dispatcher) ⇒
-          RegionIndex.Synchronize.unwrapFuture(dispatcher ? RegionIndex.Synchronize).map((regionId, _))
+      val futures = subIndexes.map { case (regionId, dispatcher) ⇒
+        RegionIndex.Synchronize.unwrapFuture(dispatcher ? RegionIndex.Synchronize).map((regionId, _))
       }
       val result = Future.sequence(futures.toVector).map(_.toMap)
       SynchronizeAll.wrapFuture(storageId, result).pipeTo(sender())
@@ -75,10 +74,9 @@ private[actors] final class StorageIndex(storageId: StorageId, storageProps: Sto
       stopRegionDispatcher(regionId, clear)
 
     case GetIndexes ⇒
-      val futures = subIndexes.map {
-        case (regionId, dispatcher) ⇒
-          val future = RegionIndex.GetIndex.unwrapFuture(dispatcher ? RegionIndex.GetIndex)
-          future.map((regionId, _))
+      val futures = subIndexes.map { case (regionId, dispatcher) ⇒
+        val future = RegionIndex.GetIndex.unwrapFuture(dispatcher ? RegionIndex.GetIndex)
+        future.map((regionId, _))
       }
       Future
         .sequence(futures)

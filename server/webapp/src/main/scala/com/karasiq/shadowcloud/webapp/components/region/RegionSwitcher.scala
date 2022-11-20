@@ -14,11 +14,10 @@ object RegionSwitcher {
 
 class RegionSwitcher(implicit context: AppContext, regionContext: RegionContext) extends BootstrapHtmlComponent {
   val regionSelector = RegionSelector()
-  val scopeSelector = IndexScopeSelector()
+  val scopeSelector  = IndexScopeSelector()
 
   def renderTag(md: ModifierT*): TagT = {
-    Button(ButtonStyle.warning)(AppIcons.region, context.locale.region,
-      onclick := Callback.onClick(_ ⇒ this.show()), md)
+    Button(ButtonStyle.warning)(AppIcons.region, context.locale.region, onclick := Callback.onClick(_ ⇒ this.show()), md)
   }
 
   def renderModal(): Modal = {
@@ -30,9 +29,7 @@ class RegionSwitcher(implicit context: AppContext, regionContext: RegionContext)
     Modal(context.locale.region, content, AppComponents.modalClose())
   }
 
-
   def show(): Unit = {
     renderModal().show()
   }
 }
-

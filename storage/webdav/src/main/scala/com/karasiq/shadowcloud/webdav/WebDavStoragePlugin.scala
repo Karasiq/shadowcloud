@@ -17,8 +17,8 @@ object WebDavStoragePlugin {
 
 class WebDavStoragePlugin extends StoragePlugin {
   def createStorage(storageId: StorageId, props: StorageProps)(implicit context: ActorContext) = {
-    implicit val ec = context.system.dispatchers.lookup(WebDavStoragePlugin.dispatcherId)
-    val sardine = SardineRepository.createSardine(props)
+    implicit val ec                   = context.system.dispatchers.lookup(WebDavStoragePlugin.dispatcherId)
+    val sardine                       = SardineRepository.createSardine(props)
     val repository: SardineRepository = SardineRepository(props, sardine)
     StoragePluginBuilder(storageId, props)
       .withChunksTree(repository)

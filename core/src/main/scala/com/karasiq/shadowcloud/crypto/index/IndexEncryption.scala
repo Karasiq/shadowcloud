@@ -26,13 +26,13 @@ private[shadowcloud] trait IndexEncryption {
 private[shadowcloud] object IndexEncryption {
   private[crypto] type DataId = UUID
   private[crypto] type NonceT = ByteString
-  type PlaintextT = ByteString
-  type CiphertextT = EncryptedIndexData
+  type PlaintextT             = ByteString
+  type CiphertextT            = EncryptedIndexData
 
   def apply(cryptoModules: CryptoModuleRegistry, serialization: IndexSerialization): IndexEncryption = {
     new DefaultIndexEncryption(cryptoModules, serialization)
   }
-  
+
   def getKeyHash(dataId: DataId, keyId: KeyId): Int = {
     MurmurHash3.arrayHash((UUIDEncoding.toBytes(keyId) ++ UUIDEncoding.toBytes(dataId)).toArray)
   }
@@ -57,16 +57,16 @@ private[shadowcloud] object IndexEncryption {
   }
 }
 
-private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoModuleRegistry,
-                                                        serialization: IndexSerialization) extends IndexEncryption {
+private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoModuleRegistry, serialization: IndexSerialization)
+    extends IndexEncryption {
   private[this] lazy val secureRandom = new SecureRandom()
 
   def encrypt(plaintext: ByteString, dataEncMethod: EncryptionMethod, keys: KeyChain): EncryptedIndexData = {
     def createEncryptedData(plaintext: ByteString, method: EncryptionMethod): (EncryptedIndexData, EncryptionParameters) = {
-      val dataId = UUID.randomUUID()
-      val dataEncModule = cryptoModules.encryptionModule(method)
+      val dataId            = UUID.randomUUID()
+      val dataEncModule     = cryptoModules.encryptionModule(method)
       val dataEncParameters = dataEncModule.createParameters()
-      val ciphertext = dataEncModule.encrypt(plaintext, dataEncParameters)
+      val ciphertext        = dataEncModule.encrypt(plaintext, dataEncParameters)
       (EncryptedIndexData(id = dataId, data = ciphertext), dataEncParameters)
     }
 
@@ -82,12 +82,12 @@ private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoMod
 
     def createHeader(encData: EncryptedIndexData, dataEncParameters: EncryptionParameters, staticKeys: KeySet): EncryptedIndexData.Header = {
       val keyEncModule = cryptoModules.encryptionModule(staticKeys.encryption.method)
-      val signatures = IndexSignatures(cryptoModules, staticKeys.signing.method)
+      val signatures   = IndexSignatures(cryptoModules, staticKeys.signing.method)
 
-      val dataNonce = generateNonce(staticKeys.encryption)
+      val dataNonce        = generateNonce(staticKeys.encryption)
       val keyEncParameters = IndexEncryption.updateNonce(staticKeys.encryption, dataNonce)
 
-      val serializedKey = serialization.wrapKey(dataEncParameters)
+      val serializedKey    = serialization.wrapKey(dataEncParameters)
       val headerCiphertext = keyEncModule.encrypt(ByteString.fromArrayUnsafe(serializedKey.toByteArray), keyEncParameters)
       val header = EncryptedIndexData.Header(
         keyHash = IndexEncryption.getKeyHash(encData.id, staticKeys.id),
@@ -99,7 +99,7 @@ private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoMod
     }
 
     val (encData, dataEncParameters) = createEncryptedData(plaintext, dataEncMethod)
-    val headers = keys.encKeys.map(keySet ⇒ createHeader(encData, dataEncParameters, keySet))
+    val headers                      = keys.encKeys.map(keySet ⇒ createHeader(encData, dataEncParameters, keySet))
     encData.copy(headers = headers.toVector)
   }
 
@@ -118,11 +118,11 @@ private[shadowcloud] final class DefaultIndexEncryption(cryptoModules: CryptoMod
     val (keySet, header) = matchingKeys.next()
 
     val keyEncParameters = IndexEncryption.updateNonce(keySet.encryption, header.nonce)
-    val keyEncModule = cryptoModules.encryptionModule(keyEncParameters.method)
+    val keyEncModule     = cryptoModules.encryptionModule(keyEncParameters.method)
 
-    val decryptedKey = SerializedKeyData.parseFrom(keyEncModule.decrypt(header.data, keyEncParameters).toArrayUnsafe)
+    val decryptedKey      = SerializedKeyData.parseFrom(keyEncModule.decrypt(header.data, keyEncParameters).toArrayUnsafe)
     val dataEncParameters = serialization.unwrapKey(decryptedKey)
-    val dataEncModule = cryptoModules.encryptionModule(dataEncParameters.method)
+    val dataEncModule     = cryptoModules.encryptionModule(dataEncParameters.method)
 
     dataEncModule.decrypt(data.data, dataEncParameters)
   }

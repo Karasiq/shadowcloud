@@ -8,7 +8,7 @@ trait StorageBind {
 
   def apply[T](name: String, default: T)(implicit ctx: Ctx.Owner, toString: T ⇒ String, fromString: String ⇒ T): Var[T] = {
     val initialValue = Option(storage.getItem(name))
-    val value = Var[T](initialValue.fold(default)(fromString))
+    val value        = Var[T](initialValue.fold(default)(fromString))
     value.triggerLater(storage.setItem(name, value.now))
     value
   }

@@ -6,8 +6,12 @@ import com.karasiq.shadowcloud.model.Path
 import com.karasiq.shadowcloud.storage.repository.{KeyValueRepository, PathTreeRepository}
 
 private[repository] final class PathStringRepositoryWrapper(repository: KeyValueRepository, delimiter: String)
-  extends RepositoryKeyMapper[String, Path](repository, PathStringRepositoryWrapper.split(_, delimiter),
-    PathStringRepositoryWrapper.combine(_, delimiter)) with PathTreeRepository {
+    extends RepositoryKeyMapper[String, Path](
+      repository,
+      PathStringRepositoryWrapper.split(_, delimiter),
+      PathStringRepositoryWrapper.combine(_, delimiter)
+    )
+    with PathTreeRepository {
 
   def subKeys(fromPath: Path): Source[Path, Result] = {
     repository.keys

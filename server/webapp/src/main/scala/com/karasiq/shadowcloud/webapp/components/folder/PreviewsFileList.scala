@@ -9,14 +9,13 @@ import com.karasiq.shadowcloud.model.File
 import com.karasiq.shadowcloud.webapp.context.{AppContext, FolderContext}
 
 private[folder] object PreviewsFileList {
-  def apply(files: Rx[Seq[File]], selectedFile: Var[Option[File]])
-           (implicit context: AppContext, fc: FolderContext): PreviewsFileList = {
+  def apply(files: Rx[Seq[File]], selectedFile: Var[Option[File]])(implicit context: AppContext, fc: FolderContext): PreviewsFileList = {
     new PreviewsFileList(files, selectedFile)
   }
 }
 
-private[folder] class PreviewsFileList(files: Rx[Seq[File]], selectedFile: Var[Option[File]])
-                                      (implicit context: AppContext, fc: FolderContext) extends BootstrapHtmlComponent {
+private[folder] class PreviewsFileList(files: Rx[Seq[File]], selectedFile: Var[Option[File]])(implicit context: AppContext, fc: FolderContext)
+    extends BootstrapHtmlComponent {
   def renderTag(md: ModifierT*): TagT = {
     val filterField = Form(FormInput.text("", sorting.filter.reactiveInput))
 
@@ -35,15 +34,15 @@ private[folder] class PreviewsFileList(files: Rx[Seq[File]], selectedFile: Var[O
       div(textAlign.center, pagination.pageSelector, pagination.pages.map(_ <= 1).reactiveHide),
       div(sortLine, sorting.sortedFiles.map(_.length <= 1).reactiveHide),
       // hr(files.map(_.isEmpty).reactiveHide),
-      Rx(GridSystem.containerFluid(pagination.currentPageFiles().map(PreviewsFileListItem(_, selectedFile)):_*))
+      Rx(GridSystem.containerFluid(pagination.currentPageFiles().map(PreviewsFileListItem(_, selectedFile)): _*))
     )
   }
 
   private[this] object sorting {
     val sortTypes = Seq(context.locale.name, context.locale.size, context.locale.modifiedDate)
-    val sortType = Var(0)
-    val sortDesc = Var(false)
-    val filter = Var("")
+    val sortType  = Var(0)
+    val sortDesc  = Var(false)
+    val filter    = Var("")
 
     lazy val sortedFiles = Rx {
       val allFiles = files()
@@ -53,10 +52,10 @@ private[folder] class PreviewsFileList(files: Rx[Seq[File]], selectedFile: Var[O
         else allFiles.filter(_.path.name.toLowerCase.contains(filterStr.toLowerCase))
       }
       val sorted = sortTypes(sortType()) match {
-        case s if s == context.locale.name ⇒ filtered.sortBy(_.path.name)
-        case s if s == context.locale.size ⇒ filtered.sortBy(_.checksum.size)
+        case s if s == context.locale.name         ⇒ filtered.sortBy(_.path.name)
+        case s if s == context.locale.size         ⇒ filtered.sortBy(_.checksum.size)
         case s if s == context.locale.modifiedDate ⇒ filtered.sortBy(_.timestamp.lastModified)
-        case _ ⇒ filtered
+        case _                                     ⇒ filtered
       }
       if (sortDesc()) sorted.reverse else sorted
     }
@@ -73,7 +72,7 @@ private[folder] class PreviewsFileList(files: Rx[Seq[File]], selectedFile: Var[O
 
   private[this] object pagination {
     val rowsPerPage = 10
-    lazy val pages = sorting.sortedFiles.map(fs ⇒ (fs.length.toDouble / rowsPerPage).ceil.toInt)
+    lazy val pages  = sorting.sortedFiles.map(fs ⇒ (fs.length.toDouble / rowsPerPage).ceil.toInt)
 
     lazy val pageSelector = PageSelector(pages)
 
@@ -83,4 +82,3 @@ private[folder] class PreviewsFileList(files: Rx[Seq[File]], selectedFile: Var[O
     }
   }
 }
-

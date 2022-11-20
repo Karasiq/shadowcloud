@@ -8,11 +8,10 @@ import com.twitter.chill
 import com.karasiq.shadowcloud.serialization.internal.CompanionReflectSerializer
 
 // ScalaPB serializer
-private[kryo] final class GeneratedMessageSerializer
-  extends chill.KSerializer[GeneratedMessage](false, true) with CompanionReflectSerializer {
+private[kryo] final class GeneratedMessageSerializer extends chill.KSerializer[GeneratedMessage](false, true) with CompanionReflectSerializer {
 
   def read(kryo: Kryo, input: Input, `type`: Class[GeneratedMessage]): GeneratedMessage = {
-    val bytes = kryo.readObject(input, classOf[Array[Byte]])
+    val bytes     = kryo.readObject(input, classOf[Array[Byte]])
     val companion = getCompanion[GeneratedMessageCompanion[_ <: GeneratedMessage]](`type`)
     companion.parseFrom(bytes)
   }

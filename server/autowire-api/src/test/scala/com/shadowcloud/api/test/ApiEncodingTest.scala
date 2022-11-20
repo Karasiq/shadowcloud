@@ -13,7 +13,7 @@ class ApiEncodingTest extends FlatSpec with Matchers {
   "BooPickle" should "encode diff" in {
     val enc = SCBooPickleEncoding
     import enc.implicits._
-    val bytes = enc.encode(testDiff)
+    val bytes   = enc.encode(testDiff)
     val decoded = enc.decode[IndexDiff](bytes)
     decoded shouldBe testDiff
   }
@@ -21,7 +21,7 @@ class ApiEncodingTest extends FlatSpec with Matchers {
   "JSON" should "encode diff" in {
     val enc = SCJsonEncoding
     import enc.implicits._
-    val bytes = enc.encode(testDiff)
+    val bytes   = enc.encode(testDiff)
     val decoded = enc.decode[IndexDiff](bytes)
     decoded shouldBe testDiff
   }

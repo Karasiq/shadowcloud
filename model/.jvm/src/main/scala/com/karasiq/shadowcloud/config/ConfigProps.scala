@@ -8,10 +8,11 @@ import scala.collection.JavaConverters._
 
 private[shadowcloud] object ConfigProps {
   private[this] val SupportedFormats = Set(SerializedProps.DefaultFormat, SerializedProps.JsonFormat)
-  
+
   private[this] val JsonOptions = ConfigRenderOptions.concise()
   private[this] val HoconOptions = {
-    ConfigRenderOptions.defaults()
+    ConfigRenderOptions
+      .defaults()
       .setOriginComments(false)
       .setJson(false)
   }

@@ -82,7 +82,7 @@ private[actors] trait ContainerActor { self: Actor with Stash with ActorLogging 
       }
   }
 
-  override def supervisorStrategy: _root_.akka.actor.SupervisorStrategy = OneForOneStrategy() {
-    case NonFatal(_) ⇒ SupervisorStrategy.Stop
+  override def supervisorStrategy: _root_.akka.actor.SupervisorStrategy = OneForOneStrategy() { case NonFatal(_) ⇒
+    SupervisorStrategy.Stop
   }
 }

@@ -1,35 +1,41 @@
 package com.karasiq.shadowcloud.index.diffs
 
-
-
 import com.karasiq.shadowcloud.index.utils._
 import com.karasiq.shadowcloud.model.{Chunk, Folder, Path, SCEntity}
 import com.karasiq.shadowcloud.utils.MergeUtil.{Decider, SplitDecider}
 import com.karasiq.shadowcloud.utils.Utils
 
 @SerialVersionUID(0L)
-final case class IndexDiff(time: Long = Utils.timestamp,
-                           folders: FolderIndexDiff = FolderIndexDiff.empty,
-                           chunks: ChunkIndexDiff = ChunkIndexDiff.empty)
-  extends SCEntity with MergeableDiff with HasEmpty with HasWithoutData {
+final case class IndexDiff(
+    time: Long = Utils.timestamp,
+    folders: FolderIndexDiff = FolderIndexDiff.empty,
+    chunks: ChunkIndexDiff = ChunkIndexDiff.empty
+) extends SCEntity
+    with MergeableDiff
+    with HasEmpty
+    with HasWithoutData {
 
   type Repr = IndexDiff
 
   // Delete wins by default
-  def mergeWith(diff: IndexDiff, folderDiffDecider: FolderDiffDecider = FolderDiffDecider.rightWins,
-                folderDecider: FolderDecider = FolderDecider.mutualExclude,
-                chunkDecider: SplitDecider[Chunk] = SplitDecider.dropDuplicates): IndexDiff = {
+  def mergeWith(
+      diff: IndexDiff,
+      folderDiffDecider: FolderDiffDecider = FolderDiffDecider.rightWins,
+      folderDecider: FolderDecider = FolderDecider.mutualExclude,
+      chunkDecider: SplitDecider[Chunk] = SplitDecider.dropDuplicates
+  ): IndexDiff = {
     val maxTime = math.max(time, diff.time)
-    withDiffs(folders.mergeWith(diff.folders, folderDiffDecider, folderDecider),
-      chunks.mergeWith(diff.chunks, chunkDecider), maxTime)
+    withDiffs(folders.mergeWith(diff.folders, folderDiffDecider, folderDecider), chunks.mergeWith(diff.chunks, chunkDecider), maxTime)
   }
 
-  def diffWith(diff: IndexDiff, decider: Decider[FolderDiff] = Decider.diff,
-               folderDiffDecider: FolderDiffDecider = FolderDiffDecider.idempotent,
-               folderDecider: FolderDecider = FolderDecider.mutualExclude,
-               chunkDecider: Decider[Chunk] = Decider.diff): IndexDiff = {
-    withDiffs(folders.diffWith(diff.folders, decider, folderDiffDecider, folderDecider),
-      chunks.diffWith(diff.chunks, chunkDecider))
+  def diffWith(
+      diff: IndexDiff,
+      decider: Decider[FolderDiff] = Decider.diff,
+      folderDiffDecider: FolderDiffDecider = FolderDiffDecider.idempotent,
+      folderDecider: FolderDecider = FolderDecider.mutualExclude,
+      chunkDecider: Decider[Chunk] = Decider.diff
+  ): IndexDiff = {
+    withDiffs(folders.diffWith(diff.folders, decider, folderDiffDecider, folderDecider), chunks.diffWith(diff.chunks, chunkDecider))
   }
 
   def merge(right: IndexDiff): IndexDiff = {
@@ -64,9 +70,7 @@ final case class IndexDiff(time: Long = Utils.timestamp,
     if (isEmpty) "IndexDiff.empty" else s"IndexDiff($time, $folders, $chunks)"
   }
 
-  private[this] def withDiffs(folders: FolderIndexDiff = this.folders,
-                              chunks: ChunkIndexDiff = this.chunks,
-                              time: Long = this.time): IndexDiff = {
+  private[this] def withDiffs(folders: FolderIndexDiff = this.folders, chunks: ChunkIndexDiff = this.chunks, time: Long = this.time): IndexDiff = {
     if (folders.isEmpty && chunks.isEmpty) IndexDiff.empty else copy(time, folders, chunks)
   }
 }

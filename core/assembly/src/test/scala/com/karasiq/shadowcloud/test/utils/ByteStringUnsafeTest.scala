@@ -7,8 +7,8 @@ import com.karasiq.shadowcloud.utils.ByteStringUnsafe
 
 class ByteStringUnsafeTest extends FlatSpec {
   "ByteString array" should "be extracted" in {
-    val array = new Array[Byte](4)
-    val bs = ByteString.fromArrayUnsafe(array)
+    val array          = new Array[Byte](4)
+    val bs             = ByteString.fromArrayUnsafe(array)
     val extractedArray = ByteStringUnsafe.getArray(bs)
     assert(extractedArray eq array, "Arrays not equal")
   }

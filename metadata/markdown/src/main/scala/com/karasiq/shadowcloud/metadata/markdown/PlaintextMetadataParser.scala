@@ -21,7 +21,7 @@ object PlaintextMetadataParser {
 class PlaintextMetadataParser(config: Config) extends MetadataParser {
   protected object settings {
     val parserConfig = MetadataParserConfig(config)
-    val sizeLimit = config.getBytesInt("size-limit")
+    val sizeLimit    = config.getBytesInt("size-limit")
   }
 
   def canParse(name: String, mime: String): Boolean = {

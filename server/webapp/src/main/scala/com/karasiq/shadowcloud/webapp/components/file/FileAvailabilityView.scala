@@ -26,7 +26,7 @@ class FileAvailabilityView(file: File)(implicit context: AppContext, folderConte
   def renderTag(md: ModifierT*): TagT = {
     div(
       div(renderRepairLink()),
-      Rx(renderContent(availabilityRx.toRx(), md:_*))
+      Rx(renderContent(availabilityRx.toRx(), md: _*))
     )
   }
 
@@ -55,7 +55,7 @@ class FileAvailabilityView(file: File)(implicit context: AppContext, folderConte
       div(b(context.locale.total, ": ", f"${fileAvailability.totalPercentage}%.2f%%")),
       for ((storageId, percentage) ← sortedPercentages)
         yield div(icon(percentage), storageId, f" ($percentage%.2f%%)", textStyle(percentage))
-    )(md:_*)
+    )(md: _*)
   }
 
   def renderRepairLink(): TagT = {
@@ -74,7 +74,7 @@ class FileAvailabilityView(file: File)(implicit context: AppContext, folderConte
       }
 
       context.api.getRegion(folderContext.regionId).foreach { status ⇒
-        val storagesSelector = FormInput.simpleMultipleSelect(context.locale.storages, status.storages.toSeq:_*)
+        val storagesSelector = FormInput.simpleMultipleSelect(context.locale.storages, status.storages.toSeq: _*)
         Modal(context.locale.repairFile)
           .withBody(Form(storagesSelector))
           .withButtons(
@@ -84,7 +84,11 @@ class FileAvailabilityView(file: File)(implicit context: AppContext, folderConte
           .show()
       }
     }
-    AppComponents.iconLink(context.locale.repairFile, AppIcons.repair, Bootstrap.textStyle.muted.className.classIf(repairing), onclick := Callback.onClick(_ ⇒ if (!repairing.now) showDialog()))
+    AppComponents.iconLink(
+      context.locale.repairFile,
+      AppIcons.repair,
+      Bootstrap.textStyle.muted.className.classIf(repairing),
+      onclick := Callback.onClick(_ ⇒ if (!repairing.now) showDialog())
+    )
   }
 }
-

@@ -3,14 +3,16 @@ package com.karasiq.shadowcloud.storage.replication
 import com.karasiq.shadowcloud.index.utils.HasEmpty
 import com.karasiq.shadowcloud.model.StorageId
 
-case class ChunkAvailability(hasChunk: Set[String] = Set.empty,
-                             writingChunk: Set[String] = Set.empty,
-                             writeFailed: Set[String] = Set.empty,
-                             readFailed: Set[String] = Set.empty) extends HasEmpty {
+case class ChunkAvailability(
+    hasChunk: Set[String] = Set.empty,
+    writingChunk: Set[String] = Set.empty,
+    writeFailed: Set[String] = Set.empty,
+    readFailed: Set[String] = Set.empty
+) extends HasEmpty {
 
   def contains(storageId: StorageId): Boolean = {
     hasChunk.contains(storageId) || writingChunk.contains(storageId) ||
-      writeFailed.contains(storageId) || readFailed.contains(storageId)
+    writeFailed.contains(storageId) || readFailed.contains(storageId)
   }
 
   def isEmpty: Boolean = {

@@ -17,7 +17,7 @@ private object CompositeKeyMapper {
 
     case object XOR extends Strategy {
       override def apply(v1: ChunkId, v2: ChunkId): ChunkId = {
-        val bsb = ByteString.newBuilder
+        val bsb         = ByteString.newBuilder
         val (data, key) = if (v1.length >= v2.length) (v1, v2) else (v2, v1)
         bsb.sizeHint(data.length)
 
@@ -30,8 +30,8 @@ private object CompositeKeyMapper {
 
     def forName(str: String): Strategy = str.toLowerCase match {
       case "concat" ⇒ Concat
-      case "xor" ⇒ XOR
-      case _ ⇒ throw new IllegalArgumentException(str)
+      case "xor"    ⇒ XOR
+      case _        ⇒ throw new IllegalArgumentException(str)
     }
   }
 }
@@ -41,7 +41,7 @@ private[shadowcloud] class CompositeKeyMapper(config: Config) extends ChunkKeyMa
 
   private[this] object settings extends ConfigImplicits {
     val strategy = Strategy.forName(config.withDefault("concat", _.getString("strategy")))
-    val mappers = config.getStrings("mappers")
+    val mappers  = config.getStrings("mappers")
   }
 
   require(settings.mappers.nonEmpty, "No mappers specified")

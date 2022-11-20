@@ -1,7 +1,7 @@
 package com.karasiq.shadowcloud.storage.files
 
 import java.io.FileNotFoundException
-import java.nio.file.{Files, StandardOpenOption, Path => FSPath}
+import java.nio.file.{Files, StandardOpenOption, Path ⇒ FSPath}
 
 import akka.NotUsed
 import akka.stream.scaladsl.{FileIO, Flow, Keep, Sink, Source}
@@ -22,7 +22,8 @@ private[storage] object FileRepository {
 
   private def toSCPath(path: FSPath): Path = {
     val nodes = path
-      .iterator().asScala
+      .iterator()
+      .asScala
       .map(_.getFileName.toString)
       .toVector
 
@@ -30,8 +31,7 @@ private[storage] object FileRepository {
   }
 }
 
-/**
-  * Uses local filesystem to store data
+/** Uses local filesystem to store data
   * @param rootFolder Root directory
   */
 private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: ExecutionContext, mat: Materializer) extends PathTreeRepository {
@@ -41,10 +41,11 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
   }
 
   def write(key: Path): Sink[Data, Result] = {
-    val path = toRealPath(key)
+    val path      = toRealPath(key)
     val parentDir = path.getParent
     if (!Files.isDirectory(parentDir)) Files.createDirectories(parentDir)
-    FileIO.toPath(path, Set(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))
+    FileIO
+      .toPath(path, Set(StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE))
       .mapMaterializedValue(StorageUtils.wrapAkkaIOFuture(path.toString, _))
   }
 
@@ -62,7 +63,8 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
 
   def subKeys(fromPath: Path): Source[Path, Result] = {
     val subDirPath = toRealPath(fromPath)
-    FileSystemUtils.walkFileTree(subDirPath, includeDirs = false)
+    FileSystemUtils
+      .walkFileTree(subDirPath, includeDirs = false)
       .recoverWithRetries(1, { case _: FileNotFoundException ⇒ Source.empty })
       // .log("file-repository-tree")
       .map(fsPath ⇒ toVirtualPath(fsPath).toRelative(fromPath))
@@ -80,7 +82,8 @@ private[storage] final class FileRepository(rootFolder: FSPath)(implicit ec: Exe
     FileRepository.toSCPath(rootFolder.relativize(fsPath))
   }
 
-  private[this] val fileDeleteSink: Sink[FSPath, NotUsed] = Sink.foreach(Files.delete(_: FSPath))
+  private[this] val fileDeleteSink: Sink[FSPath, NotUsed] = Sink
+    .foreach(Files.delete(_: FSPath))
     .withAttributes(Attributes.name("fileDelete") and ActorAttributes.IODispatcher)
     .mapMaterializedValue(_ ⇒ NotUsed)
 }

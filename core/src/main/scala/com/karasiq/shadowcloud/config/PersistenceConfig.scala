@@ -5,10 +5,8 @@ import com.typesafe.config.Config
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.providers.SessionProvider
 
-final case class PersistenceConfig(rootConfig: Config,
-                                   sessionProvider: Class[SessionProvider],
-                                   journalPlugin: String,
-                                   snapshotPlugin: String) extends WrappedConfig
+final case class PersistenceConfig(rootConfig: Config, sessionProvider: Class[SessionProvider], journalPlugin: String, snapshotPlugin: String)
+    extends WrappedConfig
 
 object PersistenceConfig extends WrappedConfigFactory[PersistenceConfig] with ConfigImplicits {
   def apply(config: Config) = {

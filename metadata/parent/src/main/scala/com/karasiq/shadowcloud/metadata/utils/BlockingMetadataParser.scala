@@ -12,8 +12,7 @@ import com.karasiq.shadowcloud.metadata.{Metadata, MetadataParser}
 import scala.concurrent.duration._
 import scala.util.Try
 
-/**
-  * Blocking InputStream API wrapper
+/** Blocking InputStream API wrapper
   */
 trait BlockingMetadataParser extends MetadataParser {
   protected def parseMetadata(name: String, mime: String, inputStream: InputStream): Source[Metadata, NotUsed]

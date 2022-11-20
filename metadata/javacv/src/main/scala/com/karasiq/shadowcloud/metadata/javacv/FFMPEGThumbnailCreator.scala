@@ -19,8 +19,8 @@ private[javacv] object FFMPEGThumbnailCreator {
 
 private[javacv] class FFMPEGThumbnailCreator(config: Config) extends BlockingMetadataParser {
   protected object settings {
-    val parserConfig = MetadataParserConfig(config)
-    val thumbnailSize = config.getInt("thumbnail-size")
+    val parserConfig     = MetadataParserConfig(config)
+    val thumbnailSize    = config.getInt("thumbnail-size")
     val thumbnailQuality = config.getInt("thumbnail-quality")
   }
 
@@ -35,16 +35,19 @@ private[javacv] class FFMPEGThumbnailCreator(config: Config) extends BlockingMet
       grabber.start()
 
       val converter = new OpenCVFrameConverter.ToIplImage()
-      val image = converter.convert(grabber.grabImage())
-      val thumb = OpenCVThumbnailCreator.resizeIplImage(image, settings.thumbnailSize, settings.thumbnailSize)
-      val result = try {
-        val jpegBytes = ByteString.fromArrayUnsafe(JavaCV.asJpeg(thumb, settings.thumbnailQuality))
-        Metadata(Some(Metadata.Tag("javacv", "ffmpeg", Metadata.Tag.Disposition.PREVIEW)),
-          Metadata.Value.Thumbnail(Metadata.Thumbnail("jpeg", jpegBytes)))
-      } finally {
-        image.release()
-        thumb.release()
-      }
+      val image     = converter.convert(grabber.grabImage())
+      val thumb     = OpenCVThumbnailCreator.resizeIplImage(image, settings.thumbnailSize, settings.thumbnailSize)
+      val result =
+        try {
+          val jpegBytes = ByteString.fromArrayUnsafe(JavaCV.asJpeg(thumb, settings.thumbnailQuality))
+          Metadata(
+            Some(Metadata.Tag("javacv", "ffmpeg", Metadata.Tag.Disposition.PREVIEW)),
+            Metadata.Value.Thumbnail(Metadata.Thumbnail("jpeg", jpegBytes))
+          )
+        } finally {
+          image.release()
+          thumb.release()
+        }
 
       Source.single(result)
     } finally grabber.stop()

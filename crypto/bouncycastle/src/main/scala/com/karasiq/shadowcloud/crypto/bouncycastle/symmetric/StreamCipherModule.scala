@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.symmetric
 
-
-
 import akka.util.ByteString
 import com.karasiq.shadowcloud.crypto._
 import com.karasiq.shadowcloud.crypto.bouncycastle.internal.{BCSymmetricKeys, BCUtils}
@@ -28,8 +26,7 @@ private[bouncycastle] object StreamCipherModule {
   }
 }
 
-private[bouncycastle] final class StreamCipherModule(val method: EncryptionMethod)
-  extends OnlyStreamEncryptionModule with BCSymmetricKeys {
+private[bouncycastle] final class StreamCipherModule(val method: EncryptionMethod) extends OnlyStreamEncryptionModule with BCSymmetricKeys {
 
   protected val nonceSize: Int = BCStreamCiphers.getNonceSize(method.algorithm)
 
@@ -51,7 +48,7 @@ private[bouncycastle] final class StreamCipherModule(val method: EncryptionMetho
 
     def process(data: ByteString): ByteString = {
       require(cipher ne null, "Not initialized")
-      val outArray = new Array[Byte](data.length)
+      val outArray  = new Array[Byte](data.length)
       val outLength = cipher.processBytes(data.toArrayUnsafe, 0, data.length, outArray, 0)
       if (outArray.length == outLength) ByteString.fromArrayUnsafe(outArray)
       else ByteString.fromArray(outArray, 0, outLength)

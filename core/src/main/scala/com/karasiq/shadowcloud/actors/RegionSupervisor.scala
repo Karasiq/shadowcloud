@@ -279,14 +279,12 @@ private sealed trait RegionSupervisorState { self: RegionSupervisor ⇒
 
   def loadState(storages: collection.Map[String, StorageSnapshot], regions: collection.Map[String, RegionSnapshot]): Unit = {
     state.clear()
-    storages.foreach {
-      case (storageId, StorageSnapshot(props, active)) ⇒
-        updateState(StorageAdded(storageId, props, active))
+    storages.foreach { case (storageId, StorageSnapshot(props, active)) ⇒
+      updateState(StorageAdded(storageId, props, active))
     }
-    regions.foreach {
-      case (regionId, RegionSnapshot(regionConfig, storages, active)) ⇒
-        updateState(RegionAdded(regionId, regionConfig, active))
-        storages.foreach(storageId ⇒ updateState(StorageRegistered(regionId, storageId)))
+    regions.foreach { case (regionId, RegionSnapshot(regionConfig, storages, active)) ⇒
+      updateState(RegionAdded(regionId, regionConfig, active))
+      storages.foreach(storageId ⇒ updateState(StorageRegistered(regionId, storageId)))
     }
   }
 }

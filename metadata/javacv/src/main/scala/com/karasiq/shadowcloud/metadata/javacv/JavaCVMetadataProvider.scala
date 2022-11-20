@@ -8,5 +8,5 @@ private[javacv] class JavaCVMetadataProvider(rootConfig: Config) extends Metadat
   private[this] val config = rootConfig.getConfig("metadata.javacv")
 
   val detectors = Nil
-  val parsers = Vector(FFMPEGThumbnailCreator(config.getConfig("ffmpeg")), OpenCVThumbnailCreator(config.getConfig("opencv")))
+  val parsers   = Vector(FFMPEGThumbnailCreator(config.getConfig("ffmpeg")), OpenCVThumbnailCreator(config.getConfig("opencv")))
 }

@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.sign
 
-
-
 import com.karasiq.shadowcloud.crypto.{SignModule, SignModuleStreamer}
 import com.karasiq.shadowcloud.model.crypto.{HashingMethod, SignMethod}
 import org.bouncycastle.crypto.DSA
@@ -20,6 +18,6 @@ private[bouncycastle] final class ECDSASignModule(val method: SignMethod) extend
 
   protected class ECDSASignerStreamer extends BCDSAStreamer {
     protected val dsaSigner: DSA = new ECDSASigner()
-    def module: SignModule = ECDSASignModule.this
+    def module: SignModule       = ECDSASignModule.this
   }
 }

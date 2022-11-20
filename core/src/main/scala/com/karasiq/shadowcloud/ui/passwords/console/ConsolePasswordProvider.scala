@@ -7,7 +7,7 @@ class ConsolePasswordProvider extends PasswordProvider {
   private[this] lazy val default = new StdInPasswordProvider()
 
   def askPassword(id: String): String = System.console() match {
-    case null => default.askPassword(id)
-    case console => new String(console.readPassword(s"Enter password ($id): "))
+    case null    ⇒ default.askPassword(id)
+    case console ⇒ new String(console.readPassword(s"Enter password ($id): "))
   }
 }

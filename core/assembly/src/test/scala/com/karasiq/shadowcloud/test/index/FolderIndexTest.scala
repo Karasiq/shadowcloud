@@ -13,7 +13,7 @@ class FolderIndexTest extends FlatSpec with Matchers {
     val folder4 = Folder.create("/f1/f2/f33")
     val folder5 = Folder.create("/f1/f2/f3/f4")
     val folder6 = Folder.create("/f2/f1")
-    val index = FolderIndex(Seq(folder1, folder2, folder3, folder4, folder5, folder6))
+    val index   = FolderIndex(Seq(folder1, folder2, folder3, folder4, folder5, folder6))
     FolderIndex.traverseFolderTree(index, "/f1").toList shouldBe Seq(folder1, folder2, folder3, folder5, folder4)
   }
 }

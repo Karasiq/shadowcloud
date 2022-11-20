@@ -31,7 +31,7 @@ final case class SerializedProps(format: String = "", data: ByteString = ByteStr
 object SerializedProps {
   val empty = SerializedProps()
 
-  val EmptyFormat = ""
+  val EmptyFormat   = ""
   val DefaultFormat = "hocon"
-  val JsonFormat = "json"
+  val JsonFormat    = "json"
 }

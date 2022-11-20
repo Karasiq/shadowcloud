@@ -92,7 +92,7 @@ object WebDeps {
     val videoJs = github("videojs", "video.js", "v5.8.0") / "dist"
     Seq(
       Script from url(videoJs % "video.min.js"),
-      Style from url(videoJs  % "video-js.min.css")
+      Style from url(videoJs % "video-js.min.css")
     )
   }
 
@@ -134,8 +134,8 @@ object WebDeps {
 
     val highlightJSStyle = "github"
 
-    val markedJS      = "org.webjars.bower" % "marked" % "0.3.5"
-    val highlightJS   = "org.webjars" % "highlightjs" % "9.2.0"
+    val markedJS      = "org.webjars.bower" % "marked"      % "0.3.5"
+    val highlightJS   = "org.webjars"       % "highlightjs" % "9.2.0"
     val tabOverrideJS = github("wjbryant", "taboverride", "4.0.3") / "build" / "output"
 
     val scripts = Seq(

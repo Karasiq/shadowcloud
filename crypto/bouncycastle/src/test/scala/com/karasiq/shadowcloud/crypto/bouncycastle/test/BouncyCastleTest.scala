@@ -18,17 +18,24 @@ import org.scalatest.{FlatSpec, Matchers}
 //noinspection RedundantDefaultArgument
 class BouncyCastleTest extends FlatSpec with Matchers {
   val testVectors = CryptoTestVectors("bouncycastle")
-  val provider = new BouncyCastleCryptoProvider
-  val testData = ByteString("# First, make a nonce: A single-use value never repeated under the same key\n# The nonce isn't secret, and can be sent with the ciphertext.\n# The cipher instance has a nonce_bytes method for determining how many bytes should be in a nonce")
+  val provider    = new BouncyCastleCryptoProvider
+  val testData = ByteString(
+    "# First, make a nonce: A single-use value never repeated under the same key\n# The nonce isn't secret, and can be sent with the ciphertext.\n# The cipher instance has a nonce_bytes method for determining how many bytes should be in a nonce"
+  )
 
   // -----------------------------------------------------------------------
   // Encryption
   // -----------------------------------------------------------------------
   testSymmetricEncryption("AES/GCM (AD tag)", AEADBlockCipherModule(EncryptionMethod("AES/GCM", config = ConfigProps("ad-size" → 16))), 32, 12 + 16)
-  testSymmetricEncryption("Threefish (1024)", BlockCipherModule(EncryptionMethod("Threefish/CBC", 1024, config = ConfigProps("block-size" → 1024))), 128, 128)
+  testSymmetricEncryption(
+    "Threefish (1024)",
+    BlockCipherModule(EncryptionMethod("Threefish/CBC", 1024, config = ConfigProps("block-size" → 1024))),
+    128,
+    128
+  )
 
   BCBlockCiphers.blockAlgorithms.foreach { algorithm ⇒
-    val keySize = BCBlockCiphers.getKeySize(algorithm)
+    val keySize   = BCBlockCiphers.getKeySize(algorithm)
     val nonceSize = BCBlockCiphers.getNonceSize(algorithm)
     testSymmetricEncryption(algorithm, BlockCipherModule(EncryptionMethod(algorithm, keySize)), keySize / 8, nonceSize)
   }
@@ -38,9 +45,10 @@ class BouncyCastleTest extends FlatSpec with Matchers {
     // val blockSize = BCBlockCiphers.getBlockSize(algorithm)
     val nonceSize = BCBlockCiphers.getNonceSize(algorithm)
 
-    /* if (blockSize == 128) */ testSymmetricEncryption(algorithm, AEADBlockCipherModule(EncryptionMethod(algorithm, keySize)), keySize / 8, nonceSize)
+    /* if (blockSize == 128) */
+    testSymmetricEncryption(algorithm, AEADBlockCipherModule(EncryptionMethod(algorithm, keySize)), keySize / 8, nonceSize)
   }
-  
+
   testSymmetricEncryption("Salsa20", StreamCipherModule.Salsa20(), 32, 8)
   testSymmetricEncryption("XSalsa20", StreamCipherModule.XSalsa20(), 32, 24)
   testSymmetricEncryption("ChaCha20", StreamCipherModule.ChaCha20(), 32, 8)
@@ -59,8 +67,26 @@ class BouncyCastleTest extends FlatSpec with Matchers {
   // Hashes
   // -----------------------------------------------------------------------
   val testAlgorithms = Seq(
-    "GOST3411", "Keccak", "MD2", "MD4", "MD5", "SHA1", "RIPEMD128", "RIPEMD160", "RIPEMD256", "RIPEMD320", "SHA224",
-    "SHA256", "SHA384", "SHA512", "SHA3", "Skein", "SM3", "Tiger", "Whirlpool", "Blake2b"
+    "GOST3411",
+    "Keccak",
+    "MD2",
+    "MD4",
+    "MD5",
+    "SHA1",
+    "RIPEMD128",
+    "RIPEMD160",
+    "RIPEMD256",
+    "RIPEMD320",
+    "SHA224",
+    "SHA256",
+    "SHA384",
+    "SHA512",
+    "SHA3",
+    "Skein",
+    "SM3",
+    "Tiger",
+    "Whirlpool",
+    "Blake2b"
   )
 
   val testHashes = Seq(
@@ -94,20 +120,39 @@ class BouncyCastleTest extends FlatSpec with Matchers {
     testHashing(alg, hash)
   }
 
-  testHashing("Blake2b+key", BCDigestModule(HashingMethod("Blake2b", config = ConfigProps("digest-key" → "824396f4585a22b2c4b36df76f55e669d4edfb423970071b6b616ce454a95400"))), "717fc02f9817eb24cc3f9e803fddebf81fc18b415537b1ea9bb08691215d162d")
+  testHashing(
+    "Blake2b+key",
+    BCDigestModule(HashingMethod("Blake2b", config = ConfigProps("digest-key" → "824396f4585a22b2c4b36df76f55e669d4edfb423970071b6b616ce454a95400"))),
+    "717fc02f9817eb24cc3f9e803fddebf81fc18b415537b1ea9bb08691215d162d"
+  )
 
-  testHashing("Blake2b+key+salt+personalization", BCDigestModule(HashingMethod("Blake2b", config = ConfigProps(
-    "digest-key" → "824396f4585a22b2c4b36df76f55e669d4edfb423970071b6b616ce454a95400",
-    "digest-salt" → "824396f4585a22b2c4b36df76f55e669",
-    "digest-personalization" → "d4edfb423970071b6b616ce454a95400"
-  ))), "0eb3a9e54089752c9972df3bf64cf5df677b58747a8194ab58fd12d516475fc8")
+  testHashing(
+    "Blake2b+key+salt+personalization",
+    BCDigestModule(
+      HashingMethod(
+        "Blake2b",
+        config = ConfigProps(
+          "digest-key"             → "824396f4585a22b2c4b36df76f55e669d4edfb423970071b6b616ce454a95400",
+          "digest-salt"            → "824396f4585a22b2c4b36df76f55e669",
+          "digest-personalization" → "d4edfb423970071b6b616ce454a95400"
+        )
+      )
+    ),
+    "0eb3a9e54089752c9972df3bf64cf5df677b58747a8194ab58fd12d516475fc8"
+  )
 
-  testHashing("Blake2b-512", BCDigestModule(HashingMethod("Blake2b", config = ConfigProps("digest-size" → 512))),
-    "9f84251be0c325ad771696302e9ed3cd174f84ffdd0b8de49664e9a3ea934b89a4d008581cd5803b80b3284116174b3c4a79a5029996eb59edc1fbacfd18204e")
+  testHashing(
+    "Blake2b-512",
+    BCDigestModule(HashingMethod("Blake2b", config = ConfigProps("digest-size" → 512))),
+    "9f84251be0c325ad771696302e9ed3cd174f84ffdd0b8de49664e9a3ea934b89a4d008581cd5803b80b3284116174b3c4a79a5029996eb59edc1fbacfd18204e"
+  )
 
-  testHashing("Skein-1024-1024", BCDigestModule(HashingMethod("Skein", config = ConfigProps("state-size" → 1024, "digest-size" → 1024))),
+  testHashing(
+    "Skein-1024-1024",
+    BCDigestModule(HashingMethod("Skein", config = ConfigProps("state-size" → 1024, "digest-size" → 1024))),
     "66588dbe2beb3b9cea762f42e3abaa9dc406bfa005fed3579089d8d2c5807453aa6cb0f8e69134ad47405c843e9a08c51da931827957f06ca58b3e8fe658993e" +
-      "1ca87d19a09bc168cc5845bc3235050f8dd59c8f8ec302bbdff4508b16c1c7cef694e1a4c84c250132d445637e0a84772196162a5815c38e45ff3dac4374f567")
+      "1ca87d19a09bc168cc5845bc3235050f8dd59c8f8ec302bbdff4508b16c1c7cef694e1a4c84c250132d445637e0a84772196162a5815c38e45ff3dac4374f567"
+  )
 
   // -----------------------------------------------------------------------
   // Signatures
@@ -130,7 +175,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
 
     it should "encrypt data" in {
       val parameters = module.createParameters()
-      val encrypted = module.encrypt(testData, parameters)
+      val encrypted  = module.encrypt(testData, parameters)
       encrypted.length should be >= testData.length
       encrypted should not be testData
       val decrypted = module.decrypt(encrypted, parameters)
@@ -141,7 +186,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
 
   private[this] def testAsymmetricEncryption(name: String, module: EncryptionModule): Unit = {
     s"$name module" should "generate key" in {
-      val parameters = EncryptionParameters.asymmetric(module.createParameters())
+      val parameters  = EncryptionParameters.asymmetric(module.createParameters())
       val parameters1 = EncryptionParameters.asymmetric(module.updateParameters(parameters))
       parameters1 shouldBe parameters
       println(parameters)
@@ -149,7 +194,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
 
     it should "encrypt data" in {
       val parameters = module.createParameters()
-      val encrypted = module.encrypt(testData, parameters)
+      val encrypted  = module.encrypt(testData, parameters)
       encrypted.length should be >= testData.length
       val decrypted = module.decrypt(encrypted, parameters)
       decrypted shouldBe testData
@@ -175,8 +220,9 @@ class BouncyCastleTest extends FlatSpec with Matchers {
     try {
       val module = provider.hashing(HashingMethod(name))
       testHashing(module.method.algorithm, module, testHash)
-    } catch { case _: NoSuchAlgorithmException ⇒
-      println(s"No such algorithm: $name")
+    } catch {
+      case _: NoSuchAlgorithmException ⇒
+        println(s"No such algorithm: $name")
     }
   }
 
@@ -189,7 +235,7 @@ class BouncyCastleTest extends FlatSpec with Matchers {
 
     it should "sign data" in {
       val parameters = module.createParameters()
-      val signature = module.sign(testData, parameters)
+      val signature  = module.sign(testData, parameters)
       module.verify(testData, signature, parameters) shouldBe true
       module.verify(testData, signature.reverse, parameters) shouldBe false
     }

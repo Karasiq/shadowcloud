@@ -16,13 +16,13 @@ object TextEditor {
   def memoized(key: String)(_onSubmit: TextEditor ⇒ Unit)(implicit context: AppContext): TextEditor = {
     new TextEditor {
       override val text: Var[String] = LocalStorage.memoize(key)
-      def onSubmit(): Unit            = _onSubmit(this)
+      def onSubmit(): Unit           = _onSubmit(this)
     }
   }
 }
 
 sealed abstract class TextEditor(implicit context: AppContext) extends BootstrapHtmlComponent {
-  val text      = Var("")
+  val text       = Var("")
   val submitting = Var(false)
 
   def onSubmit(): Unit

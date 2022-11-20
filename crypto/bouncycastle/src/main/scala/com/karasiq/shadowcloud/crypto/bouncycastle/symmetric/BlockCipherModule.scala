@@ -1,7 +1,5 @@
 package com.karasiq.shadowcloud.crypto.bouncycastle.symmetric
 
-
-
 import akka.util.ByteString
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.config.ConfigProps
@@ -37,19 +35,18 @@ private[bouncycastle] object BlockCipherModule {
   private case class BlockCipherOptions(method: EncryptionMethod) {
     import ConfigImplicits._
     private[this] val config = ConfigProps.toConfig(method.config)
-    val customBlockSize = config.optional(_.getInt("block-size"))
-    val nonceSize = config.withDefault(BCBlockCiphers.getNonceSize(method.algorithm, customBlockSize), _.getInt("nonce-size"))
+    val customBlockSize      = config.optional(_.getInt("block-size"))
+    val nonceSize            = config.withDefault(BCBlockCiphers.getNonceSize(method.algorithm, customBlockSize), _.getInt("nonce-size"))
   }
 
   private[bouncycastle] def createBlockCipher(method: EncryptionMethod): PaddedBufferedBlockCipher = {
-    val options = BlockCipherOptions(method)
+    val options    = BlockCipherOptions(method)
     val baseCipher = BCBlockCiphers.createBlockCipher(method.algorithm, options.customBlockSize)
     BCBlockCiphers.toPaddedBufferedBlockCipher(baseCipher)
   }
 }
 
-private[bouncycastle] class BlockCipherModule(defaultOptions: BlockCipherOptions)
-  extends OnlyStreamEncryptionModule with BCSymmetricKeys {
+private[bouncycastle] class BlockCipherModule(defaultOptions: BlockCipherOptions) extends OnlyStreamEncryptionModule with BCSymmetricKeys {
 
   val method: EncryptionMethod = defaultOptions.method
   protected val nonceSize: Int = defaultOptions.nonceSize
@@ -72,7 +69,7 @@ private[bouncycastle] class BlockCipherModule(defaultOptions: BlockCipherOptions
 
     def process(data: ByteString): ByteString = {
       requireInitialized()
-      val outArray = new Array[Byte](cipher.getUpdateOutputSize(data.length))
+      val outArray  = new Array[Byte](cipher.getUpdateOutputSize(data.length))
       val outLength = cipher.processBytes(data.toArrayUnsafe, 0, data.length, outArray, 0)
       if (outArray.length == outLength) ByteString.fromArrayUnsafe(outArray)
       else ByteString.fromArray(outArray, 0, outLength)
@@ -80,7 +77,7 @@ private[bouncycastle] class BlockCipherModule(defaultOptions: BlockCipherOptions
 
     def finish(): ByteString = {
       requireInitialized()
-      val outArray = new Array[Byte](cipher.getOutputSize(0))
+      val outArray  = new Array[Byte](cipher.getOutputSize(0))
       val outLength = cipher.doFinal(outArray, 0)
       if (outArray.length == outLength) ByteString.fromArrayUnsafe(outArray)
       else ByteString.fromArray(outArray, 0, outLength)

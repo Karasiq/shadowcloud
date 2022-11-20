@@ -10,23 +10,23 @@ import com.karasiq.shadowcloud.utils.MergeUtil.Decider
 import scala.collection.{SortedMap, mutable}
 
 private[storage] final class DefaultIndexMerger[@specialized(Long) T](firstKey: T)(implicit ord: Ordering[T]) extends IndexMerger[T] {
-  private[this] var _diffs = mutable.SortedMap.empty[T, IndexDiff]
-  private[this] var _chunks = ChunkIndex.empty
+  private[this] var _diffs   = mutable.SortedMap.empty[T, IndexDiff]
+  private[this] var _chunks  = ChunkIndex.empty
   private[this] var _folders = FolderIndex.empty
-  private[this] var _merged = IndexDiff.empty
+  private[this] var _merged  = IndexDiff.empty
   private[this] var _pending = IndexDiff.empty
 
-  def lastSequenceNr: T = if (_diffs.isEmpty) firstKey else _diffs.lastKey
-  def chunks: ChunkIndex = _chunks
-  def folders: FolderIndex = _folders
+  def lastSequenceNr: T              = if (_diffs.isEmpty) firstKey else _diffs.lastKey
+  def chunks: ChunkIndex             = _chunks
+  def folders: FolderIndex           = _folders
   def diffs: SortedMap[T, IndexDiff] = _diffs
-  def mergedDiff: IndexDiff = _merged
-  def pending: IndexDiff = _pending
+  def mergedDiff: IndexDiff          = _merged
+  def pending: IndexDiff             = _pending
 
   def add(sequenceNr: T, diff: IndexDiff): Unit = {
     _diffs.get(sequenceNr) match {
       case Some(`diff`) ⇒
-        // Pass
+      // Pass
 
       case Some(existing) ⇒
         throw SCExceptions.DiffConflict(existing, diff)
@@ -42,7 +42,7 @@ private[storage] final class DefaultIndexMerger[@specialized(Long) T](firstKey: 
         deletePending(diff)
     }
   }
-  
+
   def delete(sequenceNrs: Set[T]): Unit = {
     _diffs --= sequenceNrs
     rebuildIndex()

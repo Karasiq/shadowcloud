@@ -9,7 +9,7 @@ final case class FileAvailability(file: File, chunksByStorage: Map[StorageId, Se
 
   def totalPercentage: Double = {
     if (isEmpty) return 0
-    val totalChunks = file.chunks.length
+    val totalChunks     = file.chunks.length
     val availableChunks = chunksByStorage.values.flatten.toSet
     availableChunks.size.toDouble / totalChunks * 100
   }
@@ -22,7 +22,7 @@ final case class FileAvailability(file: File, chunksByStorage: Map[StorageId, Se
   }
 
   def isFullyAvailable: Boolean = {
-    val fileChunks = file.chunks.toSet
+    val fileChunks   = file.chunks.toSet
     val actualChunks = chunksByStorage.flatMap(_._2).toSet
     fileChunks == actualChunks
   }

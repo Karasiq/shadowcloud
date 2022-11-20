@@ -15,7 +15,7 @@ final class H2AkkaSnapshotStore extends SnapshotStore {
   // Context
   // -----------------------------------------------------------------------
   private[this] val h2db = H2DB(context.system)
-  import h2db.context.{run => runQuery, _}
+  import h2db.context.{run ⇒ runQuery, _}
 
   // -----------------------------------------------------------------------
   // Schema
@@ -33,11 +33,12 @@ final class H2AkkaSnapshotStore extends SnapshotStore {
         .filter(s ⇒ s.persistenceId == lift(persistenceId) && s.sequenceNr == lift(sequenceNr))
     }
 
-    def snapshotsByCriteria(persistenceId: String, minSequenceNr: Long, maxSequenceNr: Long,
-                           minTimestamp: Long, maxTimestamp: Long) = quote {
-      query[DBSnapshot].filter(s ⇒ s.persistenceId == lift(persistenceId) &&
-        s.sequenceNr >= lift(minSequenceNr) && s.sequenceNr <= lift(maxSequenceNr) &&
-        s.timestamp >= lift(minTimestamp) && s.timestamp <= lift(maxTimestamp))
+    def snapshotsByCriteria(persistenceId: String, minSequenceNr: Long, maxSequenceNr: Long, minTimestamp: Long, maxTimestamp: Long) = quote {
+      query[DBSnapshot].filter(s ⇒
+        s.persistenceId == lift(persistenceId) &&
+          s.sequenceNr >= lift(minSequenceNr) && s.sequenceNr <= lift(maxSequenceNr) &&
+          s.timestamp >= lift(minTimestamp) && s.timestamp <= lift(maxTimestamp)
+      )
     }
 
     def saveSnapshot(data: DBSnapshot) = quote {
@@ -61,8 +62,7 @@ final class H2AkkaSnapshotStore extends SnapshotStore {
     }
 
     def toSelectedSnapshot(snapshot: DBSnapshot): SelectedSnapshot = {
-      SelectedSnapshot(SnapshotMetadata(snapshot.persistenceId, snapshot.sequenceNr,
-        snapshot.timestamp), deserializeSnapshot(snapshot.snapshot))
+      SelectedSnapshot(SnapshotMetadata(snapshot.persistenceId, snapshot.sequenceNr, snapshot.timestamp), deserializeSnapshot(snapshot.snapshot))
     }
 
     def toDBSnapshot(metadata: SnapshotMetadata, data: Any): DBSnapshot = {
@@ -75,8 +75,8 @@ final class H2AkkaSnapshotStore extends SnapshotStore {
   // -----------------------------------------------------------------------
   def loadAsync(persistenceId: String, criteria: SnapshotSelectionCriteria): Future[Option[SelectedSnapshot]] = {
     val query = quote {
-      queries.snapshotsByCriteria(persistenceId, criteria.minSequenceNr,
-        criteria.maxSequenceNr, criteria.minTimestamp, criteria.maxTimestamp)
+      queries
+        .snapshotsByCriteria(persistenceId, criteria.minSequenceNr, criteria.maxSequenceNr, criteria.minTimestamp, criteria.maxTimestamp)
         .sortBy(_.sequenceNr)(Ord.desc)
         .take(1)
     }
@@ -94,8 +94,9 @@ final class H2AkkaSnapshotStore extends SnapshotStore {
   }
 
   def deleteAsync(persistenceId: String, criteria: SnapshotSelectionCriteria): Future[Unit] = {
-    val query = quote(queries.snapshotsByCriteria(persistenceId, criteria.minSequenceNr,
-      criteria.maxSequenceNr, criteria.minTimestamp, criteria.maxTimestamp).delete)
+    val query = quote(
+      queries.snapshotsByCriteria(persistenceId, criteria.minSequenceNr, criteria.maxSequenceNr, criteria.minTimestamp, criteria.maxTimestamp).delete
+    )
     Future.fromTry(Try(runQuery(query)))
   }
 }

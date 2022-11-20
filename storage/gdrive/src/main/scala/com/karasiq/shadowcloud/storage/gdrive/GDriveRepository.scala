@@ -36,10 +36,9 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
       def iteratorTry(path: Path) =
         Try {
           service.traverseFolder(path.nodes)
-        } recover {
-          case _ ⇒
-            Await.result(entityCache.getOrCreateFolderId(path), 3 minutes)
-            service.traverseFolder(path.nodes)
+        } recover { case _ ⇒
+          Await.result(entityCache.getOrCreateFolderId(path), 3 minutes)
+          service.traverseFolder(path.nodes)
         }
 
       Flow[Path]
@@ -59,10 +58,9 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
           .toMat(Sink.head)(Keep.right)
       )(Keep.right)
       // .log("gdrive-entities")
-      .map {
-        case (pathNodes, file) ⇒
-          val parent = Path(pathNodes).toRelative(fromPath)
-          parent / file.name
+      .map { case (pathNodes, file) ⇒
+        val parent = Path(pathNodes).toRelative(fromPath)
+        parent / file.name
       }
       .named("gdriveKeys")
   }
@@ -107,18 +105,17 @@ private[gdrive] class GDriveRepository(service: GDriveService)(implicit ec: Exec
     Flow[Data]
       .via(AkkaStreamUtils.extractUpstream)
       .zip(Source.lazyFuture(() ⇒ getFolderId(path)))
-      .flatMapConcat {
-        case (stream, folderId) ⇒
-          stream.via(
-            AkkaStreamUtils.writeInputStream(
-              { inputStream ⇒
-                val result = Try(blockingUpload(folderId, path.name, inputStream))
-                result.foreach(_ ⇒ entityCache.resetFileCache(path))
-                Source.future(Future.fromTry(result))
-              },
-              Dispatcher(GDriveDispatchers.fileDispatcherId)
-            )
+      .flatMapConcat { case (stream, folderId) ⇒
+        stream.via(
+          AkkaStreamUtils.writeInputStream(
+            { inputStream ⇒
+              val result = Try(blockingUpload(folderId, path.name, inputStream))
+              result.foreach(_ ⇒ entityCache.resetFileCache(path))
+              Source.future(Future.fromTry(result))
+            },
+            Dispatcher(GDriveDispatchers.fileDispatcherId)
           )
+        )
       }
       .map(written ⇒ StorageIOResult.Success(path, written))
       .withAttributes(fileStreamAttributes)

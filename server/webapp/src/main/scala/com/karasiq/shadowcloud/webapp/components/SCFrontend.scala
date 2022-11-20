@@ -22,7 +22,7 @@ object SCFrontend {
 
 class SCFrontend()(implicit val context: AppContext) {
   implicit val regionContext = RegionContext()
-  implicit val keysContext = KeysContext()
+  implicit val keysContext   = KeysContext()
 
   val regionSwitcher = RegionSwitcher()
 
@@ -42,8 +42,9 @@ class SCFrontend()(implicit val context: AppContext) {
     try {
       val themeCss = dom.document.head.querySelector("#sc-theme")
       themeSelector.linkModifier.applyTo(themeCss)
-    } catch { case NonFatal(_) ⇒
-      themeSelector.applyTo(dom.document.head)
+    } catch {
+      case NonFatal(_) ⇒
+        themeSelector.applyTo(dom.document.head)
     }
 
     // Frontend
@@ -58,8 +59,11 @@ class SCFrontend()(implicit val context: AppContext) {
 
   def renderNavigationBar(): NavigationBar = {
     NavigationBar()
-      .withBrand(img(src := "/favicon.png", maxHeight := 100.pct, display.inline,
-        marginRight := 3.px), "shadowcloud", onclick := Callback.onClick(_ ⇒ themeSelector.nextTheme()))
+      .withBrand(
+        img(src := "/favicon.png", maxHeight := 100.pct, display.inline, marginRight := 3.px),
+        "shadowcloud",
+        onclick := Callback.onClick(_ ⇒ themeSelector.nextTheme())
+      )
       .withContentContainer(GridSystem.containerFluid(_, "sc-main-container".addClass))
       .withStyles(NavigationBarStyle.default, NavigationBarStyle.staticTop)
       .withTabs(
@@ -79,7 +83,7 @@ class SCFrontend()(implicit val context: AppContext) {
       case Some(folderContext) ⇒
         regionSwitcher.scopeSelector.selectedScope.foreach(folderContext.scope.update)
         val folderController = FolderController.forFolderContext(folderContext)
-        val fileController = FileController.forFolderController(folderController)
+        val fileController   = FileController.forFolderController(folderController)
         FoldersPanel()(context, folderContext, folderController, fileController)
 
       case None ⇒
@@ -92,4 +96,3 @@ class SCFrontend()(implicit val context: AppContext) {
     )
   }
 }
-

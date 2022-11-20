@@ -10,8 +10,7 @@ import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.scalajs.js
 import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer, Uint8Array}
 
-/**
-  * Blob/file utility
+/** Blob/file utility
   */
 object Blobs {
   def fromBytes(data: Array[Byte], contentType: String = ""): Blob = {
@@ -33,13 +32,16 @@ object Blobs {
   }
 
   def saveBlob(blob: Blob, fileName: String): Unit = {
-    val url = URL.createObjectURL(blob)
+    val url    = URL.createObjectURL(blob)
     val anchor = a(href := url, attr("download") := fileName, target := "_blank", display.none).render
     dom.document.body.appendChild(anchor)
-    dom.window.setTimeout(() ⇒ {
-      dom.document.body.removeChild(anchor)
-      URL.revokeObjectURL(url)
-    }, 500)
+    dom.window.setTimeout(
+      () ⇒ {
+        dom.document.body.removeChild(anchor)
+        URL.revokeObjectURL(url)
+      },
+      500
+    )
     anchor.click()
   }
 
@@ -49,7 +51,7 @@ object Blobs {
 
   def toDataURL(blob: Blob): Future[String] = {
     val promise = Promise[String]
-    val reader = new FileReader
+    val reader  = new FileReader
     reader.readAsDataURL(blob)
     reader.onloadend = (_: ProgressEvent) ⇒ {
       promise.success(reader.result.asInstanceOf[String])
@@ -68,7 +70,7 @@ object Blobs {
 
   def toString(blob: Blob): Future[String] = {
     val promise = Promise[String]
-    val reader = new FileReader
+    val reader  = new FileReader
     reader.readAsText(blob)
     reader.onloadend = (_: ProgressEvent) ⇒ {
       promise.success(reader.result.asInstanceOf[String])
@@ -83,7 +85,7 @@ object Blobs {
 
   def toBytes(blob: Blob): Future[ByteString] = {
     val promise = Promise[ByteString]
-    val reader = new FileReader
+    val reader  = new FileReader
     reader.readAsArrayBuffer(blob)
     reader.onloadend = (_: ProgressEvent) ⇒ {
       val buffer = TypedArrayBuffer.wrap(reader.result.asInstanceOf[ArrayBuffer])

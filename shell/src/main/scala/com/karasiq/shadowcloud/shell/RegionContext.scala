@@ -1,6 +1,6 @@
 package com.karasiq.shadowcloud.shell
 
-import java.nio.file.{OpenOption, StandardOpenOption, Path => FSPath}
+import java.nio.file.{OpenOption, StandardOpenOption, Path ⇒ FSPath}
 
 import akka.stream.IOResult
 import akka.stream.scaladsl.{FileIO, Sink}
@@ -59,7 +59,8 @@ private[shell] final class RegionContext(val regionId: RegionId)(implicit contex
   }
 
   def upload(localPath: FSPath, path: Path): File = {
-    val future = FileIO.fromPath(localPath)
+    val future = FileIO
+      .fromPath(localPath)
       .via(sc.streams.metadata.writeFileAndMetadata(regionId, path))
       .map(_._1)
       .runWith(Sink.head)
@@ -70,7 +71,7 @@ private[shell] final class RegionContext(val regionId: RegionId)(implicit contex
 
   def download(localPath: FSPath, path: Path): IOResult = {
     val options = Set[OpenOption](StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)
-    val future = sc.streams.file.readMostRecent(regionId, path).runWith(FileIO.toPath(localPath, options))
+    val future  = sc.streams.file.readMostRecent(regionId, path).runWith(FileIO.toPath(localPath, options))
     // ShellUtils.printIOResult(future)
     await(future)
   }

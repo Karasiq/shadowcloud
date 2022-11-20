@@ -156,8 +156,8 @@ object WebDeps {
   }
 
   def dropzoneJS = Seq[PageContent](
-    Script from "org.webjars" % "dropzone" % "5.5.0" / "min/dropzone.min.js",
-    Style from "org.webjars"  % "dropzone" % "5.5.0" / "min/dropzone.min.css"
+    Script from "org.webjars" % "dropzone" % "5.9.2" / "min/dropzone.min.js",
+    Style from "org.webjars"  % "dropzone" % "5.9.2" / "min/dropzone.min.css"
   )
 
   def toastrJS = Seq[PageContent](

@@ -79,7 +79,7 @@ object ProjectDeps {
 
   // http://h2database.com/html/main.html
   def h2: Deps = Seq(
-    "com.h2database" % "h2"          % "1.4.192",
+    "com.h2database" % "h2"          % "1.4.200",
     "io.getquill"    %% "quill-jdbc" % "1.2.1"
   )
 

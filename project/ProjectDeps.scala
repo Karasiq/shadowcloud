@@ -85,7 +85,7 @@ object ProjectDeps {
 
   // https://tika.apache.org/
   def tika: Deps = {
-    val version = "1.22"
+    val version = "1.28.5"
     Seq(
       "org.apache.tika" % "tika-parsers" % version,
       "org.apache.tika" % "tika-core"    % version,

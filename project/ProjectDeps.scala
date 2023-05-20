@@ -200,7 +200,7 @@ object ProjectDeps {
 
   // https://github.com/vsch/flexmark-java
   def flexmark: Deps = Seq(
-    "com.vladsch.flexmark" % "flexmark-all" % "0.28.4"
+    "com.vladsch.flexmark" % "flexmark-all" % "0.28.38"
   )
 
   // https://github.com/Karasiq/webzinc

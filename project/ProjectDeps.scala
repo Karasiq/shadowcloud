@@ -89,7 +89,7 @@ object ProjectDeps {
     Seq(
       "org.apache.tika" % "tika-parsers" % version,
       "org.apache.tika" % "tika-core"    % version,
-      "org.xerial"      % "sqlite-jdbc"  % "3.39.4.1"
+      "org.xerial"      % "sqlite-jdbc"  % "3.43.2.1"
     )
   }
 

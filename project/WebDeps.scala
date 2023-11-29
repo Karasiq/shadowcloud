@@ -161,8 +161,8 @@ object WebDeps {
   )
 
   def toastrJS = Seq[PageContent](
-    Script from "org.webjars" % "toastr" % "2.1.2" / "build/toastr.min.js",
-    Style from "org.webjars"  % "toastr" % "2.1.2" / "build/toastr.min.css"
+    Script from "org.webjars" % "toastr" % "2.1.4" / "build/toastr.min.js",
+    Style from "org.webjars"  % "toastr" % "2.1.4" / "build/toastr.min.css"
   )
 
   def pellJS = Seq[PageContent](

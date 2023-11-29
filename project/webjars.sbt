@@ -3,6 +3,6 @@ libraryDependencies ++= Seq(
   "org.webjars.bower" % "marked"      % "0.3.5",
   "org.webjars"       % "highlightjs" % "9.2.0",
   "org.webjars"       % "dropzone"    % "5.5.0",
-  "org.webjars"       % "toastr"      % "2.1.2",
+  "org.webjars"       % "toastr"      % "2.1.4",
   "org.webjars.npm"   % "pell"        % "1.0.6"
 )

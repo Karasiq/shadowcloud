@@ -230,6 +230,6 @@ object ProjectDeps {
   )
 
   def guava: Deps = Seq(
-    "com.google.guava" % "guava" % "29.0-jre"
+    "com.google.guava" % "guava" % "33.4.0-jre"
   )
 }

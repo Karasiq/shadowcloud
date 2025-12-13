@@ -85,7 +85,7 @@ lazy val dockerSettings = Seq(
       Cmd("RUN", "echo 'user_allow_other' >> /etc/fuse.conf"),
       Cmd(
         "RUN",
-        "python3 -m pip install \"Telethon==1.14.0\" \"cryptg==0.2.post1\" \"Quart==0.12.0\" \"Hypercorn==0.9.5\" \"lz4==3.1.0\" \"pytz>=2020.1\""
+        "python3 -m pip install \"Telethon==1.29.0\" \"cryptg==0.2.post1\" \"Quart==0.12.0\" \"Hypercorn==0.9.5\" \"lz4==3.1.0\" \"pytz>=2020.1\""
       )
     )
     cmds.takeWhile(!_.makeContent.startsWith("USER 1001:0")) ++ injected ++ cmds.dropWhile(!_.makeContent.startsWith("USER 1001:0"))
@@ -101,7 +101,7 @@ lazy val model = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings, name := "shadowcloud-model")
   .settings(
     PB.targets in Compile := Seq(
-      scalapb.gen() → (sourceManaged in Compile).value
+      scalapb.gen() ⇒ (sourceManaged in Compile).value
     ),
     PB.protoSources in Compile := Seq(
       (baseDirectory in Compile).value.getParentFile / "src" / "main" / "protobuf"
@@ -283,7 +283,7 @@ lazy val webdavStorage = storagePlugin("webdav")
   .settings(libraryDependencies ++= ProjectDeps.sardine)
 
 lazy val telegramStorage = storagePlugin("telegram")
-  .settings(libraryDependencies ++= ProjectDeps.guava)
+  .settings(libraryDependencies ++= ProjectDeps.telegram)
 
 lazy val yandexStorage = storagePlugin("yandex")
 

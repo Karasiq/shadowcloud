@@ -81,7 +81,7 @@ lazy val dockerSettings = Seq(
   dockerCommands := {
     val cmds = dockerCommands.value
     val injected = Seq(
-      Cmd("RUN", "apt update && apt install -y fuse libfuse2 libfuse-dev python3-pip && rm -rf /var/lib/apt/lists/*"), // TODO https://github.com/docker/for-mac/issues/3431
+      Cmd("RUN", "apt update && apt install -y fuse libfuse2 libfuse-dev python3-pip rclone && rm -rf /var/lib/apt/lists/*"),
       Cmd("RUN", "echo 'user_allow_other' >> /etc/fuse.conf"),
       Cmd(
         "RUN",
@@ -187,6 +187,7 @@ lazy val coreAssembly = (project in file("core/assembly"))
     dropboxStorage,
     webdavStorage,
     telegramStorage,
+    rcloneStorage,
     yandexStorage
   )
   .dependsOn(
@@ -207,6 +208,7 @@ lazy val coreAssembly = (project in file("core/assembly"))
     dropboxStorage,
     webdavStorage,
     telegramStorage,
+    rcloneStorage,
     yandexStorage
   )
 
@@ -284,6 +286,8 @@ lazy val webdavStorage = storagePlugin("webdav")
 
 lazy val telegramStorage = storagePlugin("telegram")
   .settings(libraryDependencies ++= ProjectDeps.telegram)
+
+lazy val rcloneStorage = storagePlugin("rclone")
 
 lazy val yandexStorage = storagePlugin("yandex")
 

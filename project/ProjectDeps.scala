@@ -120,6 +120,36 @@ object ProjectDeps {
     )
   }
 
+  // Official Telegram client libraries
+  // https://github.com/LonamiWebs/Telethon
+  // https://github.com/OpenTele/OpenTele
+  def telegram: Deps = {
+    Seq(
+      // Telethon core library (via PyPI)
+      "org.python" % "jython-standalone" % "2.7.2",
+      
+      // OpenTele for session management and device fingerprinting
+      "io.github.opentele" % "opentele-core" % "1.29.0",
+      
+      // Android device emulation
+      "io.github.opentele" % "opentele-android" % "1.29.0",
+      
+      // HTTP client for Telegram API
+      "com.squareup.okhttp3" % "okhttp" % "4.11.0",
+      
+      // JSON serialization
+      "com.google.code.gson" % "gson" % "2.10.1",
+      
+      // Cryptography support
+      "org.bouncycastle" % "bcprov-jdk15on" % "1.60",
+      "org.bouncycastle" % "bcpkix-jdk15on" % "1.60",
+      
+      // Async HTTP
+      "io.reactivex.rxjava3" % "rxjava" % "3.1.6",
+      "com.squareup.okhttp3" % "logging-interceptor" % "4.11.0"
+    )
+  }
+
   def mailrucloud: Deps = Seq(
     "com.github.karasiq" %% "mailrucloud-api" % "1.1.5"
   )

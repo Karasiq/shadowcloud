@@ -122,7 +122,7 @@ private[rclone] class RCloneRepository(
                   process.getOutputStream.write(data.toArray)
                   process.getOutputStream.flush()
                   data.length
-                })
+                })(ExecutorService.IO)
               }
           )
           .map(written ⇒ StorageIOResult.Success(path, written.toLong))

@@ -106,9 +106,19 @@ object ProjectDeps {
     "com.github.karasiq" %% "commons-configs" % "1.0.8"
   )
 
-  def gdrive: Deps = Seq(
-    "com.github.karasiq" %% "gdrive-api" % "1.1.1"
-  )
+  // Official Google Drive API v3
+  // https://developers.google.com/drive/api/v3
+  def gdrive: Deps = {
+    val googleApiVersion = "1.35.2"
+    Seq(
+      "com.google.apis"              % "google-api-services-drive"  % "v3-rev20230815-" + googleApiVersion,
+      "com.google.auth"              % "google-auth-library-oauth2-http" % "1.11.0",
+      "com.google.auth"              % "google-auth-library-java-jwt" % "1.11.0",
+      "com.google.http-client"       % "google-http-client"         % "1.43.3",
+      "com.google.http-client"       % "google-http-client-jackson2" % "1.43.3",
+      "com.fasterxml.jackson.core"   % "jackson-core"               % "2.15.2"
+    )
+  }
 
   def mailrucloud: Deps = Seq(
     "com.github.karasiq" %% "mailrucloud-api" % "1.1.5"

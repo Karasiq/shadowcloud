@@ -1,0 +1,5 @@
+-Xms2G
+-Xmx8G
+-Xss2M
+-XX:MaxMetaspaceSize=1G
+-XX:+UseParallelGC

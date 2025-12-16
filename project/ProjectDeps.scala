@@ -109,44 +109,13 @@ object ProjectDeps {
   // Official Google Drive API v3
   // https://developers.google.com/drive/api/v3
   def gdrive: Deps = {
-    val googleApiVersion = "1.35.2"
     Seq(
-      "com.google.apis"              % "google-api-services-drive"  % "v3-rev20230815-" + googleApiVersion,
+      "com.google.apis"              % "google-api-services-drive"  % "v3-rev20251210-2.0.0",
       "com.google.auth"              % "google-auth-library-oauth2-http" % "1.11.0",
-      "com.google.auth"              % "google-auth-library-java-jwt" % "1.11.0",
+      "com.google.auth" % "google-auth-library-credentials" % "1.37.1",
       "com.google.http-client"       % "google-http-client"         % "1.43.3",
       "com.google.http-client"       % "google-http-client-jackson2" % "1.43.3",
       "com.fasterxml.jackson.core"   % "jackson-core"               % "2.15.2"
-    )
-  }
-
-  // Official Telegram client libraries
-  // https://github.com/LonamiWebs/Telethon
-  // https://github.com/OpenTele/OpenTele
-  def telegram: Deps = {
-    Seq(
-      // Telethon core library (via PyPI)
-      "org.python" % "jython-standalone" % "2.7.2",
-      
-      // OpenTele for session management and device fingerprinting
-      "io.github.opentele" % "opentele-core" % "1.29.0",
-      
-      // Android device emulation
-      "io.github.opentele" % "opentele-android" % "1.29.0",
-      
-      // HTTP client for Telegram API
-      "com.squareup.okhttp3" % "okhttp" % "4.11.0",
-      
-      // JSON serialization
-      "com.google.code.gson" % "gson" % "2.10.1",
-      
-      // Cryptography support
-      "org.bouncycastle" % "bcprov-jdk15on" % "1.60",
-      "org.bouncycastle" % "bcpkix-jdk15on" % "1.60",
-      
-      // Async HTTP
-      "io.reactivex.rxjava3" % "rxjava" % "3.1.6",
-      "com.squareup.okhttp3" % "logging-interceptor" % "4.11.0"
     )
   }
 
@@ -256,7 +225,7 @@ object ProjectDeps {
 
   // https://github.com/SerCeMan/jnr-fuse
   def `jnr-fuse`: Deps = Seq(
-    "com.github.serceman" % "jnr-fuse" % "0.5.4"
+    "com.github.serceman" % "jnr-fuse" % "0.5.8"
   )
 
   // https://github.com/xerial/larray

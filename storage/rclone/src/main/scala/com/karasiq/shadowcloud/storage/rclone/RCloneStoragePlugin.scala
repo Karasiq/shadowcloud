@@ -260,10 +260,10 @@ private[rclone] object RCloneStorageConfig {
     val candidates = scala.sys.env
       .get("PATH")
       .map(_.split(java.io.File.pathSeparator).toList)
-      .getOrElse(List("/usr/bin", "/usr/local/bin", "/opt/homebrew/bin"))
+      .getOrElse(List("/usr/bin", "/usr/local/bin", "/opt/homebrew/bin", "C:\\ProgramData\\chocolatey\\bin\\rclone.exe"))
 
     candidates
-      .map(dir ⇒ Paths.get(dir, "rclone"))
+      .flatMap(dir ⇒ Paths.get(dir, "rclone.exe") :: Paths.get(dir, "rclone"))
       .find(Files.isExecutable(_))
       .map(_.toString)
       .getOrElse("rclone")  // Default to PATH lookup

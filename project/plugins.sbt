@@ -20,4 +20,6 @@ addSbtPlugin("com.github.karasiq" % "sbt-scalajs-bundler" % "1.2.2")
 
 addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.5.1")
 
+addSbtPlugin("ch.epfl.scala" % "sbt-bloop" % "1.5.11")
+
 libraryDependencies += "org.scala-lang.modules" %% "scala-xml" % "1.3.0"

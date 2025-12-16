@@ -31,6 +31,14 @@ val commonSettings = Seq(
   )
 )
 
+Compile / parallelExecution := true
+
+Global / concurrentRestrictions := Seq(
+  Tags.limit(Tags.CPU, 16),
+  Tags.limit(Tags.Network, 10),
+  Tags.limit(Tags.Test, 4)
+)
+
 val packageSettings = Seq(
   // javaOptions in Universal += "-Xmx2G",
   name in Universal := "shadowcloud",
@@ -101,7 +109,7 @@ lazy val model = crossProject(JSPlatform, JVMPlatform)
   .settings(commonSettings, name := "shadowcloud-model")
   .settings(
     PB.targets in Compile := Seq(
-      scalapb.gen() ⇒ (sourceManaged in Compile).value
+      scalapb.gen() → (sourceManaged in Compile).value
     ),
     PB.protoSources in Compile := Seq(
       (baseDirectory in Compile).value.getParentFile / "src" / "main" / "protobuf"
@@ -285,7 +293,6 @@ lazy val webdavStorage = storagePlugin("webdav")
   .settings(libraryDependencies ++= ProjectDeps.sardine)
 
 lazy val telegramStorage = storagePlugin("telegram")
-  .settings(libraryDependencies ++= ProjectDeps.telegram)
 
 lazy val rcloneStorage = storagePlugin("rclone")
 

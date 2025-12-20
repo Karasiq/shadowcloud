@@ -3,3 +3,5 @@ target
 lib
 shadowcloud.conf
 .bloop
+.venv
+*.iml

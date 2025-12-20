@@ -5,13 +5,11 @@ import java.nio.file.{Files, Path, Paths}
 
 import scala.util.Try
 
-
 /**
   * Extracts Telegram storage resources (scripts) from JAR to filesystem.
   * Resources are extracted to ~/.shadowcloud/telegram/
   */
 object TelegramResourceExtractor {
-
   private val RESOURCE_BASE = "/tgcloud"
 
   /**
@@ -21,11 +19,9 @@ object TelegramResourceExtractor {
     // Python session creator script
     ("telegram_create_session.py", "telegram_create_session.py"),
     ("telegram_daemon.py", "telegram_daemon.py"),
-
     // Setup scripts
     ("setup-venv.sh", "setup-venv.sh"),
     ("setup-venv.ps1", "setup-venv.ps1"),
-
     // Requirements
     ("requirements.txt", "requirements.txt")
   )
@@ -51,7 +47,7 @@ object TelegramResourceExtractor {
     Files.createDirectories(targetDir)
 
     // Extract each resource
-    RESOURCES.foreach { case (resourceName, targetName) =>
+    RESOURCES.foreach { case (resourceName, targetName) ⇒
       extractResource(resourceName, targetDir.resolve(targetName))
     }
 
@@ -81,6 +77,7 @@ object TelegramResourceExtractor {
     if (shouldExtract) {
       val inputStream = new BufferedInputStream(getClass.getResourceAsStream(resourcePath))
       val outputStream = new BufferedOutputStream(new FileOutputStream(targetPath.toFile))
+
       try {
         com.google.common.io.ByteStreams.copy(inputStream, outputStream)
       } finally {
@@ -117,6 +114,13 @@ object TelegramResourceExtractor {
     */
   def getPythonScriptPath: Path = {
     getTargetDirectory.resolve("telegram_create_session.py")
+  }
+
+  /**
+    * Get the path to the daemon script.
+    */
+  def getDaemonScriptPath: Path = {
+    getTargetDirectory.resolve("telegram_daemon.py")
   }
 
   /**

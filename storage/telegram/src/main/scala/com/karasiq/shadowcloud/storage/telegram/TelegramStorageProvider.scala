@@ -2,6 +2,9 @@ package com.karasiq.shadowcloud.storage.telegram
 
 import com.karasiq.shadowcloud.providers.StorageProvider
 
+/**
+  * Service provider for Telegram storage.
+  */
 class TelegramStorageProvider extends StorageProvider {
   override val storageTypes = Set("telegram")
 

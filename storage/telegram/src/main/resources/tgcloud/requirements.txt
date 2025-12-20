@@ -1,6 +1,10 @@
-Telethon>=1.14.0
-cryptg>=0.3.0
 Quart>=0.12.0
 Hypercorn>=0.9.5
 lz4>=3.1.0
 pytz>=2020.1
+# Telegram client library
+telethon>=1.30.0
+# OpenTele for official Telegram Desktop emulation
+opentele>=1.15.1
+# Required for OpenTele
+cryptg>=0.4.0

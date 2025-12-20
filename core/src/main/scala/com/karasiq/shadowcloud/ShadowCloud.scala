@@ -8,6 +8,7 @@ import akka.actor.{ActorContext, ActorRef, ActorSystem, ExtendedActorSystem, Ext
 import akka.event.Logging
 import akka.stream.Materializer
 import akka.util.{ByteString, Timeout}
+
 import com.karasiq.common.configs.ConfigImplicits
 import com.karasiq.shadowcloud.actors.messages.{RegionEnvelope, StorageEnvelope}
 import com.karasiq.shadowcloud.actors.utils.StringEventBus
@@ -31,12 +32,13 @@ import com.karasiq.shadowcloud.ui.passwords.PasswordProvider
 import com.karasiq.shadowcloud.ui.{ChallengeHub, UIProvider}
 import com.karasiq.shadowcloud.utils.{ProviderInstantiator, SCProviderInstantiator}
 import com.typesafe.config.Config
-
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.reflect.ClassTag
 import scala.util.Try
 import scala.util.control.NonFatal
+
+import com.sun.istack.internal.Nullable
 
 object ShadowCloud extends ExtensionId[ShadowCloudExtension] with ExtensionIdProvider {
   def apply()(implicit context: ActorContext): ShadowCloudExtension = {
@@ -137,7 +139,16 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
     val provider: SessionProvider = provInstantiator.getInstance(config.persistence.sessionProvider)
 
     def set(storageId: StorageId, key: String, data: AnyRef): Future[Done] = {
-      provider.storeSession(storageId, key, serialization.toBytes(data))
+      data match {
+        case None | null ⇒
+          provider.dropSession(storageId, key)
+
+        case emptyBytes: ByteString if emptyBytes.isEmpty ⇒
+          provider.dropSession(storageId, key)
+
+        case data ⇒
+          provider.storeSession(storageId, key, serialization.toBytes(data))
+      }
     }
 
     def setRaw(storageId: StorageId, key: String, data: ByteString): Future[Done] = {
@@ -156,7 +167,7 @@ class ShadowCloudExtension(_actorSystem: ExtendedActorSystem) extends Extension 
       provider.listSessions(storageId)
     }
 
-    def setBlocking(storageId: StorageId, key: String, data: AnyRef): Done = {
+    def setBlocking(storageId: StorageId, key: String, @Nullable data: AnyRef): Done = {
       Await.result(set(storageId, key, data), Duration.Inf)
     }
 

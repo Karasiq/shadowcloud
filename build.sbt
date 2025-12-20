@@ -273,7 +273,7 @@ def storagePlugin(id: String): Project = {
       commonSettings,
       name := s"shadowcloud-$prefixedId"
     )
-    .dependsOn(core % "provided", storageParent % "provided", testUtilsJVM % "test")
+    .dependsOn(core % "provided", modelJVM % "provided", storageParent % "provided", testUtilsJVM % "test")
 }
 
 lazy val storageParent = Project("storage-parent", file("storage") / "parent")
@@ -293,6 +293,7 @@ lazy val webdavStorage = storagePlugin("webdav")
   .settings(libraryDependencies ++= ProjectDeps.sardine)
 
 lazy val telegramStorage = storagePlugin("telegram")
+  .settings(libraryDependencies ++= ProjectDeps.guava)
 
 lazy val rcloneStorage = storagePlugin("rclone")
 

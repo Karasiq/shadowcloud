@@ -2,169 +2,249 @@ package com.karasiq.shadowcloud.storage.telegram
 
 import akka.actor.{ActorContext, ActorRef}
 import akka.event.Logging
+import akka.util.ByteString
+
 import com.karasiq.common.configs.ConfigImplicits._
-import com.karasiq.shadowcloud.ShadowCloud
+import com.karasiq.shadowcloud.{ShadowCloud, ShadowCloudExtension}
 import com.karasiq.shadowcloud.model.StorageId
 import com.karasiq.shadowcloud.model.utils.StorageHealth
 import com.karasiq.shadowcloud.providers.LifecycleHook
 import com.karasiq.shadowcloud.storage.StoragePlugin
 import com.karasiq.shadowcloud.storage.props.StorageProps
 import com.karasiq.shadowcloud.storage.utils.StoragePluginBuilder
+import com.karasiq.shadowcloud.model.Path
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
-import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Try, Failure, Success}
-
+/**
+  * Telegram storage plugin with official Desktop API.
+  * No custom API ID/hash required - uses OpenTele's built-in credentials.
+  */
 class TelegramStoragePlugin extends StoragePlugin {
+
   override def createStorage(storageId: StorageId, props: StorageProps)(implicit context: ActorContext): ActorRef = {
-    import context.{dispatcher, system}
+    implicit val dispatcher: ExecutionContext = context.dispatcher
+    implicit val system                       = context.system
 
-    val sc = ShadowCloud()
+    val sc  = ShadowCloud()
     val log = Logging(system, context.self)
-    val config = TelegramStorageConfig(
-      props.rootConfig.withFallback(sc.config.rootConfig.getConfig("storage.telegram"))
-    )
 
-    // Initialize Telethon client with OpenTele
-    Try {
-      val apiId = config.apiId
-      val apiHash = config.apiHash
-      val phoneNumber = config.phoneNumber
-        .orElse(props.rootConfig.optional(_.getString("phone")))
-        .getOrElse(throw new IllegalArgumentException("Telegram phone number is required"))
+    // Load configuration (simplified - no API credentials needed)
+    val config = Try {
+      TelegramStorageConfig(
+        props.rootConfig.withFallback(sc.config.rootConfig.getConfig("storage.telegram"))
+      )
+    }.recoverWith {
+      case ex ⇒
+        Failure(new IllegalArgumentException(s"Invalid Telegram storage configuration: ${ex.getMessage}", ex))
+    }
 
-      // Get or create session
-      val sessionKey = Try(
-        sc.sessions.getRawBlocking(storageId, "telegram-session-key")
-          .map(bs ⇒ new String(bs.toArray))
-      ).toOption.flatten.getOrElse {
-        generateNewTelegramSession(storageId, config, sc)
-      }
+    config match {
+      case Success(cfg) ⇒
+        log.info("Initializing Telegram storage with official Desktop API: {}", storageId)
 
-      // Create repository
-      val repository = TelegramRepository(sessionKey, apiHash, apiId)(dispatcher)
+        Try {
+          // Get or create session (no API credentials needed!)
+          val sessionKey = getOrCreateSession(storageId, cfg, sc, log)
 
-      // Build storage with health monitoring
-      StoragePluginBuilder(storageId, props)
-        .withTreeRepo(repository)
-        .withHealthF(() ⇒ getTelegramHealth(repository)(dispatcher))
-        .withLifecycleHook(new LifecycleHook {
-          override def initialize(): Unit = {
-            log.info("Initializing Telegram storage for: {}", phoneNumber)
-            // Validate connection by making test API call
-            Try {
-              scala.concurrent.Await.ready(
-                repository.subKeys(com.karasiq.shadowcloud.model.Path.root),
-                scala.concurrent.duration.Duration(15, "seconds")
+          // Create repository with session
+          val repository = TelegramRepository(
+            sessionKey = sessionKey,
+            apiHash = "", // Not used with OpenTele
+            apiId = 0     // Not used with OpenTele
+          )(dispatcher)
+
+          // Build storage
+          StoragePluginBuilder(storageId, props)
+            .withTreeRepo(repository)
+            .withHealthF(() ⇒ getTelegramHealth(repository))
+            .withLifecycleHook(
+              new TelegramLifecycleHook(
+                storageId = storageId,
+                sessionKey = sessionKey,
+                repository = repository,
+                config = cfg,
+                sc = sc,
+                log = log
               )
-            } match {
-              case Success(_) ⇒
-                log.info("Telegram storage initialized successfully")
-              case Failure(ex) ⇒
-                log.error(ex, "Failed to initialize Telegram storage")
-                throw new IllegalStateException(s"Telegram initialization failed: ${ex.getMessage}", ex)
-            }
-          }
+            )
+            .createStorage()
 
-          override def shutdown(): Unit = {
-            log.info("Shutting down Telegram storage")
-            // Cleanup resources
-            Try {
-              sc.sessions.dropBlocking(storageId, "telegram-session-key")
-            }.recover { case ex ⇒
-              log.warning("Failed to cleanup session: {}", ex.getMessage)
-            }
-          }
+        } match {
+          case Success(storage) ⇒
+            log.info("Telegram storage created successfully: {}", storageId)
+            storage
 
-          override def toString: StorageId = s"TelegramLifecycleHook($phoneNumber)"
-        })
-        .createStorage()
+          case Failure(ex) ⇒
+            log.error(ex, "Failed to create Telegram storage: {}", storageId)
+            sc.ui.showNotification(
+              s"Failed to initialize Telegram storage: $storageId\n" +
+              s"Error: ${ex.getMessage}\n\nEnsure OpenTele is installed (run setup.sh)"
+            )
+            throw ex
+        }
 
-    } match {
-      case Success(storage) ⇒ storage
       case Failure(ex) ⇒
-        log.error(ex, "Failed to create Telegram storage")
+        log.error(ex, "Invalid Telegram configuration for storage: {}", storageId)
         sc.ui.showNotification(
-          s"Failed to initialize Telegram storage: $storageId\n${ex.getMessage}"
+          s"Invalid Telegram Configuration: $storageId\n" +
+          s"Error: ${ex.getMessage}"
         )
-        context.stop(context.self)
         throw ex
     }
   }
 
   /**
-   * Generate new Telegram session using official Telethon + OpenTele.
-   * Uses Android desktop device emulation for login.
-   */
-  private def generateNewTelegramSession(
-    storageId: StorageId,
-    config: TelegramStorageConfig,
-    sc: ShadowCloud
-  ): String = {
-    // Initialize Telethon with OpenTele device emulation
-    val deviceConfig = OpenTeleDeviceConfig.androidDesktop()
-    val sessionKey = scala.util.Random.alphanumeric.take(32).mkString
+    * Get existing session or create new one interactively.
+    * Uses official Telegram Desktop API (no custom credentials needed).
+    */
+  private def getOrCreateSession(
+      storageId: StorageId,
+      config: TelegramStorageConfig,
+      sc: ShadowCloudExtension,
+      log: akka.event.LoggingAdapter
+  )(implicit ec: ExecutionContext): String = {
 
-    // Store session
-    sc.sessions.setRawBlocking(
-      storageId,
-      "telegram-session-key",
-      ByteString.fromString(sessionKey)
+    log.info("Getting or creating Telegram session with official Desktop API: {}", storageId)
+
+    sc.ui.showNotification(
+      "Telegram Storage\n" +
+      s"Initializing $storageId with official Desktop API\nNo custom API credentials required"
     )
 
-    sessionKey
+    // Use TelegramSessionCreator - no API ID/hash needed!
+    val sessionFuture = TelegramSessionCreator.getOrCreateSession(
+      storageId = storageId.toString
+    )(sc, ec)
+
+    // Wait for session with timeout
+    Try {
+      Await.result(sessionFuture, config.sessionCreationTimeout)
+    } match {
+      case Success(session) ⇒
+        log.info("Telegram session ready with official Desktop API: {}", storageId)
+        session
+
+      case Failure(ex: java.util.concurrent.TimeoutException) ⇒
+        val msg = s"Session operation timed out after ${config.sessionCreationTimeout}"
+        log.error(msg)
+        throw new RuntimeException(msg, ex)
+
+      case Failure(ex) ⇒
+        log.error(ex, "Failed to get or create Telegram session")
+        throw new RuntimeException(s"Telegram session failed: ${ex.getMessage}", ex)
+    }
   }
 
   /**
-   * Calculate Telegram storage health metrics.
-   */
+    * Calculate Telegram storage health metrics.
+    */
   private def getTelegramHealth(
-    repository: TelegramRepository
+      repository: TelegramRepository
   )(implicit ec: ExecutionContext): Future[StorageHealth] = {
     Future {
-      // Telegram doesn't have storage quotas like other providers
-      // Return unlimited storage
       StorageHealth.unlimited
+    }.recover {
+      case ex ⇒
+        StorageHealth(
+          online = false,
+          totalSpace = 0,
+          writableSpace = 0
+        )
     }
   }
 }
 
 /**
- * OpenTele device configuration for Android desktop emulation.
- */
-private object OpenTeleDeviceConfig {
-  /**
-   * Android desktop device emulation configuration.
-   * Mimics Android device for realistic Telegram login.
-   */
-  def androidDesktop(): Map[String, String] = {
-    Map(
-      "device_model" ⇒ "SM-G973F",  // Samsung Galaxy S10
-      "system_version" ⇒ "12",         // Android 12
-      "app_version" ⇒ "9.8.2",         // Telegram app version
-      "lang_code" ⇒ "en",
-      "system_lang_code" ⇒ "en",
-      "client_type" ⇒ "desktop"
-    )
+  * Lifecycle hook for Telegram storage.
+  */
+private class TelegramLifecycleHook(
+    storageId: StorageId,
+    sessionKey: String,
+    repository: TelegramRepository,
+    config: TelegramStorageConfig,
+    sc: ShadowCloudExtension,
+    log: akka.event.LoggingAdapter
+) extends LifecycleHook {
+
+  override def initialize(): Unit = {
+    log.info("Initializing Telegram storage with official Desktop API: {}", storageId)
+
+    implicit val ec: ExecutionContext = scala.concurrent.ExecutionContext.global
+
+    val validationResult = Try {
+      Await.ready(
+        repository
+          .subKeys(Path.root)
+          .runWith(akka.stream.scaladsl.Sink.ignore)(
+            akka.stream.ActorMaterializer()(akka.actor.ActorSystem("validation"))
+          ),
+        15.seconds
+      )
+    }
+
+    validationResult match {
+      case Success(_) ⇒
+        log.info("Telegram storage connection validated: {}", storageId)
+        sc.ui.showNotification(
+          "Telegram Storage Ready\n" +
+          s"$storageId is online using official Desktop API"
+        )
+
+      case Failure(ex) ⇒
+        log.error(ex, "Failed to validate Telegram storage: {}", storageId)
+        sc.ui.showNotification(
+          "Telegram Storage Warning\n" +
+          s"$storageId may not be fully initialized:\n${ex.getMessage}"
+        )
+    }
   }
+
+  override def shutdown(): Unit = {
+    log.info("Shutting down Telegram storage: {}", storageId)
+  }
+
+  override def toString: String = s"TelegramLifecycleHook($storageId)"
 }
 
 /**
- * Telegram storage configuration.
- */
+  * Simplified Telegram storage configuration.
+  * No API credentials needed - uses official Desktop API via OpenTele.
+  */
 private[telegram] case class TelegramStorageConfig(
-  apiId: Int,
-  apiHash: String,
-  phoneNumber: Option[String],
-  tempDir: java.nio.file.Path
+    phoneNumber: String,
+    entity: String,
+    sessionCreationTimeout: FiniteDuration,
+    tempDir: java.nio.file.Path
 )
 
 private[telegram] object TelegramStorageConfig {
+
   def apply(config: com.typesafe.config.Config): TelegramStorageConfig = {
+    import com.karasiq.common.configs.ConfigImplicits._
+
+    val phoneNumber = config.getString("phone-number")
+    val entity = config.withDefault("me", _.getString("entity"))
+
+    val timeoutSeconds         = config.withDefault(600, _.getInt("session-creation-timeout-seconds"))
+    val sessionCreationTimeout = timeoutSeconds.seconds
+
+    val tempDirPath = config.withDefault(
+      System.getProperty("user.home") + "/.shadowcloud/telegram",
+      _.getString("temp-dir")
+    )
+    val tempDir = java.nio.file.Paths.get(tempDirPath)
+
+    if (!java.nio.file.Files.exists(tempDir)) {
+      java.nio.file.Files.createDirectories(tempDir)
+    }
+
     TelegramStorageConfig(
-      apiId = config.getInt("api-id"),
-      apiHash = config.getString("api-hash"),
-      phoneNumber = config.optional(_.getString("phone-number")),
-      tempDir = java.nio.file.Files.createTempDirectory("telegram-sc")
+      phoneNumber = phoneNumber,
+      entity = entity,
+      sessionCreationTimeout = sessionCreationTimeout,
+      tempDir = tempDir
     )
   }
 }
